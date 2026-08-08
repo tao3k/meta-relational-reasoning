@@ -16,6 +16,13 @@ gql-types.workspace = true
 
 [dev-dependencies]
 criterion.workspace = true
+gql-rust-project-harness-policy.workspace = true
+[build-dependencies]
+gql-rust-project-harness-policy.workspace = true
+
+[[bench]]
+name = "ascent_perf"
+harness = false
 
 [lints]
 workspace = true

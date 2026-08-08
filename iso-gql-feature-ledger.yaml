@@ -1,0 +1,214 @@
+schema_version: 1
+oracles:
+  grafeo:
+    role: syntax_feature_coverage
+    normative: false
+  frogql:
+    role: elaboration_and_path_semantics
+    normative: false
+features:
+  - iso_feature: Identifiers
+    syntax_status: implemented
+    ast_status: partially_implemented
+    sema_status: not_implemented
+    ir_status: not_implemented
+    positives:
+      - "MATCH (node)-[:CALLS]->(target) RETURN node"
+      - "MATCH (n1)-[:CALLS]->(n2) RETURN n1"
+    negatives:
+      - "MATCH (a)-[:CALLS]->(1) RETURN a"
+    extension_or_divergence: "Identifier recovery and validation beyond lexical shape remain intentionally limited"
+    notes: "Unicode and ASCII identifiers are preserved as syntax tokens and lowered to AST identifiers when context expects names"
+    validation: "gql_syntax::tests::parser_lib::preserves_source_and_unicode_identifiers validates roundtrip and identifier tokens"
+
+  - iso_feature: Whitespace_and_comments
+    syntax_status: implemented
+    ast_status: implemented
+    sema_status: not_implemented
+    ir_status: not_implemented
+    positives:
+      - "MATCH  (a)-[:CALLS]->(b) RETURN a"
+      - "MATCH (a) RETURN a  # trailing comment"
+    negatives:
+      - "MATCH (a) @ RETURN a"
+    extension_or_divergence: "Only comment forms and whitespace are carried as trivia; normalization is intentionally minimal"
+    notes: "Whitespace and comment tokens are retained through CST and rowan recovery"
+    validation: "gql_syntax::tests::parser_lib::preserves_whitespace_and_unknown_tokens validates trivia retention"
+
+  - iso_feature: NodeEdgePatterns
+    syntax_status: implemented
+    ast_status: implemented
+    sema_status: partially_implemented
+    ir_status: partially_implemented
+    positives:
+      - "MATCH (a)-[:CALLS]->(b) RETURN a"
+      - "MATCH (a)<-[:CALLS]-(b) RETURN a"
+      - "MATCH (a:Person)-[:CALLS:Type]->(b:Server) RETURN a"
+    negatives:
+      - "MATCH (a)-[:CALLS:Person->(b) RETURN a"
+      - "MATCH (a)-[:CALLS]-((b) RETURN a"
+    extension_or_divergence: "Pattern vocabulary is limited to node and single-edge patterns with recovery"
+    notes: "AST stores nodes/edges/path elements and relation candidates, while sema/IR is single-relation only in this release"
+    validation: "gql_syntax::tests::parser_lib::parses_incoming_edge_pattern and gql::tests::pipeline_matches_vertical_slice_from_source_to_ir"
+
+  - iso_feature: EdgeDirection
+    syntax_status: implemented
+    ast_status: implemented
+    sema_status: partially_implemented
+    ir_status: partially_implemented
+    positives:
+      - "MATCH (a)-[:CALLS]->(b) RETURN a"
+      - "MATCH (a)<-[:CALLS]-(b) RETURN a"
+    negatives:
+      - "MATCH (a)-[:CALLS:Person->(b) RETURN a"
+    extension_or_divergence: "Only simple directed/undirected single-edge directions are mapped"
+    notes: "Arrow inference is computed from token neighbors in AST lowering and converted into canonical edge direction"
+    validation: "gql_ast::tests::lower_match_clause_with_incoming_edge_direction and lower_match_clause_with_outgoing_edge_direction"
+
+  - iso_feature: LabelsAndTypes
+    syntax_status: implemented
+    ast_status: implemented
+    sema_status: partially_implemented
+    ir_status: partially_implemented
+    positives:
+      - "MATCH (a:Person)-[:CALLS:Type]->(b:Server) RETURN a"
+      - "MATCH (a)-[:CALLS:Person]->(b) RETURN a"
+    negatives:
+      - "MATCH (a:->Person)-[:CALLS]->(b) RETURN a"
+      - "MATCH (a)-[:CALLS:Person->(b) RETURN a"
+    extension_or_divergence: "Label/type syntax is tokenized and lowered; relation/type-aware planning is not complete"
+    notes: "Node labels and edge labels are preserved and exposed in AST shape and diagnostics pipeline"
+    validation: "gql_ast::tests::lower_match_clause_with_labeled_edge_direction_ignores_label_list_punctuation"
+
+  - iso_feature: MATCH
+    syntax_status: implemented
+    ast_status: implemented
+    sema_status: partially_implemented
+    ir_status: partially_implemented
+    positives:
+      - "MATCH (a)-[:CALLS]->(b) RETURN a"
+      - "MATCH (a)-[:CALLS]->(b)"
+      - "MATCH (a)<-[:CALLS]-(b) RETURN a"
+      - "MATCH (a)-[:CALLS:Person]->(b) RETURN a"
+      - "MATCH (a)<-[:CALLS:Person]-(b) RETURN a"
+    negatives:
+      - "MATCH (a) RETURN a"
+      - "MATCH (a)-[:CALLS]->(b) RETURN"
+      - "MATCH (a)-[:CALLS:Person](b) RETURN a"
+      - "MATCH (a)-[:CALLS:Person->(b) RETURN a"
+      - "MATCH (a)<-[:CALLS]-((b) RETURN a"
+    extension_or_divergence: "Single-edge MATCH clauses only; multi-edge and quantified patterns are rejected for now"
+    notes: "Parser builds a lossless CST from tokens and preserves diagnostics while retaining unknown tokens and trivia"
+    validation: "gql::tests::pipeline_matches_vertical_slice_from_source_to_ir validates source->parser->AST->sema->IR"
+
+  - iso_feature: RETURN
+    syntax_status: partially_implemented
+    ast_status: implemented
+    sema_status: not_implemented
+    ir_status: not_implemented
+    positives:
+      - "RETURN a"
+      - "MATCH (a)-[:CALLS]->(b) RETURN a"
+    negatives:
+      - "MATCH (a)-[:CALLS]->(b) RETURN"
+    extension_or_divergence: "Return clauses are parsed only as bare identifiers"
+    notes: "No aggregation, expressions, or aliasing"
+
+  - iso_feature: WHERE
+    syntax_status: implemented
+    ast_status: implemented
+    sema_status: partially_implemented
+    ir_status: partially_implemented
+    positives:
+      - "MATCH (a)-[:CALLS]->(b) WHERE a"
+      - "MATCH (a)-[:CALLS]->(b) WHERE a RETURN b"
+      - "MATCH (a)-[:CALLS]->(b) WHERE a = 1 RETURN b"
+    negatives:
+      - "MATCH (a)-[:CALLS]->(b) WHERE"
+      - "MATCH (a)-[:CALLS]->(b) WHERE 1"
+      - "MATCH (a)-[:CALLS]->(b) WHERE 'x'"
+      - "MATCH (a)-[:CALLS]->(b) WHERE a = missing"
+      - "LET a"
+    extension_or_divergence: "WHERE supports simple identifier predicates and identifier/literal equality in this release; other expression forms remain rejected"
+
+  - iso_feature: LET
+    syntax_status: implemented
+    ast_status: implemented
+    sema_status: partially_implemented
+    ir_status: not_implemented
+    positives:
+      - "LET a = 1"
+      - "LET a = 1 WHERE a"
+    negatives:
+      - "LET = 1"
+    extension_or_divergence: "LET supports simple single-binding assignments and registers identifiers for scope checks; binding shadowing/typing remains limited"
+
+  - iso_feature: Catalog-relations
+
+    syntax_status: not_applicable
+    ast_status: implemented
+    sema_status: implemented
+    ir_status: implemented
+    positives:
+      - "Catalog relation lookup via analyze with known relation"
+    negatives:
+      - "Unknown relation in MATCH clause"
+    extension_or_divergence: "Catalog API intentionally minimal and backend-neutral"
+    notes: "Catalog lookup is a language-owned relation identity boundary with explicit authority modeling"
+    validation: "gql_sema::tests::match_clause_supports_single_edge_relation_only and gql::tests::pipeline_matches_vertical_slice_from_source_to_ir"
+
+  - iso_feature: MalformedDelimiters
+    syntax_status: implemented
+    ast_status: implemented
+    sema_status: not_implemented
+    ir_status: not_implemented
+    positives:
+      - "MATCH (a)-[:CALLS:Person->(b) RETURN a"
+      - "MATCH (a)<-[:CALLS]-((b) RETURN a"
+    negatives:
+      - "MATCH (a)-[:CALLS]->(b) RETURN a"
+    extension_or_divergence: "Current parser recovers and reports diagnostics without discarding the CST"
+    notes: "Delimiter imbalance and malformed edge syntax are reported by parser diagnostics and tree is preserved"
+    validation: "gql_syntax::tests::parser_fixtures::parser_err_fixtures_emit_expected_diagnostics"
+
+  - iso_feature: UnknownTokens
+    syntax_status: implemented
+    ast_status: implemented
+    sema_status: not_implemented
+    ir_status: not_implemented
+    positives:
+      - "MATCH (a)-[:CALLS]->(b) ## comment"
+      - "MATCH (a)-[:CALLS]->(b) /x @"
+    negatives:
+      - "MATCH (a)-[:CALLS]->(b) RETURN a"
+    extension_or_divergence: "Unrecognized characters remain as Unknown tokens in syntax with diagnostics"
+    notes: "Unknown character recovery is intentionally non-fatal to maintain recoverable parse trees"
+    validation: "gql_syntax::tests::parser_lib::preserves_whitespace_and_unknown_tokens"
+
+  - iso_feature: UnterminatedLiterals
+    syntax_status: implemented
+    ast_status: implemented
+    sema_status: not_implemented
+    ir_status: not_implemented
+    positives:
+      - "'unterminated"
+    negatives:
+      - "'closed'"
+    extension_or_divergence: "Unterminated string is preserved as a single token with a syntax diagnostic"
+    notes: "String recovery keeps token spans and source text intact for downstream stages"
+    validation: "gql_syntax::tests::parser_lib::recovers_from_unterminated_string"
+
+  - iso_feature: ParserRecovery
+    syntax_status: implemented
+    ast_status: implemented
+    sema_status: partially_implemented
+    ir_status: partially_implemented
+    positives:
+      - "MATCH (a)-[:CALLS:Person->(b) RETURN a"
+      - "LET = 1"
+      - "MATCH (a)-[:CALLS]->(b) WHERE"
+    negatives:
+      - "MATCH (a)-[:CALLS]->(b) RETURN a"
+    extension_or_divergence: "Recovered syntax trees flow into AST lowering with cascading diagnostics"
+    notes: "Core pipeline tolerates malformed inputs and reports diagnostics without dropping structure"
+    validation: "gql_syntax::tests::parser_fixtures_keep_source_and_recoverable_structure and gql::tests::pipeline_matches_vertical_slice_from_source_to_ir"

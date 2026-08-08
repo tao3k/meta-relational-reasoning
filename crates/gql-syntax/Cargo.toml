@@ -9,9 +9,17 @@ repository.workspace = true
 
 [dependencies]
 gql-source.workspace = true
+rowan = "0.16.1"
 
 [dev-dependencies]
 criterion.workspace = true
+gql-rust-project-harness-policy.workspace = true
+[build-dependencies]
+gql-rust-project-harness-policy.workspace = true
 
 [lints]
 workspace = true
+
+[[bench]]
+name = "syntax_perf"
+harness = false

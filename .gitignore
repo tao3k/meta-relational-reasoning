@@ -6,3 +6,4 @@ tmp/
 
 /.devenv
 /target
+/.pre-commit-config.yaml

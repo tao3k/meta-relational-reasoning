@@ -8,7 +8,7 @@ license.workspace = true
 repository.workspace = true
 
 [features]
-default = ["ascent"]
+default = []
 ascent = ["dep:gql-ascent"]
 
 [dependencies]
@@ -18,6 +18,13 @@ gql-reasoning.workspace = true
 
 [dev-dependencies]
 criterion.workspace = true
+gql-rust-project-harness-policy.workspace = true
+[build-dependencies]
+gql-rust-project-harness-policy.workspace = true
+
+[[bench]]
+name = "gql_perf"
+harness = false
 
 [lints]
 workspace = true

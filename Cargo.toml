@@ -1,5 +1,5 @@
 [workspace]
-members = ["build-support/*", "crates/*"]
+members = ["build-support/gql-rust-project-harness-policy", "crates/*"]
 resolver = "2"
 
 [workspace.package]

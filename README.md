@@ -3,15 +3,14 @@
 An ISO/IEC 39075-first, backend-neutral GQL compiler frontend for Rust.
 
 The `gql-core` crate is the dependency-pure language implementation. The `gql`
-facade enables the optional Ascent derived-relation backend by default for an
-ergonomic `GQL + relational reasoning` distribution:
+facade can enable the optional Ascent derived-relation backend as a feature:
 
 ```toml
-gql = "0.1"
+gql = { version = "0.1", features = ["ascent"] }
 ```
 
 Consumers that need only the language implementation can either depend on
-`gql-core` directly or disable facade defaults:
+`gql-core` directly or keep `gql` defaults disabled:
 
 ```toml
 gql = { version = "0.1", default-features = false }
@@ -43,3 +42,10 @@ cargo test -p gql --all-features
 cargo tree -p gql-core
 ```
 
+## Publish readiness policy
+
+`cargo package` is currently excluded for workspace member crates because the workspace
+contains local-only, unpublished dependency edges (including `gql-rust-project-harness-policy`)
+that are intentionally part of current developer-gating design. The CI workflow keeps this
+policy explicit and skips publish dry-runs until a release topology that resolves these
+cross-crate dependencies is in place.

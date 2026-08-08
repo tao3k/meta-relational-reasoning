@@ -1,22 +1,17 @@
+//! Catalog-facing contracts for backend-neutral GQL catalog identity.
 #![forbid(unsafe_code)]
 
-use gql_types::ValueType;
+mod api;
 
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub struct RelationName(pub String);
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum RelationAuthority {
-    Asserted { source: String },
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct PredicateDescriptor {
-    pub name: RelationName,
-    pub columns: Vec<ValueType>,
-    pub authority: RelationAuthority,
-}
-
-pub trait GqlCatalog {
-    fn relation(&self, name: &RelationName) -> Option<PredicateDescriptor>;
-}
+pub use api::{
+    CatalogName,
+    EdgeTypeName,
+    GqlCatalog,
+    GraphName,
+    NodeTypeName,
+    PredicateDescriptor,
+    RelationAuthority,
+    RelationIdentity,
+    RelationName,
+    SchemaName,
+};

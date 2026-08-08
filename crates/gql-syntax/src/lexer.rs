@@ -1,0 +1,160 @@
+//! Lexer for the minimal GQL lexical surface in the current milestone.
+
+use gql_source::{Diagnostic, Span};
+
+use crate::syntax::{Keyword, Token, TokenKind};
+
+/// Lexes `text` into tokens and diagnostics.
+pub(crate) fn lex(text: &str) -> (Vec<Token>, Vec<Diagnostic>) {
+    let mut tokens = Vec::new();
+    let mut diagnostics = Vec::new();
+    let mut cursor = 0usize;
+
+    while cursor < text.len() {
+        let start = cursor;
+        let ch = text[cursor..]
+            .chars()
+            .next()
+            .expect("cursor must stay in bounds");
+
+        if ch.is_whitespace() {
+            consume_while(&mut cursor, text, |next| next.is_whitespace());
+            tokens.push(Token {
+                kind: TokenKind::Whitespace,
+                span: Span::new(start as u32, cursor as u32),
+            });
+            continue;
+        }
+
+        if ch == '#' {
+            cursor += ch.len_utf8();
+            consume_while(&mut cursor, text, |next| next != '\n');
+
+            tokens.push(Token {
+                kind: TokenKind::Comment,
+                span: Span::new(start as u32, cursor as u32),
+            });
+            continue;
+        }
+
+        if ch == '\'' {
+            cursor += 1;
+            consume_while(&mut cursor, text, |next| next != '\'');
+            if cursor < text.len() {
+                cursor += 1;
+            }
+
+            if start + 1 == cursor
+                || text
+                    .as_bytes()
+                    .get(cursor.saturating_sub(1))
+                    .is_none_or(|byte| *byte != b'\'')
+            {
+                diagnostics.push(Diagnostic::error(
+                    "GQL-SYNTAX-UNTERMINATED-STRING",
+                    "unterminated string literal",
+                    Span::new(start as u32, cursor as u32),
+                ));
+            }
+
+            tokens.push(Token {
+                kind: TokenKind::String,
+                span: Span::new(start as u32, cursor as u32),
+            });
+            continue;
+        }
+
+        if is_identifier_start(ch) {
+            cursor += ch.len_utf8();
+            consume_while(&mut cursor, text, is_identifier_continue);
+
+            let word = &text[start..cursor];
+            let kind = keyword(word)
+                .map(TokenKind::Keyword)
+                .unwrap_or(TokenKind::Identifier);
+
+            tokens.push(Token {
+                kind,
+                span: Span::new(start as u32, cursor as u32),
+            });
+            continue;
+        }
+
+        if ch.is_ascii_digit() {
+            consume_while(&mut cursor, text, |next| next.is_ascii_digit());
+
+            tokens.push(Token {
+                kind: TokenKind::Number,
+                span: Span::new(start as u32, cursor as u32),
+            });
+            continue;
+        }
+
+        let punctuation = "[](){}:,.-><-+*=;!";
+        if punctuation.contains(ch) {
+            cursor += ch.len_utf8();
+            tokens.push(Token {
+                kind: TokenKind::Punctuation(ch),
+                span: Span::new(start as u32, cursor as u32),
+            });
+            continue;
+        }
+
+        cursor += ch.len_utf8();
+        diagnostics.push(Diagnostic::error(
+            "GQL-SYNTAX-UNKNOWN-CHARACTER",
+            format!("unrecognized character `{ch}`"),
+            Span::new(start as u32, cursor as u32),
+        ));
+        tokens.push(Token {
+            kind: TokenKind::Unknown,
+            span: Span::new(start as u32, cursor as u32),
+        });
+    }
+
+    (tokens, diagnostics)
+}
+
+pub(crate) fn keyword(word: &str) -> Option<Keyword> {
+    match word.to_ascii_uppercase().as_str() {
+        "MATCH" => Some(Keyword::Match),
+        "WHERE" => Some(Keyword::Where),
+        "LET" => Some(Keyword::Let),
+        "RETURN" => Some(Keyword::Return),
+        "OR" => Some(Keyword::Or),
+        "AND" => Some(Keyword::And),
+        "NOT" => Some(Keyword::Not),
+        "CALL" => Some(Keyword::Call),
+        "CREATE" => Some(Keyword::Create),
+        "DROP" => Some(Keyword::Drop),
+        "INSERT" => Some(Keyword::Insert),
+        "DELETE" => Some(Keyword::Delete),
+        "SET" => Some(Keyword::Set),
+        "REMOVE" => Some(Keyword::Remove),
+        _ => None,
+    }
+}
+
+fn is_identifier_start(ch: char) -> bool {
+    ch.is_alphabetic() || ch == '_'
+}
+
+fn is_identifier_continue(ch: char) -> bool {
+    ch.is_alphanumeric() || ch == '_'
+}
+
+fn consume_while<F>(cursor: &mut usize, text: &str, mut keep: F)
+where
+    F: FnMut(char) -> bool,
+{
+    while *cursor < text.len() {
+        let next = text[*cursor..]
+            .chars()
+            .next()
+            .expect("cursor must stay in bounds");
+        if !keep(next) {
+            break;
+        }
+        *cursor += next.len_utf8();
+    }
+}

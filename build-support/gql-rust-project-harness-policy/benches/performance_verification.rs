@@ -3,7 +3,7 @@ use gql_rust_project_harness_policy::{gql_search_scenario_package, gql_workspace
 
 fn policy_lookup_smoke_benchmark(criterion: &mut Criterion) {
     criterion.bench_function("gql_workspace_member_policies", |bencher| {
-        bencher.iter(|| gql_workspace_member_policies())
+        bencher.iter(gql_workspace_member_policies)
     });
 }
 
