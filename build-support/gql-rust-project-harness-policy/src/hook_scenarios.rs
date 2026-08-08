@@ -8,8 +8,6 @@ use crate::{
 /// Package that owns the canonical GQL hook scenarios.
 pub const GQL_HOOK_SCENARIO_PACKAGE_NAME: &str = "gql-hook-v1";
 
-/// Backward-compatible alias for older ASP-prefixed callers.
-pub const ASP_HOOK_SCENARIO_PACKAGE_NAME: &str = GQL_HOOK_SCENARIO_PACKAGE_NAME;
 
 /// Scenario that verifies resident dispatch for arbitrary wrappers around Cargo test.
 pub const GENERIC_WRAPPER_TESTING_RESIDENT_DISPATCH_SCENARIO_ID: &str =
@@ -74,9 +72,4 @@ pub fn gql_hook_scenario_package() -> GqlRustProjectHarnessScenarioPackage {
             ),
         ],
     )
-}
-
-/// Backward-compatible alias kept for ASP-namespaced callers.
-pub fn asp_hook_scenario_package() -> GqlRustProjectHarnessScenarioPackage {
-    gql_hook_scenario_package()
 }

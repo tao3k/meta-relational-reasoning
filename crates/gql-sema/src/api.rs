@@ -4,11 +4,15 @@
 use std::collections::HashMap;
 
 use gql_ast::{
-    BinaryOperator, Expression, MatchClause, PatternElement, QueryClause, Statement,
+    BinaryOperator, Expression, PatternElement, QueryClause, Statement,
     UnaryOperator,
 };
-use gql_catalog::{GqlCatalog, RelationName};
-use gql_ir::{Binding as IrBinding, Predicate, QueryBlock, RelationScan};
+use gql_catalog::GqlCatalog;
+use gql_ir::{
+    Binding as IrBinding, EdgeDirection as IrEdgeDirection, EdgePattern as IrEdgePattern,
+    GraphPattern as IrGraphPattern, GraphPatternElement as IrGraphPatternElement,
+    NodePattern as IrNodePattern, PathPattern as IrPathPattern, Predicate, QueryBlock,
+};
 use gql_types::{Value, ValueType};
 use gql_source::{Diagnostic, Span};
 
@@ -28,7 +32,7 @@ pub fn analyze(statement: &Statement, catalog: &dyn GqlCatalog) -> Analysis {
     analyze_statement(statement, catalog)
 }
 
-fn analyze_statement(statement: &Statement, catalog: &dyn GqlCatalog) -> Analysis {
+fn analyze_statement(statement: &Statement, _catalog: &dyn GqlCatalog) -> Analysis {
     let Statement::Query(query) = statement else {
         return Analysis {
             ir: None,
@@ -46,49 +50,16 @@ fn analyze_statement(statement: &Statement, catalog: &dyn GqlCatalog) -> Analysi
     for clause in &query.clauses {
         match clause {
             QueryClause::Match(match_clause) => {
-                let relations = match_relations(match_clause);
-                if relations.is_empty() {
-                    diagnostics.push(Diagnostic::error(
-                        "GQL-SEMA-NO-RELATION-HINT",
-                        "MATCH clause currently requires at least one edge relation in this release",
-                        match_clause.span,
-                    ));
-                    continue;
-                }
-                if relations.len() > 1 {
-                    diagnostics.push(Diagnostic::error(
-                        "GQL-SEMA-MULTI-RELATIONS-HINT",
-                        "MATCH clause currently supports a single relation edge only in this release",
-                        match_clause.span,
-                    ));
-                    continue;
-                }
-                let relation = &relations[0];
-                let name = RelationName(relation.text.clone());
-                if catalog.relation(&name).is_some() {
-                    let scan_bindings = collect_pattern_bindings(&match_clause.pattern);
-                    block.scans.push(RelationScan {
-                        relation: name,
-                        bindings: scan_bindings
-                            .iter()
-                            .map(|binding| {
-                                IrBinding {
-                                    name: binding.text.clone(),
-                                    value_type: ValueType::Any,
-                                }
-                            })
-                            .collect(),
+                let pattern_bindings = collect_pattern_bindings(&match_clause.pattern);
+                let pattern = build_graph_pattern(&match_clause.pattern);
+                block.graph = Some(pattern);
+
+                pattern_bindings
+                    .iter()
+                    .for_each(|binding| {
+                        bindings.insert(binding.text.clone(), ValueType::Any);
                     });
-                    scan_bindings.into_iter().for_each(|binding| {
-                        bindings.insert(binding.text, ValueType::Any);
-                    });
-                } else {
-                    diagnostics.push(Diagnostic::error(
-                        "GQL-SEMA-UNKNOWN-RELATION",
-                        format!("unknown relation `{}`", relation.text),
-                        relation.span,
-                    ));
-                }
+
             }
             QueryClause::Where { .. } => {
                 if let QueryClause::Where { expression } = clause {
@@ -126,18 +97,40 @@ fn analyze_statement(statement: &Statement, catalog: &dyn GqlCatalog) -> Analysi
     }
 }
 
-fn match_relations(clause: &MatchClause) -> Vec<gql_ast::Identifier> {
-    fn walk_elements(elements: &[PatternElement], out: &mut Vec<gql_ast::Identifier>) {
-        elements.iter().for_each(|element| match element {
-            PatternElement::Edge(edge) => out.extend(edge.labels.iter().cloned()),
-            PatternElement::Path(path) => walk_elements(&path.elements, out),
-            PatternElement::Node(_) => {}
-        });
+fn build_graph_pattern(pattern: &gql_ast::GraphPattern) -> IrGraphPattern {
+    IrGraphPattern {
+        elements: pattern
+            .elements
+            .iter()
+            .map(build_graph_pattern_element)
+            .collect(),
     }
+}
 
-    let mut relations = Vec::new();
-    walk_elements(&clause.pattern.elements, &mut relations);
-    relations
+fn build_graph_pattern_element(element: &PatternElement) -> IrGraphPatternElement {
+    match element {
+        PatternElement::Node(node) => {
+            IrGraphPatternElement::Node(IrNodePattern {
+                binding: node.binding.as_ref().map(|binding| binding.text.clone()),
+                labels: node.labels.iter().map(|label| label.text.clone()).collect(),
+            })
+        }
+        PatternElement::Edge(edge) => IrGraphPatternElement::Edge(IrEdgePattern {
+            labels: edge.labels.iter().map(|label| label.text.clone()).collect(),
+            direction: match edge.direction {
+                gql_ast::EdgeDirection::Out => IrEdgeDirection::Out,
+                gql_ast::EdgeDirection::In => IrEdgeDirection::In,
+                gql_ast::EdgeDirection::Undirected => IrEdgeDirection::Undirected,
+            },
+        }),
+        PatternElement::Path(path) => IrGraphPatternElement::Path(IrPathPattern {
+            elements: path
+                .elements
+                .iter()
+                .map(build_graph_pattern_element)
+                .collect(),
+        }),
+    }
 }
 
 fn collect_pattern_bindings(clause: &gql_ast::GraphPattern) -> Vec<gql_ast::Identifier> {

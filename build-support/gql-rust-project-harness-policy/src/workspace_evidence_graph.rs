@@ -162,11 +162,3 @@ pub fn build_gql_workspace_evidence_graph_receipt(
         client_db_evidence_graph,
     })
 }
-
-/// Backward-compatible alias kept for older callers.
-pub fn build_asp_workspace_evidence_graph_receipt(
-    workspace_root: PathBuf,
-    client_db_evidence_graph: &GqlRustProjectHarnessEvidenceGraphInput,
-) -> GqlRustProjectHarnessWorkspaceEvidenceGraphReceipt {
-    build_gql_workspace_evidence_graph_receipt(workspace_root, client_db_evidence_graph)
-}

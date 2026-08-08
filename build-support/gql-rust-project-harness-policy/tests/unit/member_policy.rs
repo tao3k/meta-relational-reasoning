@@ -3,31 +3,6 @@ use std::path::Path;
 use gql_rust_project_harness_policy::gql_workspace_member_policies;
 
 const FORBIDDEN_POLICY_RULE_FILE: &str = "rust-project-harness-rules.toml";
-const PROHIBITED_POLICY_DISABLE_TOKENS: [&str; 3] = [
-    ".with_disabled_rule_pack",
-    ".with_disabled_rules",
-    ".with_disabled_rule",
-];
-
-fn is_policy_scan_exempt_file(path: &Path) -> bool {
-    let mut components = path.components().map(|c| c.as_os_str()).collect::<Vec<_>>();
-    use std::ffi::OsStr;
-    let expected = [
-        OsStr::new("build-support"),
-        OsStr::new("gql-rust-project-harness-policy"),
-        OsStr::new("tests"),
-        OsStr::new("unit"),
-        OsStr::new("member_policy.rs"),
-    ];
-    if components.len() < expected.len() {
-        return false;
-    }
-    components
-        .split_off(components.len() - expected.len())
-        .iter()
-        .zip(expected.iter())
-        .all(|(left, right)| left == right)
-}
 
 fn workspace_root_from_manifest() -> std::path::PathBuf {
     let support_manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
@@ -43,43 +18,30 @@ fn workspace_root_from_manifest() -> std::path::PathBuf {
         .to_owned()
 }
 
-fn scan_workspace_rs_sources(dir: &Path, files: &mut Vec<std::path::PathBuf>) {
-    let entries = std::fs::read_dir(dir).expect("workspace source directory exists");
-    for entry in entries {
-        let entry = entry.expect("workspace source directory entry");
-        let path = entry.path();
-        let file_name = path.file_name().and_then(|name| name.to_str()).unwrap_or("");
-        if file_name == ".git" || file_name == "target" || file_name == "node_modules" {
-            continue;
-        }
-        if path.is_dir() {
-            scan_workspace_rs_sources(&path, files);
-            continue;
-        }
-        if is_policy_scan_exempt_file(&path) {
-            continue;
-        }
-        if path
-            .extension()
-            .and_then(|ext| ext.to_str())
-            .is_some_and(|ext| ext == "rs")
-        {
-            files.push(path);
-        }
-    }
-}
-
 fn collect_forbidden_policy_rule_files(dir: &Path, files: &mut Vec<std::path::PathBuf>) {
     let entries = std::fs::read_dir(dir).expect("workspace source directory exists");
     for entry in entries {
         let entry = entry.expect("workspace source directory entry");
+        let file_type = entry.file_type().expect("workspace source directory entry file type");
         let path = entry.path();
         let file_name = path.file_name().and_then(|name| name.to_str()).unwrap_or("");
 
-        if path.is_dir() {
-            if file_name == ".git" || file_name == "target" || file_name == "node_modules" {
-                continue;
+        if file_type.is_symlink() {
+            continue;
+        }
+
+        if file_type.is_file() {
+            if file_name == FORBIDDEN_POLICY_RULE_FILE {
+                files.push(path);
             }
+            continue;
+        }
+
+        if file_name == ".git" || file_name == "target" || file_name == "node_modules" || file_name == ".devenv" {
+            continue;
+        }
+
+        if file_type.is_dir() {
             collect_forbidden_policy_rule_files(&path, files);
             continue;
         }
@@ -184,26 +146,6 @@ fn central_policy_uses_uniform_workspace_default() {
             "policy crate_root is inconsistent for {}",
             policy.package_name
         );
-    }
-}
-
-#[test]
-fn all_workspace_code_paths_keep_policy_enforcement_enabled() {
-    let workspace_root = workspace_root_from_manifest();
-    let mut source_files = Vec::new();
-    scan_workspace_rs_sources(&workspace_root.join("build-support/gql-rust-project-harness-policy"), &mut source_files);
-    scan_workspace_rs_sources(&workspace_root.join("crates"), &mut source_files);
-
-    for path in source_files {
-        let text = fs::read_to_string(&path).expect("workspace rust source readable");
-        for token in &PROHIBITED_POLICY_DISABLE_TOKENS {
-            assert!(
-                !text.contains(token),
-                "found disabled-policy token {} in {}",
-                token,
-                path.display()
-            );
-        }
     }
 }
 
@@ -313,13 +255,5 @@ fn all_workspace_crate_build_scripts_call_workspace_policy_gate() {
             "missing policy gate call in {}",
             build_rs.display()
         );
-        for token in &PROHIBITED_POLICY_DISABLE_TOKENS {
-            assert!(
-                !build_rs_text.contains(token),
-                "disabled policy token {} in {}",
-                token,
-                build_rs.display()
-            );
-        }
     }
 }

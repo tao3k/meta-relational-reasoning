@@ -4,6 +4,7 @@ use gql_ast::{
     EdgeDirection, EdgePattern, GraphPattern, Identifier, MatchClause, NodePattern,
     PatternElement, Query, QueryClause, Statement,
 };
+use gql_ir::{GraphPatternElement, EdgeDirection as IrEdgeDirection};
 use gql_catalog::{
     CatalogName, GqlCatalog, GraphName, PredicateDescriptor, RelationAuthority,
     RelationIdentity, RelationName,
@@ -21,7 +22,7 @@ impl StubCatalog {
 
 impl GqlCatalog for StubCatalog {
     fn relation(&self, _name: &RelationName) -> Option<PredicateDescriptor> {
-        if _name.0 == "CALLS" {
+        if _name.0 == "CALLS" || _name.0 == "DEPENDS_ON" {
             Some(PredicateDescriptor {
                 name: _name.clone(),
                 columns: Vec::new(),
@@ -50,7 +51,7 @@ fn identifier(name: &str) -> Identifier {
 }
 
 #[test]
-fn match_clause_supports_single_edge_relation_only() {
+fn match_clause_supports_graph_patterns_with_known_relations() {
     let statement = Statement::Query(Query {
         clauses: vec![QueryClause::Match(MatchClause {
             pattern: GraphPattern {
@@ -76,12 +77,22 @@ fn match_clause_supports_single_edge_relation_only() {
     let result = analyze(&statement, &StubCatalog::new());
 
     assert!(result.diagnostics.is_empty());
-    assert_eq!(result.ir.as_ref().expect("ir built").scans.len(), 1);
-    assert_eq!(result.ir.unwrap().scans[0].relation.0, "CALLS");
+    let ir = result.ir.expect("ir built");
+    let graph = ir.graph.expect("graph pattern");
+    assert_eq!(graph.elements.len(), 2);
+    if let [GraphPatternElement::Node(node), GraphPatternElement::Edge(edge), ..] = graph.elements.as_slice()
+    {
+        assert_eq!(node.binding.as_ref().expect("binding"), "a");
+        assert_eq!(node.labels, vec!["Person".to_string()]);
+        assert_eq!(edge.labels, vec!["CALLS".to_string()]);
+        assert_eq!(edge.direction, IrEdgeDirection::Out);
+    } else {
+        panic!("expected node-edge graph pattern");
+    }
 }
 
 #[test]
-fn match_clause_errors_on_node_labels_without_edges() {
+fn match_clause_accepts_node_only_patterns() {
     let statement = Statement::Query(Query {
         clauses: vec![QueryClause::Match(MatchClause {
             pattern: GraphPattern {
@@ -99,13 +110,57 @@ fn match_clause_errors_on_node_labels_without_edges() {
 
     let result = analyze(&statement, &StubCatalog::new());
 
-    assert_eq!(result.ir, None);
-    assert_eq!(result.diagnostics.len(), 1);
-    assert_eq!(result.diagnostics[0].code, "GQL-SEMA-NO-RELATION-HINT");
+    assert!(result.diagnostics.is_empty());
+    let ir = result.ir.expect("ir built");
+    assert_eq!(ir.graph.expect("graph pattern").elements.len(), 1);
 }
 
 #[test]
-fn match_clause_errors_on_unsupported_multi_relation_pattern() {
+fn match_clause_with_unknown_relation_is_semantically_acceptable() {
+    struct UnknownRelationCatalog;
+
+    impl GqlCatalog for UnknownRelationCatalog {
+        fn relation(&self, _name: &RelationName) -> Option<PredicateDescriptor> {
+            None
+        }
+    }
+
+    let statement = Statement::Query(Query {
+        clauses: vec![QueryClause::Match(MatchClause {
+            pattern: GraphPattern {
+                elements: vec![
+                    PatternElement::Node(NodePattern {
+                        binding: Some(identifier("a")),
+                        labels: vec![identifier("Person")],
+                        span: Span::default(),
+                    }),
+                    PatternElement::Edge(EdgePattern {
+                        labels: vec![identifier("UNKNOWN")],
+                        direction: EdgeDirection::Out,
+                        span: Span::default(),
+                    }),
+                    PatternElement::Node(NodePattern {
+                        binding: Some(identifier("b")),
+                        labels: vec![identifier("Person")],
+                        span: Span::default(),
+                    }),
+                ],
+                span: Span::default(),
+            },
+            span: Span::default(),
+        })],
+        span: Span::default(),
+    });
+
+    let result = analyze(&statement, &UnknownRelationCatalog);
+
+    assert!(result.diagnostics.is_empty());
+    let ir = result.ir.expect("ir built");
+    assert_eq!(ir.graph.expect("graph pattern").elements.len(), 3);
+}
+
+#[test]
+fn match_clause_supports_multi_relation_patterns() {
     let statement = Statement::Query(Query {
         clauses: vec![QueryClause::Match(MatchClause {
             pattern: GraphPattern {
@@ -145,9 +200,9 @@ fn match_clause_errors_on_unsupported_multi_relation_pattern() {
 
     let result = analyze(&statement, &StubCatalog::new());
 
-    assert_eq!(result.ir, None);
-    assert_eq!(result.diagnostics.len(), 1);
-    assert_eq!(result.diagnostics[0].code, "GQL-SEMA-MULTI-RELATIONS-HINT");
+    assert!(result.diagnostics.is_empty());
+    let ir = result.ir.expect("ir built");
+    assert_eq!(ir.graph.expect("graph pattern").elements.len(), 5);
 }
 
 #[test]
@@ -193,8 +248,8 @@ fn where_clause_with_bound_identifier_is_supported() {
     assert!(result.diagnostics.is_empty());
     assert!(result.ir.is_some());
     let ir = result.ir.expect("ir should be present");
-    assert_eq!(ir.scans.len(), 1);
-    assert_eq!(ir.projection.len(), 0);
+    assert!(ir.graph.is_some());
+    assert_eq!(ir.graph.expect("graph pattern").elements.len(), 3);
 }
 
 #[test]

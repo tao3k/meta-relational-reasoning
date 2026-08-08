@@ -6,7 +6,7 @@ gql-source -> gql-syntax -> gql-ast -> gql-sema -> gql-ir
 
 gql-core    pure public language surface
 gql-ascent  optional derived-relation provider -> gql-catalog/gql-ir
-gql         ergonomic facade, default feature = ascent
+gql         ergonomic facade, default features = []
 ```
 
 ## Purity boundary
@@ -29,4 +29,3 @@ The current crates establish dependency direction and foundational types. They
 do not claim full ISO/IEC 39075 conformance. Each future feature must be tied to
 a standard clause, positive and negative fixtures, AST/IR representation, and
 an explicit implementation status.
-

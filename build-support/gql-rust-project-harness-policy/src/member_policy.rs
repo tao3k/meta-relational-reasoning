@@ -95,11 +95,6 @@ pub fn gql_workspace_member_policies() -> &'static [GqlRustProjectHarnessMemberP
     GQL_WORKSPACE_MEMBER_POLICIES
 }
 
-/// Backward-compatible alias for older callers.
-pub fn asp_workspace_member_policies() -> &'static [GqlRustProjectHarnessMemberPolicy] {
-    gql_workspace_member_policies()
-}
-
 /// Returns the registered GQL member policy for `package_name`.
 pub fn gql_workspace_member_policy_for(
     package_name: &str,
@@ -107,11 +102,4 @@ pub fn gql_workspace_member_policy_for(
     gql_workspace_member_policies()
         .iter()
         .find(|policy| policy.package_name == package_name)
-}
-
-/// Backward-compatible alias for older callers.
-pub fn asp_workspace_member_policy_for(
-    package_name: &str,
-) -> Option<&'static GqlRustProjectHarnessMemberPolicy> {
-    gql_workspace_member_policy_for(package_name)
 }

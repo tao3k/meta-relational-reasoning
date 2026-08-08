@@ -33,6 +33,16 @@ pub enum SyntaxKind {
     LabelList,
     /// Generic expression node.
     Expression,
+    /// Name/reference expression node.
+    NameExpression,
+    /// String or numeric literal expression node.
+    LiteralExpression,
+    /// Unary expression node.
+    UnaryExpression,
+    /// Binary expression node.
+    BinaryExpression,
+    /// Parenthesized expression node.
+    ParenthesizedExpression,
     /// Keyword token wrapper.
     Keyword,
     /// Identifier token kind.
@@ -71,13 +81,18 @@ impl SyntaxKind {
             8 => Self::EdgePattern,
             9 => Self::LabelList,
             10 => Self::Expression,
-            11 => Self::Keyword,
-            12 => Self::Identifier,
-            13 => Self::Number,
-            14 => Self::String,
-            15 => Self::Whitespace,
-            16 => Self::Punctuation,
-            17 => Self::Comment,
+            11 => Self::NameExpression,
+            12 => Self::LiteralExpression,
+            13 => Self::UnaryExpression,
+            14 => Self::BinaryExpression,
+            15 => Self::ParenthesizedExpression,
+            16 => Self::Keyword,
+            17 => Self::Identifier,
+            18 => Self::Number,
+            19 => Self::String,
+            20 => Self::Whitespace,
+            21 => Self::Punctuation,
+            22 => Self::Comment,
             _ => Self::Unknown,
         }
     }

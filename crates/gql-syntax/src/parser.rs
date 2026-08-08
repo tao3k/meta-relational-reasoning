@@ -319,19 +319,20 @@ impl<'a> Parser<'a> {
 
     fn parse_graph_edge_sequence(&mut self) -> Vec<SyntaxElement> {
         let mut children = Vec::new();
+        let mut edge_children = Vec::new();
         self.skip_trivia_and_include(&mut children);
         let edge_start = self.span_start();
 
         let first_token = self.bump_token();
         let first_token_kind = first_token.kind;
-        children.push(SyntaxElement {
+        edge_children.push(SyntaxElement {
             kind: SyntaxElementKind::Token(first_token),
         });
 
         if matches!(first_token_kind, TokenKind::Punctuation('<'))
             && self.matches_kind(TokenKind::Punctuation('-'))
         {
-            children.push(SyntaxElement {
+            edge_children.push(SyntaxElement {
                 kind: SyntaxElementKind::Token(self.bump_token()),
             });
         }
@@ -347,18 +348,18 @@ impl<'a> Parser<'a> {
             return children;
         }
 
-        children.push(SyntaxElement {
+        edge_children.push(SyntaxElement {
             kind: SyntaxElementKind::Token(self.bump_token()),
         });
         self.skip_trivia_and_include(&mut children);
 
         let label_list = self.parse_label_list(self.span_start());
         if !label_list.children().is_empty() {
-            children.push(SyntaxElement {
+            edge_children.push(SyntaxElement {
                 kind: SyntaxElementKind::Node(label_list),
             });
         } else if self.matches_kind(TokenKind::Punctuation(']')) {
-            children.push(SyntaxElement {
+            edge_children.push(SyntaxElement {
                 kind: SyntaxElementKind::Node(self.make_empty_label_list(self.span_start())),
             });
         } else {
@@ -372,7 +373,7 @@ impl<'a> Parser<'a> {
 
         self.skip_trivia_and_include(&mut children);
         if self.matches_kind(TokenKind::Punctuation(']')) {
-            children.push(SyntaxElement {
+            edge_children.push(SyntaxElement {
                 kind: SyntaxElementKind::Token(self.bump_token()),
             });
         } else {
@@ -388,7 +389,7 @@ impl<'a> Parser<'a> {
             || self.matches_kind(TokenKind::Punctuation('>'))
             || self.matches_kind(TokenKind::Punctuation('<'))
         {
-            children.push(SyntaxElement {
+            edge_children.push(SyntaxElement {
                 kind: SyntaxElementKind::Token(self.bump_token()),
             });
             self.skip_trivia_and_include(&mut children);
@@ -401,7 +402,11 @@ impl<'a> Parser<'a> {
         }
 
         children.push(SyntaxElement {
-            kind: SyntaxElementKind::Node(self.make_edge_pattern(edge_start, self.span_end())),
+            kind: SyntaxElementKind::Node(self.make_edge_pattern(
+                edge_start,
+                self.span_end(),
+                edge_children,
+            )),
         });
 
         if self.matches_kind(TokenKind::Punctuation('(')) {
@@ -492,7 +497,7 @@ impl<'a> Parser<'a> {
                 kind: SyntaxElementKind::Node(rhs),
             });
             lhs = SyntaxNode::new(
-                SyntaxKind::Expression,
+                SyntaxKind::BinaryExpression,
                 Span::new(start, self.span_end()),
                 children,
             );
@@ -516,7 +521,7 @@ impl<'a> Parser<'a> {
                 kind: SyntaxElementKind::Node(rhs),
             });
             lhs = SyntaxNode::new(
-                SyntaxKind::Expression,
+                SyntaxKind::BinaryExpression,
                 Span::new(start, self.span_end()),
                 children,
             );
@@ -537,7 +542,7 @@ impl<'a> Parser<'a> {
                 kind: SyntaxElementKind::Node(operand),
             });
             return SyntaxNode::new(
-                SyntaxKind::Expression,
+                SyntaxKind::UnaryExpression,
                 Span::new(start, self.span_end()),
                 children,
             );
@@ -553,15 +558,22 @@ impl<'a> Parser<'a> {
             if self.is_expression_boundary() {
                 break;
             }
+
+            let operator_start = self.index;
             let mut operator_tokens = Vec::new();
             self.skip_trivia_and_include(&mut operator_tokens);
-            if self.is_expression_boundary() {
+
+            if self.at_eof() || self.is_expression_boundary() {
+                self.index = operator_start;
                 break;
             }
+
             let parsed_operator = self.consume_comparison_operator(&mut operator_tokens);
             if !parsed_operator {
+                self.index = operator_start;
                 break;
             }
+
             self.skip_trivia_and_include(&mut operator_tokens);
             let rhs = self.parse_primary_expression();
             let mut children = Vec::with_capacity(2 + operator_tokens.len());
@@ -573,7 +585,7 @@ impl<'a> Parser<'a> {
                 kind: SyntaxElementKind::Node(rhs),
             });
             lhs = SyntaxNode::new(
-                SyntaxKind::Expression,
+                SyntaxKind::BinaryExpression,
                 Span::new(start, self.span_end()),
                 children,
             );
@@ -616,23 +628,23 @@ impl<'a> Parser<'a> {
                     });
                 }
                 SyntaxNode::new(
-                    SyntaxKind::Expression,
+                    SyntaxKind::ParenthesizedExpression,
                     Span::new(start, self.span_end()),
                     children,
                 )
             }
             Some(TokenKind::Identifier | TokenKind::String | TokenKind::Number | TokenKind::Keyword(_)) => {
                 let token = self.bump_token();
-                SyntaxNode::new(
-                    SyntaxKind::Expression,
-                    token.span,
-                    vec![SyntaxElement {
-                        kind: SyntaxElementKind::Token(token),
-                    }],
-                )
+                let kind = match token.kind {
+                    TokenKind::Number | TokenKind::String => SyntaxKind::LiteralExpression,
+                    _ => SyntaxKind::NameExpression,
+                };
+                SyntaxNode::new(kind, token.span, vec![SyntaxElement {
+                    kind: SyntaxElementKind::Token(token),
+                }])
             }
             Some(_) => SyntaxNode::new(
-                SyntaxKind::Expression,
+                SyntaxKind::NameExpression,
                 {
                     let token = self.bump_token();
                     token.span
@@ -727,8 +739,13 @@ impl<'a> Parser<'a> {
         )
     }
 
-    fn make_edge_pattern(&mut self, start: u32, end: u32) -> SyntaxNode {
-        SyntaxNode::new(SyntaxKind::EdgePattern, Span::new(start, end), Vec::new())
+    fn make_edge_pattern(
+        &mut self,
+        start: u32,
+        end: u32,
+        children: Vec<SyntaxElement>,
+    ) -> SyntaxNode {
+        SyntaxNode::new(SyntaxKind::EdgePattern, Span::new(start, end), children)
     }
 
     fn make_empty_label_list(&mut self, start: u32) -> SyntaxNode {

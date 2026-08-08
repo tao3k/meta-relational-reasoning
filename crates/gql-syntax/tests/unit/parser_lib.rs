@@ -192,3 +192,36 @@ fn parse_keeps_invalid_let_clause_syntax_recoverable() {
     assert_eq!(parsed.tree.source().text(), input);
     assert!(parsed.diagnostics.is_empty(), "diagnostics: {:?}", parsed.diagnostics);
 }
+
+#[test]
+fn preserves_empty_input_source() {
+    let input = "";
+    let parsed = parse("test.gql", input);
+    assert_eq!(parsed.tree.source().text(), input);
+    assert_eq!(parsed.tree.rowan_root().text().to_string(), input);
+}
+
+#[test]
+fn preserves_whitespace_only_input() {
+    let input = "   \n\t  ";
+    let parsed = parse("test.gql", input);
+    assert_eq!(parsed.tree.source().text(), input);
+    assert_eq!(parsed.tree.rowan_root().text().to_string(), input);
+}
+
+#[test]
+fn preserves_comment_only_input() {
+    let input = "# just a comment\n";
+    let parsed = parse("test.gql", input);
+    assert_eq!(parsed.tree.source().text(), input);
+    assert_eq!(parsed.tree.rowan_root().text().to_string(), input);
+}
+
+#[test]
+fn preserves_trailing_newline_input() {
+    let input = "MATCH (a) RETURN a\n";
+    let parsed = parse("test.gql", input);
+    assert_eq!(parsed.tree.source().text(), input);
+    assert_eq!(parsed.tree.rowan_root().text().to_string(), input);
+    assert_eq!(parsed.diagnostics.len(), 0);
+}

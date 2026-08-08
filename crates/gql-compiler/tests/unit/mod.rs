@@ -56,8 +56,25 @@ fn compile_match_return_vertical_slice() {
         .analysis
         .ir
         .expect("analysis should produce a query block");
-    assert_eq!(ir.scans.len(), 1);
-    assert_eq!(ir.scans[0].relation.0, "CALLS");
+    assert!(ir.graph.is_some());
+    let graph = ir.graph.expect("graph pattern");
+    assert_eq!(graph.elements.len(), 3);
+}
+
+#[test]
+fn compile_accepts_match_with_node_only_pattern() {
+    let compiler = Compiler;
+    let catalog = StubCatalog::new();
+    let result = compiler.compile("q", "MATCH (a) RETURN a", &catalog);
+
+    assert!(result.analysis.ir.is_some());
+    assert!(result.analysis.diagnostics.is_empty());
+    let ir = result
+        .analysis
+        .ir
+        .expect("analysis should produce a query block");
+    assert!(ir.graph.is_some());
+    assert_eq!(ir.graph.expect("graph pattern").elements.len(), 1);
 }
 
 #[test]

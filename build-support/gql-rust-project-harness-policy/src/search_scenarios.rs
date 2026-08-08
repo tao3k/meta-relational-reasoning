@@ -8,8 +8,6 @@ use crate::{
 /// Package name for GQL search scenario gates.
 pub const GQL_SEARCH_SCENARIO_PACKAGE_NAME: &str = "gql";
 
-/// Backward-compatible alias kept for existing ASP-namespaced callers.
-pub const ASP_SEARCH_SCENARIO_PACKAGE_NAME: &str = GQL_SEARCH_SCENARIO_PACKAGE_NAME;
 
 /// Package-local coverage monitor scenario for search-like surfaces.
 pub const SEARCH_PACKAGE_LINEAR_PERFORMANCE_SCENARIO_ID: &str =
@@ -360,9 +358,4 @@ pub fn gql_search_scenario_package() -> GqlRustProjectHarnessScenarioPackage {
             ),
         ],
     )
-}
-
-/// Backward-compatible alias kept for existing ASP-namespaced callers.
-pub fn asp_search_scenario_package() -> GqlRustProjectHarnessScenarioPackage {
-    gql_search_scenario_package()
 }

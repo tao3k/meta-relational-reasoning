@@ -3,4 +3,7 @@
 
 mod api;
 
-pub use api::{Binding, Predicate, QueryBlock, RelationScan};
+pub use api::{
+    Binding, EdgeDirection, EdgePattern, GraphPattern, GraphPatternElement, NodePattern,
+    PathPattern, Predicate, QueryBlock,
+};

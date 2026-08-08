@@ -4,7 +4,7 @@ use gql_rust_project_harness_policy::GqlRustProjectHarnessEvidenceGraphInput;
 use gql_rust_project_harness_policy::workspace_evidence_graph::{
     GqlRustProjectHarnessWorkspaceEvidenceGraphEdgeKind,
     GqlRustProjectHarnessWorkspaceEvidenceGraphNodeKind,
-    GqlRustProjectHarnessWorkspaceEvidenceGraphRequest, build_asp_workspace_evidence_graph_receipt,
+    GqlRustProjectHarnessWorkspaceEvidenceGraphRequest, build_gql_workspace_evidence_graph_receipt,
     build_workspace_evidence_graph_receipt,
 };
 
@@ -52,7 +52,7 @@ fn default_workspace_receipt_uses_central_member_policy_registry() {
         edge_count: 0,
     };
 
-    let receipt = build_asp_workspace_evidence_graph_receipt(PathBuf::from("/tmp/gql"), &graph);
+    let receipt = build_gql_workspace_evidence_graph_receipt(PathBuf::from("/tmp/gql"), &graph);
 
     assert_eq!(
         receipt.summary.member_crate_count,

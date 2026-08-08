@@ -8,6 +8,9 @@ oracles:
     normative: false
 features:
   - iso_feature: Identifiers
+    feature_id: gql-identifier
+    normative_reference: ISO/IEC 39075
+    iso_clause: pending
     syntax_status: implemented
     ast_status: partially_implemented
     sema_status: not_implemented
@@ -22,6 +25,9 @@ features:
     validation: "gql_syntax::tests::parser_lib::preserves_source_and_unicode_identifiers validates roundtrip and identifier tokens"
 
   - iso_feature: Whitespace_and_comments
+    feature_id: gql-whitespace-and-comments
+    normative_reference: ISO/IEC 39075
+    iso_clause: pending
     syntax_status: implemented
     ast_status: implemented
     sema_status: not_implemented
@@ -36,6 +42,9 @@ features:
     validation: "gql_syntax::tests::parser_lib::preserves_whitespace_and_unknown_tokens validates trivia retention"
 
   - iso_feature: NodeEdgePatterns
+    feature_id: gql-node-edge-patterns
+    normative_reference: ISO/IEC 39075
+    iso_clause: pending
     syntax_status: implemented
     ast_status: implemented
     sema_status: partially_implemented
@@ -47,11 +56,14 @@ features:
     negatives:
       - "MATCH (a)-[:CALLS:Person->(b) RETURN a"
       - "MATCH (a)-[:CALLS]-((b) RETURN a"
-    extension_or_divergence: "Pattern vocabulary is limited to node and single-edge patterns with recovery"
-    notes: "AST stores nodes/edges/path elements and relation candidates, while sema/IR is single-relation only in this release"
+    extension_or_divergence: "Pattern vocabulary currently includes node and edge patterns with recovery"
+    notes: "AST stores nodes/edges/path elements and relation candidates, while sema/IR uses a graph-pattern-first representation"
     validation: "gql_syntax::tests::parser_lib::parses_incoming_edge_pattern and gql::tests::pipeline_matches_vertical_slice_from_source_to_ir"
 
   - iso_feature: EdgeDirection
+    feature_id: gql-edge-direction
+    normative_reference: ISO/IEC 39075
+    iso_clause: pending
     syntax_status: implemented
     ast_status: implemented
     sema_status: partially_implemented
@@ -66,6 +78,9 @@ features:
     validation: "gql_ast::tests::lower_match_clause_with_incoming_edge_direction and lower_match_clause_with_outgoing_edge_direction"
 
   - iso_feature: LabelsAndTypes
+    feature_id: gql-labels-and-types
+    normative_reference: ISO/IEC 39075
+    iso_clause: pending
     syntax_status: implemented
     ast_status: implemented
     sema_status: partially_implemented
@@ -81,6 +96,9 @@ features:
     validation: "gql_ast::tests::lower_match_clause_with_labeled_edge_direction_ignores_label_list_punctuation"
 
   - iso_feature: MATCH
+    feature_id: gql-match
+    normative_reference: ISO/IEC 39075
+    iso_clause: pending
     syntax_status: implemented
     ast_status: implemented
     sema_status: partially_implemented
@@ -91,17 +109,21 @@ features:
       - "MATCH (a)<-[:CALLS]-(b) RETURN a"
       - "MATCH (a)-[:CALLS:Person]->(b) RETURN a"
       - "MATCH (a)<-[:CALLS:Person]-(b) RETURN a"
-    negatives:
       - "MATCH (a) RETURN a"
+      - "MATCH (a)-[:CALLS]->(b)-[:DEPENDS_ON]->(c) RETURN a"
+    negatives:
       - "MATCH (a)-[:CALLS]->(b) RETURN"
       - "MATCH (a)-[:CALLS:Person](b) RETURN a"
       - "MATCH (a)-[:CALLS:Person->(b) RETURN a"
       - "MATCH (a)<-[:CALLS]-((b) RETURN a"
-    extension_or_divergence: "Single-edge MATCH clauses only; multi-edge and quantified patterns are rejected for now"
+    extension_or_divergence: "Complex multi-edge traversal and quantified patterns remain unsupported; basic multi-edge chains are allowed"
     notes: "Parser builds a lossless CST from tokens and preserves diagnostics while retaining unknown tokens and trivia"
     validation: "gql::tests::pipeline_matches_vertical_slice_from_source_to_ir validates source->parser->AST->sema->IR"
 
   - iso_feature: RETURN
+    feature_id: gql-return
+    normative_reference: ISO/IEC 39075
+    iso_clause: pending
     syntax_status: partially_implemented
     ast_status: implemented
     sema_status: not_implemented
@@ -113,8 +135,12 @@ features:
       - "MATCH (a)-[:CALLS]->(b) RETURN"
     extension_or_divergence: "Return clauses are parsed only as bare identifiers"
     notes: "No aggregation, expressions, or aliasing"
+    validation: "gql_syntax::tests::parser_lib::parses_where_clause_with_identifier_expression and gql::tests::pipeline_matches_vertical_slice_from_source_to_ir"
 
   - iso_feature: WHERE
+    feature_id: gql-where
+    normative_reference: ISO/IEC 39075
+    iso_clause: pending
     syntax_status: implemented
     ast_status: implemented
     sema_status: partially_implemented
@@ -130,8 +156,12 @@ features:
       - "MATCH (a)-[:CALLS]->(b) WHERE a = missing"
       - "LET a"
     extension_or_divergence: "WHERE supports simple identifier predicates and identifier/literal equality in this release; other expression forms remain rejected"
+    validation: "gql_syntax::tests::parser_lib::parses_where_clause_with_boolean_and_comparison_expression and gql::tests::pipeline_matches_vertical_slice_from_source_to_ir"
 
   - iso_feature: LET
+    feature_id: gql-let
+    normative_reference: ISO/IEC 39075
+    iso_clause: pending
     syntax_status: implemented
     ast_status: implemented
     sema_status: partially_implemented
@@ -142,9 +172,13 @@ features:
     negatives:
       - "LET = 1"
     extension_or_divergence: "LET supports simple single-binding assignments and registers identifiers for scope checks; binding shadowing/typing remains limited"
+    notes: "LET value evaluation is currently limited to name and literal bindings."
+    validation: "gql_syntax::tests::parser_lib::parses_let_clause_with_simple_binding and gql_sema::tests::let_clause_bindings_add_to_scope_for_where"
 
   - iso_feature: Catalog-relations
-
+    feature_id: gql-catalog-relations
+    normative_reference: ISO/IEC 39075
+    iso_clause: pending
     syntax_status: not_applicable
     ast_status: implemented
     sema_status: implemented
@@ -158,6 +192,9 @@ features:
     validation: "gql_sema::tests::match_clause_supports_single_edge_relation_only and gql::tests::pipeline_matches_vertical_slice_from_source_to_ir"
 
   - iso_feature: MalformedDelimiters
+    feature_id: gql-malformed-delimiters
+    normative_reference: ISO/IEC 39075
+    iso_clause: pending
     syntax_status: implemented
     ast_status: implemented
     sema_status: not_implemented
@@ -172,6 +209,9 @@ features:
     validation: "gql_syntax::tests::parser_fixtures::parser_err_fixtures_emit_expected_diagnostics"
 
   - iso_feature: UnknownTokens
+    feature_id: gql-unknown-tokens
+    normative_reference: ISO/IEC 39075
+    iso_clause: pending
     syntax_status: implemented
     ast_status: implemented
     sema_status: not_implemented
@@ -186,6 +226,9 @@ features:
     validation: "gql_syntax::tests::parser_lib::preserves_whitespace_and_unknown_tokens"
 
   - iso_feature: UnterminatedLiterals
+    feature_id: gql-unterminated-literals
+    normative_reference: ISO/IEC 39075
+    iso_clause: pending
     syntax_status: implemented
     ast_status: implemented
     sema_status: not_implemented
@@ -199,6 +242,9 @@ features:
     validation: "gql_syntax::tests::parser_lib::recovers_from_unterminated_string"
 
   - iso_feature: ParserRecovery
+    feature_id: gql-parser-recovery
+    normative_reference: ISO/IEC 39075
+    iso_clause: pending
     syntax_status: implemented
     ast_status: implemented
     sema_status: partially_implemented
