@@ -1,6 +1,6 @@
 [package]
-name = "gql-ir"
-description = "Canonical typed semantic IR for GQL"
+name = "gql-reasoning"
+description = "Canonical reasoning contracts for derived predicates and witnessed derivation"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -10,9 +10,6 @@ repository.workspace = true
 [dependencies]
 gql-catalog.workspace = true
 gql-types.workspace = true
-
-[dev-dependencies]
-criterion.workspace = true
 
 [lints]
 workspace = true

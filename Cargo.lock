@@ -432,7 +432,7 @@ dependencies = [
  "criterion",
  "gql-ascent",
  "gql-core",
- "gql-rust-project-harness-policy",
+ "gql-reasoning",
 ]
 
 [[package]]
@@ -443,7 +443,7 @@ dependencies = [
  "criterion",
  "gql-catalog",
  "gql-ir",
- "gql-rust-project-harness-policy",
+ "gql-reasoning",
  "gql-types",
 ]
 
@@ -452,7 +452,6 @@ name = "gql-ast"
 version = "0.1.0"
 dependencies = [
  "criterion",
- "gql-rust-project-harness-policy",
  "gql-source",
 ]
 
@@ -461,7 +460,6 @@ name = "gql-catalog"
 version = "0.1.0"
 dependencies = [
  "criterion",
- "gql-rust-project-harness-policy",
  "gql-types",
 ]
 
@@ -472,7 +470,6 @@ dependencies = [
  "criterion",
  "gql-ast",
  "gql-catalog",
- "gql-rust-project-harness-policy",
  "gql-sema",
  "gql-syntax",
 ]
@@ -486,7 +483,6 @@ dependencies = [
  "gql-catalog",
  "gql-compiler",
  "gql-ir",
- "gql-rust-project-harness-policy",
  "gql-sema",
  "gql-source",
  "gql-syntax",
@@ -499,7 +495,14 @@ version = "0.1.0"
 dependencies = [
  "criterion",
  "gql-catalog",
- "gql-rust-project-harness-policy",
+ "gql-types",
+]
+
+[[package]]
+name = "gql-reasoning"
+version = "0.1.0"
+dependencies = [
+ "gql-catalog",
  "gql-types",
 ]
 
@@ -521,7 +524,6 @@ dependencies = [
  "gql-ast",
  "gql-catalog",
  "gql-ir",
- "gql-rust-project-harness-policy",
  "gql-source",
 ]
 
@@ -530,7 +532,6 @@ name = "gql-source"
 version = "0.1.0"
 dependencies = [
  "criterion",
- "gql-rust-project-harness-policy",
 ]
 
 [[package]]
@@ -538,7 +539,6 @@ name = "gql-syntax"
 version = "0.1.0"
 dependencies = [
  "criterion",
- "gql-rust-project-harness-policy",
  "gql-source",
 ]
 
@@ -547,7 +547,6 @@ name = "gql-types"
 version = "0.1.0"
 dependencies = [
  "criterion",
- "gql-rust-project-harness-policy",
 ]
 
 [[package]]
@@ -1345,6 +1344,13 @@ name = "writeable"
 version = "0.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1ffae5123b2d3fc086436f8834ae3ab053a283cfac8fe0a0b8eaae044768a4c4"
+
+[[package]]
+name = "xtask"
+version = "0.1.0"
+dependencies = [
+ "gql-rust-project-harness-policy",
+]
 
 [[package]]
 name = "yoke"

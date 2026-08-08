@@ -13,6 +13,8 @@ jobs:
       - run: cargo test --workspace
       - run: cargo test -p gql --no-default-features
       - run: cargo test -p gql --all-features
+      - name: Project policy and publish-readiness gate
+        run: cargo run -p xtask -- verify
       - name: Core dependency purity
         shell: bash
         run: |
@@ -21,3 +23,8 @@ jobs:
             printf '%s\n' "$tree"
             exit 1
           fi
+      - name: Publish dry-run sanity
+        run: |
+          for pkg in gql-core gql-ast gql-syntax gql-source gql-types gql-ir gql-sema gql-compiler gql-catalog gql-ascent gql; do
+            cargo package --package "$pkg" --allow-dirty --no-verify
+          done

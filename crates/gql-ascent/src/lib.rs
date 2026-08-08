@@ -1,10 +1,10 @@
 #![forbid(unsafe_code)]
 
 use ascent::ascent;
-use gql_catalog::{
-    ClosureStatus, DerivationError, DerivationRequest, DerivationResult, DerivationWitness,
-    DerivedRelationProvider, DerivedTuple, Fact, PredicateDescriptor, RelationAuthority,
-    RelationName,
+use gql_catalog::{PredicateDescriptor, RelationName};
+use gql_reasoning::{
+    ClosureStatus, DerivationError, DerivationRequest, DerivationResult,
+    DerivationWitness, DerivedRelationProvider, DerivedTuple, Fact,
 };
 use gql_types::{Value, ValueType};
 
@@ -35,9 +35,8 @@ impl AscentTransitiveClosure {
         let predicates = vec![PredicateDescriptor {
             name: RelationName(derived.into()),
             columns: vec![ValueType::String, ValueType::String],
-            authority: RelationAuthority::Derived {
-                provider: "ascent".into(),
-                ruleset: ruleset.clone(),
+            authority: gql_catalog::RelationAuthority::Asserted {
+                source: "ascent".into(),
             },
         }];
         Self {
@@ -91,31 +90,39 @@ impl DerivedRelationProvider for AscentTransitiveClosure {
             .into_iter()
             .filter(|(left, right)| matches_binding(0, left) && matches_binding(1, right))
             .collect();
+        let truncated_output = reachable.len() > request.limits.max_results;
         reachable.sort();
-        let bounded = reachable.len() > request.limits.max_results;
         reachable.truncate(request.limits.max_results);
+
         let support: Vec<Fact> = request
             .facts
             .iter()
             .filter(|fact| fact.predicate == self.source)
             .cloned()
             .collect();
+        let rule_budget_exhausted = request.limits.max_rule_firings == 0
+            || request.bindings.len() > request.limits.max_derived_facts;
         let tuples = reachable
             .into_iter()
-            .map(|(left, right)| DerivedTuple {
+            .enumerate()
+            .map(|(index, (left, right))| DerivedTuple {
                 values: vec![Value::String(left), Value::String(right)],
                 witness: DerivationWitness {
                     provider: "ascent".into(),
                     ruleset: self.ruleset.clone(),
                     snapshot: request.snapshot.into(),
+                    derivation_id: index as u64,
+                    support_set_id: 0,
                     support: support.clone(),
                 },
             })
             .collect();
         Ok(DerivationResult {
             tuples,
-            closure: if bounded {
-                ClosureStatus::ResultBoundReached
+            closure: if rule_budget_exhausted {
+                ClosureStatus::BudgetExhausted
+            } else if truncated_output {
+                ClosureStatus::OutputTruncated
             } else {
                 ClosureStatus::Complete
             },
@@ -126,7 +133,7 @@ impl DerivedRelationProvider for AscentTransitiveClosure {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gql_catalog::{DerivationLimits, DerivedRelationProvider};
+    use gql_reasoning::{DerivationLimits, DerivedRelationProvider};
 
     #[test]
     fn derives_transitive_relation_with_snapshot_witness() {

@@ -24,6 +24,7 @@ gql-source = { path = "crates/gql-source", version = "0.1.0" }
 gql-syntax = { path = "crates/gql-syntax", version = "0.1.0" }
 gql-types = { path = "crates/gql-types", version = "0.1.0" }
 gql-rust-project-harness-policy = { path = "build-support/gql-rust-project-harness-policy", version = "0.1.0" }
+gql-reasoning = { path = "crates/gql-reasoning", version = "0.1.0" }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

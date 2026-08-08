@@ -10,19 +10,12 @@ repository.workspace = true
 [dependencies]
 ascent.workspace = true
 gql-catalog.workspace = true
+gql-reasoning.workspace = true
 gql-ir.workspace = true
 gql-types.workspace = true
 
-
-[build-dependencies]
-gql-rust-project-harness-policy.workspace = true
-
 [dev-dependencies]
 criterion.workspace = true
-
-[[bench]]
-name = "performance_verification"
-harness = false
 
 [lints]
 workspace = true

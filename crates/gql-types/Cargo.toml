@@ -8,15 +8,8 @@ license.workspace = true
 repository.workspace = true
 
 
-[build-dependencies]
-gql-rust-project-harness-policy.workspace = true
-
 [dev-dependencies]
 criterion.workspace = true
-
-[[bench]]
-name = "performance_verification"
-harness = false
 
 [lints]
 workspace = true

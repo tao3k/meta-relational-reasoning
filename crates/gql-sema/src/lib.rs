@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 
-use gql_ast::{QueryClause, Statement};
+use gql_ast::{MatchClause, QueryClause, Statement};
 use gql_catalog::{GqlCatalog, RelationName};
 use gql_ir::{QueryBlock, RelationScan};
 use gql_source::Diagnostic;
@@ -26,7 +26,15 @@ pub fn analyze(statement: &Statement, catalog: &dyn GqlCatalog) -> Analysis {
     let mut block = QueryBlock::default();
     let mut diagnostics = Vec::new();
     for clause in &query.clauses {
-        if let QueryClause::Match { relation } = clause {
+        if let QueryClause::Match(match_clause) = clause {
+            let Some(relation) = match_relation(match_clause) else {
+                diagnostics.push(Diagnostic::error(
+                    "GQL-SEMA-NO-RELATION-HINT",
+                    "MATCH clause currently requires a relation-bearing graph pattern in this release",
+                    match_clause.span,
+                ));
+                continue;
+            };
             let name = RelationName(relation.text.clone());
             if catalog.relation(&name).is_some() {
                 block.scans.push(RelationScan {
@@ -46,4 +54,8 @@ pub fn analyze(statement: &Statement, catalog: &dyn GqlCatalog) -> Analysis {
         ir: diagnostics.is_empty().then_some(block),
         diagnostics,
     }
+}
+
+fn match_relation(clause: &MatchClause) -> Option<gql_ast::Identifier> {
+    clause.relation_candidates().into_iter().next()
 }
