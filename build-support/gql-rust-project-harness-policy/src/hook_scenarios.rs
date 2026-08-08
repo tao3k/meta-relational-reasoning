@@ -8,7 +8,6 @@ use crate::{
 /// Package that owns the canonical GQL hook scenarios.
 pub const GQL_HOOK_SCENARIO_PACKAGE_NAME: &str = "gql-hook-v1";
 
-
 /// Scenario that verifies resident dispatch for arbitrary wrappers around Cargo test.
 pub const GENERIC_WRAPPER_TESTING_RESIDENT_DISPATCH_SCENARIO_ID: &str =
     "generic-wrapper-testing-resident-dispatch";

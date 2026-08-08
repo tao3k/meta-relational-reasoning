@@ -1,5 +1,16 @@
-use crate::{parse, SyntaxKind, TokenKind};
+use crate::{SyntaxElementKind, SyntaxKind, TokenKind, parse};
 use gql_source::Diagnostic;
+
+fn contains_node_kind(node: &crate::SyntaxNode, expected: SyntaxKind) -> bool {
+    node.kind() == expected
+        || node
+            .children()
+            .into_iter()
+            .any(|element| match element.kind {
+                SyntaxElementKind::Node(child) => contains_node_kind(&child, expected),
+                SyntaxElementKind::Token(_) => false,
+            })
+}
 
 #[test]
 fn preserves_source_and_unicode_identifiers() {
@@ -13,6 +24,34 @@ fn preserves_source_and_unicode_identifiers() {
     );
     assert_eq!(parsed.tree.root().kind(), SyntaxKind::SourceFile);
     assert_eq!(parsed.tree.rowan_root().text().to_string(), input);
+}
+
+#[test]
+fn rowan_typed_view_exposes_graph_and_expression_structure() {
+    let input = "MATCH (a)-[:CALLS]->(b) WHERE a = 1 RETURN b";
+    let parsed = parse("test.gql", input);
+    assert!(
+        parsed.diagnostics.is_empty(),
+        "diagnostics: {:?}",
+        parsed.diagnostics
+    );
+    let root = parsed.tree.root();
+
+    for kind in [
+        SyntaxKind::Query,
+        SyntaxKind::MatchClause,
+        SyntaxKind::GraphPattern,
+        SyntaxKind::NodePattern,
+        SyntaxKind::EdgePattern,
+        SyntaxKind::WhereClause,
+        SyntaxKind::BinaryExpression,
+        SyntaxKind::LiteralExpression,
+    ] {
+        assert!(
+            contains_node_kind(&root, kind),
+            "missing Rowan node {kind:?}"
+        );
+    }
 }
 
 #[test]
@@ -80,7 +119,11 @@ fn parses_where_clause_with_identifier_expression() {
     let input = "MATCH (a)-[:CALLS]->(b) WHERE a RETURN b";
     let parsed = parse("test.gql", input);
     assert_eq!(parsed.tree.source().text(), input);
-    assert!(parsed.diagnostics.is_empty(), "diagnostics: {:?}", parsed.diagnostics);
+    assert!(
+        parsed.diagnostics.is_empty(),
+        "diagnostics: {:?}",
+        parsed.diagnostics
+    );
     assert_eq!(parsed.tree.root().kind(), SyntaxKind::SourceFile);
 }
 
@@ -89,7 +132,11 @@ fn parses_where_clause_with_boolean_and_comparison_expression() {
     let input = "MATCH (a)-[:CALLS]->(b) WHERE a = 1 AND NOT (b != 2 OR a >= 3) RETURN b";
     let parsed = parse("test.gql", input);
     assert_eq!(parsed.tree.source().text(), input);
-    assert!(parsed.diagnostics.is_empty(), "diagnostics: {:?}", parsed.diagnostics);
+    assert!(
+        parsed.diagnostics.is_empty(),
+        "diagnostics: {:?}",
+        parsed.diagnostics
+    );
     assert_eq!(parsed.tree.root().kind(), SyntaxKind::SourceFile);
 }
 
@@ -98,7 +145,11 @@ fn parses_where_clause_with_nested_parentheses() {
     let input = "MATCH (a)-[:CALLS]->(b) WHERE (a = 1) AND (b = 2 OR a < 3) RETURN b";
     let parsed = parse("test.gql", input);
     assert_eq!(parsed.tree.source().text(), input);
-    assert!(parsed.diagnostics.is_empty(), "diagnostics: {:?}", parsed.diagnostics);
+    assert!(
+        parsed.diagnostics.is_empty(),
+        "diagnostics: {:?}",
+        parsed.diagnostics
+    );
     assert_eq!(parsed.tree.root().kind(), SyntaxKind::SourceFile);
 }
 
@@ -107,7 +158,11 @@ fn parses_let_clause_with_simple_binding() {
     let input = "LET a = 1";
     let parsed = parse("test.gql", input);
     assert_eq!(parsed.tree.source().text(), input);
-    assert!(parsed.diagnostics.is_empty(), "diagnostics: {:?}", parsed.diagnostics);
+    assert!(
+        parsed.diagnostics.is_empty(),
+        "diagnostics: {:?}",
+        parsed.diagnostics
+    );
     assert_eq!(parsed.tree.root().kind(), SyntaxKind::SourceFile);
 }
 
@@ -116,7 +171,11 @@ fn parses_incoming_edge_pattern() {
     let input = "MATCH (a)<-[:CALLS]-(b) RETURN a";
     let parsed = parse("test.gql", input);
     assert_eq!(parsed.tree.source().text(), input);
-    assert!(parsed.diagnostics.is_empty(), "diagnostics: {:?}", parsed.diagnostics);
+    assert!(
+        parsed.diagnostics.is_empty(),
+        "diagnostics: {:?}",
+        parsed.diagnostics
+    );
     assert_eq!(parsed.tree.root().kind(), SyntaxKind::SourceFile);
 }
 
@@ -125,7 +184,11 @@ fn parses_labeled_outgoing_edge_pattern() {
     let input = "MATCH (a)-[:CALLS:Person]->(b) RETURN a";
     let parsed = parse("test.gql", input);
     assert_eq!(parsed.tree.source().text(), input);
-    assert!(parsed.diagnostics.is_empty(), "diagnostics: {:?}", parsed.diagnostics);
+    assert!(
+        parsed.diagnostics.is_empty(),
+        "diagnostics: {:?}",
+        parsed.diagnostics
+    );
     assert_eq!(parsed.tree.root().kind(), SyntaxKind::SourceFile);
 }
 
@@ -134,7 +197,11 @@ fn parses_labeled_incoming_edge_pattern() {
     let input = "MATCH (a)<-[:CALLS:Person]-(b) RETURN a";
     let parsed = parse("test.gql", input);
     assert_eq!(parsed.tree.source().text(), input);
-    assert!(parsed.diagnostics.is_empty(), "diagnostics: {:?}", parsed.diagnostics);
+    assert!(
+        parsed.diagnostics.is_empty(),
+        "diagnostics: {:?}",
+        parsed.diagnostics
+    );
     assert_eq!(parsed.tree.root().kind(), SyntaxKind::SourceFile);
 }
 
@@ -173,7 +240,11 @@ fn does_not_treat_backend_keyword_as_gql_keyword() {
     let input = "MATCH (a) RETURN ascent";
     let parsed = parse("test.gql", input);
     assert_eq!(parsed.tree.source().text(), input);
-    assert!(parsed.diagnostics.is_empty(), "diagnostics: {:?}", parsed.diagnostics);
+    assert!(
+        parsed.diagnostics.is_empty(),
+        "diagnostics: {:?}",
+        parsed.diagnostics
+    );
     assert!(
         parsed
             .tree
@@ -190,7 +261,11 @@ fn parse_keeps_invalid_let_clause_syntax_recoverable() {
     let input = "LET = 1";
     let parsed = parse("test.gql", input);
     assert_eq!(parsed.tree.source().text(), input);
-    assert!(parsed.diagnostics.is_empty(), "diagnostics: {:?}", parsed.diagnostics);
+    assert!(
+        parsed.diagnostics.is_empty(),
+        "diagnostics: {:?}",
+        parsed.diagnostics
+    );
 }
 
 #[test]

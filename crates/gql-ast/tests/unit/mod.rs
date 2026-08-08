@@ -201,10 +201,7 @@ fn lower_where_clause_with_string_and_integer_expression() {
         Statement::Query(query) => query,
         _ => panic!("statement is query"),
     };
-    let clause = query
-        .clauses
-        .get(1)
-        .expect("query has where clause");
+    let clause = query.clauses.get(1).expect("query has where clause");
 
     let QueryClause::Where { expression } = clause else {
         panic!("expected where clause");
@@ -222,10 +219,7 @@ fn lower_where_clause_with_string_and_integer_expression() {
         Statement::Query(query) => query,
         _ => panic!("statement is query"),
     };
-    let clause = query
-        .clauses
-        .first()
-        .expect("query has let clause");
+    let clause = query.clauses.first().expect("query has let clause");
 
     let QueryClause::Let { value, .. } = clause else {
         panic!("expected let clause");

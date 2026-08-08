@@ -4,9 +4,9 @@
 mod api;
 
 pub use api::{
-    BinaryOperator, CatalogStatement, DataStatement, EdgeDirection, EdgePattern, Expression, GraphPattern, Identifier,
-    MatchClause, NodePattern, PathPattern, PatternElement, Query, QueryClause, Statement, UnaryOperator,
-    SyntaxParseOutput, lower_from_syntax,
+    BinaryOperator, CatalogStatement, DataStatement, EdgeDirection, EdgePattern, Expression,
+    GraphPattern, Identifier, MatchClause, NodePattern, PathPattern, PatternElement, Query,
+    QueryClause, Statement, SyntaxParseOutput, UnaryOperator, lower_from_syntax,
 };
 
 #[cfg(test)]

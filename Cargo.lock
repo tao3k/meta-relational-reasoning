@@ -510,7 +510,6 @@ name = "gql-ir"
 version = "0.1.0"
 dependencies = [
  "criterion",
- "gql-catalog",
  "gql-rust-project-harness-policy",
  "gql-types",
 ]
@@ -520,7 +519,6 @@ name = "gql-reasoning"
 version = "0.1.0"
 dependencies = [
  "criterion",
- "gql-catalog",
  "gql-rust-project-harness-policy",
  "gql-types",
 ]

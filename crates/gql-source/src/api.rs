@@ -97,4 +97,3 @@ impl Diagnostic {
         }
     }
 }
-

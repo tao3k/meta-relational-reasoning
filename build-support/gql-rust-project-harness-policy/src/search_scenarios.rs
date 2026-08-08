@@ -8,7 +8,6 @@ use crate::{
 /// Package name for GQL search scenario gates.
 pub const GQL_SEARCH_SCENARIO_PACKAGE_NAME: &str = "gql";
 
-
 /// Package-local coverage monitor scenario for search-like surfaces.
 pub const SEARCH_PACKAGE_LINEAR_PERFORMANCE_SCENARIO_ID: &str =
     "search-package-linear-performance-monitoring";

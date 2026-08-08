@@ -2,7 +2,9 @@
 #![forbid(unsafe_code)]
 
 mod api;
-pub use api::{ast, catalog, compiler, DerivationResult, ir, sema, source, syntax, types, Compiler};
+pub use api::{
+    Compiler, DerivationResult, ast, catalog, compiler, ir, sema, source, syntax, types,
+};
 
 #[cfg(feature = "ascent")]
 pub use api::AscentTransitiveClosure;

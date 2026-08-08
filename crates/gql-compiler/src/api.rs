@@ -3,7 +3,7 @@
 pub use gql_sema::{Analysis, analyze};
 pub use gql_syntax::{Parse, parse};
 
-use gql_ast::{lower_from_syntax, Statement};
+use gql_ast::{Statement, lower_from_syntax};
 use gql_catalog::GqlCatalog;
 
 #[derive(Clone, Copy, Debug, Default)]

@@ -1,8 +1,18 @@
 //! Public model and contracts for derived relation reasoning.
 #![forbid(unsafe_code)]
 
-use gql_catalog::RelationName;
 use gql_types::Value;
+
+/// Name of a derived relation owned by the reasoning boundary.
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub struct RelationName(pub String);
+
+/// Descriptor for a derived predicate exposed by a reasoning provider.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct DerivedPredicateDescriptor {
+    pub name: RelationName,
+    pub columns: Vec<gql_types::ValueType>,
+}
 
 /// Concrete fact value used by derived relation providers.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
@@ -87,7 +97,7 @@ pub enum DerivationError {
 
 /// Provider of derived relation facts and witnesses.
 pub trait DerivedRelationProvider {
-    fn predicates(&self) -> &[gql_catalog::PredicateDescriptor];
+    fn predicates(&self) -> &[DerivedPredicateDescriptor];
     fn derive(&self, request: DerivationRequest<'_>) -> Result<DerivationResult, DerivationError>;
 }
 

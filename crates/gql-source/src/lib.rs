@@ -8,4 +8,3 @@
 mod api;
 
 pub use api::{Diagnostic, Severity, SourceText, Span};
-

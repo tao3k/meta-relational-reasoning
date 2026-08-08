@@ -1,11 +1,8 @@
 //! Ascent-backed provider for transitive closure derived relations.
 use ascent::ascent;
-use gql_catalog::{
-    CatalogName, GraphName, PredicateDescriptor, RelationIdentity, RelationName,
-};
 use gql_reasoning::{
-    ClosureStatus, DerivationError, DerivationRequest, DerivationResult,
-    DerivationWitness, DerivedRelationProvider, DerivedTuple, Fact,
+    ClosureStatus, DerivationError, DerivationRequest, DerivationResult, DerivationWitness,
+    DerivedPredicateDescriptor, DerivedRelationProvider, DerivedTuple, Fact, RelationName,
 };
 use gql_types::{Value, ValueType};
 
@@ -13,7 +10,7 @@ use gql_types::{Value, ValueType};
 #[derive(Clone, Debug)]
 pub struct AscentTransitiveClosure {
     source: RelationName,
-    predicates: Vec<PredicateDescriptor>,
+    predicates: Vec<DerivedPredicateDescriptor>,
     ruleset: String,
 }
 
@@ -35,19 +32,9 @@ impl AscentTransitiveClosure {
     ) -> Self {
         let source = RelationName(source.into());
         let ruleset = ruleset.into();
-        let predicates = vec![PredicateDescriptor {
+        let predicates = vec![DerivedPredicateDescriptor {
             name: RelationName(derived.into()),
             columns: vec![ValueType::String, ValueType::String],
-            relation_identity: RelationIdentity {
-                catalog: CatalogName("ascent".into()),
-                graph: GraphName("derived-graph".into()),
-                schema: None,
-                node_types: Vec::new(),
-                edge_types: Vec::new(),
-            },
-            authority: gql_catalog::RelationAuthority::Asserted {
-                source: "ascent".into(),
-            },
         }];
         Self {
             source,
@@ -58,7 +45,7 @@ impl AscentTransitiveClosure {
 }
 
 impl DerivedRelationProvider for AscentTransitiveClosure {
-    fn predicates(&self) -> &[PredicateDescriptor] {
+    fn predicates(&self) -> &[DerivedPredicateDescriptor] {
         &self.predicates
     }
 

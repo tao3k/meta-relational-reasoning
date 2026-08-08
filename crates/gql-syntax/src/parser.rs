@@ -1,62 +1,79 @@
-//! Parser module for the minimal ISO-like GQL grammar used in this slice.
+//! Lossless event parser for the supported ISO GQL syntax slice.
 
 #![forbid(unsafe_code)]
 
 use gql_source::{Diagnostic, SourceText, Span};
 
-use crate::{
-    rowan_build,
-    syntax::{Keyword, SyntaxElement, SyntaxElementKind, SyntaxKind, SyntaxNode, SyntaxTree, Token, TokenKind},
-};
+use crate::syntax::{Keyword, SyntaxKind, SyntaxTree, Token, TokenKind};
 
-/// Parses `source` into a CST-like tree and diagnostics.
+/// Parser output consumed directly by the Rowan tree sink.
+#[derive(Clone, Debug)]
+pub(crate) enum Event {
+    Start(SyntaxKind),
+    Finish,
+    Token(Token),
+}
+
+/// Parses `source` into one lossless Rowan CST and diagnostics.
 pub fn parse(name: &str, source: &str) -> crate::Parse {
     let source = SourceText::new(name, source);
-    let (tokens, mut diagnostics) = lex(&source);
-    let mut parser = Parser::new(&tokens, &source);
+    let (tokens, mut diagnostics) = crate::lexer::lex(source.text());
+    let mut parser = Parser::new(&tokens, source.text());
     let (children, has_match, saw_return) = parser.parse_top_level();
     parser.collect_diagnostics(&mut diagnostics);
-        if !has_match && saw_return {
-            diagnostics.push(Diagnostic::error(
-                "GQL-PARSE-MISSING-KEYWORD",
-                "expected MATCH before RETURN in this revision",
-                Span::new(0, source.text().len() as u32),
+
+    if !has_match && saw_return {
+        diagnostics.push(Diagnostic::error(
+            "GQL-PARSE-MISSING-KEYWORD",
+            "expected MATCH before RETURN in this revision",
+            Span::new(0, source.text().len() as u32),
         ));
     }
 
-    let query = SyntaxNode::new(
-        SyntaxKind::Query,
-        Span::new(0, source.text().len() as u32),
-        children,
-    );
-    let root = SyntaxNode::new(
-        SyntaxKind::SourceFile,
-        Span::new(0, source.text().len() as u32),
-        vec![SyntaxElement {
-            kind: SyntaxElementKind::Node(query),
-        }],
-    );
-    let rowan = rowan_build::build_rowan_root(&root, &source);
-        crate::Parse {
-        tree: SyntaxTree::new(source, root, tokens.clone(), rowan),
+    let query = node(SyntaxKind::Query, children);
+    let events = node(SyntaxKind::SourceFile, query);
+    let rowan = build_rowan_root(&events);
+
+    crate::Parse {
+        tree: SyntaxTree::new(source, tokens, rowan),
         diagnostics,
     }
 }
 
-fn lex(source: &SourceText) -> (Vec<Token>, Vec<Diagnostic>) {
-    crate::lexer::lex(source.text())
+fn node(kind: SyntaxKind, mut children: Vec<Event>) -> Vec<Event> {
+    let mut events = Vec::with_capacity(children.len() + 2);
+    events.push(Event::Start(kind));
+    events.append(&mut children);
+    events.push(Event::Finish);
+    events
+}
+
+fn build_rowan_root(events: &[Event]) -> rowan::GreenNode {
+    let mut builder = rowan::GreenNodeBuilder::new();
+    for event in events {
+        match event {
+            Event::Start(kind) => builder.start_node(kind.to_rowan()),
+            Event::Finish => {
+                builder.finish_node();
+            }
+            Event::Token(token) => builder.token(token.syntax_kind().to_rowan(), token.text()),
+        }
+    }
+    builder.finish()
 }
 
 struct Parser<'a> {
     tokens: &'a [Token],
+    source: &'a str,
     index: usize,
     diagnostics: Vec<Diagnostic>,
 }
 
 impl<'a> Parser<'a> {
-    fn new(tokens: &'a [Token], _source: &'a SourceText) -> Self {
+    fn new(tokens: &'a [Token], source: &'a str) -> Self {
         Self {
             tokens,
+            source,
             index: 0,
             diagnostics: Vec::new(),
         }
@@ -66,123 +83,84 @@ impl<'a> Parser<'a> {
         diagnostics.extend(self.diagnostics);
     }
 
-    fn parse_top_level(&mut self) -> (Vec<SyntaxElement>, bool, bool) {
+    fn parse_top_level(&mut self) -> (Vec<Event>, bool, bool) {
         let mut children = Vec::new();
         let mut saw_match = false;
         let mut saw_return = false;
+
         while !self.at_eof() {
-            let Some(token) = self.current() else {
-                break;
-            };
-            match token.kind {
-                TokenKind::Keyword(Keyword::Match) => {
+            match self.current_kind() {
+                Some(TokenKind::Keyword(Keyword::Match)) => {
                     saw_match = true;
-                    children.push(SyntaxElement {
-                        kind: SyntaxElementKind::Node(self.parse_match_clause()),
-                    });
+                    children.extend(self.parse_match_clause());
                 }
-                TokenKind::Keyword(Keyword::Return) => {
+                Some(TokenKind::Keyword(Keyword::Return)) => {
                     saw_return = true;
-                    children.push(SyntaxElement {
-                        kind: SyntaxElementKind::Node(self.parse_return_clause()),
-                    });
+                    children.extend(self.parse_return_clause());
                 }
-                TokenKind::Keyword(Keyword::Where) => {
-                    children.push(SyntaxElement {
-                        kind: SyntaxElementKind::Node(self.parse_where_clause()),
-                    });
+                Some(TokenKind::Keyword(Keyword::Where)) => {
+                    children.extend(self.parse_where_clause());
                 }
-                TokenKind::Keyword(Keyword::Let) => {
-                    children.push(SyntaxElement {
-                        kind: SyntaxElementKind::Node(self.parse_let_clause()),
-                    });
+                Some(TokenKind::Keyword(Keyword::Let)) => {
+                    children.extend(self.parse_let_clause());
                 }
-                _ => {
-                    children.push(SyntaxElement {
-                        kind: SyntaxElementKind::Token(self.bump_token()),
-                    });
-                }
+                Some(_) => children.push(self.bump_event()),
+                None => break,
             }
         }
+
         (children, saw_match, saw_return)
     }
 
-    fn parse_match_clause(&mut self) -> SyntaxNode {
+    fn parse_match_clause(&mut self) -> Vec<Event> {
         let start = self.span_start();
-        let mut children = Vec::new();
-        children.push(SyntaxElement {
-            kind: SyntaxElementKind::Token(self.bump_token()),
-        });
-        children.extend(self.collect_trivia());
+        let mut children = vec![self.bump_event()];
+        children.extend(self.skip_trivia());
+
         if self.matches_kind(TokenKind::Punctuation('(')) {
-            children.push(SyntaxElement {
-                kind: SyntaxElementKind::Node(self.parse_graph_pattern()),
-            });
+            children.extend(self.parse_graph_pattern());
         } else {
-            self.emit_missing_keyword(
+            self.emit_match_syntax(
                 "GQL-PARSE-MATCH-SYNTAX",
                 "MATCH clause must start with a graph pattern",
                 self.next_span_or(start),
             );
         }
 
-        SyntaxNode::new(SyntaxKind::MatchClause, Span::new(start, self.span_end()), children)
+        node(SyntaxKind::MatchClause, children)
     }
 
-    fn parse_return_clause(&mut self) -> SyntaxNode {
+    fn parse_return_clause(&mut self) -> Vec<Event> {
         let start = self.span_start();
-        let mut children = Vec::new();
+        let mut children = vec![self.bump_event()];
         let mut expressions = 0usize;
 
-        children.push(SyntaxElement {
-            kind: SyntaxElementKind::Token(self.bump_token()),
-        });
         loop {
-            self.skip_trivia_and_include(&mut children);
+            children.extend(self.skip_trivia());
             let Some(token) = self.current() else {
                 break;
             };
-
-            let end_clause = matches!(
-                token.kind,
-                TokenKind::Keyword(Keyword::Match)
-                    | TokenKind::Keyword(Keyword::Where)
-                    | TokenKind::Keyword(Keyword::Let)
-                    | TokenKind::Keyword(Keyword::Return)
-            );
-            if end_clause {
+            if self.is_clause_keyword(token.kind) {
                 break;
             }
 
-                match token.kind {
-                    TokenKind::Identifier | TokenKind::String | TokenKind::Number | TokenKind::Keyword(_) => {
-                        children.push(SyntaxElement {
-                            kind: SyntaxElementKind::Node(self.parse_expression()),
-                        });
-                        expressions += 1;
-                        self.skip_trivia_and_include(&mut children);
-                        if self.matches_kind(TokenKind::Punctuation(',')) {
-                            children.push(SyntaxElement {
-                                kind: SyntaxElementKind::Token(self.bump_token()),
-                            });
-                        }
-                    }
-                TokenKind::Punctuation(_) => {
-                    children.push(SyntaxElement {
-                        kind: SyntaxElementKind::Token(self.bump_token()),
-                    });
+            if self.is_expression_start(token.kind) {
+                children.extend(self.parse_expression());
+                expressions += 1;
+                children.extend(self.skip_trivia());
+                if self.matches_kind(TokenKind::Punctuation(',')) {
+                    children.push(self.bump_event());
                 }
-                _ => {
-                    self.emit_return_syntax(
-                        "GQL-PARSE-RETURN-SYNTAX",
-                        "invalid token in RETURN clause",
-                        token.span,
-                    );
-                    children.push(SyntaxElement {
-                        kind: SyntaxElementKind::Token(self.bump_token()),
-                    });
-                    break;
-                }
+            } else if matches!(token.kind, TokenKind::Punctuation(_)) {
+                children.push(self.bump_event());
+            } else {
+                self.emit_return_syntax(
+                    "GQL-PARSE-RETURN-SYNTAX",
+                    "invalid token in RETURN clause",
+                    token.span,
+                );
+                children.push(self.bump_event());
+                break;
             }
         }
 
@@ -194,150 +172,101 @@ impl<'a> Parser<'a> {
             );
         }
 
-        SyntaxNode::new(SyntaxKind::ReturnClause, Span::new(start, self.span_end()), children)
+        node(SyntaxKind::ReturnClause, children)
     }
 
-    fn parse_where_clause(&mut self) -> SyntaxNode {
+    fn parse_where_clause(&mut self) -> Vec<Event> {
         let start = self.span_start();
-        let mut children = Vec::new();
-        children.push(SyntaxElement {
-            kind: SyntaxElementKind::Token(self.bump_token()),
-        });
-
+        let mut children = vec![self.bump_event()];
         let mut expressions = 0usize;
+
         loop {
-            self.skip_trivia_and_include(&mut children);
+            children.extend(self.skip_trivia());
             let Some(token) = self.current() else {
                 break;
             };
-
-            let end_clause = matches!(
-                token.kind,
-                TokenKind::Keyword(Keyword::Match)
-                    | TokenKind::Keyword(Keyword::Where)
-                    | TokenKind::Keyword(Keyword::Let)
-                    | TokenKind::Keyword(Keyword::Return)
-            );
-            if end_clause {
+            if self.is_clause_keyword(token.kind) {
                 break;
             }
 
-            match token.kind {
-                TokenKind::Identifier | TokenKind::String | TokenKind::Number | TokenKind::Keyword(_) => {
-                    children.push(SyntaxElement {
-                        kind: SyntaxElementKind::Node(self.parse_expression()),
-                    });
-                    expressions += 1;
-                    self.skip_trivia_and_include(&mut children);
-                    if self.matches_kind(TokenKind::Punctuation(',')) {
-                        children.push(SyntaxElement {
-                            kind: SyntaxElementKind::Token(self.bump_token()),
-                        });
-                    }
+            if self.is_expression_start(token.kind) {
+                children.extend(self.parse_expression());
+                expressions += 1;
+                children.extend(self.skip_trivia());
+                if self.matches_kind(TokenKind::Punctuation(',')) {
+                    children.push(self.bump_event());
                 }
-                TokenKind::Punctuation(_) => {
-                    children.push(SyntaxElement {
-                        kind: SyntaxElementKind::Token(self.bump_token()),
-                    });
-                }
-                _ => {
-                    self.emit_missing_keyword(
-                        "GQL-PARSE-WHERE-SYNTAX",
-                        "invalid token in WHERE clause",
-                        token.span,
-                    );
-                    children.push(SyntaxElement {
-                        kind: SyntaxElementKind::Token(self.bump_token()),
-                    });
-                    break;
-                }
+            } else if matches!(token.kind, TokenKind::Punctuation(_)) {
+                children.push(self.bump_event());
+            } else {
+                self.emit_match_syntax(
+                    "GQL-PARSE-WHERE-SYNTAX",
+                    "invalid token in WHERE clause",
+                    token.span,
+                );
+                children.push(self.bump_event());
+                break;
             }
         }
 
         if expressions == 0 {
-            self.emit_missing_keyword(
+            self.emit_match_syntax(
                 "GQL-PARSE-WHERE-SYNTAX",
                 "WHERE requires at least one expression",
                 Span::new(start, self.span_end()),
             );
         }
 
-        SyntaxNode::new(SyntaxKind::WhereClause, Span::new(start, self.span_end()), children)
+        node(SyntaxKind::WhereClause, children)
     }
 
-    fn parse_let_clause(&mut self) -> SyntaxNode {
-        let start = self.span_start();
-        let mut children = Vec::new();
-        children.push(SyntaxElement {
-            kind: SyntaxElementKind::Token(self.bump_token()),
-        });
-
-        self.skip_trivia_and_include(&mut children);
-        if let Some(token) = self.current() {
-            if !self.is_clause_boundary_token(&token.kind) {
-                children.push(SyntaxElement {
-                    kind: SyntaxElementKind::Node(self.parse_let_binding_expression()),
-                });
-            }
+    fn parse_let_clause(&mut self) -> Vec<Event> {
+        let mut children = vec![self.bump_event()];
+        children.extend(self.skip_trivia());
+        if self
+            .current()
+            .is_some_and(|token| !self.is_clause_boundary(token.kind))
+        {
+            children.extend(self.parse_let_binding_expression());
         }
 
-        self.skip_trivia_and_include(&mut children);
+        children.extend(self.skip_trivia());
         if self.matches_kind(TokenKind::Punctuation('=')) {
-            children.push(SyntaxElement {
-                kind: SyntaxElementKind::Token(self.bump_token()),
-            });
+            children.push(self.bump_event());
         }
 
-        self.skip_trivia_and_include(&mut children);
-        if let Some(token) = self.current() {
-            if !self.is_clause_boundary_token(&token.kind) {
-                children.push(SyntaxElement {
-                    kind: SyntaxElementKind::Node(self.parse_expression()),
-                });
-            }
+        children.extend(self.skip_trivia());
+        if self
+            .current()
+            .is_some_and(|token| !self.is_clause_boundary(token.kind))
+        {
+            children.extend(self.parse_expression());
         }
 
-        SyntaxNode::new(SyntaxKind::LetClause, Span::new(start, self.span_end()), children)
+        node(SyntaxKind::LetClause, children)
     }
 
-    fn parse_graph_pattern(&mut self) -> SyntaxNode {
-        let start = self.span_start();
-        let mut children = Vec::new();
-        children.push(SyntaxElement {
-            kind: SyntaxElementKind::Node(self.parse_node_pattern()),
-        });
-        if self.matches_kind(TokenKind::Punctuation('-')) || self.matches_kind(TokenKind::Punctuation('<'))
+    fn parse_graph_pattern(&mut self) -> Vec<Event> {
+        let mut children = self.parse_node_pattern();
+        while self.matches_kind(TokenKind::Punctuation('-'))
+            || self.matches_kind(TokenKind::Punctuation('<'))
         {
             children.extend(self.parse_graph_edge_sequence());
         }
-        SyntaxNode::new(
-            SyntaxKind::GraphPattern,
-            Span::new(start, self.span_end()),
-            children,
-        )
+        node(SyntaxKind::GraphPattern, children)
     }
 
-    fn parse_graph_edge_sequence(&mut self) -> Vec<SyntaxElement> {
-        let mut children = Vec::new();
-        let mut edge_children = Vec::new();
-        self.skip_trivia_and_include(&mut children);
+    fn parse_graph_edge_sequence(&mut self) -> Vec<Event> {
         let edge_start = self.span_start();
+        let mut edge_children = Vec::new();
+        edge_children.push(self.bump_event());
 
-        let first_token = self.bump_token();
-        let first_token_kind = first_token.kind;
-        edge_children.push(SyntaxElement {
-            kind: SyntaxElementKind::Token(first_token),
-        });
-
-        if matches!(first_token_kind, TokenKind::Punctuation('<'))
-            && self.matches_kind(TokenKind::Punctuation('-'))
+        if self.matches_kind(TokenKind::Punctuation('-'))
+            && self.previous_kind() == Some(TokenKind::Punctuation('<'))
         {
-            edge_children.push(SyntaxElement {
-                kind: SyntaxElementKind::Token(self.bump_token()),
-            });
+            edge_children.push(self.bump_event());
         }
-
-        self.skip_trivia_and_include(&mut children);
+        edge_children.extend(self.skip_trivia());
 
         if !self.matches_kind(TokenKind::Punctuation('[')) {
             self.emit_match_syntax(
@@ -345,37 +274,18 @@ impl<'a> Parser<'a> {
                 "edge delimiter missing '['",
                 self.next_span_or(edge_start),
             );
+            let mut children = node(SyntaxKind::EdgePattern, edge_children);
+            children.extend(self.skip_trivia());
             return children;
         }
 
-        edge_children.push(SyntaxElement {
-            kind: SyntaxElementKind::Token(self.bump_token()),
-        });
-        self.skip_trivia_and_include(&mut children);
+        edge_children.push(self.bump_event());
+        edge_children.extend(self.skip_trivia());
+        edge_children.extend(self.parse_label_list());
+        edge_children.extend(self.skip_trivia());
 
-        let label_list = self.parse_label_list(self.span_start());
-        if !label_list.children().is_empty() {
-            edge_children.push(SyntaxElement {
-                kind: SyntaxElementKind::Node(label_list),
-            });
-        } else if self.matches_kind(TokenKind::Punctuation(']')) {
-            edge_children.push(SyntaxElement {
-                kind: SyntaxElementKind::Node(self.make_empty_label_list(self.span_start())),
-            });
-        } else {
-            let span_start = edge_start;
-            self.emit_match_syntax(
-                "GQL-PARSE-MATCH-SYNTAX",
-                "edge label list malformed",
-                Span::new(span_start, self.span_end()),
-            );
-        }
-
-        self.skip_trivia_and_include(&mut children);
         if self.matches_kind(TokenKind::Punctuation(']')) {
-            edge_children.push(SyntaxElement {
-                kind: SyntaxElementKind::Token(self.bump_token()),
-            });
+            edge_children.push(self.bump_event());
         } else {
             self.emit_match_syntax(
                 "GQL-PARSE-MATCH-SYNTAX",
@@ -384,63 +294,42 @@ impl<'a> Parser<'a> {
             );
         }
 
-        self.skip_trivia_and_include(&mut children);
-        while self.matches_kind(TokenKind::Punctuation('-'))
-            || self.matches_kind(TokenKind::Punctuation('>'))
-            || self.matches_kind(TokenKind::Punctuation('<'))
-        {
-            edge_children.push(SyntaxElement {
-                kind: SyntaxElementKind::Token(self.bump_token()),
-            });
-            self.skip_trivia_and_include(&mut children);
-            if !self.matches_kind(TokenKind::Punctuation('-'))
-                && !self.matches_kind(TokenKind::Punctuation('>'))
-                && !self.matches_kind(TokenKind::Punctuation('<'))
-            {
-                break;
-            }
+        edge_children.extend(self.skip_trivia());
+        while matches!(
+            self.current_kind(),
+            Some(TokenKind::Punctuation('-' | '>' | '<'))
+        ) {
+            edge_children.push(self.bump_event());
+            edge_children.extend(self.skip_trivia());
         }
 
-        children.push(SyntaxElement {
-            kind: SyntaxElementKind::Node(self.make_edge_pattern(
-                edge_start,
-                self.span_end(),
-                edge_children,
-            )),
-        });
-
+        let mut children = node(SyntaxKind::EdgePattern, edge_children);
+        children.extend(self.skip_trivia());
         if self.matches_kind(TokenKind::Punctuation('(')) {
-            children.push(SyntaxElement {
-                kind: SyntaxElementKind::Node(self.parse_node_pattern()),
-            });
+            children.extend(self.parse_node_pattern());
         }
         children
     }
 
-    fn parse_label_list(&mut self, start: u32) -> SyntaxNode {
+    fn parse_label_list(&mut self) -> Vec<Event> {
         let mut children = Vec::new();
         loop {
-            self.skip_trivia_and_include(&mut children);
-            match self.peek() {
-                Some(TokenKind::Punctuation(']')) => break,
+            children.extend(self.skip_trivia());
+            match self.current_kind() {
+                Some(TokenKind::Punctuation(']')) | None => break,
                 Some(
                     TokenKind::Identifier
-                        | TokenKind::Keyword(_)
-                        | TokenKind::Number
-                        | TokenKind::Punctuation(':'),
-                ) => {
-                    children.push(SyntaxElement {
-                        kind: SyntaxElementKind::Token(self.bump_token()),
-                    });
-                }
+                    | TokenKind::Keyword(_)
+                    | TokenKind::Number
+                    | TokenKind::Punctuation(':'),
+                ) => children.push(self.bump_event()),
                 Some(_) => break,
-                None => break,
             }
         }
-        SyntaxNode::new(SyntaxKind::LabelList, Span::new(start, self.span_end()), children)
+        node(SyntaxKind::LabelList, children)
     }
 
-    fn parse_node_pattern(&mut self) -> SyntaxNode {
+    fn parse_node_pattern(&mut self) -> Vec<Event> {
         let start = self.span_start();
         let mut children = Vec::new();
         if !self.matches_kind(TokenKind::Punctuation('(')) {
@@ -449,23 +338,18 @@ impl<'a> Parser<'a> {
                 "node pattern missing opening '('",
                 self.next_span_or(start),
             );
-            return self.make_node_pattern_with_children(start, Vec::new());
+            return node(SyntaxKind::NodePattern, children);
         }
-        children.push(SyntaxElement {
-            kind: SyntaxElementKind::Token(self.bump_token()),
-        });
+
+        children.push(self.bump_event());
         let mut closed = false;
         while !self.at_eof() {
             if self.matches_kind(TokenKind::Punctuation(')')) {
                 closed = true;
-                children.push(SyntaxElement {
-                    kind: SyntaxElementKind::Token(self.bump_token()),
-                });
+                children.push(self.bump_event());
                 break;
             }
-            children.push(SyntaxElement {
-                kind: SyntaxElementKind::Token(self.bump_token()),
-            });
+            children.push(self.bump_event());
         }
         if !closed {
             self.emit_match_syntax(
@@ -474,299 +358,182 @@ impl<'a> Parser<'a> {
                 Span::new(start, self.span_end()),
             );
         }
-        self.make_node_pattern_with_children(start, children)
+        node(SyntaxKind::NodePattern, children)
     }
 
-    fn parse_expression(&mut self) -> SyntaxNode {
-        let start = self.span_start();
-        self.parse_or_expression(start)
+    fn parse_expression(&mut self) -> Vec<Event> {
+        self.parse_or_expression()
     }
 
-    fn parse_or_expression(&mut self, start: u32) -> SyntaxNode {
+    fn parse_or_expression(&mut self) -> Vec<Event> {
         let mut lhs = self.parse_and_expression();
-        while self.matches_keyword(Keyword::Or) {
-            let mut children = vec![SyntaxElement {
-                kind: SyntaxElementKind::Node(lhs),
-            }];
-            children.push(SyntaxElement {
-                kind: SyntaxElementKind::Token(self.bump_token()),
-            });
-            self.skip_trivia_and_include(&mut children);
-            let rhs = self.parse_and_expression();
-            children.push(SyntaxElement {
-                kind: SyntaxElementKind::Node(rhs),
-            });
-            lhs = SyntaxNode::new(
-                SyntaxKind::BinaryExpression,
-                Span::new(start, self.span_end()),
-                children,
-            );
+        loop {
+            let operator_start = self.index;
+            let trivia = self.skip_trivia();
+            if !self.matches_keyword(Keyword::Or) {
+                self.index = operator_start;
+                break;
+            }
+            let mut children = lhs;
+            children.extend(trivia);
+            children.push(self.bump_event());
+            children.extend(self.skip_trivia());
+            children.extend(self.parse_and_expression());
+            lhs = node(SyntaxKind::BinaryExpression, children);
         }
         lhs
     }
 
-    fn parse_and_expression(&mut self) -> SyntaxNode {
-        let start = self.span_start();
+    fn parse_and_expression(&mut self) -> Vec<Event> {
         let mut lhs = self.parse_not_expression();
-        while self.matches_keyword(Keyword::And) {
-            let mut children = vec![SyntaxElement {
-                kind: SyntaxElementKind::Node(lhs),
-            }];
-            children.push(SyntaxElement {
-                kind: SyntaxElementKind::Token(self.bump_token()),
-            });
-            self.skip_trivia_and_include(&mut children);
-            let rhs = self.parse_not_expression();
-            children.push(SyntaxElement {
-                kind: SyntaxElementKind::Node(rhs),
-            });
-            lhs = SyntaxNode::new(
-                SyntaxKind::BinaryExpression,
-                Span::new(start, self.span_end()),
-                children,
-            );
+        loop {
+            let operator_start = self.index;
+            let trivia = self.skip_trivia();
+            if !self.matches_keyword(Keyword::And) {
+                self.index = operator_start;
+                break;
+            }
+            let mut children = lhs;
+            children.extend(trivia);
+            children.push(self.bump_event());
+            children.extend(self.skip_trivia());
+            children.extend(self.parse_not_expression());
+            lhs = node(SyntaxKind::BinaryExpression, children);
         }
         lhs
     }
 
-    fn parse_not_expression(&mut self) -> SyntaxNode {
+    fn parse_not_expression(&mut self) -> Vec<Event> {
         if self.matches_keyword(Keyword::Not) {
-            let start = self.span_start();
-            let mut children = Vec::new();
-            children.push(SyntaxElement {
-                kind: SyntaxElementKind::Token(self.bump_token()),
-            });
-            self.skip_trivia_and_include(&mut children);
-            let operand = self.parse_not_expression();
-            children.push(SyntaxElement {
-                kind: SyntaxElementKind::Node(operand),
-            });
-            return SyntaxNode::new(
-                SyntaxKind::UnaryExpression,
-                Span::new(start, self.span_end()),
-                children,
-            );
+            let mut children = vec![self.bump_event()];
+            children.extend(self.skip_trivia());
+            children.extend(self.parse_not_expression());
+            return node(SyntaxKind::UnaryExpression, children);
         }
-
         self.parse_comparison_expression()
     }
 
-    fn parse_comparison_expression(&mut self) -> SyntaxNode {
-        let start = self.span_start();
+    fn parse_comparison_expression(&mut self) -> Vec<Event> {
         let mut lhs = self.parse_primary_expression();
-        while !self.at_eof() {
-            if self.is_expression_boundary() {
-                break;
-            }
-
+        loop {
             let operator_start = self.index;
-            let mut operator_tokens = Vec::new();
-            self.skip_trivia_and_include(&mut operator_tokens);
-
+            let mut operator = self.skip_trivia();
             if self.at_eof() || self.is_expression_boundary() {
                 self.index = operator_start;
                 break;
             }
-
-            let parsed_operator = self.consume_comparison_operator(&mut operator_tokens);
-            if !parsed_operator {
+            if !self.consume_comparison_operator(&mut operator) {
                 self.index = operator_start;
                 break;
             }
-
-            self.skip_trivia_and_include(&mut operator_tokens);
-            let rhs = self.parse_primary_expression();
-            let mut children = Vec::with_capacity(2 + operator_tokens.len());
-            children.push(SyntaxElement {
-                kind: SyntaxElementKind::Node(lhs),
-            });
-            children.extend(operator_tokens);
-            children.push(SyntaxElement {
-                kind: SyntaxElementKind::Node(rhs),
-            });
-            lhs = SyntaxNode::new(
-                SyntaxKind::BinaryExpression,
-                Span::new(start, self.span_end()),
-                children,
-            );
-            if self.is_expression_boundary() || self.current_kind() == Some(TokenKind::Punctuation(',')) {
+            operator.extend(self.skip_trivia());
+            let mut children = lhs;
+            children.extend(operator);
+            children.extend(self.parse_primary_expression());
+            lhs = node(SyntaxKind::BinaryExpression, children);
+            if self.is_expression_boundary() {
                 break;
             }
         }
         lhs
     }
 
-    fn parse_let_binding_expression(&mut self) -> SyntaxNode {
+    fn parse_let_binding_expression(&mut self) -> Vec<Event> {
         self.parse_primary_expression()
     }
 
-    fn parse_primary_expression(&mut self) -> SyntaxNode {
-        let start = self.span_start();
+    fn parse_primary_expression(&mut self) -> Vec<Event> {
         match self.current_kind() {
-            None => {
-                SyntaxNode::new(
-                    SyntaxKind::Expression,
-                    Span::new(start, self.span_end()),
-                    Vec::new(),
-                )
-            }
+            None => node(SyntaxKind::Expression, Vec::new()),
             Some(TokenKind::Punctuation('(')) => {
-                let mut children = Vec::new();
-                children.push(SyntaxElement {
-                    kind: SyntaxElementKind::Token(self.bump_token()),
-                });
-                self.skip_trivia_and_include(&mut children);
+                let mut children = vec![self.bump_event()];
+                children.extend(self.skip_trivia());
                 if !self.at_eof() && !self.matches_kind(TokenKind::Punctuation(')')) {
-                    children.push(SyntaxElement {
-                        kind: SyntaxElementKind::Node(self.parse_or_expression(self.span_start())),
-                    });
-                    self.skip_trivia_and_include(&mut children);
+                    children.extend(self.parse_or_expression());
+                    children.extend(self.skip_trivia());
                 }
                 if self.matches_kind(TokenKind::Punctuation(')')) {
-                    children.push(SyntaxElement {
-                        kind: SyntaxElementKind::Token(self.bump_token()),
-                    });
+                    children.push(self.bump_event());
                 }
-                SyntaxNode::new(
-                    SyntaxKind::ParenthesizedExpression,
-                    Span::new(start, self.span_end()),
-                    children,
-                )
+                node(SyntaxKind::ParenthesizedExpression, children)
             }
-            Some(TokenKind::Identifier | TokenKind::String | TokenKind::Number | TokenKind::Keyword(_)) => {
-                let token = self.bump_token();
-                let kind = match token.kind {
-                    TokenKind::Number | TokenKind::String => SyntaxKind::LiteralExpression,
+            Some(
+                TokenKind::Identifier
+                | TokenKind::String
+                | TokenKind::Number
+                | TokenKind::Keyword(_),
+            ) => {
+                let kind = match self.current_kind() {
+                    Some(TokenKind::Number | TokenKind::String) => SyntaxKind::LiteralExpression,
                     _ => SyntaxKind::NameExpression,
                 };
-                SyntaxNode::new(kind, token.span, vec![SyntaxElement {
-                    kind: SyntaxElementKind::Token(token),
-                }])
+                node(kind, vec![self.bump_event()])
             }
-            Some(_) => SyntaxNode::new(
-                SyntaxKind::NameExpression,
-                {
-                    let token = self.bump_token();
-                    token.span
-                },
-                vec![SyntaxElement {
-                    kind: SyntaxElementKind::Token(self.tokens[self.index - 1].clone()),
-                }],
-            ),
+            Some(_) => node(SyntaxKind::NameExpression, vec![self.bump_event()]),
         }
     }
 
-    fn consume_comparison_operator(&mut self, operator_tokens: &mut Vec<SyntaxElement>) -> bool {
+    fn consume_comparison_operator(&mut self, events: &mut Vec<Event>) -> bool {
         if self.matches_kind(TokenKind::Punctuation('=')) {
-            operator_tokens.push(SyntaxElement {
-                kind: SyntaxElementKind::Token(self.bump_token()),
-            });
+            events.push(self.bump_event());
             return true;
         }
         if self.matches_kind(TokenKind::Punctuation('!'))
             && self.peek_kind(1) == Some(TokenKind::Punctuation('='))
         {
-            operator_tokens.push(SyntaxElement {
-                kind: SyntaxElementKind::Token(self.bump_token()),
-            });
-            operator_tokens.push(SyntaxElement {
-                kind: SyntaxElementKind::Token(self.bump_token()),
-            });
+            events.push(self.bump_event());
+            events.push(self.bump_event());
             return true;
         }
-        if self.matches_kind(TokenKind::Punctuation('<')) {
-            operator_tokens.push(SyntaxElement {
-                kind: SyntaxElementKind::Token(self.bump_token()),
-            });
+        if matches!(self.current_kind(), Some(TokenKind::Punctuation('<' | '>'))) {
+            events.push(self.bump_event());
             if self.matches_kind(TokenKind::Punctuation('=')) {
-                operator_tokens.push(SyntaxElement {
-                    kind: SyntaxElementKind::Token(self.bump_token()),
-                });
-            }
-            return true;
-        }
-        if self.matches_kind(TokenKind::Punctuation('>')) {
-            operator_tokens.push(SyntaxElement {
-                kind: SyntaxElementKind::Token(self.bump_token()),
-            });
-            if self.matches_kind(TokenKind::Punctuation('=')) {
-                operator_tokens.push(SyntaxElement {
-                    kind: SyntaxElementKind::Token(self.bump_token()),
-                });
+                events.push(self.bump_event());
             }
             return true;
         }
         false
     }
 
-    fn is_expression_boundary(&self) -> bool {
-        matches!(
+    fn skip_trivia(&mut self) -> Vec<Event> {
+        let mut events = Vec::new();
+        while matches!(
             self.current_kind(),
-            None
-                | Some(TokenKind::Keyword(Keyword::Match))
-                | Some(TokenKind::Keyword(Keyword::Where))
-                | Some(TokenKind::Keyword(Keyword::Let))
-                | Some(TokenKind::Keyword(Keyword::Return))
-                | Some(TokenKind::Punctuation(','))
-                | Some(TokenKind::Punctuation(')'))
+            Some(TokenKind::Whitespace | TokenKind::Comment)
+        ) {
+            events.push(self.bump_event());
+        }
+        events
+    }
+
+    fn is_expression_start(&self, kind: TokenKind) -> bool {
+        matches!(
+            kind,
+            TokenKind::Identifier
+                | TokenKind::String
+                | TokenKind::Number
+                | TokenKind::Keyword(_)
+                | TokenKind::Punctuation('(')
         )
     }
 
-    fn is_clause_boundary_token(&self, kind: &TokenKind) -> bool {
-        self.is_clause_boundary(*kind)
-    }
-
-    fn is_clause_boundary(&self, kind: TokenKind) -> bool {
+    fn is_clause_keyword(&self, kind: TokenKind) -> bool {
         matches!(
             kind,
             TokenKind::Keyword(Keyword::Match)
                 | TokenKind::Keyword(Keyword::Where)
                 | TokenKind::Keyword(Keyword::Let)
                 | TokenKind::Keyword(Keyword::Return)
-                | TokenKind::Punctuation(',')
         )
     }
 
-    fn make_node_pattern_with_children(
-        &mut self,
-        start: u32,
-        children: Vec<SyntaxElement>,
-    ) -> SyntaxNode {
-        SyntaxNode::new(
-            SyntaxKind::NodePattern,
-            Span::new(start, self.span_end()),
-            children,
-        )
+    fn is_clause_boundary(&self, kind: TokenKind) -> bool {
+        self.is_clause_keyword(kind) || kind == TokenKind::Punctuation(',')
     }
 
-    fn make_edge_pattern(
-        &mut self,
-        start: u32,
-        end: u32,
-        children: Vec<SyntaxElement>,
-    ) -> SyntaxNode {
-        SyntaxNode::new(SyntaxKind::EdgePattern, Span::new(start, end), children)
-    }
-
-    fn make_empty_label_list(&mut self, start: u32) -> SyntaxNode {
-        SyntaxNode::new(SyntaxKind::LabelList, Span::new(start, self.span_end()), Vec::new())
-    }
-
-    fn skip_trivia_and_include(&mut self, children: &mut Vec<SyntaxElement>) {
-        while let Some(token) = self.current() {
-            if !matches!(token.kind, TokenKind::Whitespace | TokenKind::Comment) {
-                break;
-            }
-            children.push(SyntaxElement {
-                kind: SyntaxElementKind::Token(self.bump_token()),
-            });
-        }
-    }
-
-    fn collect_trivia(&mut self) -> Vec<SyntaxElement> {
-        let mut children = Vec::new();
-        self.skip_trivia_and_include(&mut children);
-        children
+    fn is_expression_boundary(&self) -> bool {
+        self.current_kind()
+            .is_none_or(|kind| self.is_clause_boundary(kind) || kind == TokenKind::Punctuation(')'))
     }
 
     fn matches_kind(&self, kind: TokenKind) -> bool {
@@ -774,16 +541,18 @@ impl<'a> Parser<'a> {
     }
 
     fn matches_keyword(&self, keyword: Keyword) -> bool {
-        self.current_kind() == Some(TokenKind::Keyword(keyword))
+        self.matches_kind(TokenKind::Keyword(keyword))
     }
 
     fn peek_kind(&self, offset: usize) -> Option<TokenKind> {
         self.tokens.get(self.index + offset).map(|token| token.kind)
     }
 
-    fn emit_missing_keyword(&mut self, code: &'static str, message: impl Into<String>, span: Span) {
-        self.diagnostics
-            .push(Diagnostic::error(code, message, span));
+    fn previous_kind(&self) -> Option<TokenKind> {
+        self.index
+            .checked_sub(1)
+            .and_then(|index| self.tokens.get(index))
+            .map(|token| token.kind)
     }
 
     fn emit_match_syntax(&mut self, code: &'static str, message: impl Into<String>, span: Span) {
@@ -808,19 +577,15 @@ impl<'a> Parser<'a> {
         self.current().map(|token| token.kind)
     }
 
-    fn peek(&self) -> Option<TokenKind> {
-        self.current_kind()
+    fn bump_event(&mut self) -> Event {
+        Event::Token(self.bump_token())
     }
 
     fn bump_token(&mut self) -> Token {
-        let token = self
-            .tokens
-            .get(self.index)
-            .cloned()
-            .unwrap_or_else(|| Token {
-                kind: TokenKind::Unknown,
-                span: Span::new(self.span_end(), self.span_end()),
-            });
+        let token = self.tokens.get(self.index).cloned().unwrap_or_else(|| {
+            let end = self.source.len() as u32;
+            Token::new(TokenKind::Unknown, Span::new(end, end), "")
+        });
         self.index += 1;
         token
     }
@@ -832,20 +597,20 @@ impl<'a> Parser<'a> {
     }
 
     fn span_end(&self) -> u32 {
-        if self.index == 0 {
-            0
-        } else {
-            self.tokens
-                .get(self.index.saturating_sub(1))
-                .map(|token| token.span.end)
-                .unwrap_or_else(|| self.tokens.last().map(|token| token.span.end).unwrap_or(0))
-        }
+        self.index
+            .checked_sub(1)
+            .and_then(|index| self.tokens.get(index))
+            .map(|token| token.span.end)
+            .or_else(|| self.tokens.last().map(|token| token.span.end))
+            .unwrap_or(0)
     }
 
     fn next_span_or(&self, fallback: u32) -> Span {
         Span::new(
             fallback,
-            self.current().map(|token| token.span.end).unwrap_or(fallback),
+            self.current()
+                .map(|token| token.span.end)
+                .unwrap_or(fallback),
         )
     }
 }

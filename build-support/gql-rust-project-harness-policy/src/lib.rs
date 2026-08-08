@@ -10,9 +10,7 @@ pub use rust_lang_project_harness::{
 };
 
 pub mod build_gate;
-pub use build_gate::{
-    assert_gql_rust_project_harness_member_policy_from_env,
-};
+pub use build_gate::assert_gql_rust_project_harness_member_policy_from_env;
 pub mod evidence;
 pub mod hook_registry_build;
 /// Reusable hook scenarios for Rust project harness policy checks.
@@ -29,22 +27,21 @@ pub use hook_scenarios::{
     gql_hook_scenario_package,
 };
 pub use member_policy::{
-    GqlRustProjectHarnessMemberPolicy, GqlRustProjectHarnessOwnerPolicy, gql_workspace_member_policies,
+    GqlRustProjectHarnessMemberPolicy, GqlRustProjectHarnessOwnerPolicy,
+    gql_workspace_member_policies,
 };
 pub use scenario::{
     GqlRustProjectHarnessScenario, GqlRustProjectHarnessScenarioCommand,
     GqlRustProjectHarnessScenarioPackage,
 };
 pub use search_scenarios::{
-    GQL_SEARCH_SCENARIO_PACKAGE_NAME,
-    LEXICAL_SEARCH_FRAME_GRAPH_ROUTER_WARM_PATH_SCENARIO_ID,
+    GQL_SEARCH_SCENARIO_PACKAGE_NAME, LEXICAL_SEARCH_FRAME_GRAPH_ROUTER_WARM_PATH_SCENARIO_ID,
     SEARCH_DEGRADED_ROUTE_BOUNDED_SCENARIO_ID, SEARCH_GRAPH_ROUTER_NEXT_EXACT_ACTION_SCENARIO_ID,
     SEARCH_PACKAGE_LINEAR_PERFORMANCE_SCENARIO_ID, SEARCH_SOURCE_INDEX_BUSY_MISS_SCENARIO_ID,
     SEARCH_SOURCE_INDEX_COLD_REQUIRED_SCENARIO_ID,
     SEARCH_SOURCE_INDEX_OWNER_ITEM_GRAPH_CHAIN_SCENARIO_ID,
     SEARCH_SOURCE_INDEX_READ_ONLY_CLIENT_DB_SCENARIO_ID,
-    SEARCH_SUBAGENT_COMPACT_RECEIPT_SCENARIO_ID,
-    gql_search_scenario_package,
+    SEARCH_SUBAGENT_COMPACT_RECEIPT_SCENARIO_ID, gql_search_scenario_package,
 };
 
 pub use workspace_evidence_graph::{

@@ -1,4 +1,4 @@
-//! Catalog identity and predicate contracts used by semantic and IR layers.
+//! ISO GQL catalog identity and type contracts.
 
 use gql_types::ValueType;
 
@@ -47,6 +47,18 @@ impl Catalog {
             schemas,
         }
     }
+
+    /// Resolve one graph declaration by name.
+    #[must_use]
+    pub fn graph(&self, name: &GraphName) -> Option<&Graph> {
+        self.graphs.iter().find(|graph| &graph.name == name)
+    }
+
+    /// Resolve one schema declaration by name.
+    #[must_use]
+    pub fn schema(&self, name: &SchemaName) -> Option<&Schema> {
+        self.schemas.iter().find(|schema| &schema.name == name)
+    }
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
@@ -83,7 +95,7 @@ impl Graph {
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-/// Schema declaration in the catalog.
+/// Schema declaration.
 pub struct Schema {
     /// Schema identifier.
     pub name: SchemaName,
@@ -155,47 +167,14 @@ pub struct ProcedureSignature {
     pub returns: Vec<ValueType>,
 }
 
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
-/// Relation name identifier.
-pub struct RelationName(pub String);
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-/// Canonical relation identity coordinates.
-pub struct RelationIdentity {
-    /// Catalog component.
-    pub catalog: CatalogName,
-    /// Graph component.
-    pub graph: GraphName,
-    /// Optional schema component.
-    pub schema: Option<SchemaName>,
-    /// Node types participating in the relation.
-    pub node_types: Vec<NodeTypeName>,
-    /// Edge types participating in the relation.
-    pub edge_types: Vec<EdgeTypeName>,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-/// Source of authority for a relation declaration.
-pub enum RelationAuthority {
-    /// Relation is explicitly asserted in catalog data.
-    Asserted { source: String },
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-/// Descriptor for a resolved relation.
-pub struct PredicateDescriptor {
-    /// Relation name.
-    pub name: RelationName,
-    /// Output columns.
-    pub columns: Vec<ValueType>,
-    /// Declaring authority.
-    pub authority: RelationAuthority,
-    /// Canonical relation identity.
-    pub relation_identity: RelationIdentity,
-}
-
-/// Source-owned catalog lookup abstraction.
+/// Language-owned catalog access used by semantic analysis.
 pub trait GqlCatalog {
-    /// Resolve a relation by name.
-    fn relation(&self, name: &RelationName) -> Option<PredicateDescriptor>;
+    /// Return the ISO catalog being used for name and type context.
+    fn catalog(&self) -> &Catalog;
+}
+
+impl GqlCatalog for Catalog {
+    fn catalog(&self) -> &Catalog {
+        self
+    }
 }

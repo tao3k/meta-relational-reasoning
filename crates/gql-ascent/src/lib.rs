@@ -3,6 +3,4 @@
 
 mod api;
 
-pub use api::{
-    AscentTransitiveClosure,
-};
+pub use api::AscentTransitiveClosure;

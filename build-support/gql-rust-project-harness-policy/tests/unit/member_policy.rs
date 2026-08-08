@@ -1,6 +1,6 @@
+use gql_rust_project_harness_policy::gql_workspace_member_policies;
 use std::fs;
 use std::path::Path;
-use gql_rust_project_harness_policy::gql_workspace_member_policies;
 
 const FORBIDDEN_POLICY_RULE_FILE: &str = "rust-project-harness-rules.toml";
 
@@ -22,9 +22,14 @@ fn collect_forbidden_policy_rule_files(dir: &Path, files: &mut Vec<std::path::Pa
     let entries = std::fs::read_dir(dir).expect("workspace source directory exists");
     for entry in entries {
         let entry = entry.expect("workspace source directory entry");
-        let file_type = entry.file_type().expect("workspace source directory entry file type");
+        let file_type = entry
+            .file_type()
+            .expect("workspace source directory entry file type");
         let path = entry.path();
-        let file_name = path.file_name().and_then(|name| name.to_str()).unwrap_or("");
+        let file_name = path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or("");
 
         if file_type.is_symlink() {
             continue;
@@ -37,7 +42,11 @@ fn collect_forbidden_policy_rule_files(dir: &Path, files: &mut Vec<std::path::Pa
             continue;
         }
 
-        if file_name == ".git" || file_name == "target" || file_name == "node_modules" || file_name == ".devenv" {
+        if file_name == ".git"
+            || file_name == "target"
+            || file_name == "node_modules"
+            || file_name == ".devenv"
+        {
             continue;
         }
 
@@ -82,10 +91,7 @@ fn central_policy_registry_contains_migrated_member_crates() {
             if !entry.join("Cargo.toml").exists() {
                 return None;
             }
-            entry
-                .file_name()?
-                .to_str()
-                .map(|name| name.to_string())
+            entry.file_name()?.to_str().map(|name| name.to_string())
         })
         .collect();
     declared_in_crates_dir.sort_unstable();
@@ -109,24 +115,28 @@ fn central_policy_uses_uniform_workspace_default() {
             policy.package_name
         );
         assert!(
-            !policy.cargo_check_advice_allow_explanation.contains("per-crate exception"),
+            !policy
+                .cargo_check_advice_allow_explanation
+                .contains("per-crate exception"),
             "package {} should not keep per-crate exception text",
-            policy.package_name
-        );
-        assert!(
-            policy.cargo_check_advice_allow_explanation.contains("workspace crate policy is enforced"),
-            "policy rationale should be workspace-wide for {}",
-            policy.package_name
-        );
-        assert!(
-            policy.cargo_check_advice_allow_explanation.contains("cleanup_trigger="),
-            "policy should include cleanup trigger for {}",
             policy.package_name
         );
         assert!(
             policy
                 .cargo_check_advice_allow_explanation
-                .is_ascii(),
+                .contains("workspace crate policy is enforced"),
+            "policy rationale should be workspace-wide for {}",
+            policy.package_name
+        );
+        assert!(
+            policy
+                .cargo_check_advice_allow_explanation
+                .contains("cleanup_trigger="),
+            "policy should include cleanup trigger for {}",
+            policy.package_name
+        );
+        assert!(
+            policy.cargo_check_advice_allow_explanation.is_ascii(),
             "policy explanation should remain ASCII-only for {}",
             policy.package_name
         );
@@ -245,13 +255,19 @@ fn all_workspace_crate_build_scripts_call_workspace_policy_gate() {
         assert!(
             build_rs.exists(),
             "missing build.rs in {}",
-            manifest_path.parent().unwrap_or_else(|| Path::new("")).display()
+            manifest_path
+                .parent()
+                .unwrap_or_else(|| Path::new(""))
+                .display()
         );
-        let build_rs_text = fs::read_to_string(&build_rs)
-            .unwrap_or_else(|_| panic!("build.rs should exist in {}", manifest_path.parent().unwrap().display()));
+        let build_rs_text = fs::read_to_string(&build_rs).unwrap_or_else(|_| {
+            panic!(
+                "build.rs should exist in {}",
+                manifest_path.parent().unwrap().display()
+            )
+        });
         assert!(
-            build_rs_text
-                .contains("assert_gql_rust_project_harness_member_policy_from_env"),
+            build_rs_text.contains("assert_gql_rust_project_harness_member_policy_from_env"),
             "missing policy gate call in {}",
             build_rs.display()
         );

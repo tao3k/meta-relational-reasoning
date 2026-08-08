@@ -5,6 +5,6 @@ mod api;
 
 pub use api::{
     ClosureStatus, DerivationError, DerivationId, DerivationLimits, DerivationRequest,
-    DerivationResult, DerivationWitness, DerivedRelationProvider, DerivedTuple, Fact,
-    FactId, RuleId,
+    DerivationResult, DerivationWitness, DerivedPredicateDescriptor, DerivedRelationProvider,
+    DerivedTuple, Fact, FactId, RelationName, RuleId,
 };

@@ -3,7 +3,7 @@
 
 mod api;
 
-pub use api::{analyze, Analysis};
+pub use api::{Analysis, analyze};
 
 #[cfg(test)]
 #[path = "../tests/unit/mod.rs"]

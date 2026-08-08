@@ -4,22 +4,6 @@
 mod api;
 
 pub use api::{
-    Catalog,
-    CatalogName,
-    EdgeType,
-    EdgeTypeName,
-    GqlCatalog,
-    Graph,
-    GraphName,
-    GraphTypeName,
-    NodeType,
-    NodeTypeName,
-    PredicateDescriptor,
-    Property,
-    ProcedureSignature,
-    RelationAuthority,
-    RelationIdentity,
-    RelationName,
-    Schema,
-    SchemaName,
+    Catalog, CatalogName, EdgeType, EdgeTypeName, GqlCatalog, Graph, GraphName, GraphTypeName,
+    NodeType, NodeTypeName, ProcedureSignature, Property, Schema, SchemaName,
 };

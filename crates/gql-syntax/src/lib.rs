@@ -7,7 +7,6 @@
 
 mod lexer;
 mod parser;
-mod rowan_build;
 mod syntax;
 
 pub use parser::parse;

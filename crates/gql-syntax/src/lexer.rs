@@ -19,10 +19,11 @@ pub(crate) fn lex(text: &str) -> (Vec<Token>, Vec<Diagnostic>) {
 
         if ch.is_whitespace() {
             consume_while(&mut cursor, text, |next| next.is_whitespace());
-            tokens.push(Token {
-                kind: TokenKind::Whitespace,
-                span: Span::new(start as u32, cursor as u32),
-            });
+            tokens.push(Token::new(
+                TokenKind::Whitespace,
+                Span::new(start as u32, cursor as u32),
+                &text[start..cursor],
+            ));
             continue;
         }
 
@@ -30,10 +31,11 @@ pub(crate) fn lex(text: &str) -> (Vec<Token>, Vec<Diagnostic>) {
             cursor += ch.len_utf8();
             consume_while(&mut cursor, text, |next| next != '\n');
 
-            tokens.push(Token {
-                kind: TokenKind::Comment,
-                span: Span::new(start as u32, cursor as u32),
-            });
+            tokens.push(Token::new(
+                TokenKind::Comment,
+                Span::new(start as u32, cursor as u32),
+                &text[start..cursor],
+            ));
             continue;
         }
 
@@ -57,10 +59,11 @@ pub(crate) fn lex(text: &str) -> (Vec<Token>, Vec<Diagnostic>) {
                 ));
             }
 
-            tokens.push(Token {
-                kind: TokenKind::String,
-                span: Span::new(start as u32, cursor as u32),
-            });
+            tokens.push(Token::new(
+                TokenKind::String,
+                Span::new(start as u32, cursor as u32),
+                &text[start..cursor],
+            ));
             continue;
         }
 
@@ -73,30 +76,33 @@ pub(crate) fn lex(text: &str) -> (Vec<Token>, Vec<Diagnostic>) {
                 .map(TokenKind::Keyword)
                 .unwrap_or(TokenKind::Identifier);
 
-            tokens.push(Token {
+            tokens.push(Token::new(
                 kind,
-                span: Span::new(start as u32, cursor as u32),
-            });
+                Span::new(start as u32, cursor as u32),
+                &text[start..cursor],
+            ));
             continue;
         }
 
         if ch.is_ascii_digit() {
             consume_while(&mut cursor, text, |next| next.is_ascii_digit());
 
-            tokens.push(Token {
-                kind: TokenKind::Number,
-                span: Span::new(start as u32, cursor as u32),
-            });
+            tokens.push(Token::new(
+                TokenKind::Number,
+                Span::new(start as u32, cursor as u32),
+                &text[start..cursor],
+            ));
             continue;
         }
 
         let punctuation = "[](){}:,.-><-+*=;!";
         if punctuation.contains(ch) {
             cursor += ch.len_utf8();
-            tokens.push(Token {
-                kind: TokenKind::Punctuation(ch),
-                span: Span::new(start as u32, cursor as u32),
-            });
+            tokens.push(Token::new(
+                TokenKind::Punctuation(ch),
+                Span::new(start as u32, cursor as u32),
+                &text[start..cursor],
+            ));
             continue;
         }
 
@@ -106,10 +112,11 @@ pub(crate) fn lex(text: &str) -> (Vec<Token>, Vec<Diagnostic>) {
             format!("unrecognized character `{ch}`"),
             Span::new(start as u32, cursor as u32),
         ));
-        tokens.push(Token {
-            kind: TokenKind::Unknown,
-            span: Span::new(start as u32, cursor as u32),
-        });
+        tokens.push(Token::new(
+            TokenKind::Unknown,
+            Span::new(start as u32, cursor as u32),
+            &text[start..cursor],
+        ));
     }
 
     (tokens, diagnostics)

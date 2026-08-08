@@ -186,4 +186,3 @@ pub struct SyntaxParseOutput {
     pub statement: Statement,
     pub diagnostics: Vec<Diagnostic>,
 }
-

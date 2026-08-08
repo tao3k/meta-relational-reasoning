@@ -29,6 +29,21 @@ jobs:
               exit 1
             fi
           done
+      - name: Frontend authority and catalog contract
+        shell: bash
+        run: |
+          test ! -e crates/gql-syntax/src/rowan_build.rs
+          if rg -n 'SyntaxNode::new\(|rowan_build|source\.get|edge_direction_from_span|raw\.trim' crates/gql-syntax crates/gql-ast; then
+            echo "frontend must use the direct lossless Rowan tree and typed views."
+            exit 1
+          fi
+          if rg -n 'RelationName|PredicateDescriptor|RelationIdentity|RelationAuthority' crates/gql-catalog/src; then
+            echo "gql-catalog must not own reasoning relation concepts."
+            exit 1
+          fi
+          grep -Fxq 'default = []' crates/gql/Cargo.toml
+          grep -Fq 'gql-catalog ISO catalog declarations only' ARCHITECTURE.md
+          grep -Fq 'quality_capabilities:' iso-gql-feature-ledger.yaml
       - name: Publish dry-run sanity
         run: |
           echo "Publish readiness is intentionally excluded in this phase."

@@ -1,10 +1,11 @@
-//! Syntax-surface types for tokens, syntax kinds, and CST nodes.
+//! Syntax kinds, lexical tokens, and typed views over the Rowan CST.
 
 use gql_source::{Diagnostic, SourceText, Span};
+use rowan::NodeOrToken;
 
-/// Owned alias for a `rowan` syntax node.
+/// Rowan syntax node for the GQL language.
 pub type RowanSyntaxNode = rowan::SyntaxNode<GqlSyntax>;
-/// Owned alias for a `rowan` syntax token.
+/// Rowan syntax token for the GQL language.
 pub type RowanSyntaxToken = rowan::SyntaxToken<GqlSyntax>;
 
 /// Syntax kinds for CST nodes and tokens.
@@ -31,7 +32,7 @@ pub enum SyntaxKind {
     EdgePattern,
     /// Label list node.
     LabelList,
-    /// Generic expression node.
+    /// Generic recovery expression node.
     Expression,
     /// Name/reference expression node.
     NameExpression,
@@ -43,7 +44,7 @@ pub enum SyntaxKind {
     BinaryExpression,
     /// Parenthesized expression node.
     ParenthesizedExpression,
-    /// Keyword token wrapper.
+    /// Keyword token kind.
     Keyword,
     /// Identifier token kind.
     Identifier,
@@ -62,12 +63,12 @@ pub enum SyntaxKind {
 }
 
 impl SyntaxKind {
-    /// Converts this kind into a `rowan` kind id.
+    /// Converts this kind into Rowan's raw kind.
     pub(crate) fn to_rowan(self) -> rowan::SyntaxKind {
         rowan::SyntaxKind(self as u16)
     }
 
-    /// Decodes a `rowan` syntax kind back to this enum.
+    /// Decodes Rowan's raw kind into the language kind.
     pub(crate) fn from_rowan(kind: rowan::SyntaxKind) -> Self {
         match kind.0 {
             0 => Self::SourceFile,
@@ -117,7 +118,7 @@ pub enum Keyword {
     Remove,
 }
 
-/// Token kind for lexical output.
+/// Token kind for lexical output and typed CST views.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum TokenKind {
     /// Keyword token.
@@ -138,17 +139,58 @@ pub enum TokenKind {
     Unknown,
 }
 
-/// A parsed token.
+/// A lexical token or a token projected from the Rowan CST.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Token {
     /// Token kind.
     pub kind: TokenKind,
     /// Byte span in source text.
     pub span: Span,
+    text: String,
 }
 
 impl Token {
-    /// Converts token kind into syntax kind.
+    /// Creates a lexical token with its exact source text.
+    pub(crate) fn new(kind: TokenKind, span: Span, text: impl Into<String>) -> Self {
+        Self {
+            kind,
+            span,
+            text: text.into(),
+        }
+    }
+
+    fn from_rowan(token: RowanSyntaxToken) -> Self {
+        let text = token.text().to_string();
+        let kind = match token.kind() {
+            SyntaxKind::Keyword => crate::lexer::keyword(&text)
+                .map(TokenKind::Keyword)
+                .unwrap_or(TokenKind::Unknown),
+            SyntaxKind::Identifier => TokenKind::Identifier,
+            SyntaxKind::Number => TokenKind::Number,
+            SyntaxKind::String => TokenKind::String,
+            SyntaxKind::Whitespace => TokenKind::Whitespace,
+            SyntaxKind::Punctuation => text
+                .chars()
+                .next()
+                .map(TokenKind::Punctuation)
+                .unwrap_or(TokenKind::Unknown),
+            SyntaxKind::Comment => TokenKind::Comment,
+            _ => TokenKind::Unknown,
+        };
+        Self {
+            kind,
+            span: span_from_range(token.text_range()),
+            text,
+        }
+    }
+
+    /// Exact token text as represented in the CST.
+    #[must_use]
+    pub fn text(&self) -> &str {
+        &self.text
+    }
+
+    /// Converts the token kind into its CST kind.
     pub(crate) fn syntax_kind(&self) -> SyntaxKind {
         match self.kind {
             TokenKind::Keyword(_) => SyntaxKind::Keyword,
@@ -163,87 +205,80 @@ impl Token {
     }
 }
 
-/// Union for owned syntax node/token children.
+/// One typed view over a Rowan syntax element.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SyntaxElement {
-    /// Child kind.
+    /// Child view.
     pub kind: SyntaxElementKind,
 }
 
-/// Child edge in a concrete syntax tree.
+/// Child view in the Rowan concrete syntax tree.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum SyntaxElementKind {
-    /// Owned node child.
+    /// Rowan child node view.
     Node(SyntaxNode),
-    /// Owned token child.
+    /// Rowan child token view.
     Token(Token),
 }
 
-/// One CST node with kind, span, and children.
+/// Typed view over one Rowan node. It owns no independent children or spans.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SyntaxNode {
-    /// Syntax kind.
-    kind: SyntaxKind,
-    /// Byte span for the node.
-    span: Span,
-    /// Child elements.
-    children: Vec<SyntaxElement>,
+    rowan: RowanSyntaxNode,
 }
 
 impl SyntaxNode {
-    /// Creates a node from kind, span, and children.
-    pub(crate) fn new(kind: SyntaxKind, span: Span, children: Vec<SyntaxElement>) -> Self {
-        Self {
-            kind,
-            span,
-            children,
-        }
+    pub(crate) fn from_rowan(rowan: RowanSyntaxNode) -> Self {
+        Self { rowan }
     }
 
-    /// Node kind.
+    /// Node kind supplied by the Rowan language marker.
     #[must_use]
     pub fn kind(&self) -> SyntaxKind {
-        self.kind
+        self.rowan.kind()
     }
 
-    /// Node span.
+    /// Node span derived from the Rowan text range.
     #[must_use]
     pub fn span(&self) -> Span {
-        self.span
+        span_from_range(self.rowan.text_range())
     }
 
-    /// Child slice.
+    /// Typed child views derived from the Rowan tree.
     #[must_use]
-    pub fn children(&self) -> &[SyntaxElement] {
-        &self.children
+    pub fn children(&self) -> Vec<SyntaxElement> {
+        self.rowan
+            .children_with_tokens()
+            .map(|element| SyntaxElement {
+                kind: match element {
+                    NodeOrToken::Node(node) => SyntaxElementKind::Node(Self::from_rowan(node)),
+                    NodeOrToken::Token(token) => SyntaxElementKind::Token(Token::from_rowan(token)),
+                },
+            })
+            .collect()
+    }
+
+    /// Underlying Rowan node for typed syntax adapters.
+    #[must_use]
+    pub fn rowan(&self) -> &RowanSyntaxNode {
+        &self.rowan
     }
 }
 
-/// A full syntax tree with rowan backing and source attachment.
+/// Full syntax tree with source attachment and one Rowan green tree.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SyntaxTree {
-    /// Owned source text.
     source: SourceText,
-    /// Root node.
-    root: SyntaxNode,
-    /// Token stream.
     tokens: Vec<Token>,
-    /// Owned `rowan` root.
     rowan: rowan::GreenNode,
 }
 
 impl SyntaxTree {
-    /// Creates a syntax tree from all required fields.
+    /// Creates a syntax tree from the source, lexical stream, and Rowan root.
     #[must_use]
-    pub fn new(
-        source: SourceText,
-        root: SyntaxNode,
-        tokens: Vec<Token>,
-        rowan: rowan::GreenNode,
-    ) -> Self {
+    pub(crate) fn new(source: SourceText, tokens: Vec<Token>, rowan: rowan::GreenNode) -> Self {
         Self {
             source,
-            root,
             tokens,
             rowan,
         }
@@ -255,29 +290,29 @@ impl SyntaxTree {
         &self.source
     }
 
-    /// Borrow token stream.
+    /// Borrow the lexical stream used to build the Rowan tree.
     #[must_use]
     pub fn tokens(&self) -> &[Token] {
         &self.tokens
     }
 
-    /// Borrow root node.
+    /// Typed Rowan root view.
     #[must_use]
-    pub fn root(&self) -> &SyntaxNode {
-        &self.root
+    pub fn root(&self) -> SyntaxNode {
+        SyntaxNode::from_rowan(self.rowan_root())
     }
 
-    /// Converts to a `rowan` root.
+    /// Raw Rowan root node.
     #[must_use]
     pub fn rowan_root(&self) -> RowanSyntaxNode {
         RowanSyntaxNode::new_root(self.rowan.clone())
     }
 }
 
-/// Parse result returned from [`parse`](crate::parse).
+/// Parse result returned from [`crate::parse`].
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Parse {
-    /// Parsed tree.
+    /// Parsed Rowan tree.
     pub tree: SyntaxTree,
     /// Diagnostics produced while parsing.
     pub diagnostics: Vec<Diagnostic>,
@@ -297,4 +332,8 @@ impl rowan::Language for GqlSyntax {
     fn kind_to_raw(kind: Self::Kind) -> rowan::SyntaxKind {
         kind.to_rowan()
     }
+}
+
+fn span_from_range(range: rowan::TextRange) -> Span {
+    Span::new(u32::from(range.start()), u32::from(range.end()))
 }

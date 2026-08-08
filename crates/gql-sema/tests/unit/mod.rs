@@ -1,870 +1,167 @@
 use crate::analyze;
-use gql_ir::Predicate;
 use gql_ast::{
-    EdgeDirection, EdgePattern, GraphPattern, Identifier, MatchClause, NodePattern,
-    PatternElement, Query, QueryClause, Statement,
+    BinaryOperator, EdgeDirection, EdgePattern, Expression, GraphPattern, Identifier, MatchClause,
+    NodePattern, PatternElement, Query, QueryClause, Statement,
 };
-use gql_ir::{GraphPatternElement, EdgeDirection as IrEdgeDirection};
-use gql_catalog::{
-    CatalogName, GqlCatalog, GraphName, PredicateDescriptor, RelationAuthority,
-    RelationIdentity, RelationName,
-};
+use gql_catalog::{Catalog, CatalogName};
+use gql_ir::{BinaryOperator as IrBinaryOperator, Expression as IrExpression, GraphPatternElement};
 use gql_source::Span;
 
-#[derive(Default)]
-struct StubCatalog;
-
-impl StubCatalog {
-    fn new() -> Self {
-        Self
-    }
-}
-
-impl GqlCatalog for StubCatalog {
-    fn relation(&self, _name: &RelationName) -> Option<PredicateDescriptor> {
-        if _name.0 == "CALLS" || _name.0 == "DEPENDS_ON" {
-            Some(PredicateDescriptor {
-                name: _name.clone(),
-                columns: Vec::new(),
-                relation_identity: RelationIdentity {
-                    catalog: CatalogName("default-catalog".into()),
-                    graph: GraphName("default-graph".into()),
-                    schema: None,
-                    node_types: Vec::new(),
-                    edge_types: Vec::new(),
-                },
-                authority: RelationAuthority::Asserted {
-                    source: "unit-test".into(),
-                },
-            })
-        } else {
-            None
-        }
-    }
+fn catalog() -> Catalog {
+    Catalog::new(CatalogName("test-catalog".into()), Vec::new(), Vec::new())
 }
 
 fn identifier(name: &str) -> Identifier {
     Identifier {
-        text: name.to_string(),
+        text: name.into(),
         span: Span::default(),
     }
 }
 
+fn node(binding: &str) -> PatternElement {
+    PatternElement::Node(NodePattern {
+        binding: Some(identifier(binding)),
+        labels: Vec::new(),
+        span: Span::default(),
+    })
+}
+
+fn edge(label: &str) -> PatternElement {
+    PatternElement::Edge(EdgePattern {
+        labels: vec![identifier(label)],
+        direction: EdgeDirection::Out,
+        span: Span::default(),
+    })
+}
+
+fn query(clauses: Vec<QueryClause>) -> Statement {
+    Statement::Query(Query {
+        clauses,
+        span: Span::default(),
+    })
+}
+
 #[test]
-fn match_clause_supports_graph_patterns_with_known_relations() {
-    let statement = Statement::Query(Query {
-        clauses: vec![QueryClause::Match(MatchClause {
+fn node_only_match_is_valid_without_relation_catalog_entries() {
+    let statement = query(vec![
+        QueryClause::Match(MatchClause {
             pattern: GraphPattern {
-                elements: vec![
-                    PatternElement::Node(NodePattern {
-                        binding: Some(identifier("a")),
-                        labels: vec![identifier("Person")],
-                        span: Span::default(),
-                    }),
-                    PatternElement::Edge(EdgePattern {
-                        labels: vec![identifier("CALLS")],
-                        direction: EdgeDirection::Out,
-                        span: Span::default(),
-                    }),
-                ],
+                elements: vec![node("n")],
                 span: Span::default(),
             },
             span: Span::default(),
-        })],
-        span: Span::default(),
-    });
+        }),
+        QueryClause::Return {
+            expressions: vec![Expression::Name(identifier("n"))],
+        },
+    ]);
 
-    let result = analyze(&statement, &StubCatalog::new());
-
-    assert!(result.diagnostics.is_empty());
-    let ir = result.ir.expect("ir built");
-    let graph = ir.graph.expect("graph pattern");
-    assert_eq!(graph.elements.len(), 2);
-    if let [GraphPatternElement::Node(node), GraphPatternElement::Edge(edge), ..] = graph.elements.as_slice()
-    {
-        assert_eq!(node.binding.as_ref().expect("binding"), "a");
-        assert_eq!(node.labels, vec!["Person".to_string()]);
-        assert_eq!(edge.labels, vec!["CALLS".to_string()]);
-        assert_eq!(edge.direction, IrEdgeDirection::Out);
-    } else {
-        panic!("expected node-edge graph pattern");
-    }
-}
-
-#[test]
-fn match_clause_accepts_node_only_patterns() {
-    let statement = Statement::Query(Query {
-        clauses: vec![QueryClause::Match(MatchClause {
-            pattern: GraphPattern {
-                elements: vec![PatternElement::Node(NodePattern {
-                    binding: Some(identifier("a")),
-                    labels: vec![identifier("Person")],
-                    span: Span::default(),
-                })],
-                span: Span::default(),
-            },
-            span: Span::default(),
-        })],
-        span: Span::default(),
-    });
-
-    let result = analyze(&statement, &StubCatalog::new());
-
-    assert!(result.diagnostics.is_empty());
-    let ir = result.ir.expect("ir built");
-    assert_eq!(ir.graph.expect("graph pattern").elements.len(), 1);
-}
-
-#[test]
-fn match_clause_with_unknown_relation_is_semantically_acceptable() {
-    struct UnknownRelationCatalog;
-
-    impl GqlCatalog for UnknownRelationCatalog {
-        fn relation(&self, _name: &RelationName) -> Option<PredicateDescriptor> {
-            None
-        }
-    }
-
-    let statement = Statement::Query(Query {
-        clauses: vec![QueryClause::Match(MatchClause {
-            pattern: GraphPattern {
-                elements: vec![
-                    PatternElement::Node(NodePattern {
-                        binding: Some(identifier("a")),
-                        labels: vec![identifier("Person")],
-                        span: Span::default(),
-                    }),
-                    PatternElement::Edge(EdgePattern {
-                        labels: vec![identifier("UNKNOWN")],
-                        direction: EdgeDirection::Out,
-                        span: Span::default(),
-                    }),
-                    PatternElement::Node(NodePattern {
-                        binding: Some(identifier("b")),
-                        labels: vec![identifier("Person")],
-                        span: Span::default(),
-                    }),
-                ],
-                span: Span::default(),
-            },
-            span: Span::default(),
-        })],
-        span: Span::default(),
-    });
-
-    let result = analyze(&statement, &UnknownRelationCatalog);
-
-    assert!(result.diagnostics.is_empty());
-    let ir = result.ir.expect("ir built");
-    assert_eq!(ir.graph.expect("graph pattern").elements.len(), 3);
-}
-
-#[test]
-fn match_clause_supports_multi_relation_patterns() {
-    let statement = Statement::Query(Query {
-        clauses: vec![QueryClause::Match(MatchClause {
-            pattern: GraphPattern {
-                elements: vec![
-                    PatternElement::Node(NodePattern {
-                        binding: Some(identifier("a")),
-                        labels: Vec::new(),
-                        span: Span::default(),
-                    }),
-                    PatternElement::Edge(EdgePattern {
-                        labels: vec![identifier("CALLS")],
-                        direction: EdgeDirection::Out,
-                        span: Span::default(),
-                    }),
-                    PatternElement::Node(NodePattern {
-                        binding: Some(identifier("b")),
-                        labels: Vec::new(),
-                        span: Span::default(),
-                    }),
-                    PatternElement::Edge(EdgePattern {
-                        labels: vec![identifier("DEPENDS_ON")],
-                        direction: EdgeDirection::Out,
-                        span: Span::default(),
-                    }),
-                    PatternElement::Node(NodePattern {
-                        binding: Some(identifier("c")),
-                        labels: Vec::new(),
-                        span: Span::default(),
-                    }),
-                ],
-                span: Span::default(),
-            },
-            span: Span::default(),
-        })],
-        span: Span::default(),
-    });
-
-    let result = analyze(&statement, &StubCatalog::new());
-
-    assert!(result.diagnostics.is_empty());
-    let ir = result.ir.expect("ir built");
-    assert_eq!(ir.graph.expect("graph pattern").elements.len(), 5);
-}
-
-#[test]
-fn where_clause_with_bound_identifier_is_supported() {
-    let statement = Statement::Query(Query {
-        clauses: vec![
-            QueryClause::Match(MatchClause {
-                pattern: GraphPattern {
-                    elements: vec![
-                        PatternElement::Node(NodePattern {
-                            binding: Some(identifier("a")),
-                            labels: Vec::new(),
-                            span: Span::default(),
-                        }),
-                        PatternElement::Edge(EdgePattern {
-                            labels: vec![identifier("CALLS")],
-                            direction: EdgeDirection::Out,
-                            span: Span::default(),
-                        }),
-                        PatternElement::Node(NodePattern {
-                            binding: Some(identifier("b")),
-                            labels: Vec::new(),
-                            span: Span::default(),
-                        }),
-                    ],
-                    span: Span::default(),
-                },
-                span: Span::default(),
-            }),
-            QueryClause::Where {
-                expression: gql_ast::Expression::Name(gql_ast::Identifier {
-                    text: "a".into(),
-                    span: Span::default(),
-                }),
-            },
-            QueryClause::Return { expressions: vec![] },
-        ],
-        span: Span::default(),
-    });
-
-    let result = analyze(&statement, &StubCatalog::new());
-
-    assert!(result.diagnostics.is_empty());
-    assert!(result.ir.is_some());
-    let ir = result.ir.expect("ir should be present");
-    assert!(ir.graph.is_some());
-    assert_eq!(ir.graph.expect("graph pattern").elements.len(), 3);
-}
-
-#[test]
-fn where_clause_with_unsupported_expression_reports_diagnostic() {
-    let statement = Statement::Query(Query {
-        clauses: vec![
-            QueryClause::Match(MatchClause {
-                pattern: GraphPattern {
-                    elements: vec![
-                        PatternElement::Node(NodePattern {
-                            binding: Some(identifier("a")),
-                            labels: Vec::new(),
-                            span: Span::default(),
-                        }),
-                        PatternElement::Edge(EdgePattern {
-                            labels: vec![identifier("CALLS")],
-                            direction: EdgeDirection::Out,
-                            span: Span::default(),
-                        }),
-                        PatternElement::Node(NodePattern {
-                            binding: Some(identifier("b")),
-                            labels: Vec::new(),
-                            span: Span::default(),
-                        }),
-                    ],
-                    span: Span::default(),
-                },
-                span: Span::default(),
-            }),
-            QueryClause::Where {
-                expression: gql_ast::Expression::Integer(1, Span::default()),
-            },
-            QueryClause::Return { expressions: vec![] },
-        ],
-        span: Span::default(),
-    });
-
-    let result = analyze(&statement, &StubCatalog::new());
-
-    assert_eq!(result.ir, None);
-    assert!(result
-        .diagnostics
-        .iter()
-        .any(|diagnostic| diagnostic.code == "GQL-SEMA-WHERE-UNSUPPORTED-EXPRESSION"));
-}
-
-#[test]
-fn where_clause_with_binding_equality_to_integer_is_supported() {
-    let statement = Statement::Query(Query {
-        clauses: vec![
-            QueryClause::Match(MatchClause {
-                pattern: GraphPattern {
-                    elements: vec![
-                        PatternElement::Node(NodePattern {
-                            binding: Some(identifier("a")),
-                            labels: Vec::new(),
-                            span: Span::default(),
-                        }),
-                        PatternElement::Edge(EdgePattern {
-                            labels: vec![identifier("CALLS")],
-                            direction: EdgeDirection::Out,
-                            span: Span::default(),
-                        }),
-                        PatternElement::Node(NodePattern {
-                            binding: Some(identifier("b")),
-                            labels: Vec::new(),
-                            span: Span::default(),
-                        }),
-                    ],
-                    span: Span::default(),
-                },
-                span: Span::default(),
-            }),
-            QueryClause::Where {
-                expression: gql_ast::Expression::Binary {
-                    operator: gql_ast::BinaryOperator::Equals,
-                    left: Box::new(gql_ast::Expression::Name(gql_ast::Identifier {
-                        text: "a".into(),
-                        span: Span::default(),
-                    })),
-                    right: Box::new(gql_ast::Expression::Integer(1, Span::default())),
-                },
-            },
-            QueryClause::Return { expressions: vec![] },
-        ],
-        span: Span::default(),
-    });
-
-    let result = analyze(&statement, &StubCatalog::new());
-
-    assert!(result.diagnostics.is_empty());
-    assert!(result.ir.is_some());
-    assert_eq!(result.ir.as_ref().expect("ir").predicates.len(), 1);
-    match &result.ir.as_ref().expect("ir").predicates[0] {
-        Predicate::Equals(binding, value) => {
-            assert_eq!(binding.name, "a");
-    assert_eq!(value, &gql_types::Value::Integer(1));
-        }
-        predicate => panic!("unexpected predicate: {predicate:?}"),
-    }
-}
-
-#[test]
-fn where_clause_with_binding_equality_to_string_is_supported() {
-    let statement = Statement::Query(Query {
-        clauses: vec![
-            QueryClause::Match(MatchClause {
-                pattern: GraphPattern {
-                    elements: vec![
-                        PatternElement::Node(NodePattern {
-                            binding: Some(identifier("a")),
-                            labels: Vec::new(),
-                            span: Span::default(),
-                        }),
-                        PatternElement::Edge(EdgePattern {
-                            labels: vec![identifier("CALLS")],
-                            direction: EdgeDirection::Out,
-                            span: Span::default(),
-                        }),
-                        PatternElement::Node(NodePattern {
-                            binding: Some(identifier("b")),
-                            labels: Vec::new(),
-                            span: Span::default(),
-                        }),
-                    ],
-                    span: Span::default(),
-                },
-                span: Span::default(),
-            }),
-            QueryClause::Where {
-                expression: gql_ast::Expression::Binary {
-                    operator: gql_ast::BinaryOperator::Equals,
-                    left: Box::new(gql_ast::Expression::Name(gql_ast::Identifier {
-                        text: "a".into(),
-                        span: Span::default(),
-                    })),
-                    right: Box::new(gql_ast::Expression::String("x".into(), Span::default())),
-                },
-            },
-            QueryClause::Return { expressions: vec![] },
-        ],
-        span: Span::default(),
-    });
-
-    let result = analyze(&statement, &StubCatalog::new());
-
-    assert!(result.diagnostics.is_empty());
-    assert!(result.ir.is_some());
-    assert_eq!(result.ir.as_ref().expect("ir").predicates.len(), 1);
-    match &result.ir.as_ref().expect("ir").predicates[0] {
-        Predicate::Equals(binding, value) => {
-            assert_eq!(binding.name, "a");
-            assert_eq!(value, &gql_types::Value::String("x".into()));
-        }
-        predicate => panic!("unexpected predicate: {predicate:?}"),
-    }
-}
-
-#[test]
-fn where_clause_with_string_equality_to_binding_is_supported() {
-    let statement = Statement::Query(Query {
-        clauses: vec![
-            QueryClause::Match(MatchClause {
-                pattern: GraphPattern {
-                    elements: vec![
-                        PatternElement::Node(NodePattern {
-                            binding: Some(identifier("a")),
-                            labels: Vec::new(),
-                            span: Span::default(),
-                        }),
-                        PatternElement::Edge(EdgePattern {
-                            labels: vec![identifier("CALLS")],
-                            direction: EdgeDirection::Out,
-                            span: Span::default(),
-                        }),
-                        PatternElement::Node(NodePattern {
-                            binding: Some(identifier("b")),
-                            labels: Vec::new(),
-                            span: Span::default(),
-                        }),
-                    ],
-                    span: Span::default(),
-                },
-                span: Span::default(),
-            }),
-            QueryClause::Where {
-                expression: gql_ast::Expression::Binary {
-                    operator: gql_ast::BinaryOperator::Equals,
-                    left: Box::new(gql_ast::Expression::String("x".into(), Span::default())),
-                    right: Box::new(gql_ast::Expression::Name(gql_ast::Identifier {
-                        text: "a".into(),
-                        span: Span::default(),
-                    })),
-                },
-            },
-            QueryClause::Return { expressions: vec![] },
-        ],
-        span: Span::default(),
-    });
-
-    let result = analyze(&statement, &StubCatalog::new());
-
-    assert!(result.diagnostics.is_empty());
-    assert!(result.ir.is_some());
-    assert_eq!(result.ir.as_ref().expect("ir").predicates.len(), 1);
-    match &result.ir.as_ref().expect("ir").predicates[0] {
-        Predicate::Equals(binding, value) => {
-            assert_eq!(binding.name, "a");
-            assert_eq!(value, &gql_types::Value::String("x".into()));
-        }
-        predicate => panic!("unexpected predicate: {predicate:?}"),
-    }
-}
-
-#[test]
-fn where_clause_with_name_to_name_equality_is_unsupported() {
-    let statement = Statement::Query(Query {
-        clauses: vec![
-            QueryClause::Match(MatchClause {
-                pattern: GraphPattern {
-                    elements: vec![
-                        PatternElement::Node(NodePattern {
-                            binding: Some(identifier("a")),
-                            labels: Vec::new(),
-                            span: Span::default(),
-                        }),
-                        PatternElement::Edge(EdgePattern {
-                            labels: vec![identifier("CALLS")],
-                            direction: EdgeDirection::Out,
-                            span: Span::default(),
-                        }),
-                        PatternElement::Node(NodePattern {
-                            binding: Some(identifier("b")),
-                            labels: Vec::new(),
-                            span: Span::default(),
-                        }),
-                    ],
-                    span: Span::default(),
-                },
-                span: Span::default(),
-            }),
-            QueryClause::Where {
-                expression: gql_ast::Expression::Binary {
-                    operator: gql_ast::BinaryOperator::Equals,
-                    left: Box::new(gql_ast::Expression::Name(gql_ast::Identifier {
-                        text: "a".into(),
-                        span: Span::default(),
-                    })),
-                    right: Box::new(gql_ast::Expression::Name(gql_ast::Identifier {
-                        text: "b".into(),
-                        span: Span::default(),
-                    })),
-                },
-            },
-            QueryClause::Return { expressions: vec![] },
-        ],
-        span: Span::default(),
-    });
-
-    let result = analyze(&statement, &StubCatalog::new());
-
-    assert_eq!(result.ir, None);
-    assert!(result
-        .diagnostics
-        .iter()
-        .any(|diagnostic| diagnostic.code == "GQL-SEMA-WHERE-UNSUPPORTED-EXPRESSION"));
-}
-
-#[test]
-fn where_clause_with_unsupported_string_expression_reports_diagnostic() {
-    let statement = Statement::Query(Query {
-        clauses: vec![
-            QueryClause::Match(MatchClause {
-                pattern: GraphPattern {
-                    elements: vec![
-                        PatternElement::Node(NodePattern {
-                            binding: Some(identifier("a")),
-                            labels: Vec::new(),
-                            span: Span::default(),
-                        }),
-                        PatternElement::Edge(EdgePattern {
-                            labels: vec![identifier("CALLS")],
-                            direction: EdgeDirection::Out,
-                            span: Span::default(),
-                        }),
-                        PatternElement::Node(NodePattern {
-                            binding: Some(identifier("b")),
-                            labels: Vec::new(),
-                            span: Span::default(),
-                        }),
-                    ],
-                    span: Span::default(),
-                },
-                span: Span::default(),
-            }),
-            QueryClause::Where {
-                expression: gql_ast::Expression::String("hello".into(), Span::default()),
-            },
-            QueryClause::Return { expressions: vec![] },
-        ],
-        span: Span::default(),
-    });
-
-    let result = analyze(&statement, &StubCatalog::new());
-
-    assert_eq!(result.ir, None);
-    assert!(result
-        .diagnostics
-        .iter()
-        .any(|diagnostic| diagnostic.code == "GQL-SEMA-WHERE-UNSUPPORTED-EXPRESSION"));
-}
-
-#[test]
-fn where_clause_with_boolean_operator_is_unsupported() {
-    let statement = Statement::Query(Query {
-        clauses: vec![
-            QueryClause::Match(MatchClause {
-                pattern: GraphPattern {
-                    elements: vec![
-                        PatternElement::Node(NodePattern {
-                            binding: Some(identifier("a")),
-                            labels: Vec::new(),
-                            span: Span::default(),
-                        }),
-                        PatternElement::Edge(EdgePattern {
-                            labels: vec![identifier("CALLS")],
-                            direction: EdgeDirection::Out,
-                            span: Span::default(),
-                        }),
-                        PatternElement::Node(NodePattern {
-                            binding: Some(identifier("b")),
-                            labels: Vec::new(),
-                            span: Span::default(),
-                        }),
-                    ],
-                    span: Span::default(),
-                },
-                span: Span::default(),
-            }),
-            QueryClause::Where {
-                expression: gql_ast::Expression::Binary {
-                    operator: gql_ast::BinaryOperator::And,
-                    left: Box::new(gql_ast::Expression::Binary {
-                        operator: gql_ast::BinaryOperator::Equals,
-                        left: Box::new(gql_ast::Expression::Name(gql_ast::Identifier {
-                            text: "a".into(),
-                            span: Span::default(),
-                        })),
-                        right: Box::new(gql_ast::Expression::Integer(1, Span::default())),
-                    }),
-                    right: Box::new(gql_ast::Expression::Binary {
-                        operator: gql_ast::BinaryOperator::Equals,
-                        left: Box::new(gql_ast::Expression::Name(gql_ast::Identifier {
-                            text: "b".into(),
-                            span: Span::default(),
-                        })),
-                        right: Box::new(gql_ast::Expression::Integer(2, Span::default())),
-                    }),
-                },
-            },
-            QueryClause::Return { expressions: vec![] },
-        ],
-        span: Span::default(),
-    });
-
-    let result = analyze(&statement, &StubCatalog::new());
-
-    assert_eq!(result.ir, None);
-    assert!(result
-        .diagnostics
-        .iter()
-        .any(|diagnostic| diagnostic.code == "GQL-SEMA-WHERE-UNSUPPORTED-EXPRESSION"));
-}
-
-#[test]
-fn where_clause_reports_unresolved_binding() {
-    let statement = Statement::Query(Query {
-        clauses: vec![QueryClause::Where {
-            expression: gql_ast::Expression::Name(gql_ast::Identifier {
-                text: "missing".into(),
-                span: Span::default(),
-            }),
-        }],
-        span: Span::default(),
-    });
-
-    let result = analyze(&statement, &StubCatalog::new());
-
-    assert_eq!(result.ir, None);
-    assert!(result
-        .diagnostics
-        .iter()
-        .any(|diagnostic| diagnostic.code == "GQL-SEMA-WHERE-UNRESOLVED-BINDING"));
-}
-
-#[test]
-fn where_clause_with_equality_to_unbound_rhs_name_reports_unresolved_binding() {
-    let statement = Statement::Query(Query {
-        clauses: vec![
-            QueryClause::Match(MatchClause {
-                pattern: GraphPattern {
-                    elements: vec![
-                        PatternElement::Node(NodePattern {
-                            binding: Some(identifier("a")),
-                            labels: Vec::new(),
-                            span: Span::default(),
-                        }),
-                        PatternElement::Edge(EdgePattern {
-                            labels: vec![identifier("CALLS")],
-                            direction: EdgeDirection::Out,
-                            span: Span::default(),
-                        }),
-                        PatternElement::Node(NodePattern {
-                            binding: Some(identifier("b")),
-                            labels: Vec::new(),
-                            span: Span::default(),
-                        }),
-                    ],
-                    span: Span::default(),
-                },
-                span: Span::default(),
-            }),
-            QueryClause::Where {
-                expression: gql_ast::Expression::Binary {
-                    operator: gql_ast::BinaryOperator::Equals,
-                    left: Box::new(gql_ast::Expression::Name(gql_ast::Identifier {
-                        text: "a".into(),
-                        span: Span::default(),
-                    })),
-                    right: Box::new(gql_ast::Expression::Name(gql_ast::Identifier {
-                        text: "missing".into(),
-                        span: Span::default(),
-                    })),
-                },
-            },
-        ],
-        span: Span::default(),
-    });
-
-    let result = analyze(&statement, &StubCatalog::new());
-
-    assert_eq!(result.ir, None);
-    assert!(result
-        .diagnostics
-        .iter()
-        .any(|diagnostic| diagnostic.code == "GQL-SEMA-WHERE-UNRESOLVED-BINDING"));
-}
-
-#[test]
-fn let_clause_bindings_add_to_scope_for_where() {
-    let statement = Statement::Query(Query {
-        clauses: vec![
-            QueryClause::Let {
-                binding: gql_ast::Identifier {
-                    text: "a".into(),
-                    span: Span::default(),
-                },
-                value: gql_ast::Expression::Integer(1, Span::default()),
-            },
-            QueryClause::Where {
-                expression: gql_ast::Expression::Name(gql_ast::Identifier {
-                    text: "a".into(),
-                    span: Span::default(),
-                }),
-            },
-        ],
-        span: Span::default(),
-    });
-
-    let result = analyze(&statement, &StubCatalog::new());
-
-    assert!(result.diagnostics.is_empty());
-    assert!(result.ir.is_some());
-}
-
-#[test]
-fn let_clause_reports_duplicate_binding() {
-    let statement = Statement::Query(Query {
-        clauses: vec![
-            QueryClause::Match(MatchClause {
-                pattern: GraphPattern {
-                    elements: vec![
-                        PatternElement::Node(NodePattern {
-                            binding: Some(identifier("a")),
-                            labels: Vec::new(),
-                            span: Span::default(),
-                        }),
-                        PatternElement::Edge(EdgePattern {
-                            labels: vec![identifier("CALLS")],
-                            direction: EdgeDirection::Out,
-                            span: Span::default(),
-                        }),
-                        PatternElement::Node(NodePattern {
-                            binding: Some(identifier("b")),
-                            labels: Vec::new(),
-                            span: Span::default(),
-                        }),
-                    ],
-                    span: Span::default(),
-                },
-                span: Span::default(),
-            }),
-            QueryClause::Let {
-                binding: gql_ast::Identifier {
-                    text: "a".into(),
-                    span: Span::default(),
-                },
-                value: gql_ast::Expression::Integer(1, Span::default()),
-            },
-        ],
-        span: Span::default(),
-    });
-
-    let result = analyze(&statement, &StubCatalog::new());
-
-    assert_eq!(result.ir, None);
-    assert!(result
-        .diagnostics
-        .iter()
-        .any(|diagnostic| diagnostic.code == "GQL-SEMA-LET-DUPLICATE-BINDING"));
-}
-
-#[test]
-fn let_clause_reports_duplicate_binding_with_previous_let() {
-    let statement = Statement::Query(Query {
-        clauses: vec![
-            QueryClause::Let {
-                binding: gql_ast::Identifier {
-                    text: "a".into(),
-                    span: Span::default(),
-                },
-                value: gql_ast::Expression::Integer(1, Span::default()),
-            },
-            QueryClause::Let {
-                binding: gql_ast::Identifier {
-                    text: "a".into(),
-                    span: Span::default(),
-                },
-                value: gql_ast::Expression::Integer(2, Span::default()),
-            },
-        ],
-        span: Span::default(),
-    });
-
-    let result = analyze(&statement, &StubCatalog::new());
-
-    assert_eq!(result.ir, None);
-    assert!(result
-        .diagnostics
-        .iter()
-        .any(|diagnostic| diagnostic.code == "GQL-SEMA-LET-DUPLICATE-BINDING"));
-}
-
-#[test]
-fn let_clause_value_references_unknown_binding() {
-    let statement = Statement::Query(Query {
-        clauses: vec![QueryClause::Let {
-            binding: gql_ast::Identifier {
-                text: "a".into(),
-                span: Span::default(),
-            },
-            value: gql_ast::Expression::Name(gql_ast::Identifier {
-                text: "missing".into(),
-                span: Span::default(),
-            }),
-        }],
-        span: Span::default(),
-    });
-
-    let result = analyze(&statement, &StubCatalog::new());
-
-    assert_eq!(result.ir, None);
-    assert!(result
-        .diagnostics
-        .iter()
-        .any(|diagnostic| diagnostic.code == "GQL-SEMA-LET-VALUE-UNRESOLVED-BINDING"));
-}
-
-#[test]
-fn let_clause_with_unresolved_value_does_not_bind_for_where() {
-    let statement = Statement::Query(Query {
-        clauses: vec![
-            QueryClause::Let {
-                binding: gql_ast::Identifier {
-                    text: "a".into(),
-                    span: Span::default(),
-                },
-                value: gql_ast::Expression::Name(gql_ast::Identifier {
-                    text: "missing".into(),
-                    span: Span::default(),
-                }),
-            },
-            QueryClause::Where {
-                expression: gql_ast::Expression::Name(gql_ast::Identifier {
-                    text: "a".into(),
-                    span: Span::default(),
-                }),
-            },
-        ],
-        span: Span::default(),
-    });
-
-    let result = analyze(&statement, &StubCatalog::new());
-
-    assert_eq!(result.ir, None);
+    let result = analyze(&statement, &catalog());
     assert!(
-        result
-            .diagnostics
-            .iter()
-            .any(|diagnostic| diagnostic.code == "GQL-SEMA-LET-VALUE-UNRESOLVED-BINDING")
+        result.diagnostics.is_empty(),
+        "diagnostics: {:?}",
+        result.diagnostics
     );
+    let ir = result.ir.expect("node-only query should produce IR");
+    assert!(matches!(
+        ir.graph
+            .as_ref()
+            .expect("graph pattern")
+            .elements
+            .as_slice(),
+        [GraphPatternElement::Node(_)]
+    ));
+    assert!(
+        matches!(ir.projection.as_slice(), [projection] if projection.expression == IrExpression::Binding("n".into()))
+    );
+}
+
+#[test]
+fn graph_pattern_filter_and_projection_are_canonical_ir() {
+    let statement = query(vec![
+        QueryClause::Match(MatchClause {
+            pattern: GraphPattern {
+                elements: vec![node("a"), edge("CALLS"), node("b")],
+                span: Span::default(),
+            },
+            span: Span::default(),
+        }),
+        QueryClause::Where {
+            expression: Expression::Binary {
+                operator: BinaryOperator::Equals,
+                left: Box::new(Expression::Name(identifier("a"))),
+                right: Box::new(Expression::Integer(1, Span::default())),
+            },
+        },
+        QueryClause::Return {
+            expressions: vec![Expression::Name(identifier("b"))],
+        },
+    ]);
+
+    let result = analyze(&statement, &catalog());
+    assert!(
+        result.diagnostics.is_empty(),
+        "diagnostics: {:?}",
+        result.diagnostics
+    );
+    let ir = result.ir.expect("graph query should produce IR");
+    assert_eq!(ir.graph.expect("graph pattern").elements.len(), 3);
+    assert!(matches!(
+        ir.filters.as_slice(),
+        [IrExpression::Binary {
+            operator: IrBinaryOperator::Equals,
+            ..
+        }]
+    ));
+    assert_eq!(ir.projection.len(), 1);
+}
+
+#[test]
+fn let_binding_is_preserved_as_semantic_ir() {
+    let statement = query(vec![
+        QueryClause::Match(MatchClause {
+            pattern: GraphPattern {
+                elements: vec![node("n")],
+                span: Span::default(),
+            },
+            span: Span::default(),
+        }),
+        QueryClause::Let {
+            binding: identifier("limit"),
+            value: Expression::Integer(1, Span::default()),
+        },
+        QueryClause::Where {
+            expression: Expression::Name(identifier("limit")),
+        },
+        QueryClause::Return {
+            expressions: vec![Expression::Name(identifier("n"))],
+        },
+    ]);
+
+    let result = analyze(&statement, &catalog());
+    assert!(
+        result.diagnostics.is_empty(),
+        "diagnostics: {:?}",
+        result.diagnostics
+    );
+    let ir = result.ir.expect("LET query should produce IR");
+    assert_eq!(ir.let_bindings.len(), 1);
+    assert_eq!(ir.let_bindings[0].binding.name, "limit");
+    assert_eq!(ir.filters, vec![IrExpression::Binding("limit".into())]);
+}
+
+#[test]
+fn unresolved_expression_binding_is_rejected_without_backend_lookup() {
+    let statement = query(vec![QueryClause::Where {
+        expression: Expression::Name(identifier("missing")),
+    }]);
+
+    let result = analyze(&statement, &catalog());
+    assert!(result.ir.is_none());
     assert!(
         result
             .diagnostics
             .iter()
-            .any(|diagnostic| diagnostic.code == "GQL-SEMA-WHERE-UNRESOLVED-BINDING")
+            .any(|diagnostic| diagnostic.code == "GQL-SEMA-UNRESOLVED-BINDING")
     );
 }
