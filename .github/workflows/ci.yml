@@ -1,0 +1,23 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo test --workspace
+      - run: cargo test -p gql --no-default-features
+      - run: cargo test -p gql --all-features
+      - name: Core dependency purity
+        shell: bash
+        run: |
+          tree="$(cargo tree -p gql-core)"
+          if grep -Eq '(^| )gql-ascent |(^| )ascent ' <<<"$tree"; then
+            printf '%s\n' "$tree"
+            exit 1
+          fi

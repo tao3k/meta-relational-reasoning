@@ -1,0 +1,28 @@
+[package]
+name = "gql-compiler"
+description = "Backend-neutral GQL frontend pipeline"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+gql-ast.workspace = true
+gql-catalog.workspace = true
+gql-sema.workspace = true
+gql-syntax.workspace = true
+
+
+[build-dependencies]
+gql-rust-project-harness-policy.workspace = true
+
+[dev-dependencies]
+criterion.workspace = true
+
+[[bench]]
+name = "performance_verification"
+harness = false
+
+[lints]
+workspace = true

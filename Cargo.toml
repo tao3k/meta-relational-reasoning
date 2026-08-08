@@ -1,0 +1,29 @@
+[workspace]
+members = ["build-support/*", "crates/*"]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "Apache-2.0"
+repository = "https://github.com/tao3k/gql-rust"
+
+[workspace.dependencies]
+ascent = "0.8.0"
+gql = { path = "crates/gql", version = "0.1.0", default-features = false }
+criterion = "0.8.2"
+gql-ascent = { path = "crates/gql-ascent", version = "0.1.0" }
+gql-ast = { path = "crates/gql-ast", version = "0.1.0" }
+gql-catalog = { path = "crates/gql-catalog", version = "0.1.0" }
+gql-compiler = { path = "crates/gql-compiler", version = "0.1.0" }
+gql-core = { path = "crates/gql-core", version = "0.1.0" }
+gql-ir = { path = "crates/gql-ir", version = "0.1.0" }
+gql-sema = { path = "crates/gql-sema", version = "0.1.0" }
+gql-source = { path = "crates/gql-source", version = "0.1.0" }
+gql-syntax = { path = "crates/gql-syntax", version = "0.1.0" }
+gql-types = { path = "crates/gql-types", version = "0.1.0" }
+gql-rust-project-harness-policy = { path = "build-support/gql-rust-project-harness-policy", version = "0.1.0" }
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
