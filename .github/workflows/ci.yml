@@ -3,6 +3,13 @@ name: CI
 on:
   push:
   pull_request:
+  workflow_dispatch:
+    inputs:
+      run_deepseek_live:
+        description: Run the paid DeepSeek MRR live gate
+        required: true
+        default: false
+        type: boolean
 
 jobs:
   test:
@@ -38,3 +45,21 @@ jobs:
         run: |
           echo "Publish readiness is intentionally excluded in this phase."
           echo "Reason: every publishable workspace crate keeps the mandatory, unpublished harness policy in dev-dependencies, so Cargo package resolution cannot construct an uploadable crate without removing required policy enforcement."
+      - uses: astral-sh/setup-uv@v6
+      - name: MRRProof regressions
+        run: uv --project proofs/MRRProof run pytest -q
+      - name: MRR live offline regressions
+        run: uv --project experiments/mrr-live run pytest -q experiments/mrr-live/tests
+
+  deepseek-live:
+    if: github.event_name == 'workflow_dispatch' && inputs.run_deepseek_live
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: astral-sh/setup-uv@v6
+      - name: DeepSeek MRR live smoke
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          MRR_DEEPSEEK_LIVE: "1"
+        run: uv --project experiments/mrr-live run mrr-live

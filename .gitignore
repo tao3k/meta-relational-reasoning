@@ -2,6 +2,7 @@
 .idea
 *.log
 tmp/
+/experiments/mrr-live/runs/
 
 
 /.devenv
@@ -10,4 +11,5 @@ tmp/
 /.data
 /.gerbil
 .venv/
+.env
 .devenv.flake.nix

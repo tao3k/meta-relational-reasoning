@@ -1,0 +1,48 @@
+#+title: MRR Live Relational Reasoning Evaluation
+
+* Status and boundary
+
+The package version has one owner: =pyproject.toml=.  CI, tool names, and schema
+names stay stable across version changes; receipts carry a =schema_version=
+field.  This is not an MRR core crate, proof validator, or admission authority.
+Provider output proposes actions; typed MRR receipts remain authoritative.
+The admitted provider profile has one owner, =model-config.toml=: DeepSeek
+=deepseek-v4-flash= with thinking effort =low= (the API spelling for light).
+
+#+begin_src mermaid
+flowchart LR
+  T[Visible task] --> A[AgentModel]
+  A -->|proposal| V[Tool validator]
+  V --> K[MRR kernel]
+  K -->|typed receipt| A
+  K --> O[Hidden oracle verdict]
+#+end_src
+
+#+begin_src typst
+#let proposes = $"LLM proposal"$
+#let authority = $"MRR receipt"$
+$ proposes != authority $
+#+end_src
+
+* P00 scope
+
+P00 is a real-provider, tool-selection, and authority-boundary smoke.  It does
+not claim that MRR improves accuracy.  It verifies only that a real model can
+select the expected fixture, consume a real Rust-kernel receipt, and bind its
+final answer to that exact receipt.  Runs are local, append-only, and ignored by
+Git.
+
+* Required next research gates
+
+S01 Hidden Dependency and S02 Missing Premise must introduce hidden exact
+oracles and matched Raw, Flat Facts, MRR, Scheme plus MRR, and Oracle MRR
+conditions.  Results require repeated runs, observed cache-token accounting,
+latency and token metrics, replay, and explicit failure attribution.  A live
+failure may generate a hypothesis; it cannot directly change MRR semantics.
+
+* Commands
+
+#+begin_src sh
+uv --project experiments/mrr-live run pytest -q
+MRR_DEEPSEEK_LIVE=1 uv --project experiments/mrr-live run mrr-live
+#+end_src
