@@ -44,5 +44,5 @@ failure may generate a hypothesis; it cannot directly change MRR semantics.
 
 #+begin_src sh
 uv --project experiments/mrr-live run pytest -q
-MRR_DEEPSEEK_LIVE=1 uv --project experiments/mrr-live run mrr-live
+uv --project experiments/mrr-live run mrr-live
 #+end_src

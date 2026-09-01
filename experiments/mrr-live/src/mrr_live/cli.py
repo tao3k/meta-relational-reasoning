@@ -11,22 +11,10 @@ from pathlib import Path
 import tomllib
 
 from .deepseek import DeepSeekResponseError, DeepSeekResponsesAdapter
-from .harness import PROTOCOL_VERSION, LiveEvaluationError, run_p00_smoke
+from .harness import LiveEvaluationError, run_p00_smoke
 
 
 def main() -> int:
-    if os.environ.get("MRR_DEEPSEEK_LIVE") != "1":
-        print(
-            json.dumps(
-                {
-                    "schema": "mrr.live-skip",
-                    "schema_version": PROTOCOL_VERSION,
-                    "reason": "set MRR_DEEPSEEK_LIVE=1 to enable the paid live gate",
-                },
-                sort_keys=True,
-            )
-        )
-        return 0
     project_root = Path(__file__).resolve().parents[2]
     with (project_root / "model-config.toml").open("rb") as source:
         model_config = tomllib.load(source)

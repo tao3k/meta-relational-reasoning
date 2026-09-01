@@ -61,5 +61,4 @@ jobs:
       - name: DeepSeek MRR live smoke
         env:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
-          MRR_DEEPSEEK_LIVE: "1"
         run: uv --project experiments/mrr-live run mrr-live
