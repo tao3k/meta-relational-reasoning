@@ -1,0 +1,21 @@
+[package]
+name = "mrr-rust-project-harness-policy"
+version = "0.1.0"
+edition = "2024"
+publish = false
+build = "build.rs"
+
+[dependencies]
+rust-lang-project-harness = { git = "https://github.com/tao3k/rust-lang-project-harness", rev = "8f23f6cd211c02f4b0146d842025f3c639fcf1cc", version = "0.1" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[build-dependencies]
+rust-lang-project-harness = { git = "https://github.com/tao3k/rust-lang-project-harness", rev = "8f23f6cd211c02f4b0146d842025f3c639fcf1cc", version = "0.1" }
+
+[dev-dependencies]
+criterion = { version = "0.8.2" }
+
+[[bench]]
+name = "performance_verification"
+harness = false

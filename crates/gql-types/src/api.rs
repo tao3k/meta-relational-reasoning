@@ -13,6 +13,8 @@ pub enum ValueType {
     Decimal,
     /// Text value.
     String,
+    /// List value.
+    List,
     /// Node-typed value.
     Node,
     /// Edge-typed value.
@@ -36,6 +38,8 @@ pub enum Value {
     Decimal(String),
     /// String value.
     String(String),
+    /// List value.
+    List(Vec<Value>),
 }
 
 impl Value {
@@ -48,6 +52,7 @@ impl Value {
             Self::Integer(_) => ValueType::Integer,
             Self::Decimal(_) => ValueType::Decimal,
             Self::String(_) => ValueType::String,
+            Self::List(_) => ValueType::List,
         }
     }
 }

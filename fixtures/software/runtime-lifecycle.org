@@ -1,0 +1,9 @@
+* Intent
+** Goal
+- Admit only active-generation runtime responses.
+** Constraint
+- Reject stale generation responses.
+** Question
+- Why does changing generation identity require restart?
+** Invariant
+- Every admitted response matches the active generation.

@@ -1,0 +1,33 @@
+#+title: MetaQueryIR Gap Analysis
+#+author: gql-rust contributors
+#+options: toc:nil
+
+* Scope
+
+This retrieval compares the pre-existing =gql-ir= owner with the shared
+=mrr-query= contract.  It is a semantic ownership map, not a compatibility
+plan: frontends must lower into =MetaQueryIr= and the old IR may only remain as
+a bounded migration oracle until its production consumers are removed.
+
+| Existing GQL concept | Shared MRR concept | GQL-only responsibility |
+|----------------------+--------------------+-------------------------|
+| =Binding= | =Binding= | identifier spelling and source span |
+| =GraphPattern= | =GraphPattern= | MATCH clause syntax |
+| =NodePattern= | =NodePattern= | label token syntax |
+| =EdgePattern= | =RelationPattern= | edge punctuation and keyword spelling |
+| =EdgeDirection= | =Direction= | arrow token recovery |
+| =PathPattern= / quantifier | =PathPattern= / hop bounds | surface quantifier syntax |
+| expression tree | =Expression= | dialect operators and diagnostics |
+| =Projection= | =Projection= | RETURN clause syntax |
+| grouping / aggregate expressions | =Aggregation= | dialect aggregate names |
+| =SortKey= / =SortDirection= | =Ordering= / =SortDirection= | ORDER BY syntax |
+| query limit | =MetaQueryIr.limit= | LIMIT/OFFSET syntax |
+| CST/source ranges | none | frontend-only lossless syntax evidence |
+
+* Finding
+
+The reusable semantic shapes existed only under =gql-ir=.  Before M3,
+=mrr-query= owned Datalog-like atoms and a small query body but no graph query
+IR.  M3 keeps =Atom= and =Term= as logic contracts, renames the body to
+=RelationalGoal=, and introduces the independent =MetaQueryIr= owner without a
+GQL/Cypher keyword or AST dependency.

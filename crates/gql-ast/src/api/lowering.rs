@@ -3,7 +3,8 @@
 
 use super::{
     BinaryOperator, EdgeDirection, EdgePattern, Expression, GraphPattern, Identifier, MatchClause,
-    NodePattern, PatternElement, Query, QueryClause, Statement, SyntaxParseOutput, UnaryOperator,
+    NodePattern, PathPattern, PathQuantifier, PatternElement, Query, QueryClause, ReturnProjection,
+    SortDirection, SortKey, Statement, SyntaxParseOutput, UnaryOperator,
 };
 use gql_source::{Diagnostic, Span};
 use gql_syntax::{
@@ -65,6 +66,9 @@ fn lower_query(node: &SyntaxNode, source: &str, diagnostics: &mut Vec<Diagnostic
             SyntaxKind::MatchClause => {
                 clauses.push(QueryClause::Match(lower_match_clause(child, source)))
             }
+            SyntaxKind::OptionalMatchClause => clauses.push(QueryClause::OptionalMatch(
+                lower_optional_match_clause(child, source),
+            )),
             SyntaxKind::WhereClause => {
                 clauses.push(QueryClause::Where {
                     expression: lower_where_clause(child, source, diagnostics),
@@ -73,8 +77,34 @@ fn lower_query(node: &SyntaxNode, source: &str, diagnostics: &mut Vec<Diagnostic
             SyntaxKind::LetClause => {
                 clauses.push(lower_let_clause(child, source, diagnostics));
             }
-            SyntaxKind::ReturnClause => clauses.push(QueryClause::Return {
-                expressions: lower_return_clause(child, source),
+            SyntaxKind::ReturnClause => {
+                let projections = lower_return_clause(child, source);
+                if projections
+                    .iter()
+                    .any(|projection| projection.alias.is_some())
+                {
+                    clauses.push(QueryClause::ReturnAliased { projections });
+                } else {
+                    clauses.push(QueryClause::Return {
+                        expressions: projections
+                            .into_iter()
+                            .map(|projection| projection.expression)
+                            .collect(),
+                    });
+                }
+            }
+            SyntaxKind::UnionClause => clauses.push(QueryClause::Union { span: child.span() }),
+            SyntaxKind::LimitClause => clauses.push(QueryClause::Limit {
+                value: first_number(child),
+                span: child.span(),
+            }),
+            SyntaxKind::OrderByClause => clauses.push(QueryClause::OrderBy {
+                keys: lower_order_by_clause(child, source),
+                span: child.span(),
+            }),
+            SyntaxKind::OffsetClause => clauses.push(QueryClause::Offset {
+                value: first_number(child),
+                span: child.span(),
             }),
             _ => {}
         }
@@ -104,9 +134,19 @@ fn lower_match_clause(node: &SyntaxNode, source: &str) -> MatchClause {
         let Some(child) = syntax_node(&element) else {
             continue;
         };
-        if child.kind() == SyntaxKind::GraphPattern {
-            pattern = lower_graph_pattern(child, source);
-            break;
+        match child.kind() {
+            SyntaxKind::GraphPattern => {
+                pattern = lower_graph_pattern(child, source);
+                break;
+            }
+            SyntaxKind::PathPattern => {
+                pattern = GraphPattern {
+                    elements: vec![PatternElement::Path(lower_path_pattern(child, source))],
+                    span: child.span(),
+                };
+                break;
+            }
+            _ => {}
         }
     }
 
@@ -114,6 +154,24 @@ fn lower_match_clause(node: &SyntaxNode, source: &str) -> MatchClause {
         pattern,
         span: node.span(),
     }
+}
+
+fn lower_optional_match_clause(node: &SyntaxNode, source: &str) -> MatchClause {
+    node.children()
+        .into_iter()
+        .find_map(|element| {
+            let SyntaxElementKind::Node(child) = element.kind else {
+                return None;
+            };
+            (child.kind() == SyntaxKind::MatchClause).then(|| lower_match_clause(&child, source))
+        })
+        .unwrap_or(MatchClause {
+            pattern: GraphPattern {
+                elements: Vec::new(),
+                span: node.span(),
+            },
+            span: node.span(),
+        })
 }
 
 fn lower_graph_pattern(node: &SyntaxNode, source: &str) -> GraphPattern {
@@ -127,13 +185,10 @@ fn lower_graph_pattern(node: &SyntaxNode, source: &str) -> GraphPattern {
                     elements.push(PatternElement::Node(lower_node_pattern(child_node, source)))
                 }
                 SyntaxKind::EdgePattern => {
-                    let labels = lower_edge_labels(child_node, source);
-                    let direction = edge_direction_from_pattern(child_node);
-                    elements.push(PatternElement::Edge(EdgePattern {
-                        labels,
-                        direction,
-                        span: child_node.span(),
-                    }));
+                    elements.push(PatternElement::Edge(lower_edge_pattern(child_node, source)));
+                }
+                SyntaxKind::PathPattern => {
+                    elements.push(PatternElement::Path(lower_path_pattern(child_node, source)))
                 }
                 _ => {}
             },
@@ -145,6 +200,47 @@ fn lower_graph_pattern(node: &SyntaxNode, source: &str) -> GraphPattern {
         elements,
         span: node.span(),
     }
+}
+
+fn lower_path_pattern(node: &SyntaxNode, source: &str) -> PathPattern {
+    let binding = syntax_tokens(node.children()).find_map(|token| {
+        (token.kind == TokenKind::Identifier).then(|| identifier_from_token(&token, source))
+    });
+    let elements = node
+        .children()
+        .into_iter()
+        .find_map(|element| {
+            let child = syntax_node(&element)?;
+            (child.kind() == SyntaxKind::GraphPattern)
+                .then(|| lower_graph_pattern(child, source).elements)
+        })
+        .unwrap_or_default();
+
+    PathPattern {
+        binding,
+        elements,
+        span: node.span(),
+    }
+}
+
+fn lower_path_quantifier(node: &SyntaxNode, _source: &str) -> Option<PathQuantifier> {
+    let quantifier = node.children().into_iter().find_map(|element| {
+        let SyntaxElementKind::Node(child) = element.kind else {
+            return None;
+        };
+        (child.kind() == SyntaxKind::PathQuantifier).then_some(child)
+    })?;
+    let mut numbers = syntax_tokens(quantifier.children())
+        .filter(|token| token.kind == TokenKind::Number)
+        .map(|token| token.text().parse::<u32>().ok());
+    let min = numbers.next().flatten()?;
+    let max = numbers.next().flatten();
+
+    Some(PathQuantifier {
+        min,
+        max,
+        span: quantifier.span(),
+    })
 }
 
 fn edge_direction_from_pattern(edge: &SyntaxNode) -> EdgeDirection {
@@ -169,32 +265,80 @@ fn edge_direction_from_pattern(edge: &SyntaxNode) -> EdgeDirection {
     }
 }
 
-fn lower_edge_labels(node: &SyntaxNode, source: &str) -> Vec<Identifier> {
-    for element in node.children() {
-        if let SyntaxElement {
-            kind: SyntaxElementKind::Node(child_node),
-        } = element
-            && child_node.kind() == SyntaxKind::LabelList
-        {
-            return lower_label_list(&child_node, source);
+fn lower_edge_pattern(node: &SyntaxNode, source: &str) -> EdgePattern {
+    let label_tokens = node
+        .children()
+        .into_iter()
+        .find_map(|element| match element.kind {
+            SyntaxElementKind::Node(child) if child.kind() == SyntaxKind::LabelList => {
+                Some(syntax_tokens(child.children()).collect::<Vec<_>>())
+            }
+            _ => None,
+        });
+    let mut binding = None;
+    let mut labels = Vec::new();
+    if let Some(tokens) = label_tokens {
+        let has_colon = tokens
+            .iter()
+            .any(|token| token.kind == TokenKind::Punctuation(':'));
+        let mut in_labels = !has_colon;
+        for token in tokens {
+            match token.kind {
+                TokenKind::Punctuation(':') => in_labels = true,
+                TokenKind::Identifier | TokenKind::Keyword(_) => {
+                    let identifier = identifier_from_token(&token, source);
+                    if !in_labels && binding.is_none() {
+                        binding = Some(identifier);
+                    } else {
+                        labels.push(identifier);
+                    }
+                }
+                _ => {}
+            }
         }
     }
-    Vec::new()
+
+    EdgePattern {
+        binding,
+        labels,
+        properties: lower_pattern_properties(node, source),
+        direction: edge_direction_from_pattern(node),
+        quantifier: lower_path_quantifier(node, source),
+        span: node.span(),
+    }
 }
 
-fn lower_return_clause(node: &SyntaxNode, source: &str) -> Vec<Expression> {
-    let mut expressions = Vec::new();
+fn lower_return_clause(node: &SyntaxNode, source: &str) -> Vec<ReturnProjection> {
+    let mut projections = Vec::new();
+    let mut pending_expression = None;
     for element in node.children() {
         let Some(child) = syntax_node(&element) else {
             continue;
         };
-        if is_expression_kind(child.kind()) {
-            if let Some(expression) = lower_expression(child, source) {
-                expressions.push(expression);
-            }
+        if is_expression_kind(child.kind())
+            && let Some(expression) = lower_expression(child, source)
+            && let Some(expression) = pending_expression.replace(expression)
+        {
+            projections.push(ReturnProjection {
+                expression,
+                alias: None,
+            });
+        } else if child.kind() == SyntaxKind::ProjectionAlias
+            && let Some(expression) = pending_expression.take()
+        {
+            projections.push(ReturnProjection {
+                expression,
+                alias: first_identifier(child, source),
+            });
         }
     }
-    expressions
+    if let Some(expression) = pending_expression {
+        projections.push(ReturnProjection {
+            expression,
+            alias: None,
+        });
+    }
+    projections
 }
 
 fn lower_where_clause(
@@ -277,6 +421,55 @@ fn lower_expression(node: &SyntaxNode, source: &str) -> Option<Expression> {
                 right: Box::new(right),
             })
         }
+        SyntaxKind::PropertyAccessExpression => {
+            let base = node.children().iter().find_map(|element| match element {
+                SyntaxElement {
+                    kind: SyntaxElementKind::Node(child),
+                } if is_expression_kind(child.kind()) => lower_expression(child, source),
+                _ => None,
+            })?;
+            let property = node.children().iter().find_map(|element| match element {
+                SyntaxElement {
+                    kind: SyntaxElementKind::Token(token),
+                } if token.kind == TokenKind::Identifier => {
+                    Some(identifier_from_token(token, source))
+                }
+                _ => None,
+            })?;
+            Some(Expression::PropertyAccess {
+                base: Box::new(base),
+                property,
+            })
+        }
+        SyntaxKind::ListExpression => {
+            let items = node
+                .children()
+                .iter()
+                .filter_map(|element| match element {
+                    SyntaxElement {
+                        kind: SyntaxElementKind::Node(child),
+                    } if is_expression_kind(child.kind()) => lower_expression(child, source),
+                    _ => None,
+                })
+                .collect::<Vec<_>>();
+            Some(Expression::List(items, node.span()))
+        }
+        SyntaxKind::SubscriptExpression => {
+            let children = node.children();
+            let mut expressions = children.iter().filter_map(|element| match element {
+                SyntaxElement {
+                    kind: SyntaxElementKind::Node(child),
+                } if is_expression_kind(child.kind()) => lower_expression(child, source),
+                _ => None,
+            });
+            let base = expressions.next()?;
+            let index = expressions.next()?;
+            Some(Expression::Subscript {
+                base: Box::new(base),
+                index: Box::new(index),
+            })
+        }
+        SyntaxKind::CaseExpression => lower_case_expression(node, source),
         SyntaxKind::ParenthesizedExpression => {
             node.children().iter().find_map(|element| match element {
                 SyntaxElement {
@@ -301,8 +494,81 @@ fn is_expression_kind(kind: SyntaxKind) -> bool {
             | SyntaxKind::LiteralExpression
             | SyntaxKind::UnaryExpression
             | SyntaxKind::BinaryExpression
+            | SyntaxKind::PropertyAccessExpression
+            | SyntaxKind::ListExpression
+            | SyntaxKind::SubscriptExpression
             | SyntaxKind::ParenthesizedExpression
+            | SyntaxKind::CaseExpression
     )
+}
+
+fn lower_case_expression(node: &SyntaxNode, source: &str) -> Option<Expression> {
+    let children = node.children();
+    let first_branch = children.iter().position(|element| {
+        matches!(
+            element,
+            SyntaxElement {
+                kind: SyntaxElementKind::Node(child),
+            } if child.kind() == SyntaxKind::CaseWhenClause
+        )
+    })?;
+    let operand = children[..first_branch]
+        .iter()
+        .find_map(|element| match element {
+            SyntaxElement {
+                kind: SyntaxElementKind::Node(child),
+            } if is_expression_kind(child.kind()) => lower_expression(child, source).map(Box::new),
+            _ => None,
+        });
+    let branches = children
+        .iter()
+        .filter_map(|element| match element {
+            SyntaxElement {
+                kind: SyntaxElementKind::Node(child),
+            } if child.kind() == SyntaxKind::CaseWhenClause => {
+                let expressions = child
+                    .children()
+                    .iter()
+                    .filter_map(|element| match element {
+                        SyntaxElement {
+                            kind: SyntaxElementKind::Node(expression),
+                        } if is_expression_kind(expression.kind()) => {
+                            lower_expression(expression, source)
+                        }
+                        _ => None,
+                    })
+                    .collect::<Vec<_>>();
+                (expressions.len() == 2).then(|| super::types::CaseBranch {
+                    condition: expressions[0].clone(),
+                    result: expressions[1].clone(),
+                    span: child.span(),
+                })
+            }
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    let else_result = children.iter().find_map(|element| match element {
+        SyntaxElement {
+            kind: SyntaxElementKind::Node(child),
+        } if child.kind() == SyntaxKind::CaseElseClause => child
+            .children()
+            .iter()
+            .find_map(|element| match element {
+                SyntaxElement {
+                    kind: SyntaxElementKind::Node(expression),
+                } if is_expression_kind(expression.kind()) => lower_expression(expression, source),
+                _ => None,
+            })
+            .map(Box::new),
+        _ => None,
+    });
+
+    Some(Expression::Case {
+        operand,
+        branches,
+        else_result,
+        span: node.span(),
+    })
 }
 
 fn binary_operator_from_node(node: &SyntaxNode) -> Option<BinaryOperator> {
@@ -311,6 +577,12 @@ fn binary_operator_from_node(node: &SyntaxNode) -> Option<BinaryOperator> {
         .map(|token| token.kind)
         .collect::<Vec<_>>();
     match tokens.as_slice() {
+        [TokenKind::Punctuation('+')] => Some(BinaryOperator::Add),
+        [TokenKind::Punctuation('-')] => Some(BinaryOperator::Subtract),
+        [TokenKind::Punctuation('*')] => Some(BinaryOperator::Multiply),
+        [TokenKind::Punctuation('/')] => Some(BinaryOperator::Divide),
+        [TokenKind::Punctuation('%')] => Some(BinaryOperator::Modulo),
+        [TokenKind::Keyword(Keyword::In)] => Some(BinaryOperator::In),
         [TokenKind::Keyword(Keyword::Or)] => Some(BinaryOperator::Or),
         [TokenKind::Keyword(Keyword::And)] => Some(BinaryOperator::And),
         [TokenKind::Punctuation('=')] => Some(BinaryOperator::Equals),
@@ -407,6 +679,11 @@ fn parse_expression_binary_operator(
         return None;
     };
     match token.kind {
+        TokenKind::Punctuation('+') => Some((BinaryOperator::Add, 1)),
+        TokenKind::Punctuation('-') => Some((BinaryOperator::Subtract, 1)),
+        TokenKind::Punctuation('*') => Some((BinaryOperator::Multiply, 1)),
+        TokenKind::Punctuation('/') => Some((BinaryOperator::Divide, 1)),
+        TokenKind::Punctuation('%') => Some((BinaryOperator::Modulo, 1)),
         TokenKind::Keyword(Keyword::Or) => Some((BinaryOperator::Or, 1)),
         TokenKind::Keyword(Keyword::And) => Some((BinaryOperator::And, 1)),
         TokenKind::Punctuation('=') => Some((BinaryOperator::Equals, 1)),
@@ -509,10 +786,10 @@ fn collect_non_trivia_elements(elements: &[SyntaxElement]) -> Vec<&SyntaxElement
 fn lower_expression_token(token: &Token, source: &str) -> Option<Expression> {
     match token.kind {
         TokenKind::Identifier => Some(Expression::Name(identifier_from_token(token, source))),
-        TokenKind::Keyword(_) => Some(Expression::Name(Identifier {
-            text: token_text(token, source),
-            span: token.span,
-        })),
+        TokenKind::Keyword(Keyword::True) => Some(Expression::Boolean(true, token.span)),
+        TokenKind::Keyword(Keyword::False) => Some(Expression::Boolean(false, token.span)),
+        TokenKind::Keyword(Keyword::Null) => Some(Expression::Null(token.span)),
+        TokenKind::Keyword(_) => None,
         TokenKind::String => {
             let mut value = token_text(token, source);
             if value.len() >= 2
@@ -523,10 +800,17 @@ fn lower_expression_token(token: &Token, source: &str) -> Option<Expression> {
             }
             Some(Expression::String(value, token.span))
         }
-        TokenKind::Number => token_text(token, source)
-            .parse::<i64>()
-            .ok()
-            .map(|value| Expression::Integer(value, token.span)),
+        TokenKind::Number => {
+            let value = token_text(token, source);
+            if value.contains('.') {
+                Some(Expression::Decimal(value, token.span))
+            } else {
+                value
+                    .parse::<i64>()
+                    .ok()
+                    .map(|value| Expression::Integer(value, token.span))
+            }
+        }
         _ => None,
     }
 }
@@ -625,7 +909,20 @@ fn lower_node_pattern(node: &SyntaxNode, source: &str) -> NodePattern {
     let mut consumed_binding = false;
     let mut in_labels = false;
 
-    for token in syntax_tokens(node.children()) {
+    let pattern_children = node
+        .children()
+        .iter()
+        .filter(|element| {
+            !matches!(
+                element,
+                SyntaxElement {
+                    kind: SyntaxElementKind::Node(child),
+                } if child.kind() == SyntaxKind::PropertyMap
+            )
+        })
+        .cloned()
+        .collect::<Vec<_>>();
+    for token in syntax_tokens(pattern_children) {
         match token.kind {
             TokenKind::Whitespace => {}
             TokenKind::Punctuation(':') => in_labels = true,
@@ -645,19 +942,54 @@ fn lower_node_pattern(node: &SyntaxNode, source: &str) -> NodePattern {
     NodePattern {
         binding,
         labels,
+        properties: lower_pattern_properties(node, source),
         span: node.span(),
     }
 }
 
-fn lower_label_list(node: &SyntaxNode, source: &str) -> Vec<Identifier> {
-    syntax_tokens(node.children())
-        .filter_map(|token| match token.kind {
-            TokenKind::Identifier | TokenKind::Keyword(_) => {
-                Some(identifier_from_token(&token, source))
+fn lower_pattern_properties(
+    node: &SyntaxNode,
+    source: &str,
+) -> Vec<super::types::PropertyConstraint> {
+    let mut properties = Vec::new();
+    for element in node.children() {
+        let SyntaxElementKind::Node(property_map) = &element.kind else {
+            continue;
+        };
+        if property_map.kind() != SyntaxKind::PropertyMap {
+            continue;
+        }
+        for map_element in property_map.children() {
+            let SyntaxElementKind::Node(entry) = &map_element.kind else {
+                continue;
+            };
+            if entry.kind() != SyntaxKind::PropertyEntry {
+                continue;
             }
-            _ => None,
-        })
-        .collect()
+            let key = entry.children().iter().find_map(|child| match child {
+                SyntaxElement {
+                    kind: SyntaxElementKind::Token(token),
+                } if matches!(token.kind, TokenKind::Identifier | TokenKind::Keyword(_)) => {
+                    Some(identifier_from_token(token, source))
+                }
+                _ => None,
+            });
+            let value = entry.children().iter().find_map(|child| match child {
+                SyntaxElement {
+                    kind: SyntaxElementKind::Node(expression),
+                } if is_expression_kind(expression.kind()) => lower_expression(expression, source),
+                _ => None,
+            });
+            if let (Some(key), Some(value)) = (key, value) {
+                properties.push(super::types::PropertyConstraint {
+                    key,
+                    value,
+                    span: entry.span(),
+                });
+            }
+        }
+    }
+    properties
 }
 
 fn syntax_node(element: &SyntaxElement) -> Option<&SyntaxNode> {
@@ -686,4 +1018,67 @@ fn identifier_from_token(token: &Token, source: &str) -> Identifier {
         text: token_text(token, source),
         span: token.span,
     }
+}
+
+fn first_identifier(node: &SyntaxNode, source: &str) -> Option<Identifier> {
+    node.children()
+        .into_iter()
+        .find_map(|element| match element.kind {
+            SyntaxElementKind::Token(token) if token.kind == TokenKind::Identifier => {
+                Some(identifier_from_token(&token, source))
+            }
+            _ => None,
+        })
+}
+
+fn first_number(node: &SyntaxNode) -> Option<u64> {
+    node.children()
+        .into_iter()
+        .find_map(|element| match element.kind {
+            SyntaxElementKind::Token(token) if token.kind == TokenKind::Number => {
+                token.text().parse().ok()
+            }
+            _ => None,
+        })
+}
+
+fn lower_order_by_clause(node: &SyntaxNode, source: &str) -> Vec<SortKey> {
+    let mut keys = Vec::new();
+    let mut pending = None;
+    for element in node.children() {
+        match element.kind {
+            SyntaxElementKind::Node(child)
+                if is_expression_kind(child.kind())
+                    && let Some(expression) = lower_expression(&child, source)
+                    && let Some(expression) = pending.replace(expression) =>
+            {
+                keys.push(SortKey {
+                    expression,
+                    direction: SortDirection::Ascending,
+                });
+            }
+            SyntaxElementKind::Token(token)
+                if matches!(token.kind, TokenKind::Keyword(Keyword::Asc | Keyword::Desc)) =>
+            {
+                if let Some(expression) = pending.take() {
+                    keys.push(SortKey {
+                        expression,
+                        direction: if token.kind == TokenKind::Keyword(Keyword::Desc) {
+                            SortDirection::Descending
+                        } else {
+                            SortDirection::Ascending
+                        },
+                    });
+                }
+            }
+            _ => {}
+        }
+    }
+    if let Some(expression) = pending {
+        keys.push(SortKey {
+            expression,
+            direction: SortDirection::Ascending,
+        });
+    }
+    keys
 }

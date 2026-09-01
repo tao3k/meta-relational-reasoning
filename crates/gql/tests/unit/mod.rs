@@ -1,6 +1,12 @@
 use crate::catalog::{Catalog, CatalogName};
 use crate::syntax::TokenKind;
 
+#[path = "frontend_contract.rs"]
+mod frontend_contract;
+
+#[path = "case_expression_contract.rs"]
+mod case_expression_contract;
+
 fn catalog() -> Catalog {
     Catalog::new(CatalogName("test-catalog".into()), Vec::new(), Vec::new())
 }

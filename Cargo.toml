@@ -1,19 +1,23 @@
 [workspace]
-members = ["build-support/gql-rust-project-harness-policy", "crates/*"]
+members = [
+  "build-support/mrr-rust-project-harness-policy",
+  "build-support/mrr-gerbil-native-build",
+  "crates/*",
+]
 resolver = "2"
 
 [workspace.package]
 version = "0.1.0"
 edition = "2024"
-rust-version = "1.85"
+rust-version = "1.95"
 license = "Apache-2.0"
-repository = "https://github.com/tao3k/gql-rust"
+repository = "https://github.com/tao3k/meta-relational-reasoning"
 
 [workspace.dependencies]
 ascent = "0.8.0"
 gql = { path = "crates/gql", version = "0.1.0", default-features = false }
 criterion = "0.8.2"
-gql-ascent = { path = "crates/gql-ascent", version = "0.1.0" }
+gerbil-scheme-native-build = { git = "https://github.com/tao3k/gerbil-scheme-rust.git", rev = "a83fb649ddbbeaabdb538a6eaf0ded10838f7fad" }
 gql-ast = { path = "crates/gql-ast", version = "0.1.0" }
 gql-catalog = { path = "crates/gql-catalog", version = "0.1.0" }
 gql-compiler = { path = "crates/gql-compiler", version = "0.1.0" }
@@ -23,8 +27,40 @@ gql-sema = { path = "crates/gql-sema", version = "0.1.0" }
 gql-source = { path = "crates/gql-source", version = "0.1.0" }
 gql-syntax = { path = "crates/gql-syntax", version = "0.1.0" }
 gql-types = { path = "crates/gql-types", version = "0.1.0" }
-gql-rust-project-harness-policy = { path = "build-support/gql-rust-project-harness-policy", version = "0.1.0" }
-gql-reasoning = { path = "crates/gql-reasoning", version = "0.1.0" }
+mrr-rust-project-harness-policy = { path = "build-support/mrr-rust-project-harness-policy", version = "0.1.0" }
+mrr-identity = { path = "crates/mrr-identity", version = "0.1.0" }
+mrr-intent = { path = "crates/mrr-intent", version = "0.1.0" }
+mrr-relation = { path = "crates/mrr-relation", version = "0.1.0" }
+mrr-revision = { path = "crates/mrr-revision", version = "0.1.0" }
+mrr-query = { path = "crates/mrr-query", version = "0.1.0" }
+mrr-frontends = { path = "crates/mrr-frontends", version = "0.1.0" }
+mrr-logic = { path = "crates/mrr-logic", version = "0.1.0" }
+mrr-mvp-acceptance = { path = "crates/mrr-mvp-acceptance", version = "0.1.0" }
+mrr-lineage = { path = "crates/mrr-lineage", version = "0.1.0" }
+mrr-transition = { path = "crates/mrr-transition", version = "0.1.0" }
+mrr-bundle = { path = "crates/mrr-bundle", version = "0.1.0" }
+mrr-ascent = { path = "crates/mrr-ascent", version = "0.1.0" }
+mrr-gerbil = { path = "crates/mrr-gerbil", version = "0.1.0" }
+mrr-gerbil-native-build = { path = "build-support/mrr-gerbil-native-build", version = "0.1.0" }
+meta-relational-reasoning = { path = "crates/meta-relational-reasoning", version = "0.1.0" }
+sha2 = "0.10.9"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+ciborium = "0.2"
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
+
+
+[profile.dev]
+incremental = true
+opt-level = "s"
+debug = 1
+split-debuginfo = "unpacked"
+
+[profile.dev.package."*"]
+debug = false
+
+[profile.dev.build-override]
+opt-level = "s"
+debug = false

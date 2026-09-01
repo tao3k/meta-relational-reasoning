@@ -1,0 +1,67 @@
+#+title: RFC 0006: MetaQueryIR
+#+author: gql-rust contributors
+#+options: toc:2
+#+property: header-args :eval never-export :exports code
+
+* Status
+
+Accepted architecture.
+
+* Decision
+
+=mrr-query= owns the canonical language-neutral query contract.  =MetaQueryIr=
+contains stable query and operator identities, graph/node/relation patterns,
+bindings, filters, projections, aggregations, path bounds and direction,
+ordering, and a bounded result limit.  It contains no GQL, Cypher, or PGQL
+keyword, source token, recovery rule, or CST node.
+
+The canonical wire representation is the schema prefix
+=mrr.meta-query.v1\0= followed by deterministic CBOR over the normalized typed
+structure.  Decode rejects the wrong schema, malformed payload, trailing bytes,
+invalid names, zero limits, invalid path bounds, and expression-less non-count
+aggregations.  JSON and S-expression parsing are not part of this boundary.
+
+=RelationalGoal=, =Atom=, and =Term= remain the language-neutral logical query
+contract used by rule validation.  The ambiguous old public type name =Query=
+does not remain as an alias.
+
+#+name: rfc-0006-query-boundary
+#+begin_src mermaid
+flowchart LR
+  G[GQL frontend] --> M[MetaQueryIR]
+  C[Cypher frontend] --> M
+  O[Other relational frontend] --> M
+  M --> N[Normalize]
+  N --> E[Versioned canonical CBOR]
+  M --> K[MRR query and reasoning consumers]
+  G -. tokens and recovery stay here .-> G
+  C -. tokens and recovery stay here .-> C
+#+end_src
+
+* Normalization and equality
+
+Node and relation type sets are sorted and deduplicated.  Path, projection, and
+ordering sequence remains stable because order is semantic.  Repeated encoding
+of a normalized value is byte-identical, and decoding returns the normalized
+typed value.
+
+#+name: rfc-0006-query-mathematics
+#+begin_src typst
+#set page(paper: "a4", margin: 24mm)
+#set text(font: "Libertinus Serif", size: 10.5pt)
+
+= RFC 0006: MetaQueryIR
+
+Let $N$ be normalization and $E_v$ / $D_v$ the versioned encoder and decoder.
+For every admitted query $q$,
+
+$ N(N(q)) = N(q), $
+
+$ D_v(E_v(N(q))) = N(q), $
+
+and
+
+$ E_v(N(q)) = E_v(N(q)). $
+
+Frontend syntax is evidence used to construct $q$; it is not a field of $q$.
+#+end_src

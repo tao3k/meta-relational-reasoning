@@ -2,7 +2,8 @@
 
 use gql_source::{Diagnostic, Span};
 
-use crate::syntax::{Keyword, Token, TokenKind};
+pub(crate) use crate::syntax::keyword;
+use crate::syntax::{Token, TokenKind};
 
 /// Lexes `text` into tokens and diagnostics.
 pub(crate) fn lex(text: &str) -> (Vec<Token>, Vec<Diagnostic>) {
@@ -86,6 +87,15 @@ pub(crate) fn lex(text: &str) -> (Vec<Token>, Vec<Diagnostic>) {
 
         if ch.is_ascii_digit() {
             consume_while(&mut cursor, text, |next| next.is_ascii_digit());
+            if text.as_bytes().get(cursor) == Some(&b'.')
+                && text
+                    .as_bytes()
+                    .get(cursor + 1)
+                    .is_some_and(|next| next.is_ascii_digit())
+            {
+                cursor += 1;
+                consume_while(&mut cursor, text, |next| next.is_ascii_digit());
+            }
 
             tokens.push(Token::new(
                 TokenKind::Number,
@@ -95,7 +105,7 @@ pub(crate) fn lex(text: &str) -> (Vec<Token>, Vec<Diagnostic>) {
             continue;
         }
 
-        let punctuation = "[](){}:,.-><-+*=;!";
+        let punctuation = "[]{}():,.-><-+*/%=;!";
         if punctuation.contains(ch) {
             cursor += ch.len_utf8();
             tokens.push(Token::new(
@@ -120,26 +130,6 @@ pub(crate) fn lex(text: &str) -> (Vec<Token>, Vec<Diagnostic>) {
     }
 
     (tokens, diagnostics)
-}
-
-pub(crate) fn keyword(word: &str) -> Option<Keyword> {
-    match word.to_ascii_uppercase().as_str() {
-        "MATCH" => Some(Keyword::Match),
-        "WHERE" => Some(Keyword::Where),
-        "LET" => Some(Keyword::Let),
-        "RETURN" => Some(Keyword::Return),
-        "OR" => Some(Keyword::Or),
-        "AND" => Some(Keyword::And),
-        "NOT" => Some(Keyword::Not),
-        "CALL" => Some(Keyword::Call),
-        "CREATE" => Some(Keyword::Create),
-        "DROP" => Some(Keyword::Drop),
-        "INSERT" => Some(Keyword::Insert),
-        "DELETE" => Some(Keyword::Delete),
-        "SET" => Some(Keyword::Set),
-        "REMOVE" => Some(Keyword::Remove),
-        _ => None,
-    }
 }
 
 fn is_identifier_start(ch: char) -> bool {

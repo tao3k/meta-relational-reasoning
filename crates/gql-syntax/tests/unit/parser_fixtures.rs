@@ -1,7 +1,89 @@
+use std::collections::HashSet;
 use std::fs;
 use std::path::Path;
 
 use crate::parse;
+
+const M5_POSITIVE_CORPUS: &str = include_str!("../../test-data/parser/m5-positive.tsv");
+const M5_NEGATIVE_CORPUS: &str = include_str!("../../test-data/parser/m5-negative.tsv");
+
+fn m5_corpus_cases(corpus: &'static str, prefix: &str) -> Vec<(&'static str, &'static str)> {
+    let cases: Vec<_> = corpus
+        .lines()
+        .map(|line| {
+            line.split_once('\t')
+                .expect("M5 corpus rows must be id<TAB>query")
+        })
+        .collect();
+    assert_eq!(
+        cases.len(),
+        100,
+        "M5 {prefix} corpus must contain exactly 100 cases"
+    );
+
+    let ids: HashSet<_> = cases.iter().map(|(id, _)| *id).collect();
+    let sources: HashSet<_> = cases.iter().map(|(_, source)| *source).collect();
+    assert_eq!(
+        ids.len(),
+        cases.len(),
+        "M5 {prefix} case ids must be unique"
+    );
+    assert_eq!(
+        sources.len(),
+        cases.len(),
+        "M5 {prefix} queries must be unique"
+    );
+    assert!(
+        cases
+            .iter()
+            .all(|(id, source)| id.starts_with(prefix) && !source.is_empty()),
+        "M5 {prefix} rows must use the expected id prefix and non-empty query"
+    );
+    cases
+}
+
+#[test]
+fn m5_positive_corpus_is_accepted_losslessly() {
+    for (id, source) in m5_corpus_cases(M5_POSITIVE_CORPUS, "p") {
+        let parsed = parse(id, source);
+        assert!(
+            parsed.diagnostics.is_empty(),
+            "positive case {id} should parse cleanly: {:?}",
+            parsed.diagnostics
+        );
+        assert_eq!(
+            parsed.tree.source().text(),
+            source,
+            "source mismatch for {id}"
+        );
+        assert_eq!(
+            parsed.tree.rowan_root().text().to_string(),
+            source,
+            "CST mismatch for {id}"
+        );
+    }
+}
+
+#[test]
+fn m5_negative_corpus_is_rejected_losslessly() {
+    for (id, source) in m5_corpus_cases(M5_NEGATIVE_CORPUS, "n") {
+        let parsed = parse(id, source);
+        assert!(
+            !parsed.diagnostics.is_empty(),
+            "negative case {id} must fail closed"
+        );
+        assert_eq!(
+            parsed.tree.source().text(),
+            source,
+            "source mismatch for {id}"
+        );
+        assert_eq!(
+            parsed.tree.rowan_root().text().to_string(),
+            source,
+            "CST mismatch for {id}"
+        );
+    }
+}
 
 #[test]
 fn parser_ok_fixtures_have_no_diagnostics_and_roundtrip_text() {
@@ -119,10 +201,10 @@ fn parser_err_fixtures_include_all_known_cases() {
 
     for entry in fs::read_dir(&fixture_root).expect("parser err fixtures directory should exist") {
         let path = entry.expect("fixture entry").path();
-        if path.extension().and_then(|ext| ext.to_str()) == Some("gql") {
-            if let Some(name) = path.file_name().and_then(|name| name.to_str()) {
-                fixtures.push(name.to_string());
-            }
+        if path.extension().and_then(|ext| ext.to_str()) == Some("gql")
+            && let Some(name) = path.file_name().and_then(|name| name.to_str())
+        {
+            fixtures.push(name.to_string());
         }
     }
 

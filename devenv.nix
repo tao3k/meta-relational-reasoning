@@ -9,7 +9,6 @@
 {
   # https://devenv.sh/basics/
   env.GREET = "devenv";
-
   # https://devenv.sh/packages/
   packages = [
     pkgs.pkg-config
@@ -18,6 +17,8 @@
     pkgs.just
     pkgs.fd
     pkgs.ripgrep
+    pkgs.mermaid-cli
+    pkgs.tlaplus
     pkgs.eza
   ];
 
@@ -45,6 +46,12 @@
   # https://devenv.sh/scripts/
   scripts.hello.exec = ''
     echo hello from $GREET
+  '';
+  scripts.mrr-gerbil-deps.exec = ''
+    env -u CC -u CFLAGS -u CPPFLAGS -u LDFLAGS \
+      -u CPATH -u C_INCLUDE_PATH -u CPLUS_INCLUDE_PATH -u LIBRARY_PATH \
+      -u NIX_CFLAGS_COMPILE -u NIX_LDFLAGS -u DEVELOPER_DIR -u SDKROOT \
+      gxpkg deps --install
   '';
 
   # https://devenv.sh/basics/

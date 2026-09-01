@@ -11,13 +11,14 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - run: cargo test --workspace
+      - run: cargo clippy --workspace --all-targets -- -D warnings
       - run: cargo test -p gql --no-default-features
       - run: cargo test -p gql --all-features
       - name: Core dependency purity
         shell: bash
         run: |
-          if grep -Eq 'default = \["ascent"\]' crates/gql/Cargo.toml; then
-            echo "gql default features should remain backend-neutral (no implicit ascent)."
+          if ! grep -Eq '^default = \["ascent"\]$' crates/gql/Cargo.toml; then
+            echo "gql facade must enable the optional Ascent backend by default."
             exit 1
           fi
           forbidden="gql-ascent|ascent"
@@ -29,22 +30,11 @@ jobs:
               exit 1
             fi
           done
-      - name: Frontend authority and catalog contract
-        shell: bash
+      - name: Frontend feature-invariance contracts
         run: |
-          test ! -e crates/gql-syntax/src/rowan_build.rs
-          if rg -n 'SyntaxNode::new\(|rowan_build|source\.get|edge_direction_from_span|raw\.trim' crates/gql-syntax crates/gql-ast; then
-            echo "frontend must use the direct lossless Rowan tree and typed views."
-            exit 1
-          fi
-          if rg -n 'RelationName|PredicateDescriptor|RelationIdentity|RelationAuthority' crates/gql-catalog/src; then
-            echo "gql-catalog must not own reasoning relation concepts."
-            exit 1
-          fi
-          grep -Fxq 'default = []' crates/gql/Cargo.toml
-          grep -Fq 'gql-catalog ISO catalog declarations only' ARCHITECTURE.md
-          grep -Fq 'quality_capabilities:' iso-gql-feature-ledger.yaml
+          cargo test -p gql frontend_contract
+          cargo test -p gql --no-default-features frontend_contract
       - name: Publish dry-run sanity
         run: |
           echo "Publish readiness is intentionally excluded in this phase."
-          echo "Reason: the workspace crates remain workspace-local and cross-dependent (including local harness policy support), so publish dry-runs are not the correct signal until release packaging topology is established."
+          echo "Reason: every publishable workspace crate keeps the mandatory, unpublished harness policy in dev-dependencies, so Cargo package resolution cannot construct an uploadable crate without removing required policy enforcement."

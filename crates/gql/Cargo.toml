@@ -7,20 +7,14 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 
-[features]
-default = []
-ascent = ["dep:gql-ascent"]
-
 [dependencies]
-gql-ascent = { workspace = true, optional = true }
 gql-core.workspace = true
-gql-reasoning.workspace = true
 
 [dev-dependencies]
 criterion.workspace = true
-gql-rust-project-harness-policy.workspace = true
+mrr-rust-project-harness-policy.workspace = true
 [build-dependencies]
-gql-rust-project-harness-policy.workspace = true
+mrr-rust-project-harness-policy.workspace = true
 
 [[bench]]
 name = "gql_perf"

@@ -1,0 +1,159 @@
+#+title: RFC 0001: Meta-Relational Reasoning Workspace Ownership
+#+author: gql-rust contributors
+#+options: toc:2
+#+property: header-args :eval never-export :exports code
+
+* Status
+
+Accepted foundation.
+
+* Decision
+
+This repository is a language-neutral Meta-Relational Reasoning workspace.
+GQL and Cypher are language adapters; neither owns MRR identity, relation,
+logic, transition, lineage, or bundle semantics.
+
+The dependency direction is executable documentation in the Mermaid Babel
+block below. In particular, =mrr-lineage= and =mrr-transition= are siblings
+over =mrr-identity= and =mrr-relation=; neither depends on the other.
+
+#+name: rfc-0001-dependency-graph
+#+begin_src mermaid
+flowchart TD
+    identity[mrr-identity] --> relation[mrr-relation]
+    relation --> query[mrr-query]
+    query --> logic[mrr-logic]
+    identity --> lineage[mrr-lineage]
+    relation --> lineage
+    identity --> transition[mrr-transition]
+    relation --> transition
+    identity --> bundle[mrr-bundle]
+    relation --> bundle
+    logic --> bundle
+    transition --> bundle
+    bundle --> facade[meta-relational-reasoning]
+    identity --> facade
+    relation --> facade
+    query --> facade
+    logic --> facade
+    lineage --> facade
+    transition --> facade
+    facade --> gql[gql-* adapters]
+    facade --> cypher[cypher-* adapters]
+    facade --> ascent[mrr-ascent adapter]
+    facade --> gerbil[mrr-gerbil adapter]
+#+end_src
+
+=mrr-identity= owns stable typed identities. =mrr-relation= owns relation
+schemas, language-neutral values, and arity-checked facts. =mrr-query= owns
+terms, atoms, and conjunctive query shape. =mrr-logic= owns safe rules.
+=mrr-lineage= owns derivation support. =mrr-transition= owns semantic-generation deltas.
+=mrr-bundle= is the validated transport and persistence admission boundary.
+The =meta-relational-reasoning= crate is the public facade and owns no
+duplicate semantics.
+
+* Language adapters
+
+The existing =gql-*= crates remain the GQL concrete-syntax and semantic
+frontend. No =gql-reasoning= or =gql-ascent= compatibility authority exists.
+GQL and Cypher are admitted only through executable =mrr-frontends=
+syntax-to-MRR contracts, not aliases, provider shims, or empty placeholders.
+
+* Runtime adapters
+
+=mrr-ascent= and =mrr-gerbil= are downstream adapters. They may execute or
+transport validated MRR bundles, but they cannot redefine identity, relation,
+rule, transition, or lineage meaning. Gerbil compilation uses the reviewed
+=gerbil-scheme-rust= integration boundary; Scheme is not evaluated on Rust
+frontend hot paths.
+
+* Repository topology
+
+Stable architecture and audit material lives under =docs/architecture= and
+=docs/audit=. Scheme grammar and reasoning owners live under =scheme=. Formal
+proofs live under =proofs/MRRProof=. Domain fixtures live under
+=fixtures/{software,knowledge,workflow,query,transition}=. Research notes and
+benchmarks remain non-authoritative inputs under =research= and =benchmarks=.
+
+Execution plans, milestone status, and supervisor receipts are task state and
+must not be committed as repository documents.
+
+* Admission sequence
+
+This architecture admits the complete MRR contract chain, facade, the
+executable =BundleAdmission.lean= proof, and its uv-managed local validation
+adapter. The proof covers typed identity separation, bundle fact identity,
+transition-insertion schema/arity, rule-relation admission, closure binding,
+lineage/transition owner conjunction, and counterexample replay. Ascent,
+Gerbil AOT, GQL/Cypher lowering, fixtures, differential oracles, and performance
+owners are independently tested consumers of these contracts.
+
+* Publication view
+
+The Typst Babel block is the publication view of this Org authority. It is not
+a second specification source; prose and contract changes are made in Org.
+
+#+name: rfc-0001-typst-publication
+#+begin_src typst
+#set page(paper: "a4", margin: 24mm)
+#set text(font: "Libertinus Serif", size: 10.5pt)
+#set heading(numbering: "1.")
+
+= RFC 0001: Meta-Relational Reasoning Workspace Ownership
+
+#table(
+  columns: (auto, 1fr),
+  inset: 6pt,
+  [*Status*], [Accepted foundation],
+  [*Authority*], [Org document with embedded Typst and Mermaid Babel blocks],
+  [*Core boundary*], [Validated MRR contracts are language-neutral],
+)
+
+== Ownership
+
+MRR identity, relation, query, logic, lineage, transition, and bundle semantics
+belong to their corresponding `mrr-*` crates. GQL and Cypher are downstream
+language adapters. Runtime integrations execute validated contracts and do not
+redefine them.
+
+== Admission
+
+`mrr-bundle` validates the complete admitted graph, including base facts,
+transition insertions, and rule relation references. The
+`meta-relational-reasoning` crate is a facade without duplicate authority.
+
+Let $R$ be the finite map from relation identities to arities, $F_0$ the base
+facts, $T$ the transitions, and $P$ the rules. Let $rho(f)$ be a fact or atom's
+relation identity and $nu(f)$ a fact's value count. For a fact $f$, define
+
+$ "Valid"_R(f) := rho(f) in "dom"(R) and nu(f) = R(rho(f)). $
+
+For a rule $p$ with head atom $h$ and body atoms $b_i$, define
+
+$ "RuleValid"_R(p) := rho(h(p)) in "dom"(R) and
+  forall i, rho(b_i(p)) in "dom"(R). $
+
+The bundle admission predicate is
+
+$ "BundleValid"(R, F_0, P, T) :=
+  "Unique"("ids"(F_0 + "insertions"(T))) and
+  (forall f in F_0, "Valid"_R(f)) and
+  (forall t in T, forall f in "insertions"(t), "Valid"_R(f)) and
+  (forall p in P, "RuleValid"_R(p)). $
+
+Consequently, every fact made reachable by an admitted transition has a known
+schema and the correct arity, every rule remains inside the admitted relation
+universe, and no insertion can alias an already admitted fact identity. The
+Lean development under `proofs/MRRProof` kernel-checks these consequences.
+The Python local-proof adapter computes the transitive crate impact of current
+or future changed paths, selects the corresponding theorem obligations, injects
+the validated counterexample replay, hashes the exact generated source, and
+kernel-checks it with pinned local Lean 4.31. No proof input crosses a network
+boundary and no external proof service is an MRR authority.
+
+== Topology
+
+Lineage and transition are sibling contracts over identity and relation. The
+canonical dependency graph is the Mermaid Babel block named
+`rfc-0001-dependency-graph` in this Org document.
+#+end_src

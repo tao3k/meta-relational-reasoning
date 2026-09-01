@@ -1,0 +1,161 @@
+#+title: RFC 0003 - Bounded MRR Ascent Evaluation
+#+status: accepted
+
+* Context
+
+The MRR core owns identities, relation schemas, facts, queries, rules, transitions,
+lineage, and bundle validation.  =mrr-ascent= is a downstream execution adapter.  It
+must not invent identifiers, publish facts, admit lineage, reinterpret transitions,
+or become a second semantic authority.
+
+* Ownership
+
+#+begin_src mermaid
+flowchart LR
+  B[mrr-bundle<br/>validated relations/facts/rules] --> A[mrr-ascent<br/>bounded evaluation]
+  I[mrr-identity<br/>caller-owned IDs] --> B
+  A --> C[ClosureReceipt<br/>pack + generation + inputs + digest]
+  C --> L[mrr-lineage admission<br/>validates caller-assigned IDs]
+  T[mrr-transition] -. materialize generation first .-> B
+  A -. never publishes .-> X[(live relation state)]
+#+end_src
+
+The adapter currently owns one deliberately narrow program shape:
+
+1. =reachable(x,y) :- edge(x,y)=;
+2. =reachable(x,z) :- reachable(x,y), edge(y,z)=.
+
+Both relation and rule identities come from the validated bundle.  The two rules
+must belong to the explicitly selected =RulePackId=; a rule found only in another
+pack fails closed.  Variable names are irrelevant; equality and join positions
+define the accepted shape.  Other programs fail closed instead of being silently
+approximated.
+
+* Bounds and deterministic evidence
+
+#+begin_src typst
+#set page(width: 150mm, height: auto, margin: 12mm)
+#set text(size: 10pt)
+
+= Bounded closure contract
+
+Let $V$ be the distinct string-valued endpoints in the admitted source facts and
+$E subset.eq V times V$ the source relation.  Before Ascent runs, the adapter
+checks
+
+$ abs(E) <= L_("input") quad and quad abs(V)^2 <= L_("pairs"). $
+
+The second inequality is an allocation-safe upper bound on the finite binary
+closure domain.  Ascent computes the least fixed point
+
+$ R_0 = E, quad R_(n+1) = R_n union (R_n compose E), quad
+  R^* = union_(n >= 0) R_n. $
+
+For every $(x,z) in R^*$ the receipt carries a shortest support sequence.  Equal
+length witnesses are ordered lexicographically by caller-owned =FactId=.  The
+receipt also binds the selected rule pack, input generation, complete sorted input
+=FactId= set, status, and sorted candidates under the
+=mrr.derivation-receipt.v1= SHA-256 frame.  Repeated evaluation of the same bundle
+and generation therefore yields the same candidate evidence and digest.
+
+The output limit changes only receipt cardinality.  It never changes the computed
+fixed point, and truncation is explicit as =ClosureStatus::OutputTruncated=.
+#+end_src
+
+* Failure and admission boundary
+
+Bundle validation, missing or non-binary schemas, rule-shape mismatch, non-string
+source facts, input capacity, and pair capacity are checked before evaluation.
+Bundles containing transitions are rejected until an upstream owner materializes an
+exact semantic generation.  Evaluation returns =DerivationCandidate= values containing the
+derived relation, values, rule, generation, and ordered supporting =FactId=s.  A later
+=mrr-lineage= admission owner remains responsible for allocating =DerivationId= and
+committing lineage.  Cancellation or failure therefore cannot partially mutate live
+relation state.
+* Atomic closure admission at the facade boundary
+
+=mrr-ascent= ends at a deterministic =ClosureReceipt= containing ordered
+=DerivationCandidate= values but no allocated output identities.
+The =meta-relational-reasoning= facade composes that receipt with identities
+allocated by its caller, while the existing owners retain their authority:
+=mrr-lineage= validates every derivation and =mrr-transition= validates the
+whole immutable semantic-generation delta.  The facade returns =MaterializedClosure= only
+after all validations succeed; it owns no live publication or partial commit.
+That value includes an identity-complete =DerivationReceipt= with =RulePackId=,
+input generation and facts, caller-assigned derived =FactId=s and =DerivationId=s,
+complete closure status, and a digest bound to the pre-admission closure digest.
+
+#+begin_src mermaid
+flowchart LR
+  B[Validated MRR Bundle] --> A[mrr-ascent candidates]
+  I[Caller-assigned FactId and DerivationId] --> F[Facade atomic admission]
+  A --> F
+  F --> L[mrr-lineage validation]
+  L --> T[mrr-transition validation]
+  T --> M[MaterializedClosure]
+  F -. any rejection .-> X[No materialized output]
+#+end_src
+
+The admission contract is all-or-nothing.  Let (C) be the ordered candidate
+receipt, (I) the ordered identity assignment, and (g_t) the requested target
+generation.  Admission is defined only for a complete receipt with a bijective
+identity binding, unique identities, and candidates evaluated at (g_t).
+
+#+begin_src typst
+#set page(width: 15cm, height: auto, margin: 1.2cm)
+#let complete(C) = $ "status"(C) = "Complete" $
+#let unique(xs) = $ forall i, j: i != j => xs_i != xs_j $
+#let bound(C, I, g_t) = $
+  complete(C) and |C| = |I|
+  and unique("fact"(I)) and unique("derivation"(I))
+  and forall c in C: "generation"(c) = g_t
+$
+#let materializable(C, I, g_f, g_t) = $
+  bound(C, I, g_t)
+  and "LineageAccepted"(C, I)
+  and "TransitionAccepted"(g_f, g_t)
+$
+
+$
+  "admit"(C, I, g_f, g_t) =
+  cases(
+    (
+      "Transition"(g_f, g_t, "Lineage"(C, I)),
+      &"if" materializable(C, I, g_f, g_t),
+    ),
+    ("Error", &"otherwise"),
+  )
+$
+
+No prefix of $C$ is observable: lineage rejection or transition rejection
+produces no `MaterializedClosure`.
+#+end_src
+
+The executable contract rejects truncated receipts, candidate/identity count
+mismatches, duplicate fact or derivation identities, cross-generation candidates,
+self-support rejected by =mrr-lineage=, and invalid generation transitions rejected
+by =mrr-transition=.  Candidate sorting remains owned by =mrr-ascent=; identity
+allocation and live publication remain outside this pure admission function.
+
+=BundleAdmission.lean= kernel-checks this boundary with
+=admitted_closure_binding_is_exact= and
+=closure_admission_rejects_any_failed_owner=.  The uv-managed impact owner maps
+changes in =meta-relational-reasoning=, or in its transitive MRR dependencies,
+to those obligations before pinned local Lean admission.
+* Executable Org-Babel validation
+
+The uv-managed =MRRProof= project owns executable validation of architecture
+Babel blocks through =mrr_proof_validation.org_babel=. Its CLI remains a thin
+receipt and local Lean orchestration layer. The validator extracts exact Org source
+provenance, rejects =:file= outputs and unclosed blocks, and emits block counts
+inside the proof-impact receipt.
+
+Mermaid =flowchart=/=graph= blocks are checked by the native flowchart grammar
+shipped with the workspace =mermaid-cli= package.  A no-op AST sink exercises
+the grammar without DOM, Puppeteer, Chrome, rendering, SVG, or repository
+outputs.  Unsupported diagram families fail closed until their native grammar
+is explicitly admitted.  Every Typst block is compiled independently and
+concurrently from stdin to stdout with system-font discovery disabled; embedded Typst fonts remain
+available and the PDF bytes are discarded.  Consequently this validation is
+part of the same local-impact and local Lean commands as the proof, with
+=outputs=none=.

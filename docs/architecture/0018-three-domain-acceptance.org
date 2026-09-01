@@ -1,0 +1,36 @@
+#+title: RFC 0018 - Three-Domain MVP Acceptance
+#+status: accepted
+
+* Product proof
+
+=mrr-mvp-acceptance= runs software lifecycle, knowledge provenance, and
+workflow policy fixtures through the same typed relation, query, bundle,
+deduction, lineage, WHY, WHY-NOT, IMPACT, revision, transition, safety, and Org
+intent APIs.  Domain variation is data and =ReasoningBundle= construction; no
+domain-specific relation or engine enum exists in core crates.
+
+#+begin_src mermaid
+flowchart TD
+  S[Software bundle] --> K[Shared MRR kernel]
+  N[Knowledge bundle] --> K
+  W[Workflow bundle] --> K
+  K --> D[Derive]
+  K --> Y[WHY / WHY-NOT / IMPACT]
+  K --> T[Revision / transition / safety]
+#+end_src
+
+Each fixture performs the same sequence: project intent, admit a canonical
+bundle, inspect a language-neutral query, compute recursive closure, atomically
+materialize caller-identified derivations, explain and impact lineage, analyze
+a missing premise, bind an external revision, and detect an unsafe transition.
+
+#+begin_src typst
+#set page(width: 150mm, height: auto, margin: 12mm)
+#let accept(domain) = (
+  "intent", "bundle", "query", "derive", "why", "why-not", "impact",
+  "revision", "transition", "safety",
+)
+$ "accept"("software") = "accept"("knowledge") = "accept"("workflow") $
+#+end_src
+
+The executable acceptance command is =cargo test -p mrr-mvp-acceptance=.

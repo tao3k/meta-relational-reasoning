@@ -3,119 +3,71 @@
 use gql_source::{Diagnostic, SourceText, Span};
 use rowan::NodeOrToken;
 
+use crate::generated::{
+    GERBIL_SCHEME_RUST_REVISION, GRAMMAR_PROJECTION_SCHEMA, GRAMMAR_RECOVERIES,
+    GRAMMAR_SYNTAX_SHAPES,
+};
+pub(crate) use crate::generated::{
+    GrammarParserAction, binary_operator_spec, keyword, prefix_operator_precedence,
+    recovery_diagnostic, top_level_parser_entrypoint,
+};
+pub use crate::generated::{Keyword, SyntaxKind};
+
 /// Rowan syntax node for the GQL language.
 pub type RowanSyntaxNode = rowan::SyntaxNode<GqlSyntax>;
 /// Rowan syntax token for the GQL language.
 pub type RowanSyntaxToken = rowan::SyntaxToken<GqlSyntax>;
 
-/// Syntax kinds for CST nodes and tokens.
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, Ord, PartialOrd)]
-#[repr(u16)]
-pub enum SyntaxKind {
-    /// Top-level source container.
-    SourceFile,
-    /// Query root node.
-    Query,
-    /// `MATCH` clause node.
-    MatchClause,
-    /// `WHERE` clause node.
-    WhereClause,
-    /// `LET` clause node.
-    LetClause,
-    /// `RETURN` clause node.
-    ReturnClause,
-    /// Graph pattern node.
-    GraphPattern,
-    /// Node pattern node.
-    NodePattern,
-    /// Edge pattern node.
-    EdgePattern,
-    /// Label list node.
-    LabelList,
-    /// Generic recovery expression node.
-    Expression,
-    /// Name/reference expression node.
-    NameExpression,
-    /// String or numeric literal expression node.
-    LiteralExpression,
-    /// Unary expression node.
-    UnaryExpression,
-    /// Binary expression node.
-    BinaryExpression,
-    /// Parenthesized expression node.
-    ParenthesizedExpression,
-    /// Keyword token kind.
-    Keyword,
-    /// Identifier token kind.
-    Identifier,
-    /// Number token kind.
-    Number,
-    /// String token kind.
-    String,
-    /// Whitespace token kind.
-    Whitespace,
-    /// Punctuation token kind.
-    Punctuation,
-    /// Comment token kind.
-    Comment,
-    /// Unknown token kind.
-    Unknown,
+/// Provenance and contracts embedded in the generated grammar.
+pub struct GrammarProjectionReceipt<'a> {
+    /// Projection schema identifier.
+    pub schema: &'a str,
+    /// SHA-256 over the canonical Scheme inputs.
+    pub input_sha256: &'a str,
+    /// SHA-256 over the generated Rust body.
+    pub body_sha256: &'a str,
+    /// Exact admitted `gerbil-scheme-rust` PR16 revision.
+    pub bridge_revision: &'a str,
+    /// Generated node/token category and field-shape contracts.
+    pub syntax_shapes: &'static [(&'static str, &'static str, &'static [&'static str])],
+    /// Generated recovery site, diagnostic, and strategy contracts.
+    pub recoveries: &'static [(&'static str, &'static str, &'static str)],
 }
 
-impl SyntaxKind {
-    /// Converts this kind into Rowan's raw kind.
-    pub(crate) fn to_rowan(self) -> rowan::SyntaxKind {
-        rowan::SyntaxKind(self as u16)
+/// Reads the fail-closed provenance receipt from the tracked projection.
+#[must_use]
+pub fn grammar_projection_receipt() -> GrammarProjectionReceipt<'static> {
+    const TRACKED_PROJECTION: &str = include_str!("generated.rs");
+    let mut fields = TRACKED_PROJECTION
+        .lines()
+        .next()
+        .expect("generated grammar must have a provenance header")
+        .split_ascii_whitespace();
+    assert_eq!(fields.next(), Some("//"));
+    let schema = fields.next().expect("generated grammar schema");
+    let input_sha256 = fields
+        .next()
+        .and_then(|field| field.strip_prefix("input-sha256="))
+        .expect("generated grammar input fingerprint");
+    let body_sha256 = fields
+        .next()
+        .and_then(|field| field.strip_prefix("body-sha256="))
+        .expect("generated grammar body fingerprint");
+    let bridge_revision = fields
+        .next()
+        .and_then(|field| field.strip_prefix("gerbil-scheme-rust-rev="))
+        .expect("generated grammar bridge revision");
+    assert!(fields.next().is_none());
+    assert_eq!(schema, GRAMMAR_PROJECTION_SCHEMA);
+    assert_eq!(bridge_revision, GERBIL_SCHEME_RUST_REVISION);
+    GrammarProjectionReceipt {
+        schema,
+        input_sha256,
+        body_sha256,
+        bridge_revision,
+        syntax_shapes: GRAMMAR_SYNTAX_SHAPES,
+        recoveries: GRAMMAR_RECOVERIES,
     }
-
-    /// Decodes Rowan's raw kind into the language kind.
-    pub(crate) fn from_rowan(kind: rowan::SyntaxKind) -> Self {
-        match kind.0 {
-            0 => Self::SourceFile,
-            1 => Self::Query,
-            2 => Self::MatchClause,
-            3 => Self::WhereClause,
-            4 => Self::LetClause,
-            5 => Self::ReturnClause,
-            6 => Self::GraphPattern,
-            7 => Self::NodePattern,
-            8 => Self::EdgePattern,
-            9 => Self::LabelList,
-            10 => Self::Expression,
-            11 => Self::NameExpression,
-            12 => Self::LiteralExpression,
-            13 => Self::UnaryExpression,
-            14 => Self::BinaryExpression,
-            15 => Self::ParenthesizedExpression,
-            16 => Self::Keyword,
-            17 => Self::Identifier,
-            18 => Self::Number,
-            19 => Self::String,
-            20 => Self::Whitespace,
-            21 => Self::Punctuation,
-            22 => Self::Comment,
-            _ => Self::Unknown,
-        }
-    }
-}
-
-/// Parsed keyword space for this project slice.
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub enum Keyword {
-    Match,
-    Where,
-    Let,
-    Return,
-    Or,
-    And,
-    Not,
-    Call,
-    Create,
-    Drop,
-    Insert,
-    Delete,
-    Set,
-    Remove,
 }
 
 /// Token kind for lexical output and typed CST views.

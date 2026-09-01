@@ -1,0 +1,41 @@
+#+title: MRR Dependency Purity
+#+startup: overview
+
+* Status
+
+Normative for the MRR MVP dependency graph.
+
+* Direction
+
+The semantic dependency direction is:
+
+#+begin_src mermaid
+flowchart LR
+  identity[Identity] --> relation[Relation Revision Intent]
+  relation --> query[Query]
+  query --> semantic[Logic Transition Lineage]
+  semantic --> bundle[Bundle]
+  bundle --> execution[Ascent]
+  bundle --> gerbil[Gerbil projection]
+  execution --> facade[MRR facade]
+  facade --> acceptance[Acceptance]
+  gql[GQL frontend] --> frontend[MRR frontend lowering]
+  frontend --> query
+#+end_src
+
+Dependencies flow from right to left only through the arrows shown above. The
+semantic core never imports GQL frontends, Gerbil runtime support, or Ascent.
+The public facade may compose the bounded Ascent evaluator, but it does not
+import MRR frontend lowering or Gerbil projection code.
+
+* Executable gate
+
+The =mrr-rust-project-harness-policy= crate owns an allowlist for every MRR
+crate's architecture dependencies. Any new GQL, MRR, or Ascent dependency not
+explicitly admitted for that crate fails the harness tests. Architecture
+dependencies must use their canonical package name; renamed dependency aliases
+are rejected. This makes dependency direction a build-visible contract rather
+than a diagram-only claim.
+
+The gate covers normal, development, build, and target-specific dependency
+sections. Non-architecture utilities do not grant another semantic authority.

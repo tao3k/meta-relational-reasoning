@@ -1,0 +1,25 @@
+[package]
+name = "mrr-revision"
+description = "External revision and MRR generation binding contracts"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+mrr-identity.workspace = true
+
+[build-dependencies]
+mrr-rust-project-harness-policy.workspace = true
+
+[dev-dependencies]
+criterion.workspace = true
+mrr-rust-project-harness-policy.workspace = true
+
+[[bench]]
+name = "revision_perf"
+harness = false
+
+[lints]
+workspace = true

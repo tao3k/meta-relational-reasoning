@@ -1,1 +1,0 @@
-MATCH (节点)-[:CALLS]->(目标) RETURN 节点

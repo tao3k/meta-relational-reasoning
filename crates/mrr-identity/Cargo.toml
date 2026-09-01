@@ -1,0 +1,25 @@
+[package]
+name = "mrr-identity"
+description = "Typed stable identities for Meta-Relational Reasoning"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+serde.workspace = true
+sha2.workspace = true
+
+[build-dependencies]
+mrr-rust-project-harness-policy.workspace = true
+[dev-dependencies]
+criterion.workspace = true
+mrr-rust-project-harness-policy.workspace = true
+serde_json.workspace = true
+[[bench]]
+name = "identity_perf"
+harness = false
+
+[lints]
+workspace = true

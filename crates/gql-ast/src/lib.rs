@@ -4,9 +4,10 @@
 mod api;
 
 pub use api::{
-    BinaryOperator, CatalogStatement, DataStatement, EdgeDirection, EdgePattern, Expression,
-    GraphPattern, Identifier, MatchClause, NodePattern, PathPattern, PatternElement, Query,
-    QueryClause, Statement, SyntaxParseOutput, UnaryOperator, lower_from_syntax,
+    BinaryOperator, CaseBranch, CatalogStatement, DataStatement, EdgeDirection, EdgePattern,
+    Expression, GraphPattern, Identifier, MatchClause, NodePattern, PathPattern, PathQuantifier,
+    PatternElement, PropertyConstraint, Query, QueryClause, ReturnProjection, SortDirection,
+    SortKey, Statement, SyntaxParseOutput, UnaryOperator, lower_from_syntax,
 };
 
 #[cfg(test)]

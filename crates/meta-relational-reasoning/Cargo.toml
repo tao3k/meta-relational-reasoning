@@ -1,0 +1,33 @@
+[package]
+name = "meta-relational-reasoning"
+description = "Public facade for the Meta-Relational Reasoning contract graph"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+mrr-bundle.workspace = true
+mrr-ascent.workspace = true
+mrr-identity.workspace = true
+mrr-intent.workspace = true
+mrr-lineage.workspace = true
+mrr-logic.workspace = true
+mrr-query.workspace = true
+mrr-relation.workspace = true
+mrr-revision.workspace = true
+mrr-transition.workspace = true
+sha2.workspace = true
+
+[build-dependencies]
+mrr-rust-project-harness-policy.workspace = true
+[dev-dependencies]
+criterion.workspace = true
+mrr-rust-project-harness-policy.workspace = true
+[[bench]]
+name = "facade_perf"
+harness = false
+
+[lints]
+workspace = true

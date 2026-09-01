@@ -1,0 +1,27 @@
+[package]
+name = "mrr-mvp-acceptance"
+description = "Three-domain executable acceptance suite for the MRR MVP"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+meta-relational-reasoning.workspace = true
+mrr-intent.workspace = true
+mrr-revision.workspace = true
+
+[build-dependencies]
+mrr-rust-project-harness-policy.workspace = true
+
+[dev-dependencies]
+criterion.workspace = true
+mrr-rust-project-harness-policy.workspace = true
+
+[[bench]]
+name = "acceptance_perf"
+harness = false
+
+[lints]
+workspace = true

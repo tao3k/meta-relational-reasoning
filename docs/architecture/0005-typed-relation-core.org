@@ -1,0 +1,75 @@
+#+title: RFC 0005: Typed Relation Core
+#+author: gql-rust contributors
+#+options: toc:2
+#+property: header-args :eval never-export :exports code
+
+* Status
+
+Accepted architecture.
+
+* Decision
+
+=mrr-relation= is the sole owner of language-neutral relation schemas and
+facts.  A schema binds a stable =RelationId= to a predicate, an ordered non-empty
+set of uniquely named typed fields, and cardinality metadata.  Ordered fields
+generalize the subject/object pair without turning graph vocabulary into core
+authority: a binary relation uses subject and object fields, while rule and
+query relations may use any validated arity.
+
+A fact cannot be constructed without =RelationContext=.  The context keeps five
+orthogonal claims explicit:
+
+- semantic =GenerationId=;
+- authority owned by an entity, rule, or rule pack;
+- source or derivation provenance;
+- complete, partial, or unknown evidence coverage;
+- valid or explicitly invalidated fact state.
+
+These claims are typed data, not strings and not frontend metadata.  GQL,
+Cypher, Gerbil, and Ascent may produce or consume the contract, but none owns or
+redefines it.  There is no arity-only constructor and no context-free fact
+constructor.
+
+#+name: rfc-0005-relation-boundary
+#+begin_src mermaid
+flowchart LR
+  A[Semantic authority] --> C[Mandatory relation context]
+  S[Typed relation schema] --> V[Canonical validation]
+  F[Typed field values] --> V
+  C --> V
+  V --> R[Admitted relation fact]
+  G[GQL or Cypher] -. frontend .-> S
+  B[Ascent] -. backend .-> R
+#+end_src
+
+* Shared-domain acceptance
+
+The executable relation tests instantiate software =calls=, knowledge
+=supports=, and workflow =permits= facts through the same =RelationSchema=,
+=Fact=, and =RelationContext= types.  Domain changes do not add core enums or
+alternate validation paths.
+
+#+name: rfc-0005-relation-mathematics
+#+begin_src typst
+#set page(paper: "a4", margin: 24mm)
+#set text(font: "Libertinus Serif", size: 10.5pt)
+
+= RFC 0005: Typed Relation Core
+
+Let $S(r) = (t_1, dots, t_n)$ be the ordered field types admitted for relation
+$r$.  A fact $f = (r, (v_1, dots, v_m), c)$ is shape-valid exactly when
+
+$ m = n and forall i in {1, dots, n}: "type"(v_i) = t_i. $
+
+The context $c = (g, a, p, e, v)$ keeps generation, authority, provenance,
+evidence completeness, and validity distinct.  No projection may infer one of
+these components from another.
+#+end_src
+
+* Verification
+
+The focused suite rejects wrong arity, wrong value type, empty fields,
+duplicate field names, and wrong relation identity.  It also proves that the
+three MVP domains use one core.  Workspace compilation ensures every existing
+consumer uses the mandatory constructor and typed accessors rather than a
+legacy public-field path.

@@ -1,0 +1,45 @@
+schema_version: 1
+baseline_release: iso-39075-2024
+evidence_policy:
+  licensed_clause_required_for_implemented_status: true
+  public_compatibility_evidence_may_expand_partial_features: true
+  licensed_clause_required_for_iso_conformance_claim: true
+  public_product_metadata_is_clause_evidence: false
+  differential_oracles_are_clause_evidence: false
+  future_drafts_are_default_language_evidence: false
+
+sources:
+  - release_id: iso-39075-2024
+    normative_reference: ISO/IEC 39075:2024
+    role: normative_baseline
+    publication_status: published
+    public_metadata: "https://www.iso.org/standard/76120.html"
+    licensed_clause_artifact:
+      status: unavailable
+      repository_path: null
+      digest: null
+    feature_mappings: []
+
+  - release_id: iso-39075-2024-cor-1
+    normative_reference: ISO/IEC 39075:2024/Cor 1:2026
+    role: versioned_correction
+    publication_status: under_publication
+    publication_stage: "60.00"
+    public_metadata: "https://www.iso.org/standard/93701.html"
+    licensed_clause_artifact:
+      status: unavailable
+      repository_path: null
+      digest: null
+    feature_mappings: []
+
+  - release_id: iso-39075-edition-2-cd
+    normative_reference: ISO/IEC CD 39075
+    role: non_normative_future_delta
+    publication_status: committee_draft
+    default_language_enabled: false
+    public_metadata: "https://www.iso.org/standard/89917.html"
+    licensed_clause_artifact:
+      status: prohibited_for_default_language
+      repository_path: null
+      digest: null
+    feature_mappings: []

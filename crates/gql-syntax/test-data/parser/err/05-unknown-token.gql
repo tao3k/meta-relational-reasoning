@@ -1,1 +1,1 @@
-MATCH (a)-[:CALLS]->(b) /x
+MATCH (a)-[:CALLS]->(b) @x

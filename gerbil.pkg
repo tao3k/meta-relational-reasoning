@@ -1,0 +1,6 @@
+(package:
+ meta-relational-reasoning
+ depend:
+ ("github.com/tao3k/poo-flow@471223890bb4e506b26284ceb7ede05cc7b2baa0"
+  "github.com/tao3k/gerbil-scheme-language-project-harness@a0ba60a15dd05d95ea89c0506f530f426d3dca1e"
+  "github.com/mighty-gerbils/gerbil-poo@1c3225637525400341a09e958296962c10184ead"))

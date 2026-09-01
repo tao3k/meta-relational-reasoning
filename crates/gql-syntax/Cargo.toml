@@ -13,9 +13,9 @@ rowan = "0.16.1"
 
 [dev-dependencies]
 criterion.workspace = true
-gql-rust-project-harness-policy.workspace = true
+mrr-rust-project-harness-policy.workspace = true
 [build-dependencies]
-gql-rust-project-harness-policy.workspace = true
+mrr-rust-project-harness-policy.workspace = true
 
 [lints]
 workspace = true

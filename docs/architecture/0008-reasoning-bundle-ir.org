@@ -1,0 +1,78 @@
+#+title: RFC 0008: ReasoningBundleIR Admission
+#+options: toc:2
+#+property: header-args :eval never-export :exports code
+
+* Status
+
+Accepted architecture.
+
+* Decision
+
+A reasoning program crosses the public boundary only as an admitted
+=ReasoningBundle=. Its untrusted declaration contains relation schemas, source
+facts, query templates, rule packs, inverse goals, transition systems, lineage
+policy, projection policy, and a validation profile.
+
+The admission order is fixed:
+
+1. normalize identity-keyed collections;
+2. validate relation and fact ownership;
+3. validate query relation references and dependency graph;
+4. validate rule-pack identities and rule relation references;
+5. validate inverse-goal and transition-system references;
+6. validate the dependency-depth budget and explicit policies;
+7. encode canonical =mrr.reasoning-bundle.v1= bytes;
+8. derive =ReasoningBundleId= from those exact bytes.
+
+No partially validated bundle is returned.
+
+#+name: rfc-0008-admission-flow
+#+begin_src mermaid
+flowchart LR
+    D[Gerbil define-reasoning-module declaration] --> A[build.ss AOT]
+    A --> N[staged native.scm]
+    N --> F[fixed-width native ABI]
+    F --> U[ReasoningBundleDeclaration]
+    U --> R[relation and reference validation]
+    R --> C[cycle and budget validation]
+    C --> B[canonical bundle bytes]
+    B --> I[ReasoningBundleId]
+    I --> V[validated ReasoningBundle]
+#+end_src
+
+* Authority boundaries
+
+Gerbil describes the build-time program. Rust owns validation, canonical
+encoding, stable identity, and runtime admission. The Cargo build helper only
+links the already staged native artifact. No Gerbil process or Scheme value is
+present on a query or deduction hot path.
+
+=gql-reasoning= provider traits do not exist in this model. Query frontends,
+Ascent, and future storage backends consume validated MRR contracts and cannot
+redefine bundle semantics.
+
+* Mathematical publication
+
+#+name: rfc-0008-admission-math
+#+begin_src typst
+#set page(width: 170mm, height: 100mm, margin: 12mm)
+#set text(size: 10pt)
+
+= ReasoningBundle Admission
+
+Let $D$ be an untrusted declaration, $N(D)$ its canonical normalization,
+$V$ the conjunction of relation, query, rule, transition, policy, cycle, and
+budget validators, and $E$ the canonical encoder.
+
+$ "Admit"(D) = cases(
+  (E(N(D)), "ReasoningBundleId"(E(N(D)))) & "if" V(N(D)),
+  "reject" & "otherwise",
+). $
+
+For all declarations $D_1, D_2$ with the same semantic collections,
+
+$ N(D_1) = N(D_2) => E(N(D_1)) = E(N(D_2)). $
+
+Unknown references, cycles, malformed rules, and exhausted validation budgets
+therefore have no materialized bundle identity.
+#+end_src

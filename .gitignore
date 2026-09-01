@@ -7,3 +7,7 @@ tmp/
 /.devenv
 /target
 /.pre-commit-config.yaml
+/.data
+/.gerbil
+.venv/
+.devenv.flake.nix

@@ -4,7 +4,7 @@
 mod api;
 
 pub use api::{
-    BinaryOperator, Binding, EdgeDirection, EdgePattern, Expression, GraphPattern,
-    GraphPatternElement, LetBinding, NodePattern, PathPattern, Projection, QueryBlock,
-    UnaryOperator,
+    BinaryOperator, Binding, CaseBranch, EdgeDirection, EdgePattern, Expression, GraphPattern,
+    GraphPatternElement, LetBinding, NodePattern, PathPattern, PathQuantifier, Projection,
+    PropertyConstraint, QueryBlock, SortDirection, SortKey, UnaryOperator,
 };

@@ -19,9 +19,9 @@ gql-types.workspace = true
 [dev-dependencies]
 criterion.workspace = true
 gql-ir.workspace = true
-gql-rust-project-harness-policy.workspace = true
+mrr-rust-project-harness-policy.workspace = true
 [build-dependencies]
-gql-rust-project-harness-policy.workspace = true
+mrr-rust-project-harness-policy.workspace = true
 
 [[bench]]
 name = "compiler_perf"

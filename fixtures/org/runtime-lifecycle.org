@@ -1,0 +1,11 @@
+#+title: Runtime Lifecycle Intent
+
+* Intent
+** Goal
+- Admit responses only for the active semantic generation.
+** Constraint
+- Never admit a stale generation response.
+** Question
+- Why was a response admitted or rejected?
+** Invariant
+- Every admitted response belongs to the active generation.
