@@ -129,12 +129,70 @@ fn render_rust_projection(grammar: &NativeGrammar) -> Result<String, std::fmt::E
         "#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, Ord, PartialOrd)]"
     )?;
     writeln!(rust, "#[repr(u16)]")?;
+    writeln!(rust, "/// Grammar-owned lossless Rowan syntax kinds.")?;
     writeln!(rust, "pub enum SyntaxKind {{")?;
     for shape in &grammar.syntax_shapes {
         writeln!(rust, "    {},", shape.name)?;
     }
     writeln!(rust, "}}")?;
+
+    let non_reserved_words = grammar.non_reserved_words.join(" ");
+    writeln!(
+        rust,
+        "/// ISO GQL non-reserved words admitted as regular identifiers."
+    )?;
+    writeln!(
+        rust,
+        "pub const ISO_GQL_NON_RESERVED_WORDS: &str = {non_reserved_words:?};"
+    )?;
+    writeln!(
+        rust,
+        "/// Returns whether `word` is an ISO GQL non-reserved word."
+    )?;
+    writeln!(rust, "pub fn is_non_reserved_word(word: &str) -> bool {{")?;
+    writeln!(
+        rust,
+        "    ISO_GQL_NON_RESERVED_WORDS.split_ascii_whitespace().any(|candidate| word.eq_ignore_ascii_case(candidate))"
+    )?;
+    writeln!(rust, "}}")?;
+    writeln!(
+        rust,
+        "/// Gerbil-owned ISO GQL numeric literal forms: form, notation, suffix, semantic class."
+    )?;
+    writeln!(
+        rust,
+        "pub const ISO_GQL_NUMERIC_LITERAL_FORMS: &[(&str, &str, &str, &str)] = &["
+    )?;
+    for literal in &grammar.numeric_literals {
+        writeln!(
+            rust,
+            "    ({:?}, {:?}, {:?}, {:?}),",
+            literal.form, literal.notation, literal.suffix, literal.class
+        )?;
+    }
+    writeln!(rust, "];")?;
+    writeln!(
+        rust,
+        "/// Gerbil-owned character-string forms and escape actions."
+    )?;
+    writeln!(
+        rust,
+        "pub const ISO_GQL_CHARACTER_STRING_FORMS: &[(&str, &str, &str, &str)] = &["
+    )?;
+    for literal in &grammar.character_string_literals {
+        writeln!(
+            rust,
+            "    ({:?}, {:?}, {:?}, {:?}),",
+            literal.form, literal.lexeme, literal.action, literal.class
+        )?;
+    }
+    writeln!(rust, "];")?;
     writeln!(rust, "impl SyntaxKind {{")?;
+    writeln!(rust, "    pub const ALL: &'static [Self] = &[")?;
+    for shape in &grammar.syntax_shapes {
+        writeln!(rust, "        Self::{},", shape.name)?;
+    }
+    writeln!(rust, "    ];")?;
     writeln!(
         rust,
         "    pub(crate) fn to_rowan(self) -> rowan::SyntaxKind {{ rowan::SyntaxKind(self as u16) }}"
@@ -169,6 +227,7 @@ fn render_rust_projection(grammar: &NativeGrammar) -> Result<String, std::fmt::E
     writeln!(rust, "];")?;
 
     writeln!(rust, "#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]")?;
+    writeln!(rust, "/// Grammar-owned keyword identities.")?;
     writeln!(rust, "pub enum Keyword {{")?;
     for keyword in &grammar.keywords {
         writeln!(rust, "    {},", keyword.name)?;
@@ -178,7 +237,16 @@ fn render_rust_projection(grammar: &NativeGrammar) -> Result<String, std::fmt::E
         rust,
         "pub(crate) fn keyword(word: &str) -> Option<Keyword> {{"
     )?;
-    writeln!(rust, "    match word.to_ascii_uppercase().as_str() {{")?;
+    writeln!(
+        rust,
+        "    if word.bytes().any(|byte| byte.is_ascii_lowercase()) {{ let uppercase = word.to_ascii_uppercase(); keyword_uppercase(&uppercase) }} else {{ keyword_uppercase(word) }}"
+    )?;
+    writeln!(rust, "}}")?;
+    writeln!(
+        rust,
+        "fn keyword_uppercase(word: &str) -> Option<Keyword> {{"
+    )?;
+    writeln!(rust, "    match word {{")?;
     for keyword in &grammar.keywords {
         writeln!(
             rust,
@@ -205,7 +273,7 @@ fn render_rust_projection(grammar: &NativeGrammar) -> Result<String, std::fmt::E
     writeln!(rust, "#[derive(Clone, Copy, Debug, Eq, PartialEq)]")?;
     writeln!(
         rust,
-        "pub(crate) struct GrammarParserEntrypoint {{ pub(crate) action: GrammarParserAction, pub(crate) marks_match: bool, pub(crate) marks_return: bool }}"
+        "pub(crate) struct GrammarParserEntrypoint {{ pub(crate) action: GrammarParserAction }}"
     )?;
     writeln!(
         rust,
@@ -215,11 +283,8 @@ fn render_rust_projection(grammar: &NativeGrammar) -> Result<String, std::fmt::E
     for entry in &grammar.parser_entrypoints {
         writeln!(
             rust,
-            "        Keyword::{} => Some(GrammarParserEntrypoint {{ action: GrammarParserAction::{}, marks_match: {}, marks_return: {} }}),",
-            entry.keyword,
-            entry.action,
-            entry.effect == "marks-match",
-            entry.effect == "marks-return"
+            "        Keyword::{} => Some(GrammarParserEntrypoint {{ action: GrammarParserAction::{} }}),",
+            entry.keyword, entry.action
         )?;
     }
     writeln!(rust, "        _ => None,")?;
@@ -242,16 +307,22 @@ fn render_rust_projection(grammar: &NativeGrammar) -> Result<String, std::fmt::E
     });
     for operator in binary {
         let right = operator.associativity == "right";
-        let pattern = if operator.kind == "keyword" {
-            format!("(TokenKind::Keyword(Keyword::{}), _)", operator.lexeme)
+        let (pattern, width) = if operator.kind == "keyword" {
+            (
+                format!("(TokenKind::Keyword(Keyword::{}), _)", operator.lexeme),
+                1,
+            )
         } else {
             let chars = operator.lexeme.chars().collect::<Vec<_>>();
             if chars.len() == 1 {
-                format!("(TokenKind::Punctuation({:?}), _)", chars[0])
+                (format!("(TokenKind::Punctuation({:?}), _)", chars[0]), 1)
             } else {
-                format!(
-                    "(TokenKind::Punctuation({:?}), Some(TokenKind::Punctuation({:?})))",
-                    chars[0], chars[1]
+                (
+                    format!(
+                        "(TokenKind::Punctuation({:?}), Some(TokenKind::Punctuation({:?})))",
+                        chars[0], chars[1]
+                    ),
+                    chars.len(),
                 )
             }
         };
@@ -264,7 +335,7 @@ fn render_rust_projection(grammar: &NativeGrammar) -> Result<String, std::fmt::E
             } else {
                 operator.precedence + 1
             },
-            operator.lexeme.len()
+            width
         )?;
     }
     writeln!(rust, "        _ => None,")?;
@@ -272,20 +343,27 @@ fn render_rust_projection(grammar: &NativeGrammar) -> Result<String, std::fmt::E
     writeln!(rust, "}}")?;
     writeln!(
         rust,
-        "pub(crate) fn prefix_operator_precedence(keyword: Keyword) -> Option<u8> {{"
+        "pub(crate) fn prefix_operator_precedence(kind: TokenKind) -> Option<u8> {{"
     )?;
-    writeln!(rust, "    match keyword {{")?;
+    writeln!(rust, "    match kind {{")?;
     for operator in &grammar.prefix_operators {
-        writeln!(
-            rust,
-            "        Keyword::{} => Some({}),",
-            operator.lexeme, operator.precedence
-        )?;
+        let pattern = if operator.kind == "keyword" {
+            format!("TokenKind::Keyword(Keyword::{})", operator.lexeme)
+        } else {
+            let character = operator
+                .lexeme
+                .chars()
+                .next()
+                .expect("native grammar rejects empty operator lexemes");
+            format!("TokenKind::Punctuation({character:?})")
+        };
+        writeln!(rust, "        {pattern} => Some({}),", operator.precedence)?;
     }
     writeln!(rust, "        _ => None,")?;
     writeln!(rust, "    }}")?;
     writeln!(rust, "}}")?;
 
+    writeln!(rust, "#[rustfmt::skip]")?;
     writeln!(
         rust,
         "pub(crate) const GRAMMAR_RECOVERIES: &[(&str, &str, &str)] = &["
@@ -302,5 +380,6 @@ fn render_rust_projection(grammar: &NativeGrammar) -> Result<String, std::fmt::E
         rust,
         "pub(crate) fn recovery_diagnostic(site: &str) -> Option<&'static str> {{ GRAMMAR_RECOVERIES.iter().find_map(|(candidate, code, _)| (*candidate == site).then_some(*code)) }}"
     )?;
+
     Ok(rust)
 }

@@ -31,6 +31,13 @@
                                   'inverse-goals)) 1)
       (check-equal? (length (.ref mrr-default-reasoning-module
                                   'transition-systems)) 1))
+    (test-case "Scheme owns the resource language and outer loop"
+      (check-equal? (.ref mrr-default-reasoning-module 'resource-language)
+                    '((model-proposal external observational)
+                      (mrr-closure internal authoritative)
+                      (trajectory-sink external observational)))
+      (check-equal? (length (.ref mrr-default-reasoning-module
+                                  'reasoning-loop)) 3))
     (test-case "lineage projection and validation policies are explicit"
       (check-equal? (.ref mrr-default-reasoning-module 'lineage-policy)
                     'complete)
@@ -44,7 +51,8 @@
          (check-equal? (.ref mrr-default-reasoning-module slot)
                        (.ref mrr-repeat-reasoning-module slot)))
        '(relation-schemas query-templates rule-packs inverse-goals
-         transition-systems lineage-policy projection-policy
+         transition-systems resource-language reasoning-loop
+         lineage-policy projection-policy
          validation-profile)))))
 
 (run-tests! reasoning-bundle-test)

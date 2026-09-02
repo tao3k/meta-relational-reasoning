@@ -1,23 +1,43 @@
 //! Lowering helpers for converting parse trees into public GQL AST structures.
 #![forbid(unsafe_code)]
 
+use super::data_management_lowering::{
+    lower_catalog_statement, lower_data_clause, lower_procedure_statement, lower_session_statement,
+    lower_transaction_statement,
+};
+use super::general_literal_lowering::lower_general_literal;
+use super::identifier_lowering::identifier_from_token;
+use super::label_lowering::lower_label_predicate;
+use super::numeric_lowering::lower_numeric_literal;
+use super::pattern_graph_lowering::{lower_graph_pattern, lower_path_pattern};
 use super::{
-    BinaryOperator, EdgeDirection, EdgePattern, Expression, GraphPattern, Identifier, MatchClause,
-    NodePattern, PathPattern, PathQuantifier, PatternElement, Query, QueryClause, ReturnProjection,
-    SortDirection, SortKey, Statement, SyntaxParseOutput, UnaryOperator,
+    BinaryOperator, CharacterStringForm, CharacterStringLiteral, Expression, GraphPattern,
+    Identifier, LetBinding, MatchClause, PathMode, PatternElement, Query, QueryClause,
+    ReturnProjection, SortDirection, SortKey, Statement, SyntaxParseOutput, UnaryOperator,
 };
 use gql_source::{Diagnostic, Span};
 use gql_syntax::{
-    Keyword, Parse as SyntaxParse, SyntaxElement, SyntaxElementKind, SyntaxKind, SyntaxNode, Token,
-    TokenKind,
+    CharacterStringForm as SyntaxCharacterStringForm, Keyword, Parse as SyntaxParse, SyntaxElement,
+    SyntaxElementKind, SyntaxKind, SyntaxNode, Token, TokenKind, decode_character_string,
+    is_non_reserved_word,
 };
 /// Lower a parsed syntax tree into the AST result used by semantic analysis.
 #[must_use]
 pub fn lower_from_syntax(parse: &SyntaxParse) -> SyntaxParseOutput {
-    let mut diagnostics = parse.diagnostics.clone();
+    if !parse.diagnostics.is_empty() {
+        return SyntaxParseOutput {
+            statement: None,
+            diagnostics: parse.diagnostics.clone(),
+        };
+    }
+
+    let mut diagnostics = Vec::new();
     let root = parse.tree.root();
-    let statement =
+    let mut statement =
         lower_statement_from_syntax_root(&root, parse.tree.source().text(), &mut diagnostics);
+    if !diagnostics.is_empty() {
+        statement = None;
+    }
     SyntaxParseOutput {
         statement,
         diagnostics,
@@ -28,7 +48,7 @@ fn lower_statement_from_syntax_root(
     root: &SyntaxNode,
     source: &str,
     diagnostics: &mut Vec<Diagnostic>,
-) -> Statement {
+) -> Option<Statement> {
     let mut clauses = Vec::new();
     let mut saw_query_node = false;
     for element in root.children() {
@@ -37,6 +57,18 @@ fn lower_statement_from_syntax_root(
         };
         if node.kind() == SyntaxKind::Query {
             saw_query_node = true;
+            if let Some(catalog) = lower_catalog_statement(node, source) {
+                return Some(Statement::Catalog(catalog));
+            }
+            if let Some(procedure) = lower_procedure_statement(node, source) {
+                return Some(Statement::Procedure(procedure));
+            }
+            if let Some(transaction) = lower_transaction_statement(node) {
+                return Some(Statement::Transaction(transaction));
+            }
+            if let Some(session) = lower_session_statement(node, source) {
+                return Some(Statement::Session(session));
+            }
             clauses.extend(lower_query(node, source, diagnostics).clauses);
         }
     }
@@ -49,10 +81,10 @@ fn lower_statement_from_syntax_root(
         ));
     }
 
-    Statement::Query(Query {
+    (!clauses.is_empty()).then_some(Statement::Query(Query {
         clauses,
         span: root.span(),
-    })
+    }))
 }
 
 fn lower_query(node: &SyntaxNode, source: &str, diagnostics: &mut Vec<Diagnostic>) -> Query {
@@ -62,36 +94,47 @@ fn lower_query(node: &SyntaxNode, source: &str, diagnostics: &mut Vec<Diagnostic
             continue;
         };
 
+        if let Some(clause) = lower_data_clause(child, source, diagnostics) {
+            clauses.push(clause);
+            continue;
+        }
+
         match child.kind() {
-            SyntaxKind::MatchClause => {
-                clauses.push(QueryClause::Match(lower_match_clause(child, source)))
-            }
-            SyntaxKind::OptionalMatchClause => clauses.push(QueryClause::OptionalMatch(
-                lower_optional_match_clause(child, source),
-            )),
+            SyntaxKind::MatchClause => match lower_match_clause(child, source) {
+                Some(match_clause) => clauses.push(QueryClause::Match(match_clause)),
+                None => diagnostics.push(Diagnostic::error(
+                    "GQL-AST-MATCH-MISSING-PATTERN",
+                    "MATCH clause is missing a graph pattern",
+                    child.span(),
+                )),
+            },
+            SyntaxKind::OptionalMatchClause => match lower_optional_match_clause(child, source) {
+                Some(match_clause) => clauses.push(QueryClause::OptionalMatch(match_clause)),
+                None => diagnostics.push(Diagnostic::error(
+                    "GQL-AST-OPTIONAL-MATCH-MISSING-PATTERN",
+                    "OPTIONAL MATCH clause is missing a graph pattern",
+                    child.span(),
+                )),
+            },
             SyntaxKind::WhereClause => {
-                clauses.push(QueryClause::Where {
-                    expression: lower_where_clause(child, source, diagnostics),
-                });
+                if let Some(expression) = lower_where_clause(child, source, diagnostics) {
+                    clauses.push(QueryClause::Where {
+                        expression,
+                        span: significant_node_span(child),
+                    });
+                }
             }
             SyntaxKind::LetClause => {
-                clauses.push(lower_let_clause(child, source, diagnostics));
+                if let Some(clause) = lower_let_clause(child, source, diagnostics) {
+                    clauses.push(clause);
+                }
             }
             SyntaxKind::ReturnClause => {
                 let projections = lower_return_clause(child, source);
-                if projections
-                    .iter()
-                    .any(|projection| projection.alias.is_some())
-                {
-                    clauses.push(QueryClause::ReturnAliased { projections });
-                } else {
-                    clauses.push(QueryClause::Return {
-                        expressions: projections
-                            .into_iter()
-                            .map(|projection| projection.expression)
-                            .collect(),
-                    });
-                }
+                clauses.push(QueryClause::Return {
+                    projections,
+                    span: significant_node_span(child),
+                });
             }
             SyntaxKind::UnionClause => clauses.push(QueryClause::Union { span: child.span() }),
             SyntaxKind::LimitClause => clauses.push(QueryClause::Limit {
@@ -104,13 +147,17 @@ fn lower_query(node: &SyntaxNode, source: &str, diagnostics: &mut Vec<Diagnostic
             }),
             SyntaxKind::OffsetClause => clauses.push(QueryClause::Offset {
                 value: first_number(child),
-                span: child.span(),
+                span: significant_node_span(child),
+            }),
+            SyntaxKind::GroupByClause => clauses.push(QueryClause::GroupBy {
+                keys: lower_expression_list(child, source),
+                span: significant_node_span(child),
             }),
             _ => {}
         }
     }
 
-    if clauses.is_empty() {
+    if clauses.is_empty() && diagnostics.is_empty() {
         diagnostics.push(Diagnostic::error(
             "GQL-PARSE-MISSING-MATCH",
             "expected MATCH clause",
@@ -124,188 +171,85 @@ fn lower_query(node: &SyntaxNode, source: &str, diagnostics: &mut Vec<Diagnostic
     }
 }
 
-fn lower_match_clause(node: &SyntaxNode, source: &str) -> MatchClause {
-    let mut pattern = GraphPattern {
-        elements: Vec::new(),
-        span: node.span(),
-    };
-
-    for element in node.children() {
-        let Some(child) = syntax_node(&element) else {
-            continue;
-        };
-        match child.kind() {
-            SyntaxKind::GraphPattern => {
-                pattern = lower_graph_pattern(child, source);
-                break;
-            }
-            SyntaxKind::PathPattern => {
-                pattern = GraphPattern {
-                    elements: vec![PatternElement::Path(lower_path_pattern(child, source))],
-                    span: child.span(),
-                };
-                break;
-            }
-            _ => {}
-        }
-    }
-
-    MatchClause {
-        pattern,
-        span: node.span(),
-    }
-}
-
-fn lower_optional_match_clause(node: &SyntaxNode, source: &str) -> MatchClause {
-    node.children()
-        .into_iter()
-        .find_map(|element| {
-            let SyntaxElementKind::Node(child) = element.kind else {
-                return None;
-            };
-            (child.kind() == SyntaxKind::MatchClause).then(|| lower_match_clause(&child, source))
-        })
-        .unwrap_or(MatchClause {
-            pattern: GraphPattern {
-                elements: Vec::new(),
-                span: node.span(),
-            },
-            span: node.span(),
-        })
-}
-
-fn lower_graph_pattern(node: &SyntaxNode, source: &str) -> GraphPattern {
-    let elements_in = node.children();
-    let mut elements = Vec::new();
-
-    for element in elements_in.iter() {
-        match &element.kind {
-            SyntaxElementKind::Node(child_node) => match child_node.kind() {
-                SyntaxKind::NodePattern => {
-                    elements.push(PatternElement::Node(lower_node_pattern(child_node, source)))
-                }
-                SyntaxKind::EdgePattern => {
-                    elements.push(PatternElement::Edge(lower_edge_pattern(child_node, source)));
-                }
-                SyntaxKind::PathPattern => {
-                    elements.push(PatternElement::Path(lower_path_pattern(child_node, source)))
-                }
-                _ => {}
-            },
-            SyntaxElementKind::Token(_) => {}
-        }
-    }
-
-    GraphPattern {
-        elements,
-        span: node.span(),
-    }
-}
-
-fn lower_path_pattern(node: &SyntaxNode, source: &str) -> PathPattern {
-    let binding = syntax_tokens(node.children()).find_map(|token| {
-        (token.kind == TokenKind::Identifier).then(|| identifier_from_token(&token, source))
-    });
-    let elements = node
+pub(super) fn significant_node_span(node: &SyntaxNode) -> Span {
+    let mut spans = node
         .children()
         .into_iter()
-        .find_map(|element| {
-            let child = syntax_node(&element)?;
-            (child.kind() == SyntaxKind::GraphPattern)
-                .then(|| lower_graph_pattern(child, source).elements)
-        })
-        .unwrap_or_default();
-
-    PathPattern {
-        binding,
-        elements,
-        span: node.span(),
-    }
+        .filter_map(|element| match element.kind {
+            SyntaxElementKind::Node(child) => Some(child.span()),
+            SyntaxElementKind::Token(token)
+                if !matches!(token.kind, TokenKind::Whitespace | TokenKind::Comment) =>
+            {
+                Some(token.span)
+            }
+            SyntaxElementKind::Token(_) => None,
+        });
+    let Some(first) = spans.next() else {
+        return node.span();
+    };
+    spans.fold(first, |span, next| Span::new(span.start, next.end))
 }
 
-fn lower_path_quantifier(node: &SyntaxNode, _source: &str) -> Option<PathQuantifier> {
-    let quantifier = node.children().into_iter().find_map(|element| {
-        let SyntaxElementKind::Node(child) = element.kind else {
-            return None;
-        };
-        (child.kind() == SyntaxKind::PathQuantifier).then_some(child)
+fn lower_match_clause(node: &SyntaxNode, source: &str) -> Option<MatchClause> {
+    let patterns = node.children().into_iter().find_map(|element| {
+        let list = syntax_node(&element)?;
+        (list.kind() == SyntaxKind::GraphPatternList).then(|| {
+            list.children()
+                .iter()
+                .filter_map(|element| {
+                    let child = syntax_node(element)?;
+                    match child.kind() {
+                        SyntaxKind::GraphPattern => lower_graph_pattern(child, source),
+                        SyntaxKind::PathPattern => {
+                            lower_path_pattern(child, source).map(|path| GraphPattern {
+                                elements: vec![PatternElement::Path(path)],
+                                span: child.span(),
+                            })
+                        }
+                        _ => None,
+                    }
+                })
+                .collect::<Vec<_>>()
+        })
     })?;
-    let mut numbers = syntax_tokens(quantifier.children())
-        .filter(|token| token.kind == TokenKind::Number)
-        .map(|token| token.text().parse::<u32>().ok());
-    let min = numbers.next().flatten()?;
-    let max = numbers.next().flatten();
+    if patterns.is_empty() {
+        return None;
+    }
 
-    Some(PathQuantifier {
-        min,
-        max,
-        span: quantifier.span(),
+    Some(MatchClause {
+        mode: node
+            .children()
+            .iter()
+            .find_map(|element| {
+                let SyntaxElementKind::Node(mode) = &element.kind else {
+                    return None;
+                };
+                if mode.kind() != SyntaxKind::PathMode {
+                    return None;
+                }
+                syntax_tokens(mode.children()).find_map(|token| match token.kind {
+                    TokenKind::Keyword(Keyword::Walk) => Some(PathMode::Walk),
+                    TokenKind::Keyword(Keyword::Trail) => Some(PathMode::Trail),
+                    TokenKind::Keyword(Keyword::Acyclic) => Some(PathMode::Acyclic),
+                    TokenKind::Keyword(Keyword::Simple) => Some(PathMode::Simple),
+                    _ => None,
+                })
+            })
+            .unwrap_or(PathMode::Walk),
+        patterns,
+        span: node.span(),
     })
 }
 
-fn edge_direction_from_pattern(edge: &SyntaxNode) -> EdgeDirection {
-    let mut first_token = None;
-    let mut last_token = None;
-
-    for token in syntax_tokens(edge.children()) {
-        if matches!(token.kind, TokenKind::Punctuation(_)) {
-            if first_token.is_none() {
-                first_token = Some(token.kind);
-            }
-            last_token = Some(token.kind);
-        }
-    }
-
-    match (first_token, last_token) {
-        (Some(TokenKind::Punctuation('<')), _) => EdgeDirection::In,
-        (Some(TokenKind::Punctuation('-')), Some(TokenKind::Punctuation('>'))) => {
-            EdgeDirection::Out
-        }
-        _ => EdgeDirection::Undirected,
-    }
-}
-
-fn lower_edge_pattern(node: &SyntaxNode, source: &str) -> EdgePattern {
-    let label_tokens = node
-        .children()
-        .into_iter()
-        .find_map(|element| match element.kind {
-            SyntaxElementKind::Node(child) if child.kind() == SyntaxKind::LabelList => {
-                Some(syntax_tokens(child.children()).collect::<Vec<_>>())
-            }
-            _ => None,
-        });
-    let mut binding = None;
-    let mut labels = Vec::new();
-    if let Some(tokens) = label_tokens {
-        let has_colon = tokens
-            .iter()
-            .any(|token| token.kind == TokenKind::Punctuation(':'));
-        let mut in_labels = !has_colon;
-        for token in tokens {
-            match token.kind {
-                TokenKind::Punctuation(':') => in_labels = true,
-                TokenKind::Identifier | TokenKind::Keyword(_) => {
-                    let identifier = identifier_from_token(&token, source);
-                    if !in_labels && binding.is_none() {
-                        binding = Some(identifier);
-                    } else {
-                        labels.push(identifier);
-                    }
-                }
-                _ => {}
-            }
-        }
-    }
-
-    EdgePattern {
-        binding,
-        labels,
-        properties: lower_pattern_properties(node, source),
-        direction: edge_direction_from_pattern(node),
-        quantifier: lower_path_quantifier(node, source),
-        span: node.span(),
-    }
+fn lower_optional_match_clause(node: &SyntaxNode, source: &str) -> Option<MatchClause> {
+    node.children().into_iter().find_map(|element| {
+        let SyntaxElementKind::Node(child) = element.kind else {
+            return None;
+        };
+        (child.kind() == SyntaxKind::MatchClause)
+            .then(|| lower_match_clause(&child, source))
+            .flatten()
+    })
 }
 
 fn lower_return_clause(node: &SyntaxNode, source: &str) -> Vec<ReturnProjection> {
@@ -345,7 +289,7 @@ fn lower_where_clause(
     node: &SyntaxNode,
     source: &str,
     diagnostics: &mut Vec<Diagnostic>,
-) -> Expression {
+) -> Option<Expression> {
     let expressions: Vec<_> = node
         .children()
         .iter()
@@ -358,7 +302,7 @@ fn lower_where_clause(
         .collect();
 
     if expressions.len() == 1 {
-        return expressions[0].clone();
+        return expressions.into_iter().next();
     }
 
     if expressions.len() > 1 {
@@ -375,15 +319,14 @@ fn lower_where_clause(
         ));
     }
 
-    Expression::Name(Identifier {
-        text: String::new(),
-        span: node.span(),
-    })
+    None
 }
 
-fn lower_expression(node: &SyntaxNode, source: &str) -> Option<Expression> {
+pub(super) fn lower_expression(node: &SyntaxNode, source: &str) -> Option<Expression> {
     match node.kind() {
-        SyntaxKind::NameExpression | SyntaxKind::LiteralExpression => {
+        SyntaxKind::NameExpression
+        | SyntaxKind::LiteralExpression
+        | SyntaxKind::CharacterStringLiteralExpression => {
             node.children().iter().find_map(|element| match element {
                 SyntaxElement {
                     kind: SyntaxElementKind::Token(token),
@@ -393,7 +336,22 @@ fn lower_expression(node: &SyntaxNode, source: &str) -> Option<Expression> {
                 } => None,
             })
         }
+        SyntaxKind::ByteStringLiteralExpression
+        | SyntaxKind::TemporalLiteralExpression
+        | SyntaxKind::DurationLiteralExpression
+        | SyntaxKind::RecordExpression => lower_general_literal(node, source),
         SyntaxKind::UnaryExpression => {
+            let operator = node.children().iter().find_map(|element| match element {
+                SyntaxElement {
+                    kind: SyntaxElementKind::Token(token),
+                } => match token.kind {
+                    TokenKind::Keyword(Keyword::Not) => Some(UnaryOperator::Not),
+                    TokenKind::Punctuation('+') => Some(UnaryOperator::Plus),
+                    TokenKind::Punctuation('-') => Some(UnaryOperator::Negate),
+                    _ => None,
+                },
+                _ => None,
+            })?;
             let operand = node.children().iter().find_map(|element| match element {
                 SyntaxElement {
                     kind: SyntaxElementKind::Node(child),
@@ -401,7 +359,7 @@ fn lower_expression(node: &SyntaxNode, source: &str) -> Option<Expression> {
                 _ => None,
             })?;
             Some(Expression::Unary {
-                operator: UnaryOperator::Not,
+                operator,
                 operand: Box::new(operand),
             })
         }
@@ -421,6 +379,7 @@ fn lower_expression(node: &SyntaxNode, source: &str) -> Option<Expression> {
                 right: Box::new(right),
             })
         }
+        SyntaxKind::LabelPredicateExpression => lower_label_predicate(node, source),
         SyntaxKind::PropertyAccessExpression => {
             let base = node.children().iter().find_map(|element| match element {
                 SyntaxElement {
@@ -441,6 +400,24 @@ fn lower_expression(node: &SyntaxNode, source: &str) -> Option<Expression> {
                 property,
             })
         }
+        SyntaxKind::FunctionCallExpression => {
+            let children = node.children();
+            let mut expressions = children.iter().filter_map(|element| {
+                let child = syntax_node(element)?;
+                is_expression_kind(child.kind()).then_some(child)
+            });
+            let Expression::Name(name) = lower_expression(expressions.next()?, source)? else {
+                return None;
+            };
+            let arguments = expressions
+                .filter_map(|argument| lower_expression(argument, source))
+                .collect();
+            Some(Expression::FunctionCall {
+                name,
+                arguments,
+                span: significant_node_span(node),
+            })
+        }
         SyntaxKind::ListExpression => {
             let items = node
                 .children()
@@ -448,10 +425,11 @@ fn lower_expression(node: &SyntaxNode, source: &str) -> Option<Expression> {
                 .filter_map(|element| match element {
                     SyntaxElement {
                         kind: SyntaxElementKind::Node(child),
-                    } if is_expression_kind(child.kind()) => lower_expression(child, source),
+                    } if is_expression_kind(child.kind()) => Some(child),
                     _ => None,
                 })
-                .collect::<Vec<_>>();
+                .map(|child| lower_expression(child, source))
+                .collect::<Option<Vec<_>>>()?;
             Some(Expression::List(items, node.span()))
         }
         SyntaxKind::SubscriptExpression => {
@@ -486,16 +464,23 @@ fn lower_expression(node: &SyntaxNode, source: &str) -> Option<Expression> {
     }
 }
 
-fn is_expression_kind(kind: SyntaxKind) -> bool {
+pub(super) fn is_expression_kind(kind: SyntaxKind) -> bool {
     matches!(
         kind,
         SyntaxKind::Expression
             | SyntaxKind::NameExpression
             | SyntaxKind::LiteralExpression
+            | SyntaxKind::CharacterStringLiteralExpression
+            | SyntaxKind::ByteStringLiteralExpression
+            | SyntaxKind::TemporalLiteralExpression
+            | SyntaxKind::DurationLiteralExpression
             | SyntaxKind::UnaryExpression
             | SyntaxKind::BinaryExpression
+            | SyntaxKind::LabelPredicateExpression
             | SyntaxKind::PropertyAccessExpression
+            | SyntaxKind::FunctionCallExpression
             | SyntaxKind::ListExpression
+            | SyntaxKind::RecordExpression
             | SyntaxKind::SubscriptExpression
             | SyntaxKind::ParenthesizedExpression
             | SyntaxKind::CaseExpression
@@ -582,11 +567,15 @@ fn binary_operator_from_node(node: &SyntaxNode) -> Option<BinaryOperator> {
         [TokenKind::Punctuation('*')] => Some(BinaryOperator::Multiply),
         [TokenKind::Punctuation('/')] => Some(BinaryOperator::Divide),
         [TokenKind::Punctuation('%')] => Some(BinaryOperator::Modulo),
+        [TokenKind::Punctuation('|'), TokenKind::Punctuation('|')] => {
+            Some(BinaryOperator::Concatenate)
+        }
         [TokenKind::Keyword(Keyword::In)] => Some(BinaryOperator::In),
         [TokenKind::Keyword(Keyword::Or)] => Some(BinaryOperator::Or),
+        [TokenKind::Keyword(Keyword::Xor)] => Some(BinaryOperator::Xor),
         [TokenKind::Keyword(Keyword::And)] => Some(BinaryOperator::And),
         [TokenKind::Punctuation('=')] => Some(BinaryOperator::Equals),
-        [TokenKind::Punctuation('!'), TokenKind::Punctuation('=')] => {
+        [TokenKind::Punctuation('<'), TokenKind::Punctuation('>')] => {
             Some(BinaryOperator::NotEquals)
         }
         [TokenKind::Punctuation('<')] => Some(BinaryOperator::LessThan),
@@ -657,13 +646,16 @@ fn parse_expression_unary(elements: &[&SyntaxElement], source: &str) -> Option<E
     else {
         return None;
     };
-    if token.kind != TokenKind::Keyword(Keyword::Not) {
-        return None;
-    }
+    let operator = match token.kind {
+        TokenKind::Keyword(Keyword::Not) => UnaryOperator::Not,
+        TokenKind::Punctuation('+') => UnaryOperator::Plus,
+        TokenKind::Punctuation('-') => UnaryOperator::Negate,
+        _ => return None,
+    };
     let operand_element = elements.get(1)?;
     let operand = parse_expression_atom(operand_element, source)?;
     Some(Expression::Unary {
-        operator: UnaryOperator::Not,
+        operator,
         operand: Box::new(operand),
     })
 }
@@ -684,25 +676,20 @@ fn parse_expression_binary_operator(
         TokenKind::Punctuation('*') => Some((BinaryOperator::Multiply, 1)),
         TokenKind::Punctuation('/') => Some((BinaryOperator::Divide, 1)),
         TokenKind::Punctuation('%') => Some((BinaryOperator::Modulo, 1)),
+        TokenKind::Punctuation('|') => matches!(
+            elements.get(index + 1),
+            Some(SyntaxElement {
+                kind: SyntaxElementKind::Token(Token {
+                    kind: TokenKind::Punctuation('|'),
+                    ..
+                }),
+            })
+        )
+        .then_some((BinaryOperator::Concatenate, 2)),
         TokenKind::Keyword(Keyword::Or) => Some((BinaryOperator::Or, 1)),
+        TokenKind::Keyword(Keyword::Xor) => Some((BinaryOperator::Xor, 1)),
         TokenKind::Keyword(Keyword::And) => Some((BinaryOperator::And, 1)),
         TokenKind::Punctuation('=') => Some((BinaryOperator::Equals, 1)),
-        TokenKind::Punctuation('!') => {
-            let next_is_equals = matches!(
-                elements.get(index + 1),
-                Some(SyntaxElement {
-                    kind: SyntaxElementKind::Token(Token {
-                        kind: TokenKind::Punctuation('='),
-                        ..
-                    }),
-                })
-            );
-            if next_is_equals {
-                Some((BinaryOperator::NotEquals, 2))
-            } else {
-                None
-            }
-        }
         TokenKind::Punctuation('<') => {
             let next_is_equals = matches!(
                 elements.get(index + 1),
@@ -713,7 +700,18 @@ fn parse_expression_binary_operator(
                     }),
                 })
             );
-            if next_is_equals {
+            let next_is_greater = matches!(
+                elements.get(index + 1),
+                Some(SyntaxElement {
+                    kind: SyntaxElementKind::Token(Token {
+                        kind: TokenKind::Punctuation('>'),
+                        ..
+                    }),
+                })
+            );
+            if next_is_greater {
+                Some((BinaryOperator::NotEquals, 2))
+            } else if next_is_equals {
                 Some((BinaryOperator::LessThanOrEqual, 2))
             } else {
                 Some((BinaryOperator::LessThan, 1))
@@ -785,214 +783,104 @@ fn collect_non_trivia_elements(elements: &[SyntaxElement]) -> Vec<&SyntaxElement
 
 fn lower_expression_token(token: &Token, source: &str) -> Option<Expression> {
     match token.kind {
+        TokenKind::Identifier
+            if token.text().starts_with('"') || token.text().starts_with("@\"") =>
+        {
+            lower_character_string_literal(token)
+        }
         TokenKind::Identifier => Some(Expression::Name(identifier_from_token(token, source))),
+        TokenKind::Keyword(_) if is_non_reserved_word(token.text()) => {
+            Some(Expression::Name(identifier_from_token(token, source)))
+        }
         TokenKind::Keyword(Keyword::True) => Some(Expression::Boolean(true, token.span)),
         TokenKind::Keyword(Keyword::False) => Some(Expression::Boolean(false, token.span)),
         TokenKind::Keyword(Keyword::Null) => Some(Expression::Null(token.span)),
         TokenKind::Keyword(_) => None,
-        TokenKind::String => {
-            let mut value = token_text(token, source);
-            if value.len() >= 2
-                && ((value.starts_with('\'') && value.ends_with('\''))
-                    || (value.starts_with('\"') && value.ends_with('\"')))
-            {
-                value = value[1..value.len() - 1].to_string();
-            }
-            Some(Expression::String(value, token.span))
-        }
-        TokenKind::Number => {
-            let value = token_text(token, source);
-            if value.contains('.') {
-                Some(Expression::Decimal(value, token.span))
-            } else {
-                value
-                    .parse::<i64>()
-                    .ok()
-                    .map(|value| Expression::Integer(value, token.span))
-            }
-        }
+        TokenKind::String => lower_character_string_literal(token),
+        TokenKind::Number => lower_numeric_literal(token.text(), token.span),
         _ => None,
     }
+}
+
+fn lower_character_string_literal(token: &Token) -> Option<Expression> {
+    let decoded = decode_character_string(token.text())?;
+    let form = match decoded.form {
+        SyntaxCharacterStringForm::SingleQuoted => CharacterStringForm::SingleQuoted,
+        SyntaxCharacterStringForm::DoubleQuoted => CharacterStringForm::DoubleQuoted,
+        SyntaxCharacterStringForm::GraveQuoted => return None,
+    };
+    Some(Expression::String(CharacterStringLiteral {
+        value: decoded.value.into_owned(),
+        form,
+        no_escape: decoded.no_escape,
+        span: token.span,
+    }))
 }
 
 fn lower_let_clause(
     node: &SyntaxNode,
     source: &str,
     diagnostics: &mut Vec<Diagnostic>,
-) -> QueryClause {
-    let mut binding: Option<Identifier> = None;
-    let mut value: Option<Expression> = None;
-    let mut seen_equals = false;
-
-    for element in node.children() {
-        match element {
-            SyntaxElement {
-                kind: SyntaxElementKind::Node(child),
-            } if is_expression_kind(child.kind()) => {
-                if binding.is_none() {
-                    if let Some(expression) = lower_expression(&child, source) {
-                        match expression {
-                            Expression::Name(name) => binding = Some(name),
-                            _ => {
-                                if seen_equals && value.is_none() {
-                                    value = Some(expression);
-                                }
-                                diagnostics.push(Diagnostic::error(
-                                    "GQL-AST-LET-BINDING-EXPECTED",
-                                    "LET clause expects an identifier binding",
-                                    child.span(),
-                                ));
-                            }
-                        }
-                    }
+) -> Option<QueryClause> {
+    let mut bindings = Vec::new();
+    for child in node.children().iter().filter_map(syntax_node) {
+        if child.kind() != SyntaxKind::LetBinding {
+            continue;
+        }
+        let binding = syntax_tokens(child.children()).find_map(|token| {
+            (token.kind == TokenKind::Identifier).then(|| identifier_from_token(&token, source))
+        });
+        let value = child.children().iter().find_map(|element| {
+            let expression = syntax_node(element)?;
+            is_expression_kind(expression.kind())
+                .then(|| lower_expression(expression, source))
+                .flatten()
+        });
+        let Some(binding) = binding else {
+            diagnostics.push(Diagnostic::error(
+                if child.children().is_empty() {
+                    "GQL-AST-LET-BINDING-MISSING"
                 } else {
-                    if value.is_none() {
-                        value = lower_expression(&child, source).or_else(|| {
-                            diagnostics.push(Diagnostic::error(
-                                "GQL-AST-LET-VALUE-INVALID",
-                                "LET clause value could not be lowered",
-                                child.span(),
-                            ));
-                            Some(Expression::Name(Identifier {
-                                text: String::new(),
-                                span: node.span(),
-                            }))
-                        })
-                    }
-                }
-            }
-            SyntaxElement {
-                kind: SyntaxElementKind::Token(token),
-            } if matches!(token.kind, TokenKind::Punctuation('=')) => {
-                seen_equals = true;
-            }
-            _ => {}
-        }
-    }
-
-    let binding = match binding {
-        Some(binding) => binding,
-        None => {
-            diagnostics.push(Diagnostic::error(
-                "GQL-AST-LET-BINDING-MISSING",
-                "LET clause is missing a binding",
-                node.span(),
+                    "GQL-AST-LET-BINDING-EXPECTED"
+                },
+                "LET binding requires an identifier",
+                child.span(),
             ));
-            Identifier {
-                text: String::new(),
-                span: node.span(),
-            }
-        }
-    };
-
-    let value = match value {
-        Some(value) => value,
-        None => {
-            diagnostics.push(Diagnostic::error(
-                "GQL-AST-LET-VALUE-MISSING",
-                "LET clause is missing a value",
-                node.span(),
-            ));
-            Expression::Name(Identifier {
-                text: String::new(),
-                span: node.span(),
-            })
-        }
-    };
-
-    QueryClause::Let { binding, value }
-}
-
-fn lower_node_pattern(node: &SyntaxNode, source: &str) -> NodePattern {
-    let mut binding = None;
-    let mut labels = Vec::new();
-    let mut consumed_binding = false;
-    let mut in_labels = false;
-
-    let pattern_children = node
-        .children()
-        .iter()
-        .filter(|element| {
-            !matches!(
-                element,
-                SyntaxElement {
-                    kind: SyntaxElementKind::Node(child),
-                } if child.kind() == SyntaxKind::PropertyMap
-            )
-        })
-        .cloned()
-        .collect::<Vec<_>>();
-    for token in syntax_tokens(pattern_children) {
-        match token.kind {
-            TokenKind::Whitespace => {}
-            TokenKind::Punctuation(':') => in_labels = true,
-            TokenKind::Identifier | TokenKind::Keyword(_) => {
-                let identifier = identifier_from_token(&token, source);
-                if !consumed_binding && !in_labels {
-                    binding = Some(identifier);
-                    consumed_binding = true;
-                } else if in_labels || consumed_binding {
-                    labels.push(identifier);
-                }
-            }
-            _ => {}
-        }
-    }
-
-    NodePattern {
-        binding,
-        labels,
-        properties: lower_pattern_properties(node, source),
-        span: node.span(),
-    }
-}
-
-fn lower_pattern_properties(
-    node: &SyntaxNode,
-    source: &str,
-) -> Vec<super::types::PropertyConstraint> {
-    let mut properties = Vec::new();
-    for element in node.children() {
-        let SyntaxElementKind::Node(property_map) = &element.kind else {
             continue;
         };
-        if property_map.kind() != SyntaxKind::PropertyMap {
+        let Some(value) = value else {
+            diagnostics.push(Diagnostic::error(
+                "GQL-AST-LET-VALUE-MISSING",
+                "LET binding is missing a value",
+                child.span(),
+            ));
             continue;
-        }
-        for map_element in property_map.children() {
-            let SyntaxElementKind::Node(entry) = &map_element.kind else {
-                continue;
-            };
-            if entry.kind() != SyntaxKind::PropertyEntry {
-                continue;
-            }
-            let key = entry.children().iter().find_map(|child| match child {
-                SyntaxElement {
-                    kind: SyntaxElementKind::Token(token),
-                } if matches!(token.kind, TokenKind::Identifier | TokenKind::Keyword(_)) => {
-                    Some(identifier_from_token(token, source))
-                }
-                _ => None,
-            });
-            let value = entry.children().iter().find_map(|child| match child {
-                SyntaxElement {
-                    kind: SyntaxElementKind::Node(expression),
-                } if is_expression_kind(expression.kind()) => lower_expression(expression, source),
-                _ => None,
-            });
-            if let (Some(key), Some(value)) = (key, value) {
-                properties.push(super::types::PropertyConstraint {
-                    key,
-                    value,
-                    span: entry.span(),
-                });
-            }
-        }
+        };
+        bindings.push(LetBinding {
+            binding,
+            value,
+            span: significant_node_span(child),
+        });
     }
-    properties
+    (!bindings.is_empty()).then(|| QueryClause::Let {
+        bindings,
+        span: significant_node_span(node),
+    })
 }
 
-fn syntax_node(element: &SyntaxElement) -> Option<&SyntaxNode> {
+fn lower_expression_list(node: &SyntaxNode, source: &str) -> Vec<Expression> {
+    node.children()
+        .iter()
+        .filter_map(|element| {
+            let child = syntax_node(element)?;
+            is_expression_kind(child.kind())
+                .then(|| lower_expression(child, source))
+                .flatten()
+        })
+        .collect()
+}
+
+pub(super) fn syntax_node(element: &SyntaxElement) -> Option<&SyntaxNode> {
     if let SyntaxElementKind::Node(node) = &element.kind {
         Some(node)
     } else {
@@ -1000,24 +888,13 @@ fn syntax_node(element: &SyntaxElement) -> Option<&SyntaxNode> {
     }
 }
 
-fn syntax_tokens(elements: Vec<SyntaxElement>) -> impl Iterator<Item = Token> {
+pub(super) fn syntax_tokens(elements: Vec<SyntaxElement>) -> impl Iterator<Item = Token> {
     elements
         .into_iter()
         .filter_map(|element| match element.kind {
             SyntaxElementKind::Token(token) => Some(token),
             SyntaxElementKind::Node(_) => None,
         })
-}
-
-fn token_text(token: &Token, _source: &str) -> String {
-    token.text().to_string()
-}
-
-fn identifier_from_token(token: &Token, source: &str) -> Identifier {
-    Identifier {
-        text: token_text(token, source),
-        span: token.span,
-    }
 }
 
 fn first_identifier(node: &SyntaxNode, source: &str) -> Option<Identifier> {

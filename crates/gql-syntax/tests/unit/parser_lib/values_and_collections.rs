@@ -90,14 +90,13 @@ fn parses_bounded_path_quantifier_as_a_structural_node() {
 }
 
 #[test]
-fn rejects_zero_minimum_path_quantifier() {
+fn parses_zero_length_path_quantifier_losslessly() {
     let parsed = parse("test.gql", "MATCH (a)-[:CALLS]->{0}(b) RETURN b");
-    assert!(
-        parsed
-            .diagnostics
-            .iter()
-            .any(|diagnostic| diagnostic.code == "GQL-PARSE-PATH-QUANTIFIER")
-    );
+    assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+    assert!(contains_node_kind(
+        &parsed.tree.root(),
+        SyntaxKind::PathQuantifier
+    ));
 }
 
 #[test]

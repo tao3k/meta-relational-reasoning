@@ -23,8 +23,8 @@ sources:
   - release_id: iso-39075-2024-cor-1
     normative_reference: ISO/IEC 39075:2024/Cor 1:2026
     role: versioned_correction
-    publication_status: under_publication
-    publication_stage: "60.00"
+    publication_status: published
+    publication_stage: "60.60"
     public_metadata: "https://www.iso.org/standard/93701.html"
     licensed_clause_artifact:
       status: unavailable

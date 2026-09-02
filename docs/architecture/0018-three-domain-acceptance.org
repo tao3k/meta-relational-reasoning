@@ -3,7 +3,7 @@
 
 * Product proof
 
-=mrr-mvp-acceptance= runs software lifecycle, knowledge provenance, and
+=mrr-conformance= runs software lifecycle, knowledge provenance, and
 workflow policy fixtures through the same typed relation, query, bundle,
 deduction, lineage, WHY, WHY-NOT, IMPACT, revision, transition, safety, and Org
 intent APIs.  Domain variation is data and =ReasoningBundle= construction; no
@@ -33,4 +33,4 @@ a missing premise, bind an external revision, and detect an unsafe transition.
 $ "accept"("software") = "accept"("knowledge") = "accept"("workflow") $
 #+end_src
 
-The executable acceptance command is =cargo test -p mrr-mvp-acceptance=.
+The executable acceptance command is =cargo test -p mrr-conformance=.

@@ -1,25 +1,30 @@
 (declare (block) (standard-bindings) (extended-bindings))
 (begin
   (define meta-relational-reasoning/scheme/grammar/native::timestamp
-    1788178458)
+    1788307577)
   (begin
     (define meta-relational-reasoning/scheme/grammar/native#mrr-native-grammar
       '((syntax-kinds
          (SourceFile node (query))
          (Query node (clause))
-         (MatchClause node (pattern))
+         (MatchClause node (mode patterns))
          (WhereClause node (expression))
-         (LetClause node (binding expression))
+         (LetClause node (binding))
+         (LetBinding node (name value))
          (ReturnClause node (projection))
          (GraphPattern node (element))
-         (NodePattern node (binding labels properties))
+         (GraphPatternList node (pattern))
+         (NodePattern node (binding labels properties predicate))
          (PropertyMap node (entry))
          (PropertyEntry node (key value))
-         (EdgePattern node (direction binding labels properties quantifier))
+         (EdgePattern
+          node
+          (direction binding labels properties predicate quantifier))
          (LabelList node (label))
          (Expression node (token))
          (NameExpression node (name))
          (LiteralExpression node (literal))
+         (CharacterStringLiteralExpression node (value form no-escape))
          (UnaryExpression node (operator operand))
          (BinaryExpression node (left operator right))
          (ParenthesizedExpression node (expression))
@@ -27,24 +32,84 @@
          (Identifier token (text))
          (Number token (text))
          (String token (text))
+         (ByteString token (text))
          (Whitespace token (text))
          (Punctuation token (text))
          (Comment token (text))
          (Unknown token (text))
          (PropertyAccessExpression node (base property))
+         (FunctionCallExpression node (name argument))
          (PathPattern node (binding pattern))
+         (PathMode node (kind))
          (PathQuantifier node (minimum maximum))
          (OptionalMatchClause node (match))
          (ListExpression node (element))
+         (ByteStringLiteralExpression node (value))
+         (TemporalLiteralExpression node (qualifier value))
+         (DurationLiteralExpression node (value))
+         (RecordExpression node (entry))
+         (RecordEntry node (name value))
          (SubscriptExpression node (base index))
          (ProjectionAlias node (expression alias))
          (UnionClause node (query))
          (LimitClause node (limit))
          (OrderByClause node (key direction))
          (OffsetClause node (offset))
+         (GroupByClause node (key))
          (CaseExpression node (operand branch else-result))
          (CaseWhenClause node (condition result))
-         (CaseElseClause node (result)))
+         (CaseElseClause node (result))
+         (CreateSchemaStatement node (name))
+         (DropSchemaStatement node (name))
+         (CreateGraphStatement node (name graph-type))
+         (DropGraphStatement node (name))
+         (CreateGraphTypeStatement node (name source policy))
+         (DropGraphTypeStatement node (name policy))
+         (CatalogObjectName node (part))
+         (CatalogConflictClause node (kind))
+         (GraphTypeSource node (kind target))
+         (NestedGraphTypeSpecification node (element))
+         (NodeTypeSpecification node (name alias key-labels labels properties))
+         (EdgeTypeSpecification
+          node
+          (kind name endpoints direction key-labels labels properties))
+         (EdgeKind node (kind))
+         (EndpointPair node (endpoints direction))
+         (NodeTypeReference node (alias key-labels labels properties))
+         (EdgeDirection node (kind))
+         (KeyLabelSet node (labels))
+         (LabelSetPhrase node (labels))
+         (PropertyTypeList node (property))
+         (PropertyType node (name marker value-type))
+         (PropertyValueType node (form item bound field nullability))
+         (ValueTypeAtom node (kind parameter item field))
+         (ReferenceValueType node (kind openness property specification field))
+         (TypeParameterList node (value))
+         (FieldTypeList node (field))
+         (FieldType node (name marker value-type))
+         (NotNullConstraint node (kind))
+         (InsertStatement node (pattern))
+         (SetStatement node (item))
+         (SetItem node (target value))
+         (RemoveStatement node (item))
+         (RemoveItem node (target))
+         (DeleteStatement node (item detach))
+         (DeleteItem node (target))
+         (CallStatement node (call))
+         (ProcedureName node (part))
+         (StartTransactionStatement node (access-mode))
+         (CommitStatement node (action))
+         (RollbackStatement node (action))
+         (SessionSetStatement node (setting))
+         (SessionResetStatement node (setting))
+         (SessionCloseStatement node (action))
+         (InlineWhereClause node (expression))
+         (LabelPredicateExpression node (operand label))
+         (LabelNameExpression node (name))
+         (LabelWildcardExpression node (wildcard))
+         (LabelNotExpression node (operand))
+         (LabelAndExpression node (left right))
+         (LabelOrExpression node (left right)))
         (keywords
          (Match "MATCH")
          (Optional "OPTIONAL")
@@ -52,6 +117,7 @@
          (Let "LET")
          (Return "RETURN")
          (Or "OR")
+         (Xor "XOR")
          (And "AND")
          (Not "NOT")
          (Call "CALL")
@@ -70,6 +136,7 @@
          (Limit "LIMIT")
          (Order "ORDER")
          (By "BY")
+         (Group "GROUP")
          (Asc "ASC")
          (Desc "DESC")
          (Offset "OFFSET")
@@ -77,18 +144,132 @@
          (When "WHEN")
          (Then "THEN")
          (Else "ELSE")
-         (End "END"))
-        (prefix-operators (keyword Not 25 right))
+         (End "END")
+         (Schema "SCHEMA")
+         (Session "SESSION")
+         (Reset "RESET")
+         (Close "CLOSE")
+         (Property "PROPERTY")
+         (Graph "GRAPH")
+         (Any "ANY")
+         (Typed "TYPED")
+         (If "IF")
+         (Exists "EXISTS")
+         (Replace "REPLACE")
+         (Type "TYPE")
+         (Copy "COPY")
+         (Of "OF")
+         (Like "LIKE")
+         (Detach "DETACH")
+         (Nodetach "NODETACH")
+         (Start "START")
+         (Transaction "TRANSACTION")
+         (Read "READ")
+         (Only "ONLY")
+         (Write "WRITE")
+         (Commit "COMMIT")
+         (Rollback "ROLLBACK")
+         (Walk "WALK")
+         (Trail "TRAIL")
+         (Acyclic "ACYCLIC")
+         (Simple "SIMPLE")
+         (Is "IS")
+         (Labeled "LABELED")
+         (Date "DATE")
+         (Time "TIME")
+         (Timestamp "TIMESTAMP")
+         (Datetime "DATETIME")
+         (Duration "DURATION")
+         (Record "RECORD"))
+        (non-reserved-words
+         (ACYCLIC)
+         (BINDING)
+         (BINDINGS)
+         (CONNECTING)
+         (DESTINATION)
+         (DIFFERENT)
+         (DIRECTED)
+         (EDGE)
+         (EDGES)
+         (ELEMENT)
+         (ELEMENTS)
+         (FIRST)
+         (GRAPH)
+         (GROUPS)
+         (KEEP)
+         (LABEL)
+         (LABELED)
+         (LABELS)
+         (LAST)
+         (NFC)
+         (NFD)
+         (NFKC)
+         (NFKD)
+         (NO)
+         (NODE)
+         (NORMALIZED)
+         (ONLY)
+         (ORDINALITY)
+         (PROPERTY)
+         (READ)
+         (RELATIONSHIP)
+         (RELATIONSHIPS)
+         (REPEATABLE)
+         (SHORTEST)
+         (SIMPLE)
+         (SOURCE)
+         (TABLE)
+         (TO)
+         (TRAIL)
+         (TRANSACTION)
+         (TYPE)
+         (UNDIRECTED)
+         (VERTEX)
+         (WALK)
+         (WITHOUT)
+         (WRITE)
+         (ZONE))
+        (numeric-literals
+         (exact-scientific scientific M exact)
+         (exact-common common M exact)
+         (exact-common-unsuffixed common none exact)
+         (exact-integer integer M exact)
+         (unsigned-integer integer none integer)
+         (approximate-scientific scientific FD approximate)
+         (approximate-scientific-unsuffixed scientific none approximate)
+         (approximate-common common FD approximate)
+         (approximate-integer integer FD approximate))
+        (character-string-literals
+         (single-quoted quote escaped-or-doubled character-string)
+         (double-quoted double-quote escaped-or-doubled character-string)
+         (no-escape commercial-at preserve-representations raw)
+         (escaped-reverse-solidus reverse-solidus decode scalar)
+         (escaped-quote quote decode scalar)
+         (escaped-double-quote double-quote decode scalar)
+         (escaped-grave-accent grave-accent decode scalar)
+         (escaped-tab t decode control)
+         (escaped-backspace b decode control)
+         (escaped-new-line n decode control)
+         (escaped-carriage-return r decode control)
+         (escaped-form-feed f decode control)
+         (escaped-unicode4 u decode four-hex-digits)
+         (escaped-unicode6 U decode six-hex-digits))
+        (prefix-operators
+         (keyword Not 25 right)
+         (punctuation "+" 60 right)
+         (punctuation "-" 60 right))
         (binary-operators
          (keyword Or 10 left)
+         (keyword Xor 15 left)
          (keyword And 20 left)
          (keyword In 30 left)
          (punctuation "=" 30 left)
-         (punctuation "!=" 30 left)
+         (punctuation "<>" 30 left)
          (punctuation "<" 30 left)
          (punctuation "<=" 30 left)
          (punctuation ">" 30 left)
          (punctuation ">=" 30 left)
+         (punctuation "||" 35 left)
          (punctuation "+" 40 left)
          (punctuation "-" 40 left)
          (punctuation "*" 50 left)
@@ -104,21 +285,392 @@
          (Limit LimitClause none)
          (Order OrderByClause none)
          (Offset OffsetClause none)
-         (Call UnsupportedStatement none)
-         (Create UnsupportedStatement none)
-         (Drop UnsupportedStatement none)
-         (Insert UnsupportedStatement none)
-         (Delete UnsupportedStatement none)
-         (Set UnsupportedStatement none)
-         (Remove UnsupportedStatement none))
+         (Group GroupByClause none)
+         (Call CallStatement none)
+         (Create CreateSchemaStatement none)
+         (Drop DropSchemaStatement none)
+         (Insert InsertStatement none)
+         (Delete DeleteStatement none)
+         (Set SetStatement none)
+         (Remove RemoveStatement none)
+         (Detach DeleteStatement none)
+         (Nodetach DeleteStatement none)
+         (Start StartTransactionStatement none)
+         (Commit CommitStatement none)
+         (Rollback RollbackStatement none)
+         (Session SessionSetStatement none))
         (recoveries
+         (block-comment
+          "GQL-SYNTAX-UNTERMINATED-BLOCK-COMMENT"
+          preserve-source)
+         (numeric-literal "GQL-SYNTAX-INVALID-NUMERIC-LITERAL" preserve-source)
+         (integer-literal-range
+          "GQL-SYNTAX-NUMERIC-LITERAL-OUT-OF-RANGE"
+          preserve-source)
+         (edge-label-separator
+          "GQL-PARSE-EDGE-LABEL-SEPARATOR"
+          preserve-source)
+         (create-schema "GQL-PARSE-CREATE-SCHEMA-SYNTAX" preserve-source)
+         (drop-schema "GQL-PARSE-DROP-SCHEMA-SYNTAX" preserve-source)
+         (create-graph "GQL-PARSE-CREATE-GRAPH-SYNTAX" preserve-source)
+         (drop-graph "GQL-PARSE-DROP-GRAPH-SYNTAX" preserve-source)
+         (create-graph-type
+          "GQL-PARSE-CREATE-GRAPH-TYPE-SYNTAX"
+          preserve-source)
+         (nested-graph-type
+          "GQL-PARSE-NESTED-GRAPH-TYPE-SYNTAX"
+          preserve-source)
+         (drop-graph-type "GQL-PARSE-DROP-GRAPH-TYPE-SYNTAX" preserve-source)
+         (insert-statement "GQL-PARSE-INSERT-SYNTAX" preserve-source)
+         (set-statement "GQL-PARSE-SET-SYNTAX" preserve-source)
+         (remove-statement "GQL-PARSE-REMOVE-SYNTAX" preserve-source)
+         (delete-statement "GQL-PARSE-DELETE-SYNTAX" preserve-source)
+         (call-statement "GQL-PARSE-CALL-SYNTAX" preserve-source)
+         (transaction-command "GQL-PARSE-TRANSACTION-SYNTAX" preserve-source)
+         (session-command "GQL-PARSE-SESSION-COMMAND-SYNTAX" preserve-source)
+         (inline-node-where "GQL-PARSE-INLINE-WHERE-SYNTAX" preserve-source)
+         (inline-edge-where "GQL-PARSE-INLINE-WHERE-SYNTAX" preserve-source)
+         (path-mode "GQL-PARSE-PATH-MODE-SYNTAX" preserve-source)
+         (path-quantifier "GQL-PARSE-PATH-QUANTIFIER" preserve-source)
+         (string-literal "GQL-SYNTAX-UNTERMINATED-STRING" preserve-source)
+         (character-string-literal
+          "GQL-SYNTAX-INVALID-CHARACTER-STRING-LITERAL"
+          preserve-source)
+         (byte-string-literal "GQL-SYNTAX-INVALID-BYTE-STRING" preserve-source)
+         (temporal-literal
+          "GQL-SYNTAX-INVALID-TEMPORAL-LITERAL"
+          preserve-source)
+         (duration-literal
+          "GQL-SYNTAX-INVALID-DURATION-LITERAL"
+          preserve-source)
+         (list-literal "GQL-PARSE-LIST-SYNTAX" preserve-source)
+         (record-literal "GQL-PARSE-RECORD-SYNTAX" preserve-source)
+         (delimited-identifier
+          "GQL-SYNTAX-UNTERMINATED-DELIMITED-IDENTIFIER"
+          preserve-source)
+         (identifier-escape
+          "GQL-SYNTAX-INVALID-IDENTIFIER-ESCAPE"
+          preserve-source)
+         (binding-variable "GQL-PARSE-BINDING-VARIABLE-SYNTAX" preserve-source)
          (unsupported-statement
           "GQL-PARSE-UNSUPPORTED-STATEMENT"
           preserve-source)
          (unsupported-keyword-expression
           "GQL-PARSE-UNSUPPORTED-KEYWORD-EXPRESSION"
           preserve-source)
+         (non-iso-operator "GQL-PARSE-NON-ISO-OPERATOR" preserve-source)
+         (label-expression "GQL-PARSE-LABEL-EXPRESSION" preserve-source)
+         (match-pattern-list "GQL-PARSE-MATCH-PATTERN-LIST" preserve-source)
+         (optional-match "GQL-PARSE-OPTIONAL-MATCH-SYNTAX" preserve-source)
+         (where-clause "GQL-PARSE-WHERE-SYNTAX" preserve-source)
+         (union-clause "GQL-PARSE-UNION-SYNTAX" preserve-source)
          (expression-syntax "GQL-PARSE-EXPRESSION-SYNTAX" preserve-source))))
+    (define meta-relational-reasoning/scheme/grammar/native#mrr-native-profile
+      '((schema (mrr.iso-gql-profile.v1))
+        (releases
+         (iso-39075-2024
+          "ISO/IEC 39075:2024"
+          published-edition
+          published-edition-to-be-revised)
+         (iso-39075-2024-cor-1
+          "ISO/IEC 39075:2024/Cor 1:2026"
+          published-technical-corrigendum
+          pending-licensed-clause))
+        (modules (language-foundation iso-standard-module)
+                 (graph-model iso-standard-module)
+                 (path-patterns iso-standard-module)
+                 (query-core iso-standard-module)
+                 (query-advanced iso-standard-module)
+                 (data-management iso-standard-module))
+        (profiles
+         (gql-query-language-frontend-v1
+          iso-39075-2024
+          independent-gql-compatible-query-language-frontend)
+         (gql-iso-audit-v1 iso-39075-2024 audit-inventory-only)
+         (gql-iso-language-frontend-v1
+          iso-39075-2024
+          independent-full-iso-language-frontend-target))
+        (profile-supplements
+         (gql-iso-language-frontend-v1 iso-39075-2024-cor-1))
+        (profile-modules
+         (gql-query-language-frontend-v1 included language-foundation)
+         (gql-query-language-frontend-v1 included graph-model)
+         (gql-query-language-frontend-v1 included query-core)
+         (gql-query-language-frontend-v1 deferred path-patterns)
+         (gql-query-language-frontend-v1 deferred query-advanced)
+         (gql-query-language-frontend-v1 deferred data-management)
+         (gql-iso-audit-v1 included language-foundation)
+         (gql-iso-audit-v1 included graph-model)
+         (gql-iso-audit-v1 included path-patterns)
+         (gql-iso-audit-v1 included query-core)
+         (gql-iso-audit-v1 included query-advanced)
+         (gql-iso-audit-v1 included data-management)
+         (gql-iso-language-frontend-v1 included language-foundation)
+         (gql-iso-language-frontend-v1 included graph-model)
+         (gql-iso-language-frontend-v1 included path-patterns)
+         (gql-iso-language-frontend-v1 included query-core)
+         (gql-iso-language-frontend-v1 included query-advanced)
+         (gql-iso-language-frontend-v1 included data-management))
+        (features
+         (gql-lexical-identifiers
+          10
+          language-foundation
+          pending-licensed-clause
+          partial
+          partial
+          partial
+          partial
+          not-applicable
+          "crates/gql/tests/unit/identifier_contract.rs")
+         (gql-lexical-literals
+          20
+          language-foundation
+          pending-licensed-clause
+          partial
+          partial
+          partial
+          partial
+          not-applicable
+          "crates/gql/tests/unit/literal_contract.rs")
+         (gql-trivia-and-comments
+          30
+          language-foundation
+          pending-licensed-clause
+          partial
+          not-applicable
+          not-applicable
+          not-applicable
+          not-applicable
+          "crates/gql/tests/unit/trivia_contract.rs")
+         (gql-values-and-types
+          40
+          language-foundation
+          pending-licensed-clause
+          partial
+          partial
+          partial
+          partial
+          partial
+          "crates/gql/tests/unit/values_contract.rs")
+         (gql-property-graph-model
+          50
+          graph-model
+          pending-licensed-clause
+          partial
+          partial
+          partial
+          partial
+          partial
+          "crates/gql/tests/unit/graph_model_contract.rs")
+         (gql-catalog-and-schema-model
+          60
+          graph-model
+          pending-licensed-clause
+          partial
+          partial
+          partial
+          partial
+          partial
+          "crates/gql/tests/unit/catalog_schema_contract.rs")
+         (gql-node-patterns
+          70
+          graph-model
+          pending-licensed-clause
+          partial
+          partial
+          partial
+          partial
+          partial
+          "crates/gql/tests/unit/node_pattern_contract.rs")
+         (gql-edge-patterns
+          80
+          graph-model
+          pending-licensed-clause
+          partial
+          partial
+          partial
+          partial
+          partial
+          "crates/gql/tests/unit/edge_pattern_contract.rs")
+         (gql-path-patterns
+          90
+          path-patterns
+          pending-licensed-clause
+          partial
+          partial
+          partial
+          partial
+          not-applicable
+          "crates/gql/tests/unit/path_pattern_contract.rs")
+         (gql-quantified-paths
+          100
+          path-patterns
+          pending-licensed-clause
+          partial
+          partial
+          partial
+          partial
+          not-applicable
+          "crates/gql/tests/unit/quantified_path_contract.rs")
+         (gql-expression-language
+          110
+          query-core
+          pending-licensed-clause
+          partial
+          partial
+          partial
+          partial
+          not-applicable
+          "crates/gql/tests/unit/expression_language_contract.rs")
+         (gql-property-and-label-expressions
+          120
+          query-core
+          pending-licensed-clause
+          partial
+          partial
+          partial
+          partial
+          partial
+          "crates/gql/tests/unit/property_label_expression_contract.rs")
+         (gql-match
+          130
+          query-core
+          pending-licensed-clause
+          partial
+          partial
+          partial
+          partial
+          partial
+          "crates/gql/tests/unit/match_contract.rs")
+         (gql-optional-match
+          140
+          query-core
+          pending-licensed-clause
+          partial
+          partial
+          partial
+          partial
+          partial
+          "crates/gql/tests/unit/optional_match_contract.rs")
+         (gql-where
+          150
+          query-core
+          pending-licensed-clause
+          partial
+          partial
+          partial
+          partial
+          partial
+          "crates/gql/tests/unit/where_contract.rs")
+         (gql-let 160
+                  query-core
+                  pending-licensed-clause
+                  partial
+                  partial
+                  partial
+                  partial
+                  not-applicable
+                  "crates/gql/tests/unit/query_pipeline_contract.rs")
+         (gql-return
+          170
+          query-core
+          pending-licensed-clause
+          partial
+          partial
+          partial
+          partial
+          not-applicable
+          "crates/gql/tests/unit/query_pipeline_contract.rs")
+         (gql-query-composition
+          180
+          query-core
+          pending-licensed-clause
+          partial
+          partial
+          partial
+          partial
+          not-applicable
+          "crates/gql/tests/unit/query_pipeline_contract.rs")
+         (gql-grouping-aggregation-ordering
+          190
+          query-advanced
+          pending-licensed-clause
+          partial
+          partial
+          partial
+          partial
+          not-applicable
+          "crates/gql/tests/unit/query_pipeline_contract.rs")
+         (gql-graph-modification
+          200
+          data-management
+          pending-licensed-clause
+          partial
+          partial
+          partial
+          partial
+          not-applicable
+          "crates/gql/tests/unit/data_management_contract.rs")
+         (gql-catalog-management
+          210
+          data-management
+          pending-licensed-clause
+          partial
+          partial
+          partial
+          partial
+          partial
+          "crates/gql/tests/unit/data_management_contract.rs")
+         (gql-procedures-and-call
+          220
+          data-management
+          pending-licensed-clause
+          partial
+          partial
+          partial
+          partial
+          partial
+          "crates/gql/tests/unit/data_management_contract.rs")
+         (gql-session-and-control
+          230
+          data-management
+          pending-licensed-clause
+          partial
+          partial
+          partial
+          partial
+          not-applicable
+          "crates/gql/tests/unit/data_management_contract.rs"))
+        (feature-dependencies
+         (gql-values-and-types gql-lexical-literals)
+         (gql-property-graph-model gql-lexical-identifiers)
+         (gql-property-graph-model gql-values-and-types)
+         (gql-catalog-and-schema-model gql-property-graph-model)
+         (gql-node-patterns gql-lexical-identifiers)
+         (gql-node-patterns gql-property-graph-model)
+         (gql-edge-patterns gql-node-patterns)
+         (gql-path-patterns gql-node-patterns)
+         (gql-path-patterns gql-edge-patterns)
+         (gql-quantified-paths gql-path-patterns)
+         (gql-expression-language gql-values-and-types)
+         (gql-property-and-label-expressions gql-expression-language)
+         (gql-property-and-label-expressions gql-property-graph-model)
+         (gql-match gql-node-patterns)
+         (gql-match gql-edge-patterns)
+         (gql-optional-match gql-match)
+         (gql-where gql-match)
+         (gql-where gql-expression-language)
+         (gql-let gql-lexical-identifiers)
+         (gql-let gql-expression-language)
+         (gql-return gql-expression-language)
+         (gql-query-composition gql-return)
+         (gql-grouping-aggregation-ordering gql-return)
+         (gql-grouping-aggregation-ordering gql-expression-language)
+         (gql-graph-modification gql-match)
+         (gql-graph-modification gql-values-and-types)
+         (gql-catalog-management gql-catalog-and-schema-model)
+         (gql-procedures-and-call gql-catalog-and-schema-model)
+         (gql-procedures-and-call gql-expression-language))))
     (define meta-relational-reasoning/scheme/grammar/native#mrr-native-reasoning-module
       '((relation-schemas
          (edge many-to-many ((from string) (to string)))
@@ -128,170 +680,345 @@
                (dependency-closure transitive reachable (reachable edge)))
         (inverse-goals (why-not-reachable reachable-query ()))
         (transition-systems (closure-publication (reachable)))
+        (resource-language
+         (model-proposal external observational ())
+         (mrr-closure internal authoritative ())
+         (trajectory-sink external observational ()))
+        (reasoning-loop
+         (await-proposal model-proposal candidate await-closure ())
+         (await-closure mrr-closure admitted complete ())
+         (await-closure mrr-closure rejected await-proposal ()))
         (lineage-policy (complete ()))
         (projection-policy (#t #t ()))
         (validation-profile (64 #t ()))))
     (define meta-relational-reasoning/scheme/grammar/native#grammar-table
-      (lambda (_%key5730%_)
-        (cdr (assq _%key5730%_
+      (lambda (_%key8520%_)
+        (cdr (assq _%key8520%_
                    meta-relational-reasoning/scheme/grammar/native#mrr-native-grammar))))
     (define meta-relational-reasoning/scheme/grammar/native#grammar-row
-      (lambda (_%table5727%_ _%index5728%_)
-        (if (>= _%index5728%_ '0)
-            (if (< _%index5728%_ (length _%table5727%_))
-                (list-ref _%table5727%_ _%index5728%_)
+      (lambda (_%table8517%_ _%index8518%_)
+        (if (>= _%index8518%_ '0)
+            (if (< _%index8518%_ (length _%table8517%_))
+                (list-ref _%table8517%_ _%index8518%_)
                 '#f)
             '#f)))
     (define meta-relational-reasoning/scheme/grammar/native#grammar-text
-      (lambda (_%value5719%_)
-        (if (symbol? _%value5719%_)
-            (let () (declare (not safe)) (##symbol->string _%value5719%_))
-            (if (string? _%value5719%_)
-                _%value5719%_
-                (if (number? _%value5719%_)
+      (lambda (_%value8509%_)
+        (if (symbol? _%value8509%_)
+            (let () (declare (not safe)) (##symbol->string _%value8509%_))
+            (if (string? _%value8509%_)
+                _%value8509%_
+                (if (number? _%value8509%_)
                     (let ()
                       (declare (not safe))
-                      (##number->string _%value5719%_))
-                    (if (eq? _%value5719%_ '#t)
+                      (##number->string _%value8509%_))
+                    (if (eq? _%value8509%_ '#t)
                         '"true"
-                        (if (eq? _%value5719%_ '#f) '"false" '#f)))))))
+                        (if (eq? _%value8509%_ '#f) '"false" '#f)))))))
     (define meta-relational-reasoning/scheme/grammar/native#grammar-text-length
-      (lambda (_%value5715%_)
-        (let ((_%text5717%_
+      (lambda (_%value8505%_)
+        (let ((_%text8507%_
                (meta-relational-reasoning/scheme/grammar/native#grammar-text
-                _%value5715%_)))
-          (if _%text5717%_ (string-length _%text5717%_) '-1))))
+                _%value8505%_)))
+          (if _%text8507%_ (string-length _%text8507%_) '-1))))
     (define meta-relational-reasoning/scheme/grammar/native#grammar-text-char
-      (lambda (_%value5710%_ _%index5711%_)
-        (let ((_%text5713%_
+      (lambda (_%value8500%_ _%index8501%_)
+        (let ((_%text8503%_
                (meta-relational-reasoning/scheme/grammar/native#grammar-text
-                _%value5710%_)))
-          (if (and _%text5713%_
-                   (>= _%index5711%_ '0)
-                   (< _%index5711%_ (string-length _%text5713%_)))
-              (let ((__tmp8698 (string-ref _%text5713%_ _%index5711%_)))
+                _%value8500%_)))
+          (if (and _%text8503%_
+                   (>= _%index8501%_ '0)
+                   (< _%index8501%_ (string-length _%text8503%_)))
+              (let ((__tmp11918 (string-ref _%text8503%_ _%index8501%_)))
                 (declare (not safe))
-                (##char->integer __tmp8698))
+                (##char->integer __tmp11918))
               '-1))))
     (define meta-relational-reasoning/scheme/grammar/native#grammar-rows
-      (lambda (_%table5694%_)
-        (let ((_%$e5696%_ _%table5694%_))
-          (let ((_%default56985702%_ (lambda () '#f))
-                (_%table56995704%_ '#(0 1 2 3 4 5)))
-            (if (fixnum? _%$e5696%_)
-                (if (and (let () (declare (not safe)) (##fx>= _%$e5696%_ '0))
-                         (let () (declare (not safe)) (##fx< _%$e5696%_ '6)))
-                    (let ((_%x5707%_
+      (lambda (_%table8484%_)
+        (let ((_%$e8486%_ _%table8484%_))
+          (let ((_%default84888492%_ (lambda () '#f))
+                (_%table84898494%_
+                 '#(0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16)))
+            (if (fixnum? _%$e8486%_)
+                (if (and (let () (declare (not safe)) (##fx>= _%$e8486%_ '0))
+                         (let () (declare (not safe)) (##fx< _%$e8486%_ '17)))
+                    (let ((_%x8497%_
                            (let ()
                              (declare (not safe))
-                             (##vector-ref _%table56995704%_ _%$e5696%_))))
-                      (if (let () (declare (not safe)) (##fx< _%x5707%_ '3))
+                             (##vector-ref _%table84898494%_ _%$e8486%_))))
+                      (if (let () (declare (not safe)) (##fx< _%x8497%_ '8))
                           (if (let ()
                                 (declare (not safe))
-                                (##fx= _%x5707%_ '0))
-                              (meta-relational-reasoning/scheme/grammar/native#grammar-table
-                               'syntax-kinds)
+                                (##fx< _%x8497%_ '4))
                               (if (let ()
                                     (declare (not safe))
-                                    (##fx= _%x5707%_ '1))
-                                  (meta-relational-reasoning/scheme/grammar/native#grammar-table
-                                   'keywords)
-                                  (meta-relational-reasoning/scheme/grammar/native#grammar-table
-                                   'prefix-operators)))
+                                    (##fx< _%x8497%_ '2))
+                                  (if (let ()
+                                        (declare (not safe))
+                                        (##fx= _%x8497%_ '0))
+                                      (meta-relational-reasoning/scheme/grammar/native#grammar-table
+                                       'syntax-kinds)
+                                      (meta-relational-reasoning/scheme/grammar/native#grammar-table
+                                       'keywords))
+                                  (if (let ()
+                                        (declare (not safe))
+                                        (##fx= _%x8497%_ '2))
+                                      (meta-relational-reasoning/scheme/grammar/native#grammar-table
+                                       'prefix-operators)
+                                      (meta-relational-reasoning/scheme/grammar/native#grammar-table
+                                       'binary-operators)))
+                              (if (let ()
+                                    (declare (not safe))
+                                    (##fx< _%x8497%_ '6))
+                                  (if (let ()
+                                        (declare (not safe))
+                                        (##fx= _%x8497%_ '4))
+                                      (meta-relational-reasoning/scheme/grammar/native#grammar-table
+                                       'parser-entrypoints)
+                                      (meta-relational-reasoning/scheme/grammar/native#grammar-table
+                                       'recoveries))
+                                  (if (let ()
+                                        (declare (not safe))
+                                        (##fx= _%x8497%_ '6))
+                                      (cdr (assq 'releases
+                                                 meta-relational-reasoning/scheme/grammar/native#mrr-native-profile))
+                                      (cdr (assq 'modules
+                                                 meta-relational-reasoning/scheme/grammar/native#mrr-native-profile)))))
                           (if (let ()
                                 (declare (not safe))
-                                (##fx= _%x5707%_ '3))
-                              (meta-relational-reasoning/scheme/grammar/native#grammar-table
-                               'binary-operators)
+                                (##fx< _%x8497%_ '12))
                               (if (let ()
                                     (declare (not safe))
-                                    (##fx= _%x5707%_ '4))
-                                  (meta-relational-reasoning/scheme/grammar/native#grammar-table
-                                   'parser-entrypoints)
-                                  (meta-relational-reasoning/scheme/grammar/native#grammar-table
-                                   'recoveries)))))
-                    (_%default56985702%_))
-                (_%default56985702%_))))))
+                                    (##fx< _%x8497%_ '10))
+                                  (if (let ()
+                                        (declare (not safe))
+                                        (##fx= _%x8497%_ '8))
+                                      (cdr (assq 'profiles
+                                                 meta-relational-reasoning/scheme/grammar/native#mrr-native-profile))
+                                      (cdr (assq 'profile-modules
+                                                 meta-relational-reasoning/scheme/grammar/native#mrr-native-profile)))
+                                  (if (let ()
+                                        (declare (not safe))
+                                        (##fx= _%x8497%_ '10))
+                                      (cdr (assq 'features
+                                                 meta-relational-reasoning/scheme/grammar/native#mrr-native-profile))
+                                      (cdr (assq 'feature-dependencies
+                                                 meta-relational-reasoning/scheme/grammar/native#mrr-native-profile))))
+                              (if (let ()
+                                    (declare (not safe))
+                                    (##fx< _%x8497%_ '14))
+                                  (if (let ()
+                                        (declare (not safe))
+                                        (##fx= _%x8497%_ '12))
+                                      (cdr (assq 'schema
+                                                 meta-relational-reasoning/scheme/grammar/native#mrr-native-profile))
+                                      (cdr (assq 'profile-supplements
+                                                 meta-relational-reasoning/scheme/grammar/native#mrr-native-profile)))
+                                  (if (let ()
+                                        (declare (not safe))
+                                        (##fx= _%x8497%_ '14))
+                                      (meta-relational-reasoning/scheme/grammar/native#grammar-table
+                                       'non-reserved-words)
+                                      (if (let ()
+                                            (declare (not safe))
+                                            (##fx= _%x8497%_ '15))
+                                          (meta-relational-reasoning/scheme/grammar/native#grammar-table
+                                           'numeric-literals)
+                                          (meta-relational-reasoning/scheme/grammar/native#grammar-table
+                                           'character-string-literals)))))))
+                    (_%default84888492%_))
+                (_%default84888492%_))))))
     (define meta-relational-reasoning/scheme/grammar/native#reasoning-rows
-      (lambda (_%table5676%_)
-        (let ((_%key5692%_
-               (let ((_%$e5678%_ _%table5676%_))
-                 (let ((_%default56805684%_ (lambda () '#f))
-                       (_%table56815686%_ '#(0 1 2 3 4 5 6 7)))
-                   (if (fixnum? _%$e5678%_)
+      (lambda (_%table8466%_)
+        (let ((_%key8482%_
+               (let ((_%$e8468%_ _%table8466%_))
+                 (let ((_%default84708474%_ (lambda () '#f))
+                       (_%table84718476%_ '#(0 1 2 3 4 5 6 7 8 9)))
+                   (if (fixnum? _%$e8468%_)
                        (if (and (let ()
                                   (declare (not safe))
-                                  (##fx>= _%$e5678%_ '0))
+                                  (##fx>= _%$e8468%_ '0))
                                 (let ()
                                   (declare (not safe))
-                                  (##fx< _%$e5678%_ '8)))
-                           (let ((_%x5689%_
+                                  (##fx< _%$e8468%_ '10)))
+                           (let ((_%x8479%_
                                   (let ()
                                     (declare (not safe))
                                     (##vector-ref
-                                     _%table56815686%_
-                                     _%$e5678%_))))
+                                     _%table84718476%_
+                                     _%$e8468%_))))
                              (if (let ()
                                    (declare (not safe))
-                                   (##fx< _%x5689%_ '4))
+                                   (##fx< _%x8479%_ '5))
                                  (if (let ()
                                        (declare (not safe))
-                                       (##fx< _%x5689%_ '2))
+                                       (##fx< _%x8479%_ '2))
                                      (if (let ()
                                            (declare (not safe))
-                                           (##fx= _%x5689%_ '0))
+                                           (##fx= _%x8479%_ '0))
                                          'relation-schemas
                                          'query-templates)
                                      (if (let ()
                                            (declare (not safe))
-                                           (##fx= _%x5689%_ '2))
+                                           (##fx= _%x8479%_ '2))
                                          'rules
-                                         'inverse-goals))
+                                         (if (let ()
+                                               (declare (not safe))
+                                               (##fx= _%x8479%_ '3))
+                                             'inverse-goals
+                                             'transition-systems)))
                                  (if (let ()
                                        (declare (not safe))
-                                       (##fx< _%x5689%_ '6))
+                                       (##fx< _%x8479%_ '7))
                                      (if (let ()
                                            (declare (not safe))
-                                           (##fx= _%x5689%_ '4))
-                                         'transition-systems
-                                         'lineage-policy)
+                                           (##fx= _%x8479%_ '5))
+                                         'lineage-policy
+                                         'projection-policy)
                                      (if (let ()
                                            (declare (not safe))
-                                           (##fx= _%x5689%_ '6))
-                                         'projection-policy
-                                         'validation-profile))))
-                           (_%default56805684%_))
-                       (_%default56805684%_))))))
-          (if _%key5692%_
-              (cdr (assq _%key5692%_
+                                           (##fx= _%x8479%_ '7))
+                                         'validation-profile
+                                         (if (let ()
+                                               (declare (not safe))
+                                               (##fx= _%x8479%_ '8))
+                                             'resource-language
+                                             'reasoning-loop)))))
+                           (_%default84708474%_))
+                       (_%default84708474%_))))))
+          (if _%key8482%_
+              (cdr (assq _%key8482%_
                          meta-relational-reasoning/scheme/grammar/native#mrr-native-reasoning-module))
               '#f))))
     (define meta-relational-reasoning/scheme/grammar/native#reasoning-nested
-      (lambda (_%entry5674%_)
-        (if _%entry5674%_
-            (list-ref _%entry5674%_ (- (length _%entry5674%_) '1))
+      (lambda (_%entry8464%_)
+        (if _%entry8464%_
+            (list-ref _%entry8464%_ (- (length _%entry8464%_) '1))
             '#f)))
     (define meta-relational-reasoning/scheme/grammar/native#reasoning-nested-value
-      (lambda (_%entry5662%_ _%index5663%_ _%column5664%_)
-        (let* ((_%nested5666%_
+      (lambda (_%entry8452%_ _%index8453%_ _%column8454%_)
+        (let* ((_%nested8456%_
                 (meta-relational-reasoning/scheme/grammar/native#reasoning-nested
-                 _%entry5662%_))
-               (_%value5668%_
-                (if _%nested5666%_
-                    (if (>= _%index5663%_ '0)
-                        (if (< _%index5663%_ (length _%nested5666%_))
-                            (list-ref _%nested5666%_ _%index5663%_)
+                 _%entry8452%_))
+               (_%value8458%_
+                (if _%nested8456%_
+                    (if (>= _%index8453%_ '0)
+                        (if (< _%index8453%_ (length _%nested8456%_))
+                            (list-ref _%nested8456%_ _%index8453%_)
                             '#f)
                         '#f)
                     '#f)))
-          (if (and (pair? _%value5668%_)
-                   (>= _%column5664%_ '0)
-                   (< _%column5664%_
-                      (let () (declare (not safe)) (##length _%value5668%_))))
-              (list-ref _%value5668%_ _%column5664%_)
-              (if (and _%value5668%_ (= _%column5664%_ '0))
-                  _%value5668%_
+          (if (and (pair? _%value8458%_)
+                   (>= _%column8454%_ '0)
+                   (< _%column8454%_
+                      (let () (declare (not safe)) (##length _%value8458%_))))
+              (list-ref _%value8458%_ _%column8454%_)
+              (if (and _%value8458%_ (= _%column8454%_ '0))
+                  _%value8458%_
                   '#f)))))
+    (define meta-relational-reasoning/scheme/grammar/native#reasoning-driver-phase
+      (lambda (_%code8447%_)
+        (let ((_%$e8449%_ _%code8447%_))
+          (if (eq? '0 _%$e8449%_)
+              'await-proposal
+              (if (eq? '1 _%$e8449%_)
+                  'await-closure
+                  (if (eq? '2 _%$e8449%_) 'complete '#f))))))
+    (define meta-relational-reasoning/scheme/grammar/native#reasoning-driver-resource
+      (lambda (_%code8442%_)
+        (let ((_%$e8444%_ _%code8442%_))
+          (if (eq? '0 _%$e8444%_)
+              'model-proposal
+              (if (eq? '1 _%$e8444%_) 'mrr-closure '#f)))))
+    (define meta-relational-reasoning/scheme/grammar/native#reasoning-driver-status
+      (lambda (_%code8437%_)
+        (let ((_%$e8439%_ _%code8437%_))
+          (if (eq? '0 _%$e8439%_)
+              'candidate
+              (if (eq? '1 _%$e8439%_)
+                  'admitted
+                  (if (eq? '2 _%$e8439%_) 'rejected '#f))))))
+    (define meta-relational-reasoning/scheme/grammar/native#reasoning-driver-phase-code
+      (lambda (_%phase8432%_)
+        (let ((_%$e8434%_ _%phase8432%_))
+          (if (eq? 'await-proposal _%$e8434%_)
+              '0
+              (if (eq? 'await-closure _%$e8434%_)
+                  '1
+                  (if (eq? 'complete _%$e8434%_) '2 '-1))))))
+    (define meta-relational-reasoning/scheme/grammar/native#reasoning-driver-resource-code
+      (lambda (_%resource8427%_)
+        (let ((_%$e8429%_ _%resource8427%_))
+          (if (eq? 'model-proposal _%$e8429%_)
+              '0
+              (if (eq? 'mrr-closure _%$e8429%_) '1 '-1)))))
+    (define meta-relational-reasoning/scheme/grammar/native#reasoning-driver-find
+      (lambda (_%phase8410%_ _%resource8411%_ _%status8412%_)
+        (let _%loop8414%_ ((_%rows8416%_
+                            (meta-relational-reasoning/scheme/grammar/native#reasoning-rows
+                             '9)))
+          (if (null? _%rows8416%_)
+              '#f
+              (if (and (eq? _%phase8410%_ (list-ref (car _%rows8416%_) '0))
+                       (or (not _%resource8411%_)
+                           (eq? _%resource8411%_
+                                (list-ref (car _%rows8416%_) '1)))
+                       (or (not _%status8412%_)
+                           (eq? _%status8412%_
+                                (list-ref (car _%rows8416%_) '2))))
+                  (car _%rows8416%_)
+                  (_%loop8414%_ (cdr _%rows8416%_)))))))
+    (define meta-relational-reasoning/scheme/grammar/native#reasoning-driver-request-resource
+      (lambda (_%phase-code8403%_)
+        (let* ((_%phase8405%_
+                (meta-relational-reasoning/scheme/grammar/native#reasoning-driver-phase
+                 _%phase-code8403%_))
+               (_%row8407%_
+                (if _%phase8405%_
+                    (meta-relational-reasoning/scheme/grammar/native#reasoning-driver-find
+                     _%phase8405%_
+                     '#f
+                     '#f)
+                    '#f)))
+          (if _%row8407%_
+              (meta-relational-reasoning/scheme/grammar/native#reasoning-driver-resource-code
+               (list-ref _%row8407%_ '1))
+              '-1))))
+    (define meta-relational-reasoning/scheme/grammar/native#reasoning-driver-transition
+      (lambda (_%phase-code8381%_
+               _%resource-code8382%_
+               _%status-code8383%_
+               _%cycle8384%_
+               _%max-cycles8385%_)
+        (let* ((_%phase8387%_
+                (meta-relational-reasoning/scheme/grammar/native#reasoning-driver-phase
+                 _%phase-code8381%_))
+               (_%resource8389%_
+                (meta-relational-reasoning/scheme/grammar/native#reasoning-driver-resource
+                 _%resource-code8382%_))
+               (_%status8391%_
+                (meta-relational-reasoning/scheme/grammar/native#reasoning-driver-status
+                 _%status-code8383%_))
+               (_%row8393%_
+                (if _%phase8387%_
+                    (if _%resource8389%_
+                        (if _%status8391%_
+                            (meta-relational-reasoning/scheme/grammar/native#reasoning-driver-find
+                             _%phase8387%_
+                             _%resource8389%_
+                             _%status8391%_)
+                            '#f)
+                        '#f)
+                    '#f)))
+          (if (or (< _%cycle8384%_ '0) (<= _%max-cycles8385%_ '0))
+              '-1
+              (if (not _%row8393%_)
+                  '-1
+                  (if (and (eq? _%status8391%_ 'rejected)
+                           (>= (+ _%cycle8384%_ '1) _%max-cycles8385%_))
+                      '-2
+                      (meta-relational-reasoning/scheme/grammar/native#reasoning-driver-phase-code
+                       (list-ref _%row8393%_ '3))))))))
     (define-macro (define-guard guard defn)
       (if (eval `(cond-expand
                   (gerbil-separate-compilation #f)
@@ -545,6 +1272,8 @@
      "#ifndef ___HAVE_FFI_U8VECTOR\n#define ___HAVE_FFI_U8VECTOR\n#define U8_DATA(obj) ___CAST (___U8*, ___BODY_AS (obj, ___tSUBTYPED))\n#define U8_LEN(obj) ___HD_BYTES (___HEADER (obj))\n#endif")
     (namespace
      ("meta-relational-reasoning/scheme/grammar/native#"
+      mrr-reasoning-native-driver-transition
+      mrr-reasoning-native-driver-request-resource
       mrr-reasoning-native-nested-text-char
       mrr-reasoning-native-nested-text-length
       mrr-reasoning-native-nested-count
@@ -575,6 +1304,31 @@
      (let ((rows (meta-relational-reasoning/scheme/grammar/native#grammar-rows
                   table)))
        (if rows (length rows) -1)))
+    (c-define
+     (mrr-reasoning-native-driver-request-resource phase)
+     (int32)
+     int32
+     "mrr_reasoning_native_driver_request_resource"
+     "extern"
+     (meta-relational-reasoning/scheme/grammar/native#reasoning-driver-request-resource
+      phase))
+    (c-define
+     (mrr-reasoning-native-driver-transition
+      phase
+      resource
+      status
+      cycle
+      max-cycles)
+     (int32 int32 int32 int64 int64)
+     int32
+     "mrr_reasoning_native_driver_transition"
+     "extern"
+     (meta-relational-reasoning/scheme/grammar/native#reasoning-driver-transition
+      phase
+      resource
+      status
+      cycle
+      max-cycles))
     (c-define
      (mrr-grammar-native-row-text-length table row column)
      (int32 int64 int64)

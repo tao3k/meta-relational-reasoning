@@ -11,3 +11,6 @@ mod rowan_kind_contract;
 
 #[path = "gerbil_grammar_contract.rs"]
 mod gerbil_grammar_contract;
+
+#[path = "character_string_contract.rs"]
+mod character_string_contract;

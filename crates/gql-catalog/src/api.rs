@@ -35,6 +35,8 @@ pub struct Catalog {
     pub graphs: Vec<Graph>,
     /// Registered schemas.
     pub schemas: Vec<Schema>,
+    /// Registered graph types.
+    pub graph_types: Vec<GraphType>,
 }
 
 impl Catalog {
@@ -45,7 +47,15 @@ impl Catalog {
             name,
             graphs,
             schemas,
+            graph_types: Vec::new(),
         }
+    }
+
+    /// Attach graph-type declarations while preserving the stable constructor.
+    #[must_use]
+    pub fn with_graph_types(mut self, graph_types: Vec<GraphType>) -> Self {
+        self.graph_types = graph_types;
+        self
     }
 
     /// Resolve one graph declaration by name.
@@ -58,6 +68,27 @@ impl Catalog {
     #[must_use]
     pub fn schema(&self, name: &SchemaName) -> Option<&Schema> {
         self.schemas.iter().find(|schema| &schema.name == name)
+    }
+
+    /// Resolve one graph-type declaration by name.
+    #[must_use]
+    pub fn graph_type(&self, name: &GraphTypeName) -> Option<&GraphType> {
+        self.graph_types
+            .iter()
+            .find(|graph_type| &graph_type.name == name)
+    }
+}
+
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+/// Named graph-type declaration in the catalog.
+pub struct GraphType {
+    pub name: GraphTypeName,
+}
+
+impl GraphType {
+    #[must_use]
+    pub fn new(name: GraphTypeName) -> Self {
+        Self { name }
     }
 }
 

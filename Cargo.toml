@@ -1,6 +1,6 @@
 [workspace]
 members = [
-  "build-support/mrr-rust-project-harness-policy",
+  "build-support/mrr-asp-rust-project-policy",
   "build-support/mrr-gerbil-native-build",
   "crates/*",
 ]
@@ -15,9 +15,11 @@ repository = "https://github.com/tao3k/meta-relational-reasoning"
 
 [workspace.dependencies]
 ascent = "0.8.0"
+asp-rust-build-support = { git = "https://github.com/tao3k/asp-rust", rev = "b64f80401c8e2688d7aa7809de714d5f22890ebf", version = "0.1.0" }
 gql = { path = "crates/gql", version = "0.1.0", default-features = false }
 criterion = "0.8.2"
 gerbil-scheme-native-build = { git = "https://github.com/tao3k/gerbil-scheme-rust.git", rev = "a83fb649ddbbeaabdb538a6eaf0ded10838f7fad" }
+icu_properties = "2.2.0"
 gql-ast = { path = "crates/gql-ast", version = "0.1.0" }
 gql-catalog = { path = "crates/gql-catalog", version = "0.1.0" }
 gql-compiler = { path = "crates/gql-compiler", version = "0.1.0" }
@@ -27,7 +29,7 @@ gql-sema = { path = "crates/gql-sema", version = "0.1.0" }
 gql-source = { path = "crates/gql-source", version = "0.1.0" }
 gql-syntax = { path = "crates/gql-syntax", version = "0.1.0" }
 gql-types = { path = "crates/gql-types", version = "0.1.0" }
-mrr-rust-project-harness-policy = { path = "build-support/mrr-rust-project-harness-policy", version = "0.1.0" }
+mrr-asp-rust-project-policy = { path = "build-support/mrr-asp-rust-project-policy", version = "0.1.0" }
 mrr-identity = { path = "crates/mrr-identity", version = "0.1.0" }
 mrr-intent = { path = "crates/mrr-intent", version = "0.1.0" }
 mrr-relation = { path = "crates/mrr-relation", version = "0.1.0" }
@@ -35,7 +37,7 @@ mrr-revision = { path = "crates/mrr-revision", version = "0.1.0" }
 mrr-query = { path = "crates/mrr-query", version = "0.1.0" }
 mrr-frontends = { path = "crates/mrr-frontends", version = "0.1.0" }
 mrr-logic = { path = "crates/mrr-logic", version = "0.1.0" }
-mrr-mvp-acceptance = { path = "crates/mrr-mvp-acceptance", version = "0.1.0" }
+mrr-conformance = { path = "crates/mrr-conformance", version = "0.1.0" }
 mrr-lineage = { path = "crates/mrr-lineage", version = "0.1.0" }
 mrr-transition = { path = "crates/mrr-transition", version = "0.1.0" }
 mrr-bundle = { path = "crates/mrr-bundle", version = "0.1.0" }
@@ -47,6 +49,7 @@ sha2 = "0.10.9"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 ciborium = "0.2"
+rowan = "0.16.1"
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

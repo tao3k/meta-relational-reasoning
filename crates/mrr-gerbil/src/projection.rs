@@ -13,6 +13,7 @@ const INPUT_PATHS: &[&str] = &[
     "build.ss",
     "gerbil.pkg",
     "scheme/grammar/gql-declaration.ss",
+    "scheme/grammar/gql-profile.ss",
     "scheme/grammar/core.ss",
     "scheme/grammar/gql.ss",
     "scheme/grammar/cypher.ss",

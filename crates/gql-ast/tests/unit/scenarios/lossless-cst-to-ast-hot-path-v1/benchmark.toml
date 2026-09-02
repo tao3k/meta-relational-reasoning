@@ -1,0 +1,53 @@
+harness = "libtest"
+test = "lossless_cst_to_ast_hot_path_stays_inside_scenario_budget"
+snapshot = "gql_ast_lossless_cst_to_ast_hot_path_v1"
+target_total = "500us"
+max_total = "5ms"
+observed_total = "360750ns"
+regression_budget = "1ms"
+memory_budget_bytes = 1048576
+observed_memory_bytes = 1650
+target_rationale = "The frontend parses and lowers four representative profile-v1 statements, including a qualified nested graph type, without semantic analysis, backend work, or fallback."
+
+[measurement]
+clock = "std::time::Instant"
+statistic = "p95"
+warmup_iterations = 3
+measure_iterations = 25
+total_p50 = "321208ns"
+total_p95 = "360750ns"
+total_max = "484500ns"
+
+[observed_timings]
+ast_lowering = "141875ns"
+parse = "150791ns"
+
+[metrics.source_bytes]
+unit = "bytes"
+kind = "exact"
+target = 569
+observed = 569
+
+[metrics.statement_count]
+unit = "count"
+kind = "exact"
+target = 4
+observed = 4
+
+[metrics.diagnostic_count]
+unit = "count"
+kind = "maximum"
+target = 0
+observed = 0
+
+[metrics.fallback_count]
+unit = "count"
+kind = "exact"
+target = 0
+observed = 0
+
+[metrics.roundtrip_bytes]
+unit = "bytes"
+kind = "exact"
+target = 569
+observed = 569

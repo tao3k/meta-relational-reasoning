@@ -11,7 +11,10 @@ pub(crate) use crate::generated::{
     GrammarParserAction, binary_operator_spec, keyword, prefix_operator_precedence,
     recovery_diagnostic, top_level_parser_entrypoint,
 };
-pub use crate::generated::{Keyword, SyntaxKind};
+pub use crate::generated::{
+    ISO_GQL_CHARACTER_STRING_FORMS, ISO_GQL_NON_RESERVED_WORDS, ISO_GQL_NUMERIC_LITERAL_FORMS,
+    Keyword, SyntaxKind, is_non_reserved_word,
+};
 
 /// Rowan syntax node for the GQL language.
 pub type RowanSyntaxNode = rowan::SyntaxNode<GqlSyntax>;
@@ -81,13 +84,15 @@ pub enum TokenKind {
     Number,
     /// String token.
     String,
+    /// Byte-string token.
+    ByteString,
     /// Whitespace token.
     Whitespace,
     /// Punctuation token with exact character.
     Punctuation(char),
     /// Comment token.
     Comment,
-    /// Fallback unknown token.
+    /// Unrecognized source token retained for lossless diagnostics.
     Unknown,
 }
 
@@ -120,6 +125,7 @@ impl Token {
             SyntaxKind::Identifier => TokenKind::Identifier,
             SyntaxKind::Number => TokenKind::Number,
             SyntaxKind::String => TokenKind::String,
+            SyntaxKind::ByteString => TokenKind::ByteString,
             SyntaxKind::Whitespace => TokenKind::Whitespace,
             SyntaxKind::Punctuation => text
                 .chars()
@@ -149,6 +155,7 @@ impl Token {
             TokenKind::Identifier => SyntaxKind::Identifier,
             TokenKind::Number => SyntaxKind::Number,
             TokenKind::String => SyntaxKind::String,
+            TokenKind::ByteString => SyntaxKind::ByteString,
             TokenKind::Whitespace => SyntaxKind::Whitespace,
             TokenKind::Punctuation(_) => SyntaxKind::Punctuation,
             TokenKind::Comment => SyntaxKind::Comment,

@@ -18,6 +18,8 @@
     "."
     "meta-relational-reasoning"
     '("scheme/grammar/core"
+      "scheme/grammar/gql-declaration"
+      "scheme/grammar/gql-profile"
       "scheme/grammar/gql"
       "scheme/grammar/cypher"
       "scheme/reasoning/core"

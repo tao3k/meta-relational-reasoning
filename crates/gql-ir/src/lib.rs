@@ -4,7 +4,13 @@
 mod api;
 
 pub use api::{
-    BinaryOperator, Binding, CaseBranch, EdgeDirection, EdgePattern, Expression, GraphPattern,
-    GraphPatternElement, LetBinding, NodePattern, PathPattern, PathQuantifier, Projection,
-    PropertyConstraint, QueryBlock, SortDirection, SortKey, UnaryOperator,
+    AggregateFunction, BinaryOperator, Binding, CaseBranch, CatalogCommand, CatalogCreatePolicy,
+    CatalogDropPolicy, CatalogObjectName, ClosedReferenceTypeSpecification, DeclaredTypeParameter,
+    DeclaredValueType, DeclaredValueTypeForm, EdgeDirection, EdgePattern, EdgeTypeSpecification,
+    Expression, GraphPattern, GraphPatternElement, GraphTypeSource, GraphTypeSpecification,
+    LabelExpression, LetBinding, Mutation, NodePattern, NodeTypeReference, NodeTypeSpecification,
+    OptionalMatch, PathMode, PathPattern, PathQuantifier, ProcedureCommand, Projection,
+    PropertyConstraint, PropertyType, QueryBlock, RecordField, ReferenceValueTypeKind,
+    SessionCommand, SetOperation, SetOperator, SortDirection, SortKey, TransactionAccessMode,
+    TransactionCommand, UnaryOperator,
 };

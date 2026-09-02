@@ -1,0 +1,12 @@
+id = "lossless-cst-to-ast-hot-path-v1"
+title = "Lossless GQL CST to AST hot path"
+policy_ids = ["RUST-AGENT-GQL-AST-PERF-001"]
+agent_goal = "Parse representative profile-v1 GQL sources losslessly and lower them to backend-neutral AST statements within a bounded p95 without fallback."
+reference_repositories = ["opengql/grammar", "rust-analyzer/rowan"]
+reference_patterns = [
+  "Lossless concrete syntax preserves every input byte",
+  "AST lowering consumes the already parsed Rowan tree without reparsing source text",
+  "Performance admission records parse and AST-lowering phases separately",
+]
+inputs = "inputs"
+expected = "expected"

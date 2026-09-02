@@ -9,7 +9,7 @@ fn parses_where_clause_with_identifier_expression() {
 
 #[test]
 fn parses_where_clause_with_boolean_and_comparison_expression() {
-    let input = "MATCH (a)-[:CALLS]->(b) WHERE a = 1 AND NOT (b != 2 OR a >= 3) RETURN b";
+    let input = "MATCH (a)-[:CALLS]->(b) WHERE a = 1 AND NOT (b <> 2 OR a >= 3) RETURN b";
     let parsed = parse("test.gql", input);
     assert_eq!(parsed.tree.source().text(), input);
     assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
@@ -118,15 +118,7 @@ fn backend_names_remain_identifiers_and_never_activate_core_syntax() {
 
 #[test]
 fn reserved_but_unsupported_statements_report_profile_diagnostics_losslessly() {
-    for source in [
-        "CALL db.labels()",
-        "CREATE GRAPH social",
-        "DROP GRAPH social",
-        "INSERT (n:Person)",
-        "MATCH (n) DELETE n",
-        "MATCH (n) SET n.name = 'Ada'",
-        "MATCH (n) REMOVE n.name",
-    ] {
+    for source in ["CREATE INDEX social", "DROP INDEX social"] {
         let parsed = parse("unsupported-statement.gql", source);
         assert_eq!(parsed.tree.rowan_root().text().to_string(), source);
         assert!(

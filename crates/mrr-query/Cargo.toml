@@ -14,10 +14,9 @@ serde.workspace = true
 ciborium.workspace = true
 
 [build-dependencies]
-mrr-rust-project-harness-policy.workspace = true
+mrr-asp-rust-project-policy.workspace = true
 [dev-dependencies]
 criterion.workspace = true
-mrr-rust-project-harness-policy.workspace = true
 [[bench]]
 name = "query_perf"
 harness = false

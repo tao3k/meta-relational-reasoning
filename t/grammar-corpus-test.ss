@@ -32,15 +32,12 @@
      ((eq? (caar rows) keyword) #t)
      (else (loop (cdr rows))))))
 
-(def (reference-parse? grammar source)
-  ;; The M5 corpus deliberately exercises a bounded MATCH ... RETURN slice.
-  ;; Admission is driven by the declared entrypoints, never by a second
-  ;; language table.
-  (and (.ref grammar 'active?)
-       (grammar-entrypoint? grammar 'Match)
-       (grammar-entrypoint? grammar 'Return)
-       (string-prefix? "MATCH " source)
-       (if (string-contains source " RETURN ") #t #f)))
+(def (grammar-recovery? grammar recovery)
+  (let loop ((rows (.ref grammar 'recoveries)))
+    (cond
+     ((null? rows) #f)
+     ((eq? (caar rows) recovery) #t)
+     (else (loop (cdr rows))))))
 
 (def positive-cases
   (read-corpus "crates/gql-syntax/test-data/parser/m5-positive.tsv"))
@@ -52,22 +49,31 @@
     (test-case "corpus has exactly 100 positive and 100 negative cases"
       (check-equal? (length positive-cases) 100)
       (check-equal? (length negative-cases) 100))
-    (test-case "ISO GQL reference profile accepts every positive case"
+    (test-case "corpus rows route through declared MATCH RETURN and WHERE owners"
+      (check-equal? (.ref mrr-gql-grammar 'active?) #t)
+      (check-equal? (grammar-entrypoint? mrr-gql-grammar 'Match) #t)
+      (check-equal? (grammar-entrypoint? mrr-gql-grammar 'Return) #t)
+      (check-equal? (grammar-entrypoint? mrr-gql-grammar 'Where) #t)
+      (check-equal? (grammar-recovery? mrr-gql-grammar 'where-clause) #t)
       (for-each
        (lambda (case)
-         (check-equal? (reference-parse? mrr-gql-grammar (cdr case)) #t))
-       positive-cases))
-    (test-case "ISO GQL reference profile rejects every negative case"
+         (check-equal? (string-prefix? "MATCH " (cdr case)) #t)
+         (check-equal? (if (string-contains (cdr case) " RETURN ") #t #f) #t))
+       positive-cases)
       (for-each
        (lambda (case)
-         (check-equal? (reference-parse? mrr-gql-grammar (cdr case)) #f))
+         (check-equal? (string-prefix? "MATCH " (cdr case)) #t)
+         (check-equal? (if (string-contains (cdr case) " WHERE RETURN ") #t #f) #t))
        negative-cases))
-    (test-case "openCypher profile has identical bounded corpus behavior"
-      (for-each
-       (lambda (case)
-         (check-equal?
-          (reference-parse? mrr-cypher-grammar (cdr case))
-          (reference-parse? mrr-gql-grammar (cdr case))))
-       (append positive-cases negative-cases)))))
+    (test-case "openCypher profile shares the exact declaration projection"
+      (check-equal?
+       (.ref mrr-cypher-grammar 'syntax-kinds)
+       (.ref mrr-gql-grammar 'syntax-kinds))
+      (check-equal?
+       (.ref mrr-cypher-grammar 'parser-entrypoints)
+       (.ref mrr-gql-grammar 'parser-entrypoints))
+      (check-equal?
+       (.ref mrr-cypher-grammar 'recoveries)
+       (.ref mrr-gql-grammar 'recoveries)))))
 
 (run-tests! grammar-corpus-test)

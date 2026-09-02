@@ -36,10 +36,10 @@ fn simple_case_survives_lossless_cst_ast_and_canonical_ir() {
     assert_eq!(count_kind(&root, SyntaxKind::CaseWhenClause), 1);
     assert_eq!(count_kind(&root, SyntaxKind::CaseElseClause), 1);
 
-    let Statement::Query(query) = &result.statement else {
+    let Some(Statement::Query(query)) = &result.statement else {
         panic!("statement is query");
     };
-    let Some(QueryClause::Return { expressions }) = query.clauses.last() else {
+    let Some(QueryClause::Return { projections, .. }) = query.clauses.last() else {
         panic!("RETURN clause exists");
     };
     let AstExpression::Case {
@@ -47,7 +47,7 @@ fn simple_case_survives_lossless_cst_ast_and_canonical_ir() {
         branches,
         else_result,
         span,
-    } = &expressions[0]
+    } = &projections[0].expression
     else {
         panic!("typed CASE expression exists");
     };
@@ -60,9 +60,11 @@ fn simple_case_survives_lossless_cst_ast_and_canonical_ir() {
         branches[0].condition,
         AstExpression::Integer(1, _)
     ));
-    assert!(matches!(branches[0].result, AstExpression::String(ref value, _) if value == "one"));
     assert!(
-        matches!(else_result.as_deref(), Some(AstExpression::String(value, _)) if value == "other")
+        matches!(branches[0].result, AstExpression::String(ref literal) if literal.value == "one")
+    );
+    assert!(
+        matches!(else_result.as_deref(), Some(AstExpression::String(literal)) if literal.value == "other")
     );
     assert_eq!(
         &source[span.start as usize..span.end as usize],

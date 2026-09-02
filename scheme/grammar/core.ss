@@ -16,13 +16,19 @@
 ;;; implementation-shaped declarations before a projection can be generated.
 (defsyntax (defmrr-grammar stx)
   (syntax-case stx
-      (dialect extends syntax-kinds keywords prefix-operators
-               binary-operators parser-entrypoints recoveries)
+      (dialect extends syntax-kinds keywords non-reserved-words numeric-literals
+               character-string-literals prefix-operators binary-operators
+               parser-entrypoints recoveries)
     ((_ binding
         (dialect declared-dialect-id declared-dialect-label declared-active?)
         (extends parent-id ...)
         (syntax-kinds (kind-name kind-category (field-name ...)) ...)
         (keywords (keyword-name keyword-text) ...)
+        (non-reserved-words non-reserved-word ...)
+        (numeric-literals
+         (numeric-form numeric-notation numeric-suffix numeric-class) ...)
+        (character-string-literals
+         (character-form character-lexeme character-action character-class) ...)
         (prefix-operators ((prefix-kind prefix-lexeme)
                            prefix-precedence prefix-associativity) ...)
         (binary-operators ((binary-kind binary-lexeme)
@@ -45,6 +51,14 @@
                          (list 'field-name ...)) ...))
             (keywords
              (list (list 'keyword-name keyword-text) ...))
+            (non-reserved-words
+             (list 'non-reserved-word ...))
+            (numeric-literals
+             (list (list 'numeric-form 'numeric-notation
+                         'numeric-suffix 'numeric-class) ...))
+            (character-string-literals
+             (list (list 'character-form 'character-lexeme
+                         'character-action 'character-class) ...))
             (prefix-operators
              (list (list 'prefix-kind
                          'prefix-lexeme

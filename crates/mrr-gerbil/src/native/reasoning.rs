@@ -122,6 +122,7 @@ fn load_relations() -> Result<Vec<RelationSchema>, ReasoningBundleLoadError> {
                         "boolean" => ValueType::Boolean,
                         "integer" => ValueType::Integer,
                         "decimal" => ValueType::Decimal,
+                        "float" => ValueType::Float,
                         "string" => ValueType::String,
                         "list" => ValueType::List,
                         value => {

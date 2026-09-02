@@ -175,7 +175,6 @@ fn parser_err_fixtures_keep_source_and_recoverable_structure() {
 
 fn expected_diagnostic_codes(filename: Option<&str>) -> Vec<&'static str> {
     match filename {
-        Some("01-return-without-match.gql") => vec!["GQL-PARSE-MISSING-KEYWORD"],
         Some("04-malformed-delimiter.gql") => vec!["GQL-PARSE-MATCH-SYNTAX"],
         Some("05-unknown-token.gql") => vec!["GQL-SYNTAX-UNKNOWN-CHARACTER"],
         Some("06-unterminated-string.gql") => vec!["GQL-SYNTAX-UNTERMINATED-STRING"],
@@ -188,7 +187,6 @@ fn expected_diagnostic_codes(filename: Option<&str>) -> Vec<&'static str> {
 #[test]
 fn parser_err_fixtures_include_all_known_cases() {
     let known = [
-        "01-return-without-match.gql",
         "04-malformed-delimiter.gql",
         "05-unknown-token.gql",
         "06-unterminated-string.gql",

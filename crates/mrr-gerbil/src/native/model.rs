@@ -4,7 +4,7 @@ use std::sync::OnceLock;
 
 use super::{
     ffi,
-    runtime::{NativeRuntimeAccess, native_runtime_access},
+    runtime::{NativeRuntimeAccess, native_runtime_access, native_runtime_status_is_ready},
 };
 
 const ABI_VERSION: u32 = 2;
@@ -20,6 +20,22 @@ pub(crate) struct SyntaxShape {
 pub(crate) struct KeywordSpec {
     pub(crate) name: String,
     pub(crate) text: String,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct NumericLiteralSpec {
+    pub(crate) form: String,
+    pub(crate) notation: String,
+    pub(crate) suffix: String,
+    pub(crate) class: String,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct CharacterStringLiteralSpec {
+    pub(crate) form: String,
+    pub(crate) lexeme: String,
+    pub(crate) action: String,
+    pub(crate) class: String,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -45,13 +61,86 @@ pub(crate) struct RecoverySpec {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ReleaseSpec {
+    pub id: String,
+    pub normative_reference: String,
+    pub kind: String,
+    pub status: String,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ModuleSpec {
+    pub id: String,
+    pub kind: String,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ProfileSpec {
+    pub id: String,
+    pub release_id: String,
+    pub claim: String,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ProfileModuleSpec {
+    pub profile_id: String,
+    pub disposition: String,
+    pub module_id: String,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ProfileSupplementSpec {
+    pub profile_id: String,
+    pub release_id: String,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct FeatureSpec {
+    pub id: String,
+    pub priority: u16,
+    pub module_id: String,
+    pub clause_status: String,
+    pub layer_statuses: [String; 5],
+    pub evidence_owner: String,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct FeatureDependencySpec {
+    pub feature_id: String,
+    pub dependency_id: String,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct IsoProfile {
+    pub schema: String,
+    pub releases: Vec<ReleaseSpec>,
+    pub modules: Vec<ModuleSpec>,
+    pub profiles: Vec<ProfileSpec>,
+    pub profile_supplements: Vec<ProfileSupplementSpec>,
+    pub profile_modules: Vec<ProfileModuleSpec>,
+    pub features: Vec<FeatureSpec>,
+    pub feature_dependencies: Vec<FeatureDependencySpec>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct NativeGrammar {
+    pub(crate) profile_schema: String,
     pub(crate) syntax_shapes: Vec<SyntaxShape>,
     pub(crate) keywords: Vec<KeywordSpec>,
+    pub(crate) non_reserved_words: Vec<String>,
+    pub(crate) numeric_literals: Vec<NumericLiteralSpec>,
+    pub(crate) character_string_literals: Vec<CharacterStringLiteralSpec>,
     pub(crate) prefix_operators: Vec<OperatorSpec>,
     pub(crate) binary_operators: Vec<OperatorSpec>,
     pub(crate) parser_entrypoints: Vec<ParserEntrypointSpec>,
     pub(crate) recoveries: Vec<RecoverySpec>,
+    pub(crate) releases: Vec<ReleaseSpec>,
+    pub(crate) modules: Vec<ModuleSpec>,
+    pub(crate) profiles: Vec<ProfileSpec>,
+    pub(crate) profile_supplements: Vec<ProfileSupplementSpec>,
+    pub(crate) profile_modules: Vec<ProfileModuleSpec>,
+    pub(crate) features: Vec<FeatureSpec>,
+    pub(crate) feature_dependencies: Vec<FeatureDependencySpec>,
 }
 
 impl NativeGrammar {
@@ -76,13 +165,53 @@ impl NativeGrammar {
         }
         let syntax_shapes = load_syntax_shapes()?;
         Ok(Self {
+            profile_schema: text(Table::ProfileSchema, "profile-schema", 0, 0)?,
             syntax_shapes,
             keywords: load_keywords()?,
+            non_reserved_words: load_non_reserved_words()?,
+            numeric_literals: load_numeric_literals()?,
+            character_string_literals: load_character_string_literals()?,
             prefix_operators: load_operators(Table::PrefixOperators)?,
             binary_operators: load_operators(Table::BinaryOperators)?,
             parser_entrypoints: load_entrypoints()?,
             recoveries: load_recoveries()?,
+            releases: load_releases()?,
+            modules: load_modules()?,
+            profiles: load_profiles()?,
+            profile_supplements: load_profile_supplements()?,
+            profile_modules: load_profile_modules()?,
+            features: load_features()?,
+            feature_dependencies: load_feature_dependencies()?,
         })
+    }
+}
+
+pub fn load_iso_profile() -> Result<IsoProfile, IsoProfileLoadError> {
+    let grammar = NativeGrammar::load().map_err(IsoProfileLoadError)?;
+    Ok(IsoProfile {
+        schema: grammar.profile_schema,
+        releases: grammar.releases,
+        modules: grammar.modules,
+        profiles: grammar.profiles,
+        profile_supplements: grammar.profile_supplements,
+        profile_modules: grammar.profile_modules,
+        features: grammar.features,
+        feature_dependencies: grammar.feature_dependencies,
+    })
+}
+
+#[derive(Debug)]
+pub struct IsoProfileLoadError(NativeGrammarError);
+
+impl std::fmt::Display for IsoProfileLoadError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(formatter, "ISO profile AOT load failed: {}", self.0)
+    }
+}
+
+impl std::error::Error for IsoProfileLoadError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        Some(&self.0)
     }
 }
 
@@ -95,6 +224,17 @@ enum Table {
     BinaryOperators = 3,
     ParserEntrypoints = 4,
     Recoveries = 5,
+    Releases = 6,
+    Modules = 7,
+    Profiles = 8,
+    ProfileModules = 9,
+    Features = 10,
+    FeatureDependencies = 11,
+    ProfileSchema = 12,
+    ProfileSupplements = 13,
+    NonReservedWords = 14,
+    NumericLiterals = 15,
+    CharacterStringLiterals = 16,
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -116,6 +256,7 @@ pub(crate) enum NativeGrammarError {
     },
     InvalidCodepoint(i32),
     InvalidPrecedence(i32),
+    InvalidPriority(String),
 }
 
 impl std::fmt::Display for NativeGrammarError {
@@ -129,7 +270,7 @@ impl std::error::Error for NativeGrammarError {}
 fn initialize() -> Result<(), NativeGrammarError> {
     static STATUS: OnceLock<i32> = OnceLock::new();
     let status = *STATUS.get_or_init(ffi::runtime_init);
-    if status == 0 || status == 6 {
+    if native_runtime_status_is_ready(status) {
         Ok(())
     } else {
         Err(NativeGrammarError::RuntimeStatus(status))
@@ -216,6 +357,58 @@ fn load_keywords() -> Result<Vec<KeywordSpec>, NativeGrammarError> {
         .collect()
 }
 
+fn load_non_reserved_words() -> Result<Vec<String>, NativeGrammarError> {
+    (0..count(Table::NonReservedWords, "non-reserved-words")?)
+        .map(|row| text(Table::NonReservedWords, "non-reserved-words", row, 0))
+        .collect()
+}
+
+fn load_numeric_literals() -> Result<Vec<NumericLiteralSpec>, NativeGrammarError> {
+    (0..count(Table::NumericLiterals, "numeric-literals")?)
+        .map(|row| {
+            Ok(NumericLiteralSpec {
+                form: text(Table::NumericLiterals, "numeric-literals", row, 0)?,
+                notation: text(Table::NumericLiterals, "numeric-literals", row, 1)?,
+                suffix: text(Table::NumericLiterals, "numeric-literals", row, 2)?,
+                class: text(Table::NumericLiterals, "numeric-literals", row, 3)?,
+            })
+        })
+        .collect()
+}
+
+fn load_character_string_literals() -> Result<Vec<CharacterStringLiteralSpec>, NativeGrammarError> {
+    (0..count(Table::CharacterStringLiterals, "character-string-literals")?)
+        .map(|row| {
+            Ok(CharacterStringLiteralSpec {
+                form: text(
+                    Table::CharacterStringLiterals,
+                    "character-string-literals",
+                    row,
+                    0,
+                )?,
+                lexeme: text(
+                    Table::CharacterStringLiterals,
+                    "character-string-literals",
+                    row,
+                    1,
+                )?,
+                action: text(
+                    Table::CharacterStringLiterals,
+                    "character-string-literals",
+                    row,
+                    2,
+                )?,
+                class: text(
+                    Table::CharacterStringLiterals,
+                    "character-string-literals",
+                    row,
+                    3,
+                )?,
+            })
+        })
+        .collect()
+}
+
 fn load_operators(table: Table) -> Result<Vec<OperatorSpec>, NativeGrammarError> {
     let name = match table {
         Table::PrefixOperators => "prefix-operators",
@@ -255,6 +448,101 @@ fn load_recoveries() -> Result<Vec<RecoverySpec>, NativeGrammarError> {
                 site: text(Table::Recoveries, "recoveries", row, 0)?,
                 code: text(Table::Recoveries, "recoveries", row, 1)?,
                 strategy: text(Table::Recoveries, "recoveries", row, 2)?,
+            })
+        })
+        .collect()
+}
+
+fn load_releases() -> Result<Vec<ReleaseSpec>, NativeGrammarError> {
+    (0..count(Table::Releases, "releases")?)
+        .map(|row| {
+            Ok(ReleaseSpec {
+                id: text(Table::Releases, "releases", row, 0)?,
+                normative_reference: text(Table::Releases, "releases", row, 1)?,
+                kind: text(Table::Releases, "releases", row, 2)?,
+                status: text(Table::Releases, "releases", row, 3)?,
+            })
+        })
+        .collect()
+}
+
+fn load_modules() -> Result<Vec<ModuleSpec>, NativeGrammarError> {
+    (0..count(Table::Modules, "modules")?)
+        .map(|row| {
+            Ok(ModuleSpec {
+                id: text(Table::Modules, "modules", row, 0)?,
+                kind: text(Table::Modules, "modules", row, 1)?,
+            })
+        })
+        .collect()
+}
+
+fn load_profiles() -> Result<Vec<ProfileSpec>, NativeGrammarError> {
+    (0..count(Table::Profiles, "profiles")?)
+        .map(|row| {
+            Ok(ProfileSpec {
+                id: text(Table::Profiles, "profiles", row, 0)?,
+                release_id: text(Table::Profiles, "profiles", row, 1)?,
+                claim: text(Table::Profiles, "profiles", row, 2)?,
+            })
+        })
+        .collect()
+}
+
+fn load_profile_modules() -> Result<Vec<ProfileModuleSpec>, NativeGrammarError> {
+    (0..count(Table::ProfileModules, "profile-modules")?)
+        .map(|row| {
+            Ok(ProfileModuleSpec {
+                profile_id: text(Table::ProfileModules, "profile-modules", row, 0)?,
+                disposition: text(Table::ProfileModules, "profile-modules", row, 1)?,
+                module_id: text(Table::ProfileModules, "profile-modules", row, 2)?,
+            })
+        })
+        .collect()
+}
+
+fn load_profile_supplements() -> Result<Vec<ProfileSupplementSpec>, NativeGrammarError> {
+    (0..count(Table::ProfileSupplements, "profile-supplements")?)
+        .map(|row| {
+            Ok(ProfileSupplementSpec {
+                profile_id: text(Table::ProfileSupplements, "profile-supplements", row, 0)?,
+                release_id: text(Table::ProfileSupplements, "profile-supplements", row, 1)?,
+            })
+        })
+        .collect()
+}
+
+fn load_features() -> Result<Vec<FeatureSpec>, NativeGrammarError> {
+    (0..count(Table::Features, "features")?)
+        .map(|row| {
+            let priority = text(Table::Features, "features", row, 1)?;
+            let priority = priority
+                .parse()
+                .map_err(|_| NativeGrammarError::InvalidPriority(priority))?;
+            Ok(FeatureSpec {
+                id: text(Table::Features, "features", row, 0)?,
+                priority,
+                module_id: text(Table::Features, "features", row, 2)?,
+                clause_status: text(Table::Features, "features", row, 3)?,
+                layer_statuses: [
+                    text(Table::Features, "features", row, 4)?,
+                    text(Table::Features, "features", row, 5)?,
+                    text(Table::Features, "features", row, 6)?,
+                    text(Table::Features, "features", row, 7)?,
+                    text(Table::Features, "features", row, 8)?,
+                ],
+                evidence_owner: text(Table::Features, "features", row, 9)?,
+            })
+        })
+        .collect()
+}
+
+fn load_feature_dependencies() -> Result<Vec<FeatureDependencySpec>, NativeGrammarError> {
+    (0..count(Table::FeatureDependencies, "feature-dependencies")?)
+        .map(|row| {
+            Ok(FeatureDependencySpec {
+                feature_id: text(Table::FeatureDependencies, "feature-dependencies", row, 0)?,
+                dependency_id: text(Table::FeatureDependencies, "feature-dependencies", row, 1)?,
             })
         })
         .collect()

@@ -1,0 +1,1239 @@
+#+title: RFC 0024: ISO GQL Language Frontend Profile
+#+author: gql-rust contributors
+#+options: toc:2
+#+property: header-args :eval never-export :exports code
+
+* Status
+
+Accepted target contract. This RFC does not claim that the target is already
+implemented or that the repository is ISO certified.
+
+* Normative evidence
+
+The language baseline is ISO/IEC 39075:2024. ISO/IEC 39075:2024/Cor 1:2026 is
+a published versioned correction at ISO stage 60.60. Public product metadata
+proves that publication lifecycle fact only. Feature correction and completion
+still require licensed clause text, a feature mapping, and positive and
+negative executable evidence. ISO committee drafts are future-delta inputs and
+do not silently change the default language.
+
+SeleneDB, Grafeo, and froGQL remain differential oracles and literature
+references. They are neither normative evidence nor production dependencies.
+
+* Profile ownership
+
+=scheme/grammar/gql-profile.ss= is the sole machine-readable release, module,
+profile, feature, dependency, layer-status, and evidence-owner declaration.
+It is checked by Gerbil =syntax-case= and loaded through the native AOT ABI as
+the typed, read-only =mrr_gerbil::load_iso_profile= API. It is deliberately not
+copied into unused =gql-syntax= constants. Test fixtures stay with their Rust
+owner; this RFC explains and audits the contract but does not duplicate
+executable data. The removed YAML ledger is not a compatibility input.
+
+=gql-query-language-frontend-v1= remains the selected implementation claim.
+=gql-iso-language-frontend-v1= is the complete language-frontend target and
+contains every inventoried module with no deferred module. Moving the selected
+profile to that target requires every feature to cross the evidence gates; a
+profile name alone cannot widen implementation status.
+
+#+name: rfc-0024-profile-admission
+#+begin_src mermaid
+flowchart LR
+  S[ISO 39075:2024 baseline] --> E[Licensed clause evidence]
+  C[Cor 1:2026 published metadata] --> E
+  E --> F[Feature evidence]
+  O[Differential oracles] -. non-normative validation .-> F
+  F --> N[Gerbil declared syntax and recovery]
+  N --> R[Lossless Rowan CST]
+  R -->|typed rejection| X[No Statement and no IR]
+  R --> A[Typed AST]
+  A -->|typed rejection| X
+  A --> M[Semantic analysis]
+  M -->|typed rejection| X
+  M --> I[Backend-neutral canonical IR]
+  I --> P[Selected profile admission]
+#+end_src
+
+The frontend owns source, concrete syntax, typed lowering, semantics, canonical
+IR, and catalog contracts. Storage, transactions, execution engines, and
+backend publication are outside this profile and cannot become syntax, AST,
+semantic, or IR authorities.
+
+* Mathematical admission contract
+
+#+name: rfc-0024-profile-mathematics
+#+begin_src typst
+#set page(paper: "a4", margin: 24mm)
+#set text(font: "Libertinus Serif", size: 10.5pt)
+
+= RFC 0024: ISO GQL Language Frontend Admission
+
+Let $M$ be the set of all inventoried ISO language modules and $F(m)$ the
+features owned by module $m$. The target profile satisfies
+
+$ "Included"("target") = M quad and quad "Deferred"("target") = emptyset. $
+
+A feature $f in F(m)$ is admitted as complete only when
+
+$ "Clause"(f) and "CST"(f) and "AST"(f) and "Sema"(f)
+  and "IR"(f) and "Positive"(f) and "Negative"(f). $
+
+Publication metadata and oracle agreement cannot substitute for
+$"Clause"(f)$. Until all target features are admitted, the selected profile
+remains narrower than the target profile.
+
+For a node pattern $n = (b, L, P, w)$ with binding $b$, ordered labels $L$,
+ordered property constraints $P$, and optional inline predicate $w$, canonical
+lowering is the partial function
+
+$ "LowerNode"(n, Gamma) = ("canon"(b), "map"("canon", L),
+  "LowerProps"(P, Gamma), "LowerExpr"(w, Gamma)). $
+
+It is admitted only when every name in $w$ resolves in the same query binding
+environment $Gamma$; syntax failure or semantic failure yields no query IR.
+
+For an edge pattern $e = (d, b, L, P, w, q)$, direction $d$ and quantifier
+$q$ are retained while the edge-local predicate uses that same environment:
+
+$ "LowerEdge"(e, Gamma) = (d, "canon"(b), "map"("canon", L),
+  "LowerProps"(P, Gamma), "LowerExpr"(w, Gamma), q). $
+
+An absent predicate is distinct from a malformed predicate. The latter is a
+typed rejection and cannot be represented by an empty expression.
+
+For a label predicate $x " IS " nu " LABELED :" ell$, where
+$nu in {epsilon, "NOT"}$, label algebra is
+
+$ ell ::= a mid "%" mid "!" ell mid ell "&" ell mid ell "|" ell, $
+
+with binding power $"!" > "&" > "|"$. Canonical lowering preserves that
+tree exactly:
+
+$ "LowerLabel"(a) = "Name"("canon"(a)), quad
+  "LowerLabel"("%") = "Wildcard", $
+$ "LowerLabel"("!" ell) = "Not"("LowerLabel"(ell)), $
+$ "LowerLabel"(ell_1 "&" ell_2) =
+  "And"("LowerLabel"(ell_1), "LowerLabel"(ell_2)), $
+$ "LowerLabel"(ell_1 "|" ell_2) =
+  "Or"("LowerLabel"(ell_1), "LowerLabel"(ell_2)). $
+
+The predicate is defined only for graph-element operands. A malformed algebra
+or a non-graph operand produces one typed diagnostic and no query IR.
+
+Let $mu in {"Walk", "Trail", "Acyclic", "Simple"}$ be the path mode owned by
+a MATCH clause and let $G = (g_1, ..., g_n)$ be its non-empty, source-ordered
+graph-pattern list. Canonical admission preserves every component and applies
+the mode exactly:
+
+$ "LowerMatch"(mu, G, Gamma) =
+  ("LowerGraph"(g_i, mu, Gamma))_(i = 1)^n, quad n >= 1. $
+
+For successive MATCH clauses $M_1, ..., M_k$, the query-block graph sequence is
+their ordered concatenation. Reusing a binding with the same graph-element kind
+is a join identity; reusing it with a different kind makes lowering undefined.
+
+An OPTIONAL MATCH operation $O = (mu, G, w)$ is one atomic null-preserving
+group, including every component in $G$ and its directly associated predicate
+$w$:
+
+$ "LowerOptional"(O, Gamma) =
+  "LeftOuter"("LowerMatch"(mu, G, Gamma), "LowerExpr"(w, Gamma union "Bind"(G))). $
+
+The operation is valid with an empty incoming mandatory graph sequence. Its
+predicate is not interchangeable with an outer query filter. Static nullable
+result typing remains a separate admission obligation.
+
+When the modifier is absent, the grammar-defined value is $"Walk"$; when a
+modifier is present without a graph pattern, lowering is undefined and the
+frontend emits one typed diagnostic rather than constructing an empty graph.
+
+For quantified edge spelling $q$, the canonical bound pair is
+
+$ "Bounds"(q) = cases(
+  (0, "none"), q = "*",
+  (1, "none"), q = "+",
+  (0, 1), q = "?",
+  (n, n), q = "{n}",
+  (n, "none"), q = "{n,}",
+  (0, m), q = "{,m}",
+  (n, m), q = "{n,m}"
+). $
+
+Admission requires at least one bound and, when both are present, $n <= m$.
+
+For the admitted operator slice, Gerbil owns the strict binding-power order
+
+$ "OR" < "XOR" < "AND" < "NOT" < "comparison" < "||"
+  < "+,-" < "*,/,%" < "unary +,-". $
+
+Keyword operators have token width one regardless of lexeme length; only
+multi-character punctuation such as $"<>"$ and $"||"$ has width two. Typed
+lowering is partial:
+
+$ "LowerOp"(o, x, y) = cases(
+  "boolean", o in {"OR", "XOR", "AND"} and x,y in "Boolean",
+  "string", o = "||" and x,y in "String",
+  "numeric", o in {"+", "-", "*", "/", "%"} and x,y in "Numeric",
+  bot, "otherwise"
+). $
+
+For source $s$, the frontend publication boundary is
+
+$ "Compile"(s) = cases(
+  ("some"(a), emptyset, "some"(i)), "when parsing, lowering, and semantics admit",
+  ("none", D, "none"), "when parsing or lowering rejects",
+  ("some"(a), D, "none"), "when semantics rejects"
+). $
+
+There is no fourth branch containing a fabricated AST, default IR, legacy
+parser result, or compatibility shim.
+#+end_src
+
+* Unicode identifier boundary
+
+Unicode is the character repertoire, not a synonym for Chinese text.  The
+OpenGQL grammar now provides the exact lexical productions used by this slice:
+=IDENTIFIER_START = ID_Start | Pc= and =IDENTIFIER_EXTEND = ID_Continue=.
+The lexer queries ICU4X compiled property data directly; it does not substitute
+Rust alphabetic predicates or UAX #31 =XID_*= categories.  The lookup tables are
+static borrowed data, so there is no Runtime initialization, allocation, or
+backend authority on the token hot path.
+
+The Gerbil declaration owns all 47 =nonReservedWords= and projects them through
+the native AOT ABI into an allocation-free Rust classifier.  A
+=regularIdentifier= is either an undelimited Unicode identifier or one of those
+47 words.  An =identifier= additionally admits double-quoted or grave-accent
+forms, doubled delimiters, standard escapes, and the =@= no-escape prefix.
+=bindingVariable= remains strictly =regularIdentifier=: quoted node and edge
+bindings emit exactly =GQL-PARSE-BINDING-VARIABLE-SYNTAX=.  Malformed escapes
+emit exactly =GQL-SYNTAX-INVALID-IDENTIFIER-ESCAPE= and publish no AST or IR.
+
+#+name: rfc-0024-lexical-identifier-flow
+#+begin_src mermaid
+flowchart LR
+  G[Gerbil 47-word authority] --> A[Native AOT projection]
+  U[ICU4X ID_Start Pc ID_Continue] --> L[Lossless lexer]
+  A --> P{identifier context}
+  L --> P
+  P -->|regularIdentifier| B[Binding variable]
+  P -->|identifier| N[Property label catalog name]
+  P -->|invalid delimiter or escape| X[Typed zero-IR terminal]
+  B --> C[Canonical case-folded IR identity]
+  N --> C
+#+end_src
+
+#+name: rfc-0024-lexical-identifier-logic
+#+begin_src typst
+Let $S(c) := "ID_Start"(c) or "Pc"(c)$ and
+$E(c) := "ID_Continue"(c)$.  Then
+
+$ "regular"(x) "iff"
+  (S(x_0) and forall i > 0: E(x_i))
+  or x in N_47, $
+
+where $N_47$ is the declaration-owned non-reserved set.  For delimiter
+$d in {"double quote", "grave accent"}$,
+
+$ "identifier"(x) "iff" "regular"(x)
+  or x = d y d and "valid-escape-sequence"(y). $
+
+Binding admission is deliberately narrower:
+
+$ "binding-variable"(x) "iff" "regular"(x). $
+
+Rowan preserves the source spelling and byte span; AST owns unescaping;
+canonical IR folds only undelimited identities.
+#+end_src
+
+The executable contracts cover the complete non-reserved set, =U+203F=
+connector punctuation, a combining =ID_Continue= mark, an alphabetic code point
+outside =ID_Start=, both delimiters, doubled delimiters, Unicode escapes,
+no-escape semantics, exact spans, node and edge binding rejection, and
+backend-neutral canonical IR.  The wider =gql-lexical-identifiers= profile
+feature remains =partial= only because unimplemented licensed-clause surfaces
+outside these executable productions are not claimed.
+
+* Lexical literal evidence
+
+Single-quoted string literals now preserve doubled-quote escapes as one
+lossless Rowan token, lower the escaped pair to one logical quote in typed AST,
+and retain the exact source span while canonical IR carries the logical value.
+An unterminated literal produces one declaration-owned
+=GQL-SYNTAX-UNTERMINATED-STRING= diagnostic over the complete literal and no
+IR.
+
+The public OpenGQL grammar's nine exact and approximate numeric productions
+are declaration-owned in Gerbil and transported through the native AOT ABI.
+They cover decimal integer, common and scientific notation; exact =M= and
+approximate =F=/=D= suffixes; unsuffixed scientific approximate values; and
+lowercase =0x=/=0o=/=0b= integer prefixes. Optional underscores occur only
+between digits. The Rust lexer executes one allocation-free ASCII scan and
+emits one Rowan =Number= token. AST removes separators, normalizes =e= to =E=,
+removes =M=, preserves =F=/=D= precision identity, and distinguishes exact
+=Decimal= from =ApproximateNumeric=. Sema maps the latter to =Float= and both
+remain backend-neutral canonical IR values.
+
+#+begin_src mermaid
+flowchart LR
+  G[Gerbil nine numeric productions] --> A[Native AOT table]
+  A --> L[Allocation-free ASCII numeric scanner]
+  L --> R[One lossless Rowan Number token]
+  R --> T{AST numeric class}
+  T -->|integer| I[Integer]
+  T -->|common or M| E[Exact Decimal]
+  T -->|scientific without M or F/D| P[ApproximateNumeric]
+  I --> C[Backend-neutral canonical IR]
+  E --> C
+  P --> C
+  L -->|malformed| X[Exactly-one typed diagnostic and zero IR]
+#+end_src
+
+#+begin_src typst
+#let digits = $d ("_"? d)^*$
+#let common = $digits "." digits? or "." digits$
+#let scientific = $(common or digits) "E" ("+" or "-")? digits$
+
+$ "Exact" =
+  digits
+  or common
+  or (digits or common or scientific) "M" $
+
+$ "Approximate" =
+  scientific
+  or (digits or common or scientific) ("F" or "D") $
+
+$ "admit"(x) "iff" "one-production"(x) and
+  "separator-between-digits"(x). $
+#+end_src
+
+Malformed double/trailing separators, incomplete exponents, duplicate suffixes,
+uppercase radix prefixes, and trailing radix separators each produce exactly
+one =GQL-SYNTAX-INVALID-NUMERIC-LITERAL= terminal and no IR. The versioned
+=lexical-numerics-v1= Scenario exercises every production over 94 bytes with
+zero diagnostics/fallback, a conservative measured p95 of =33.041us=, and a
+316-byte observation. String backslash escapes and the remaining complete
+character-sequence, byte, temporal, and duration productions remain pending;
+therefore =gql-lexical-literals= remains =partial= rather than an ISO-complete
+claim.
+
+Criterion separately measures the same 94-byte fixture: lossless Rowan parsing
+=8.7384--10.557us=, CST-to-AST lowering =7.3948--8.5907us=, and combined work
+=15.996--20.694us=. The lowering comparison (=p=0.46=) and combined comparison
+(=p=0.86=) detect no statistically significant change. Although Criterion
+reported a faster parse sample, the parser implementation was unchanged
+between those two samples, so this document treats that delta as environmental
+variance rather than claiming a causal optimization. The implemented hot-path
+improvement is structural and inspectable: integer range checks and AST integer
+lowering fold digits with checked arithmetic and no separator-removal
+allocation; decimal and approximate nodes allocate exactly their owned
+canonical value.
+
+** General literal value admission
+
+The =general-literals-v1= slice admits contextual double-quoted character
+strings, hexadecimal byte strings, checked calendar dates and times,
+timestamps, ISO-duration-shaped values, nested lists, and ordered records.
+Gerbil owns the CST shapes, literal keywords, and recovery identities;
+=build.ss= stages the native declaration and the Rust projection remains
+generated. Dedicated parser and AST lowering owners prevent the core parser and
+lowering modules from accumulating unrelated responsibilities.
+
+#+begin_src mermaid
+flowchart LR
+  G[Gerbil literal shapes and recovery identities] --> A[Native AOT projection]
+  A --> L[Lossless lexer and structural literal parser]
+  L --> C[Rowan CST with exact source spelling]
+  C --> T[Fail-closed AST values with spans and field order]
+  T --> S[Static type and duplicate-field admission]
+  S --> I[Backend-neutral canonical IR and MRR value algebra]
+  L -->|malformed| X[Exactly-one typed terminal and zero IR]
+  S -->|duplicate canonical field| D[GQL-SEMA-DUPLICATE-RECORD-FIELD and zero IR]
+#+end_src
+
+#+begin_src typst
+#let general = $"String" + "Bytes" + "Date" + "Time" + "Timestamp"
+  + "Duration" + "List" + "Record"$
+
+$ "lower" : "CST"_(general) -> "Option"("AST"_(general)) $
+
+$ "lower-list"(x_1, dots, x_n) = "Some"([a_1, dots, a_n])
+  "iff" forall i in 1 dots n, "lower"(x_i) = "Some"(a_i) $
+
+$ "admit-record"(f_1, dots, f_n) "iff"
+  forall i != j, "canonical"(f_i."name") != "canonical"(f_j."name"). $
+
+$ "diagnostic" != "empty" => "AST" = "none" and "IR" = "none". $
+#+end_src
+
+The immutable =general-literals-v1= workload remains the original 175-byte
+baseline. It records zero diagnostics, zero fallback, exact roundtrip bytes,
+one statement, a measured p50 of =45.083us=, p95 of =126.792us=, and a
+478-byte conservative observation. Its frozen Criterion identity measures
+lossless parsing at =14.691--18.400us=, CST-to-AST lowering at
+=9.6859--11.134us=, and combined work at =25.526--29.023us=.
+
+The separate =general-literals-expanded-v1= workload owns the 256-byte source
+covering fractional and offset times, =DATETIME=, and the bare record spelling.
+It records zero diagnostics, zero fallback, exact 256-byte roundtrip, one
+statement, and a 640-byte conservative observation. The latest post-split
+Scenario sample recorded p50 =55.167us= and p95 =470.291us=; the large tail is
+retained rather than hidden even though it remains below the 2ms hard bound.
+
+The expanded workload has an independent Criterion identity. Three consecutive
+same-workload samples showed substantial host variance: parsing and combined
+work did not cross the 1% significance threshold on the final comparison,
+while lowering alone reported an improvement. Because this environment was
+noisy and no lowering algorithm changed between samples, no causal optimization
+or regression is claimed. Cross-identity percentages between 175 and 256 bytes
+are invalid and are not used as evidence.
+
+Reference: [[https://github.com/opengql/grammar/blob/main/GQL.g4][OpenGQL GQL.g4 public compatibility grammar]].
+
+* Trivia and comment evidence
+
+The public OpenGQL grammar derived from the ISO BNF exposes =//= and =--=
+simple comments plus non-nesting =/* ... */= bracketed comments. The frontend
+preserves each comment as a distinct Rowan token in source order while removing
+trivia from typed AST and canonical IR. An unterminated bracketed comment emits
+one declaration-owned =GQL-SYNTAX-UNTERMINATED-BLOCK-COMMENT= diagnostic over
+the complete comment and admits no IR. This public compatibility evidence
+expands executable coverage but does not replace licensed-clause adjudication,
+so =gql-trivia-and-comments= remains =partial=.
+
+Reference: [[https://github.com/opengql/grammar][OpenGQL ANTLR grammar]].
+
+* Values and types evidence
+
+Unsigned hexadecimal, octal, and binary integer literals retain their exact
+=0x=, =0o=, or =0b= spelling and underscore separators in the lossless CST.
+Typed AST and canonical IR normalize each accepted spelling to one integer
+value without introducing backend-specific numeric authority. Invalid digits
+produce one declaration-owned =GQL-SYNTAX-INVALID-NUMERIC-LITERAL= diagnostic
+over the complete candidate and admit no IR. A lexically valid integer outside
+the current canonical =i64= domain instead produces the distinct
+=GQL-SYNTAX-NUMERIC-LITERAL-OUT-OF-RANGE= terminal; it never disappears during
+AST lowering.  The Section 18 declaration value-type lattice is closed by the
+recursive contracts below, while value expressions outside that declaration
+boundary and licensed-clause adjudication remain pending; therefore the wider
+=gql-values-and-types= profile feature remains =partial=.
+
+* Property graph model evidence
+
+An edge filler containing one unprefixed name is an edge binding, even when no
+label constraint is present. The binding survives its exact AST span and is
+canonicalized independently from the empty label set in IR. A subsequent name
+requires a =:= separator; otherwise the parser emits exactly one
+=GQL-PARSE-EDGE-LABEL-SEPARATOR= diagnostic at that name and admits no IR.
+This closes binding/label authority ambiguity without introducing a backend
+graph model. The wider property-graph feature remains =partial= pending the
+remaining graph-type and catalog contracts.
+
+* Catalog and schema evidence
+
+=CREATE SCHEMA <name>= is a Gerbil-declared catalog entrypoint with a lossless
+=CreateSchemaStatement= Rowan node. AST retains the source identifier and span;
+semantic admission canonicalizes it into one backend-neutral =CatalogCommand=
+without manufacturing a query IR or mutating the input catalog. When the
+canonical schema identity already exists, admission emits exactly one
+=GQL-SEMA-SCHEMA-ALREADY-EXISTS= diagnostic and no command. The feature remains
+=partial=: conditional graph creation/removal, graph-type =COPY OF=/=LIKE=,
+qualified catalog paths, and a bounded nested node-type specification are now
+admitted, while graph sources, nested edge types, the remaining scalar type
+surface, and live catalog mutation remain separate contracts.
+
+** Edge-type specification admission
+
+The public OpenGQL grammar admits both edge patterns and edge phrases.  The
+current bounded slice preserves =EDGE=/=RELATIONSHIP= synonyms, optional
+=DIRECTED=/=UNDIRECTED= kind, optional pattern names, named phrase fillers,
+right-directed, left-directed, and undirected endpoint connectors, alias
+endpoints, property-bearing inline endpoints, and empty inline endpoints.
+Contextual grammar words remain identifiers outside this owner; no global
+keyword table or backend authority was added.
+
+#+name: rfc-0024-edge-type-admission
+#+begin_src mermaid
+flowchart LR
+  Source[OpenGQL edge type source] --> CST[Lossless Rowan EdgeTypeSpecification]
+  CST --> Kind[EdgeKind optional]
+  CST --> Pair[EndpointPair]
+  Pair --> Alias[Alias endpoint]
+  Pair --> Inline[Inline endpoint properties]
+  Kind --> AST[Typed AST]
+  Alias --> AST
+  Inline --> AST
+  AST --> Check{kind and connector agree}
+  Check -->|yes| IR[Backend-neutral canonical IR]
+  Check -->|no| Reject[GQL-SEMA-GRAPH-TYPE-EDGE-KIND-MISMATCH and no IR]
+#+end_src
+
+#+name: rfc-0024-edge-type-logic
+#+begin_src typst
+#let endpoint(alias: none, properties: ()) = if alias != none {
+  ("alias", alias)
+} else {
+  ("inline", properties)
+}
+
+#let direction_ok(kind, direction) = {
+  kind == none or (kind == "directed" and direction != "undirected") or (kind == "undirected" and direction == "undirected")
+}
+
+$ E ::= "Alias"(a) | "Inline"(P) $
+
+$ "admit"(e) "iff" "unique"(P_s) and "unique"(P_d) and "direction-ok"(k_e, d_e) $
+
+$ not "admit"(e) => "command"(e) = "none" and "ir"(e) = "none" $
+#+end_src
+
+*** Label-set and key-label filler admission
+
+The shared type-filler owner admits every public OpenGQL =labelSetPhrase=
+spelling: singular =LABEL=, ampersand-composed =LABELS=, =IS=, and colon.  A
+key-label set retains presence independently from its labels, so textual
+=IMPLIES=, symbolic ===>=, and bare implication are distinguishable from no key
+contract.  The same structural nodes are used by NODE/VERTEX patterns and
+phrases, EDGE/RELATIONSHIP patterns and phrases, and inline endpoint node
+fillers.  Contextual words remain ordinary identifiers outside this grammar
+owner.
+
+#+name: rfc-0024-label-key-label-admission
+#+begin_src mermaid
+flowchart TD
+  Source[Type filler source] --> LabelPhrase[LabelSetPhrase]
+  Source --> KeySet[KeyLabelSet optional]
+  LabelPhrase --> Single[LABEL name]
+  LabelPhrase --> Multi[LABELS names joined by ampersand]
+  LabelPhrase --> IsColon[IS or colon label set]
+  KeySet --> Textual[IMPLIES]
+  KeySet --> Symbolic[Symbolic double arrow]
+  KeySet --> Bare[Bare implication with empty key labels]
+  LabelPhrase --> AST[Typed AST labels and exact spans]
+  KeySet --> AST
+  AST --> Sema{Each set has unique canonical labels}
+  Sema -->|yes| IR[Backend-neutral ordered label identities]
+  Sema -->|no| Reject[GQL-SEMA-DUPLICATE-GRAPH-TYPE-LABEL and no command or IR]
+#+end_src
+
+#+name: rfc-0024-label-key-label-logic
+#+begin_src typst
+#let label_forms = (
+  "LABEL l",
+  "LABELS l1 & ... & ln",
+  "IS labels",
+  ": labels",
+)
+#let implication_forms = ("IMPLIES", "=>")
+
+$ L ::= "LabelSetPhrase"(l_1, dots.c, l_n) $
+
+$ K ::= "none" | "some"(L_k) $
+
+$ "admit"(K, L_i) "iff" "unique"(L_k) and "unique"(L_i) $
+
+$ "duplicate"(L_k) "or" "duplicate"(L_i) => "command" = "none" and "ir" = "none" $
+#+end_src
+
+The executable owners are
+=edge_type_phrases_synonyms_and_explicit_kinds_cross_frontend_admission= and
+=inline_and_empty_edge_endpoint_references_remain_typed= in
+=crates/gql/tests/unit/data_management_contract.rs=.  They prove CST structure,
+AST source order and spans, canonical endpoint/property identity, logical
+source/destination ordering, exact kind mismatch rejection, and duplicate
+inline-property rejection without command or IR.  The additional
+=label_set_key_label_and_filler_only_types_cross_frontend_admission= contract
+proves all four label-set spellings, both implication spellings, bare
+implication, NODE/VERTEX and EDGE/RELATIONSHIP pattern/phrase paths, inline
+endpoint fillers, AST span/order, canonical IR identity, and duplicate-label
+fail-closed behavior.  The recursive value-type lattice and its closed
+reference descriptors are specified separately below.  Other ISO chapters,
+not a hidden Section 18 compatibility path, keep the full language profile
+incomplete.
+
+The performance owner keeps the historical qualified nested-graph workload
+under its original Criterion identity and measures the new phrase/inline
+workload under =edge-type-specification-v1=.  Both use 100 samples, two seconds
+of warm-up, eight seconds of measurement, significance level =0.01=, and noise
+threshold =0.03=.  The fixed four-input Scenario admits =569/569= source and
+round-trip bytes, four statements, zero diagnostics, zero fallback,
+=1650 B= peak measured memory, =150791 ns= parse time, =141875 ns= lowering
+time, and =360750 ns= p95 latency.  The new Criterion workload records
+=20.903--22.826 us= parse, =24.428--29.678 us= lowering, and
+=45.886--57.840 us= combined conservative confidence intervals.  Host
+scheduling outliers are retained rather than filtered by an ad hoc benchmark
+path.  Results describe this machine and workload; they are not a universal
+throughput claim.
+
+The label/key-label change does not overwrite either historical Criterion
+identity.  =label-key-label-type-fillers-v1= is a new 662-byte workload with
+100 samples, two seconds warm-up, eight seconds measurement, significance
+level =0.01=, and noise threshold =0.03=.  Its conservative intervals are
+=27.000--30.905 us= for lossless Rowan parse, =33.013--42.687 us= for typed
+AST lowering, and =57.628--63.631 us= combined.  The run retained 16, 20, and
+19 scheduler outliers respectively instead of hiding them.  The fixed Scenario
+remains four statements with =662/662= source/round-trip bytes, zero diagnostics,
+zero fallback, =1836 B= measured memory, and a fresh =400459 ns= p95 observation
+under the existing =500 us= target.
+
+*** Recursive declaration value types
+
+The Section 18 declaration-type owner no longer collapses graph properties to
+the runtime-inference =ValueType= enum.  Gerbil declares recursive
+=PropertyValueType=, =ValueTypeAtom=, =TypeParameterList=, =FieldTypeList=,
+=FieldType=, =ReferenceValueType=, and =NotNullConstraint= CST shapes.  AST
+retains exact spans, source order, bounds, nested fields, nullability, and union
+membership.  Canonical IR owns a separate backend-neutral
+=DeclaredValueType= algebra.  This admits the scalar, temporal, LIST/ARRAY,
+RECORD, dynamic-union, PATH, open and closed graph/node/edge reference, and
+binding-table productions without using backend or runtime type authority.
+Closed references reuse the same typed nested-graph, node-type, and edge-type
+structures as catalog DDL; they are never reduced to raw source or backend
+payloads.  The executable predefined matrix covers every Section 18.9
+production spelling, its permitted parameter arity, and canonical synonym
+family.  This closes the declaration value-type grammar boundary; it does not
+claim unrelated ISO chapters are complete.
+
+#+name: rfc-0024-declaration-value-type-flow
+#+begin_src mermaid
+flowchart LR
+  Source[Property type source] --> CST[Recursive Rowan value-type CST]
+  CST --> AST[Span-bearing AST declaration type]
+  AST --> Validate{Bounds arity descriptors and union members valid}
+  Validate -->|yes| IR[Canonical DeclaredValueType IR]
+  Validate -->|no| Reject[Typed diagnostic and no catalog command]
+  IR --> Scalar[Named scalar or temporal]
+  IR --> List[List or array with optional element and bound]
+  IR --> Record[Ordered record or binding-table fields]
+  IR --> Union[Open or closed dynamic union]
+  IR --> Reference[Open or typed closed graph node edge reference]
+#+end_src
+
+#+name: rfc-0024-declaration-value-type-logic
+#+begin_src typst
+#let type_forms = (
+  "Named",
+  "List",
+  "Record",
+  "DynamicUnion",
+  "Reference",
+)
+
+$ T ::= "Named"(n, p) | "List"(T?, b?) | "Record"(F^*) | "Union"(T^+) | "Reference"(k, S?) $
+
+$ S ::= "Graph"(N^*, E^*) | "Node"(N) | "Edge"(E) $
+
+$ "arity-valid"(n, p) "iff" |p| in A_n $
+
+$ "canon"("BOOL") = "BOOLEAN", quad
+  "canon"("SIGNED INTEGER16") = "INT16" $
+
+$ "canon"("TIMESTAMP WITH TIME ZONE") = "ZONED DATETIME" $
+
+$ "well-formed"("STRING"(m, n)) "iff" m <= n $
+
+$ "well-formed"("Union"(T_1, dots.c, T_n)) "iff" "unique"(T_1, dots.c, T_n) $
+
+$ not "well-formed"(T) => "catalog-command"(T) = "none" and "ir"(T) = "none" $
+#+end_src
+
+The source-level contracts
+=scalar_constructed_and_union_value_types_cross_frontend_admission=,
+=reference_and_binding_table_value_types_cross_frontend_admission=,
+=closed_graph_node_and_edge_reference_value_types_cross_frontend_admission=,
+=every_predefined_type_production_is_source_admitted_and_canonicalized=,
+=predefined_type_synonyms_and_temporal_forms_have_one_canonical_ir=,
+=invalid_predefined_type_parameter_arities_emit_no_command=,
+=invalid_duration_qualifier_shape_emits_no_command=, and
+=invalid_value_type_bounds_and_duplicate_union_members_emit_no_command= prove
+lossless CST structure, 21-property preservation, exact nested field spans,
+typed closed descriptor preservation, exhaustive predefined-production
+admission, canonical synonym identity, exact arity/length-range validation,
+duplicate-union rejection, and fail-closed command publication.
+
+Performance evidence has a new identity rather than modifying a historical
+baseline.  =value-type-lattice-v1= measures a 489-byte recursive declaration
+with 100 Criterion samples, two seconds warm-up, eight seconds measurement,
+significance =0.01=, and noise threshold =0.03=.  Conservative intervals are
+=61.035--82.938 us= for Rowan parsing, =49.821--60.385 us= for AST lowering,
+and =101.39--131.79 us= combined.  The run retained 16, 22, and 20 scheduling
+outliers respectively.  Its independent Scenario records =489/489= bytes, one
+statement, zero diagnostics, zero fallback, =1106 B= measured memory, and
+=136458 ns= p95 under the =500 us= target.
+
+The distinct =reference-and-predefined-types-v1= workload measures the new
+closed-descriptor and canonical-alias path without rewriting that historical
+identity.  Its 393-byte Scenario records =393/393= source/round-trip bytes, one
+statement, zero diagnostics, zero fallback, =914 B= measured memory, and
+=282375 ns= p95 under the =500 us= target.  Criterion retained all scheduler
+observations: parse =33.721--37.215 us= with 15 outliers, AST lowering
+=45.850--58.137 us= with 18 outliers, and combined =80.773--89.825 us= with
+20 outliers.  The methodology remains 100 samples, two seconds warm-up, eight
+seconds measurement, significance =0.01=, and noise threshold =0.03=.
+
+* Node pattern evidence
+
+An inline node predicate such as =MATCH (n:Person WHERE n.age >= 18) RETURN n=
+is owned by the Gerbil =InlineWhereClause= declaration and its typed
+=GQL-PARSE-INLINE-WHERE-SYNTAX= recovery. Rowan preserves the complete source;
+typed AST keeps the predicate inside the node-pattern boundary; semantic
+analysis resolves it against the same canonical binding environment used by
+the surrounding graph pattern; and backend-neutral IR retains the predicate
+on its canonical =NodePattern=. A missing predicate emits exactly one typed
+parse diagnostic and no IR. SeleneDB exposes this shape as differential oracle
+evidence only; it is not a dependency or grammar authority. Label-expression
+algebra and the remaining node-pattern alternatives are still pending, so the
+feature remains =partial=.
+
+* Edge pattern evidence
+
+An inline edge predicate such as
+=MATCH (a)-[e:KNOWS WHERE e.since >= 2020]->(b) RETURN e= is declared by the
+Gerbil =EdgePattern= shape and the =inline-edge-where= recovery owner. The
+generated AOT projection exposes =predicate= as a first-class edge child;
+Rowan retains =InlineWhereClause= losslessly; AST preserves the edge binding,
+predicate structure, values, and spans; semantic lowering resolves =e= in the
+graph-pattern binding environment; and canonical IR retains the predicate on
+the edge rather than rewriting it into a global filter. =WHERE]= emits exactly
+one =GQL-PARSE-INLINE-WHERE-SYNTAX= diagnostic, no statement, and no IR.
+SeleneDB is differential reference evidence only. Label-expression algebra,
+edge alternatives, and unbounded quantifier forms remain pending, so
+=gql-edge-patterns= remains =partial=.
+
+* Path pattern evidence
+
+The Gerbil declaration now owns the =PathMode= Rowan shape, the
+=WALK/TRAIL/ACYCLIC/SIMPLE= keywords, and
+=GQL-PARSE-PATH-MODE-SYNTAX= recovery. For
+=MATCH TRAIL (a)-[:KNOWS]->{1,3}(b) RETURN a=, Rowan preserves the complete
+source and nests =PathMode= inside =MatchClause=; AST retains =Trail= beside
+the graph-pattern span; semantic admission maps it to the backend-neutral
+canonical IR mode without implementing traversal in the frontend. Explicit
+=WALK= and an absent modifier both canonicalize to =Walk=, while the other
+declared modes remain distinct. =MATCH TRAIL RETURN a= emits exactly one typed
+diagnostic, no statement, and no IR. Named paths, selectors, path search
+prefixes, and additional quantified-path alternatives remain separate pending
+contracts, so =gql-path-patterns= remains =partial=.
+
+* Quantified path evidence
+
+The Gerbil recovery owner =path-quantifier= governs all supported quantified
+edge spellings. Rowan preserves the punctuation and =PathQuantifier= span for
+=*=, =+=, =?=, exact ={n}=, lower-open ={n,}=, upper-open ={,m}=, and bounded
+={n,m}= forms. AST and backend-neutral IR normalize these spellings to the
+same =(minimum, optional maximum)= contract; notably ={n}= is exact and no
+longer aliases an unbounded range. Zero-length bounds are represented directly,
+so =*=, =?=, and ={0}= do not require a fabricated positive minimum. Empty
+={,}= and reversed ={4,2}= ranges each emit exactly one
+=GQL-PARSE-PATH-QUANTIFIER= diagnostic, no statement, and no IR. Group-variable
+semantics, quantified subpatterns, selectors, and path execution remain pending,
+so =gql-quantified-paths= remains =partial=.
+
+* Expression language evidence
+
+The Gerbil declaration is the sole operator and precedence authority for
+=OR/XOR/AND/NOT=, ISO inequality =<>=, string concatenation =||=, arithmetic,
+and unary numeric signs. Its native AOT projection assigns keyword operators
+one token rather than deriving width from keyword spelling; this prevents
+=AND= and =XOR= from consuming an operand. Lossless Rowan nodes, typed AST, and
+backend-neutral IR preserve the same precedence tree. Semantic admission
+requires boolean operands for logical operators, strings for concatenation,
+and numeric operands for unary signs and arithmetic. Violations emit one typed
+diagnostic and no IR. The non-ISO spelling =!== is rejected with exactly one
+=GQL-PARSE-NON-ISO-OPERATOR= terminal and cannot publish a partial statement.
+Functions, predicates beyond the admitted slice, list iteration, aggregates,
+and the remaining licensed expression clauses are pending, so
+=gql-expression-language= remains =partial=.
+
+* Property and label expression evidence
+
+Priority 120 admits property access and a first backend-neutral label-predicate
+slice without changing graph-pattern label ownership. Gerbil declares =IS=,
+=LABELED=, the six lossless Rowan label nodes, and the
+=GQL-PARSE-LABEL-EXPRESSION= recovery. The parser preserves =!=, =&=, =|=, and
+=%= tokens in a precedence-shaped CST; AST lowering retains source order and
+the complete predicate span; semantic lowering canonicalizes label names into
+the same-shaped IR tree.
+
+The executable owner is
+=crates/gql/tests/unit/property_label_expression_contract.rs=. Its positive
+contract joins ordinary property access and =IS LABELED= in one query. Its
+negative contracts prove malformed algebra is exactly-once typed, wildcard
+negation is first-class, and a non-graph operand yields
+=GQL-SEMA-LABEL-PREDICATE-NON-ELEMENT= with no IR. This is a partial feature
+slice: licensed-clause mapping and the remaining property/label forms still
+block a complete status.
+
+* MATCH pattern-list evidence
+
+#+name: rfc-0024-match-pattern-list
+#+begin_src mermaid
+flowchart LR
+  D[Gerbil GraphPatternList] --> C[Lossless Rowan components]
+  C --> A[AST patterns in source order]
+  A --> S[Sema binding-kind admission]
+  S --> I[Canonical IR graphs sequence]
+  C -->|trailing separator| X[Typed parse diagnostic and no IR]
+  S -->|Node/Edge identity conflict| X
+#+end_src
+
+Priority 130 replaces the former singular graph slot rather than retaining a
+compatibility field. =MatchClause.patterns= owns one or more graph components,
+and =QueryBlock.graphs= owns the mandatory source-ordered sequence across both
+comma-separated components and successive MATCH clauses. Same-kind binding
+reuse is admitted as a join identity; Node/Edge/Path kind conflicts produce
+=GQL-SEMA-BINDING-KIND-CONFLICT= and no IR.
+
+The executable owner is =crates/gql/tests/unit/match_contract.rs=. It proves
+lossless =GraphPatternList= structure, AST component preservation, path-mode
+propagation, canonical graph ordering, shared binding admission, exactly-once
+=GQL-PARSE-MATCH-PATTERN-LIST= rejection for a trailing separator, and no-IR
+kind-conflict rejection. Selectors, full match-mode algebra, licensed-clause
+mapping, and later query-composition forms remain pending, so =gql-match=
+remains =partial=.
+
+* OPTIONAL MATCH evidence
+
+#+name: rfc-0024-optional-match
+#+begin_src mermaid
+flowchart LR
+  O[Gerbil OptionalMatchClause] --> A[AST MatchClause patterns]
+  A --> G[Canonical OptionalMatch group]
+  G --> P[Scoped optional predicate]
+  G --> N[Null-preserving downstream bindings]
+  O -->|missing MATCH| X[Typed diagnostic and no IR]
+  A -->|binding kind conflict| X
+#+end_src
+
+Priority 140 removes the former requirement for a preceding mandatory MATCH
+and removes the flattened =optional_graphs= representation. Each canonical
+=OptionalMatch= owns its complete source-ordered =graphs= vector and its
+directly associated optional predicate. A standalone OPTIONAL MATCH therefore
+has an empty mandatory =QueryBlock.graphs= vector and one optional group; a
+two-component OPTIONAL MATCH remains one group rather than two independent
+outer joins.
+
+The executable owner is
+=crates/gql/tests/unit/optional_match_contract.rs=. It proves standalone
+admission, component grouping, shared bindings and path-mode propagation,
+WHERE scoping outside global filters, binding-kind conflict rejection, and
+exactly-once =GQL-PARSE-OPTIONAL-MATCH-SYNTAX= rejection with no statement or
+IR. Static nullability, licensed-clause mapping, and later optional subquery
+forms remain pending, so =gql-optional-match= remains =partial=.
+
+* WHERE admission evidence
+
+#+name: rfc-0024-where-admission
+#+begin_src mermaid
+flowchart LR
+  G[Gerbil where-clause recovery] --> C[Lossless Rowan WhereClause]
+  C --> A[AST expression plus significant clause span]
+  A --> S{Pattern scope and Boolean admission}
+  S -->|Boolean or dynamically typed| I[Canonical backend-neutral filter]
+  S -->|No pattern scope| X[Typed diagnostic and no IR]
+  S -->|Statically non-Boolean| X
+  C -->|Missing expression| P[Exactly-one parse diagnostic and no statement]
+#+end_src
+
+#+name: rfc-0024-where-admission-logic
+#+begin_src typst
+#let typed(v, t) = $tau(v) = t$
+#let admitted(v) = $tau(v) in {"Boolean", "Any"}$
+
+$
+  "admit"(q, w) = cases(
+    "filter" & "pattern scope and Boolean/Any",
+    "GQL-SEMA-WHERE-WITHOUT-PATTERN-SCOPE" & "no pattern scope",
+    "GQL-SEMA-WHERE-NOT-BOOLEAN" & "statically non-Boolean",
+  )
+$
+
+$ "diagnostics"(q, w) != emptyset arrow.r "no-ir"(q, w) $
+#+end_src
+
+Priority 150 moves WHERE recovery identity into the Gerbil declaration and
+retains one lossless Rowan clause. AST lowering now owns both the expression
+and the significant source span from =WHERE= through the predicate, excluding
+separator trivia. Semantic admission requires an existing mandatory or
+optional graph-pattern scope and rejects statically non-Boolean expressions;
+dynamically typed property access remains admissible for runtime Boolean
+evaluation. Rejection is fail-closed and publishes no canonical IR.
+
+The executable owner is =crates/gql/tests/unit/where_contract.rs=. It proves a
+Boolean property-and-label predicate reaches one backend-neutral filter,
+non-Boolean and scope-less forms produce their exact semantic diagnostics with
+no IR, and a missing predicate produces exactly one
+=GQL-PARSE-WHERE-SYNTAX= terminal with no statement. Standalone =RETURN= is no
+longer rejected by a revision-specific MATCH precondition; parser-negative
+fixtures now contain actual malformed syntax. Licensed-clause mapping,
+subquery scopes, aggregation admission, and the remaining search-condition
+forms remain pending, so =gql-where= remains =partial=.
+
+* Integrated query-pipeline MVP evidence
+
+Priorities 160--190 share one executable admission boundary rather than four
+independent vertical slices. A branch owns source-ordered =LET= bindings, one
+source-ordered =RETURN= projection, optional grouping, result-scope ordering,
+and pagination. =UNION= connects complete branches through a typed set
+operation; it is not a flattened list or a backend execution directive.
+
+#+name: rfc-0024-query-pipeline
+#+begin_src mermaid
+flowchart LR
+  D[Gerbil query declaration] --> C[Lossless Rowan clauses and function calls]
+  C --> A[Typed AST vectors with source spans]
+  A --> L[Sequential LET input scope]
+  L --> R[RETURN projection and result aliases]
+  R --> G[GROUP BY and aggregate admission]
+  G --> O[ORDER BY alias scope]
+  O --> P[OFFSET and LIMIT]
+  P --> I[Canonical backend-neutral QueryBlock]
+  I --> U[Typed UNION Complete Branch]
+  C -->|trailing UNION| X[One parse terminal and no AST or IR]
+  U -->|arity type or alias mismatch| Y[One semantic terminal and no IR]
+#+end_src
+
+#+name: rfc-0024-query-pipeline-logic
+#+begin_src typst
+#let compatible(a, b) = $a = b or a in {"Any", "Null"} or b in {"Any", "Null"}$
+
+Let a complete branch be
+$B = (L, R, G, O, delta, lambda)$, where $L$ is the ordered LET sequence,
+$R$ the non-empty RETURN projection, $G$ the grouping keys, $O$ the result
+ordering, $delta$ the offset, and $lambda$ the limit. Its environments are
+
+$ Gamma_(i+1) = Gamma_i union
+  {"canon"("name"(L_i)) mapsto tau("value"(L_i))}, $
+$ Gamma_R = Gamma_(|L|) union
+  {"canon"("alias"(r)) mapsto tau("value"(r)) : r in R}. $
+
+ORDER BY resolves in $Gamma_R$. An aggregate projection $r$ is admitted only
+when every non-aggregate projection expression occurs in $G$.
+
+For $B_1 " UNION " B_2$, complete-generation admission is defined only when
+
+$ |R_1| = |R_2| and forall i:
+  "compatible"(tau(R_(1,i)), tau(R_(2,i))) and
+  "canon"("alias"(R_(1,i))) = "canon"("alias"(R_(2,i))). $
+
+Any failed premise yields exactly one typed terminal and no canonical query IR;
+there is no first-column, first-branch, empty-branch, or backend fallback.
+#+end_src
+
+The executable owner is
+=crates/gql/tests/unit/query_pipeline_contract.rs=. It proves lossless CST,
+AST source order and spans, sequential LET scope, projection aliases, =COUNT=
+grouping, result-scope ordering and pagination, typed UNION branch order,
+exact type/name reconciliation, graph clauses after RETURN, missing branch
+projection, and trailing UNION zero fallback. =mrr-frontends= rejects the whole
+pipeline as one typed unsupported unit when its narrower =MetaQueryIr= cannot
+represent it; it never consumes only the first projection or branch.
+
+The four profile features remain =partial= because licensed-clause mapping and
+the remaining ISO aggregate, grouping, set-operator, projection, and pagination
+forms are not yet adjudicated. This MVP closes one architecture-wide query
+syntax contract; it does not claim the full ISO features are complete.
+
+* Integrated data-management frontend MVP evidence
+
+Priorities 200--230 now share one frontend admission owner. Gerbil declares
+=INSERT=, property =SET= and =REMOVE=, =DELETE= with explicit detach mode,
+=DROP SCHEMA=, qualified named =CALL=, and transaction start/commit/rollback
+commands. The same owner now admits open =CREATE GRAPH ... ANY=, =DROP GRAPH=,
+conditional =IF [NOT] EXISTS= and =OR REPLACE= policies, graph-type =COPY OF=
+and =LIKE= sources, and schema-scoped =SESSION SET/RESET= plus =SESSION CLOSE=.
+Rowan retains the complete source; AST retains statement order,
+identifiers, arguments, values, and spans; semantic admission emits only
+backend-neutral mutation, catalog, procedure, or transaction intents.
+
+#+name: rfc-0024-data-management
+#+begin_src mermaid
+flowchart LR
+  G[Gerbil data-management declaration] --> C[Lossless Rowan statements]
+  C --> A[Typed AST and source order]
+  A --> S[Semantic binding and catalog checks]
+  S --> M[Canonical Mutation intents]
+  S --> K[Canonical Catalog intent]
+  K --> V[Graph and graph-type identity validation]
+  S --> P[Canonical Procedure intent]
+  S --> T[Canonical Transaction intent]
+  S --> U[Canonical Session intent]
+  C -->|Malformed source| X[Exactly-one typed terminal]
+  S -->|Invalid target or identity| X
+  X --> Z[No AST publication or canonical intent]
+  M -. no execution authority .-> E[Storage or backend executor]
+  K -. no catalog mutation authority .-> E
+  T -. no transaction execution authority .-> E
+  U -. no session mutation authority .-> E
+#+end_src
+
+#+name: rfc-0024-data-management-logic
+#+begin_src typst
+#let admitted(x) = $"diag"(x) = emptyset$
+
+Let a data-modifying block preserve the source-ordered mutation sequence
+$M = (m_1, ..., m_n)$. Frontend admission is
+
+  $ "admit"(x) = cases(
+    Q_M & "when" x in "DataModification",
+    C_x & "when" x in "CatalogStatement",
+    P_x & "when" x in "ProcedureCall",
+    T_x & "when" x in "TransactionStatement",
+    S_x & "when" x in "SessionCommand",
+    bot & "otherwise",
+  ) $
+
+The variants are disjoint. No frontend result executes a mutation, changes the
+input catalog, starts a transaction, or publishes a backend plan. For every
+failed syntax or semantic premise, exactly one typed diagnostic is returned and
+all canonical intent fields are empty.
+
+Catalog intent preserves
+$p_c in {"error", "if-not-exists", "or-replace"}$ for creation and
+$p_d in {"error", "if-exists"}$ for removal. A graph-type source is exactly one
+of $"copy-of"(t)$ or $"like-graph"(g)$; admission requires the referenced
+catalog identity in the same immutable catalog snapshot.
+#+end_src
+
+The executable owner is
+=crates/gql/tests/unit/data_management_contract.rs=. It proves lossless INSERT
+property patterns, MATCH/SET/REMOVE/DELETE source order, exact property targets,
+DROP SCHEMA existence checks, qualified procedure identity and argument order,
+transaction access modes and terminal commands, and zero publication for
+malformed sources. It also proves open graph create/drop catalog admission and
+schema-aware session control without executing either intent. Conditional graph
+and graph-type DDL preserve conflict policy, source identity, and source spans;
+missing or conflicting identities publish no catalog intent. The four features
+remain =partial=: additional graph sources, edge-type phrase forms, explicit
+edge-kind modifiers, complete scalar-type specifications, complete INSERT
+pattern forms, label and whole-property
+SET/REMOVE forms, additional SESSION settings, YIELD and inline procedure
+bodies, and licensed-clause adjudication are still pending. Neither this MVP nor
+oracle agreement is a full ISO conformance claim.
+
+* Qualified catalog identity and nested graph-type admission
+
+Catalog graph and graph-type names are now source-ordered path identities, not
+flattened leaf strings. =analytics.social= remains two typed AST and canonical
+IR segments while its dotted spelling is used only at the immutable catalog
+lookup boundary. The Gerbil declaration owns the additional Rowan shapes for
+catalog names, nested graph types, node and edge types, endpoint references,
+directions, property lists, property entries, and scalar value types. =NODE=,
+=EDGE=, =STRING=, and =INT64= are recognized contextually inside graph-type
+specifications, so ordinary identifiers with those spellings remain valid
+outside that syntax. Pattern-form edge types admit right-directed,
+left-directed, and undirected arcs; the two endpoint aliases bind only to node
+aliases declared in the same nested specification.
+
+#+name: rfc-0024-qualified-nested-graph-type
+#+begin_src mermaid
+flowchart LR
+  G[Gerbil syntax shapes] --> C[CatalogObjectName and NestedGraphType CST]
+  C --> A[Segmented AST identity plus spans]
+  C --> N[Node type and ordered property types]
+  C --> E[Edge type endpoints direction and properties]
+  A --> S[Semantic catalog admission]
+  N --> S
+  E --> S
+  S --> I[Backend-neutral typed IR]
+  S -->|duplicate property| D[Exact typed diagnostic]
+  C -->|malformed braces list or type| P[Exact parse diagnostic]
+  D --> Z[No catalog command and no query IR]
+  P --> Z
+#+end_src
+
+#+name: rfc-0024-qualified-nested-graph-type-logic
+#+begin_src typst
+Let a qualified identity be $q = (p_1, ..., p_n)$ with $n >= 1$ and
+$"canon"(q) = ("canon"(p_1), ..., "canon"(p_n))$. Canonical admission preserves
+the sequence; $"dotted"(q)$ is a catalog lookup projection, not a second
+identity authority.
+
+For one node type $N = (t, a, (k_1: tau_1, ..., k_m: tau_m))$, admission is
+
+$ "admit"(N) "iff" forall i: tau_i in {"STRING", "INT64"}
+  and forall i,j: i != j => "canon"(k_i) != "canon"(k_j). $
+
+Let $A$ be the set of canonical node aliases. For an edge pattern
+$E = (e, u, d, v, P)$, where $d$ is one of $"out", "in", "undirected"$,
+
+$ "admit"(E) "iff" u in A and v in A and "admit-properties"(P). $
+
+The logical source/destination projection is $(u,v)$ for $"out"$, $(v,u)$ for
+$"in"$, and the source-ordered pair $(u,v)$ for $"undirected"$. Direction is
+a typed IR value, never a backend spelling.
+
+Failure of the property uniqueness premise emits
+$"GQL-SEMA-DUPLICATE-GRAPH-TYPE-PROPERTY"$ and publishes neither catalog
+command nor query IR. A missing endpoint emits
+$"GQL-SEMA-GRAPH-TYPE-ENDPOINT-NOT-FOUND"$; a duplicate alias emits
+$"GQL-SEMA-DUPLICATE-GRAPH-TYPE-ALIAS"$. A malformed nested specification emits exactly
+$"GQL-PARSE-NESTED-GRAPH-TYPE-SYNTAX"$ and also publishes neither result.
+#+end_src
+
+The executable contract is
+=crates/gql/tests/unit/data_management_contract.rs=. It proves qualified path
+segments and spans, lossless structural Rowan nodes, named node type and local
+alias preservation, source-ordered =STRING=/=INT64= property types, canonical
+backend-neutral values, three pattern-form edge directions, exact endpoint
+binding, exact malformed-arc/list rejection, and duplicate alias/property
+fail-closed behavior.  The later phrase, explicit-kind, label/key-label, and
+recursive declaration-type contracts close those Section 18 branches.
+Unrelated catalog-management and licensed-clause surfaces remain pending, so
+this is not a full ISO language claim.
+
+* Parser and AST performance admission
+
+The lossless frontend hot path is an ASP Rust Project Scenario, not an
+arithmetic smoke benchmark. Its fixed 569-byte base corpus covers a property-bearing
+query, catalog DDL, an ordered mutation pipeline, and a qualified nested graph
+type containing two node types and one directed edge type. The libtest gate measures
+25 samples after three warmups with a monotonic clock; Criterion independently
+reports byte throughput for Rowan parsing, CST-to-AST lowering, and the combined
+path. Both execute the real =gql_syntax::parse= and =lower_from_syntax= APIs.
+
+#+name: rfc-0024-ast-performance
+#+begin_src mermaid
+flowchart LR
+  F[Fixed profile-v1 inputs] --> P[Lossless Rowan parse]
+  P --> A[Backend-neutral AST lowering]
+  P --> R[Roundtrip byte identity]
+  A --> M[ASP Rust typed metrics]
+  R --> M
+  M --> G{p95 memory and exact-count gates}
+  G -->|admitted| B[Criterion byte-throughput bench]
+  G -->|diagnostic fallback or budget breach| X[Scenario rejection]
+#+end_src
+
+#+name: rfc-0024-ast-performance-logic
+#+begin_src typst
+Let $S = (s_1, s_2, s_3, s_4)$ be the fixed source corpus and let
+$P_i = "parse"(s_i)$ and $A_i = "lower"(P_i)$. Admission requires
+
+$ forall i: "text"(P_i) = s_i quad and quad
+  "diagnostics"(P_i) = emptyset quad and quad A_i != bot, $
+
+$ "fallback-count" = 0, quad
+  "p95"("parse" + "lower") <= 5 "ms", quad
+  "memory-estimate" <= 2^20 "bytes". $
+
+Parse and lowering phase observations remain distinct. Semantic analysis,
+backend execution, and oracle calls are outside the measured hot path.
+#+end_src
+
+The measured base Scenario snapshot records a 360.750 microsecond total p95,
+150.791 microseconds for parsing, 141.875 microseconds for AST lowering, 1,650
+estimated bytes, four statements, zero diagnostics, zero fallback, and
+569/569 lossless roundtrip bytes. Criterion preserves the original three-input
+baseline and measures the nested graph type separately. The nested source
+reports 3.37--4.12 MiB/s parsing, 4.27--6.20 MiB/s lowering, and 1.29--3.35
+MiB/s combined on the measurement host. These observations are reproducible
+evidence, not portable hardware promises; the executable 5ms p95 and 1MiB
+limits are the admission contract.
+
+The distinct =lexical-identifiers-v1= Scenario adds a fixed ASCII repository
+fixture covering the complete 47-word table plus Unicode escape and delimited
+forms; the raw =Pc=/=ID_Continue= path remains covered by executable Rust tests
+whose source spelling uses ASCII =\u{...}= escapes.  The 954-byte Scenario
+records a conservative 852.167 microsecond total p95, 564.833 microseconds for
+parsing, 210.000 microseconds for AST lowering, 2,036 estimated bytes, one
+statement, zero diagnostics, zero fallback, and 954/954 roundtrip bytes.
+Criterion reports 93.981--115.530 microseconds for parsing,
+72.514--94.765 microseconds for lowering, and 161.740--182.240 microseconds
+combined.  Criterion detected a combined-path change against its immediately
+preceding local sample, but that comparison crossed the fixture identity
+change required by the ASCII-only repository policy; it is therefore not used
+as a causal optimization claim.  The standalone intervals and executable
+budgets remain the admission evidence.
+
+* Character-sequence escape admission
+
+The =character-sequence-escapes-v1= slice is owned by the Gerbil declaration,
+not by a handwritten alternate grammar.  Its generated table enumerates
+single- and double-quoted representations, =NO_ESCAPE=, delimiter and control
+escapes, and four- and six-hex Unicode scalar escapes.  The Rust lexer consumes
+one complete quoted candidate with a bounded linear scan and records at most
+one lexical terminal.  Unterminated input retains its dedicated terminal;
+malformed or non-scalar escapes cannot publish AST, canonical IR, or MRR
+identity.
+
+#+name: rfc-0024-character-sequence-escapes
+#+begin_src mermaid
+flowchart LR
+  G[Gerbil character sequence table] --> A[AOT Rust projection]
+  A --> L[One pass quoted scanner]
+  L -->|valid| C[Lossless Rowan CharacterStringLiteralExpression]
+  C --> D[Borrow first shared decoder]
+  D --> S[AST value form NO_ESCAPE span]
+  S --> I[Canonical IR semantic string]
+  I --> M[MRR content identity]
+  L -->|invalid escape or scalar| T[Exactly one typed terminal]
+  T --> Z[No AST no IR no MRR admission]
+#+end_src
+
+#+name: rfc-0024-character-sequence-escape-logic
+#+begin_src typst
+Let $q = (d, n, r)$ be a quoted candidate with delimiter
+$d in {"single", "double"}$, NO_ESCAPE flag $n$, and representation bytes
+$r$.  The scanner is a total left-to-right transition
+
+$ "scan"(q): O(|r|) -> ("end", "terminated", "valid") $
+
+with constant auxiliary state.  Admission requires both terminal bits:
+
+$ "admit"(q) "iff" "terminated"(q) and "valid"(q). $
+
+For admitted ordinary sequences, $"decode"$ folds doubled delimiters and the
+declared escape family.  For $n = "true"$, reverse-solidus sequences remain raw
+while doubled delimiters still represent one delimiter.  If no folding is
+required, the decoder borrows the source interval; otherwise it allocates one
+output buffer of capacity at most $|r|$.
+
+Let $s_1 = "single-escaped"$, $s_2 = "double-escaped"$, and
+$s_3 = "single-no-escape"$.  Then
+
+$ "value"(s_1) = "value"(s_2) = ("A", "newline", "B"), $
+$ "value"(s_3) = ("A", "reverse-solidus", "n", "B"), $
+$ "mrr-id"(s_1) = "mrr-id"(s_2) != "mrr-id"(s_3). $
+
+Delimiter form, NO_ESCAPE, and source span are AST evidence.  They are not a
+second semantic identity authority and therefore do not enter canonical IR.
+#+end_src
+
+The frozen Scenario exercises both delimiters, =NO_ESCAPE=, all declared
+escapes, doubled delimiters, and temporal/duration reuse under its own stable
+Scenario and Criterion identity.  Its executable contract requires one
+statement, exact lossless roundtrip bytes, zero diagnostics, zero fallback,
+2ms total p95, and at most 1MiB estimated memory.  These bounds describe the
+frontend path only; backend and runtime work are excluded.
+
+The frozen 210-byte Scenario records 163.500 microseconds total p95, 136.917
+microseconds for parsing, 18.125 microseconds for AST lowering, 548 estimated
+bytes, one statement, zero diagnostics, zero fallback, and 210/210 roundtrip
+bytes.  Criterion independently reports 35.518--48.225 microseconds for
+lossless parsing, 19.775--25.945 microseconds for CST-to-AST lowering, and
+51.826--69.415 microseconds for the combined path.  The isolated six-sequence
+validator/decoder batch reports 681.28--921.48 nanoseconds, or
+70.376--95.188 MiB/s.  Outliers are retained in the receipt, and no
+before/after optimization claim is made from this first stable benchmark
+identity.
+
+* Zero-fallback admission evidence
+
+Parsing or lowering rejection now returns no =Statement=. Semantic analysis is
+invoked only for an admitted statement, and an empty query returns the typed
+=GQL-SEMA-EMPTY-QUERY= terminal without constructing a default query IR.
+Malformed =WHERE= and =LET= forms and reserved unsupported statements each
+produce exactly one diagnostic and publish neither AST statement nor IR.
+Unsupported catalog shapes such as =CREATE INDEX= and =DROP INDEX= remain
+typed zero-fallback terminals rather than placeholder AST variants. New catalog
+surfaces are introduced only when their complete Gerbil AOT, Rowan, AST,
+semantic, and canonical intent path is connected. Differential oracles remain
+outside Cargo metadata, and no alias, deprecated wrapper, second parser, or compatibility
+conversion preserves the removed surface.
+
+* Failure behavior
+
+Missing licensed clauses keep feature adjudication pending. Missing syntax,
+AST, semantic, IR, catalog, or fixture evidence keeps the corresponding layer
+partial or not implemented. Neither condition produces a fallback parser, a
+backend-specific IR, or an implicit profile expansion.

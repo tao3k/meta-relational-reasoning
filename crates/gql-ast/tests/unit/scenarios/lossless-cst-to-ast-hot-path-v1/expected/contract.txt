@@ -1,0 +1,3 @@
+Four inputs produce four lossless CSTs and four AST statements, including one qualified nested graph type.
+Diagnostics and fallback counts are exactly zero.
+The measured p95 stays within the declared hot-path budget.

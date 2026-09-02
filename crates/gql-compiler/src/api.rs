@@ -15,8 +15,8 @@ pub struct Compiler;
 pub struct Compilation {
     /// Original parse result.
     pub parse: Parse,
-    /// Lowered syntax statement.
-    pub statement: Statement,
+    /// Lowered syntax statement, absent when parsing or lowering rejects the source.
+    pub statement: Option<Statement>,
     /// Analysis result and diagnostics.
     pub analysis: Analysis,
 }
@@ -24,8 +24,8 @@ pub struct Compilation {
 #[derive(Clone, Debug, Eq, PartialEq)]
 /// Parse/lower output including statement and diagnostics.
 pub struct ParserOutput {
-    /// Lowered statement.
-    pub statement: Statement,
+    /// Lowered statement, absent when parsing or lowering rejects the source.
+    pub statement: Option<Statement>,
     /// Diagnostic output from parsing/lowering.
     pub diagnostics: Vec<gql_source::Diagnostic>,
 }
@@ -66,17 +66,19 @@ impl Compiler {
             }
         };
 
-        let mut analysis = analyze(&parser_output.statement, catalog);
-        let mut merged_diagnostics = parse
-            .diagnostics
-            .clone()
-            .into_iter()
-            .chain(parser_output.diagnostics)
-            .collect::<Vec<_>>();
+        let mut analysis = parser_output
+            .statement
+            .as_ref()
+            .map_or_else(Analysis::default, |statement| analyze(statement, catalog));
+        let mut merged_diagnostics = parser_output.diagnostics;
         merged_diagnostics.append(&mut analysis.diagnostics);
         analysis.diagnostics = merged_diagnostics;
         if !analysis.diagnostics.is_empty() {
             analysis.ir = None;
+            analysis.catalog_command = None;
+            analysis.procedure_command = None;
+            analysis.transaction_command = None;
+            analysis.session_command = None;
         }
 
         Compilation {

@@ -1,0 +1,1 @@
+RETURN 'plain', "plain", 'A\nB', "A\nB", @'A\nB', @"A\nB", '\t\b\r\f\\\'\"\`\u0041\U01F642', 'Ada''s', "Ada""s", DATE "2026-09-02", TIME '12:34:56.789Z', DATETIME "2026-09-02T12:34:56+08:00", DURATION "P1DT2H"

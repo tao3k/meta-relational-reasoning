@@ -13,8 +13,15 @@ pub enum Value {
     Boolean(bool),
     Integer(i64),
     Decimal(String),
+    Float(String),
     String(String),
+    ByteString(Vec<u8>),
+    Date(String),
+    Time(String),
+    Timestamp(String),
+    Duration(String),
     List(Vec<Value>),
+    Record(Vec<(String, Value)>),
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
@@ -24,8 +31,15 @@ pub enum ValueType {
     Boolean,
     Integer,
     Decimal,
+    Float,
     String,
+    ByteString,
+    Date,
+    Time,
+    Timestamp,
+    Duration,
     List,
+    Record,
 }
 
 impl Value {
@@ -37,8 +51,15 @@ impl Value {
             Self::Boolean(_) => ValueType::Boolean,
             Self::Integer(_) => ValueType::Integer,
             Self::Decimal(_) => ValueType::Decimal,
+            Self::Float(_) => ValueType::Float,
             Self::String(_) => ValueType::String,
+            Self::ByteString(_) => ValueType::ByteString,
+            Self::Date(_) => ValueType::Date,
+            Self::Time(_) => ValueType::Time,
+            Self::Timestamp(_) => ValueType::Timestamp,
+            Self::Duration(_) => ValueType::Duration,
             Self::List(_) => ValueType::List,
+            Self::Record(_) => ValueType::Record,
         }
     }
 }

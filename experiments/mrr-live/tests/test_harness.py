@@ -1,183 +1,167 @@
+from __future__ import annotations
+
 import json
-import tempfile
-import unittest
+from collections.abc import Mapping
 from pathlib import Path
+from typing import Any
 
-from mrr_live.harness import (
-    EXPECTED_FIXTURE,
-    PROTOCOL_VERSION,
-    TOOL_NAME,
-    LiveEvaluationError,
-    run_p00_smoke,
-)
+import pytest
 
+from mrr_live.harness import LiveEvaluationError, PROTOCOL_VERSION, run_p00_smoke
 
-def response(output, *, response_id):
-    return {
-        "id": response_id,
-        "object": "response",
-        "status": "completed",
-        "model": "deepseek-test-model",
-        "output": output,
-        "usage": {
-            "input_tokens": 10,
-            "input_tokens_details": {"cached_tokens": 0},
-            "output_tokens": 20,
-            "output_tokens_details": {"reasoning_tokens": 12},
-            "total_tokens": 30,
-        },
-    }
+CANDIDATE = {
+    "source": "artifact-alpha",
+    "target": "reviewed-source",
+    "edges": [
+        {"from": "artifact-alpha", "to": "build-17"},
+        {"from": "build-17", "to": "reviewed-source"},
+        {"from": "artifact-beta", "to": "unreviewed-source"},
+    ],
+}
 
 
 class FakeModel:
     provider = "fake"
 
-    def __init__(self, fixture_id=EXPECTED_FIXTURE, mutate_answer=None):
-        self.fixture_id = fixture_id
-        self.mutate_answer = mutate_answer
-        self.requests = []
+    def __init__(self, candidate: Mapping[str, Any] = CANDIDATE) -> None:
+        self.candidate = candidate
+        self.requests: list[Mapping[str, Any]] = []
 
-    def respond(self, request):
+    def respond(self, request: Mapping[str, Any]) -> dict[str, Any]:
         self.requests.append(request)
-        if len(self.requests) == 1:
-            return response(
-                [
-                    {"type": "reasoning", "content": []},
-                    {
-                        "type": "function_call",
-                        "call_id": "call-1",
-                        "name": TOOL_NAME,
-                        "arguments": json.dumps({"fixture_id": self.fixture_id}),
-                    },
-                ],
-                response_id="response-1",
-            )
-        schema = request["text"]["format"]["schema"]
-        answer = {name: rule["const"] for name, rule in schema["properties"].items()}
-        if self.mutate_answer is not None:
-            self.mutate_answer(answer)
-        return response(
-            [
+        return {
+            "id": "response-1",
+            "model": "deepseek-v4-flash",
+            "status": "completed",
+            "usage": {
+                "input_tokens": 20,
+                "input_tokens_details": {"cached_tokens": 0},
+                "output_tokens": 10,
+                "output_tokens_details": {"reasoning_tokens": 4},
+                "total_tokens": 30,
+            },
+            "output": [
                 {
-                    "type": "message",
-                    "content": [{"type": "output_text", "text": json.dumps(answer)}],
+                    "type": "function_call",
+                    "name": "mrr_derive_closure",
+                    "call_id": "call-1",
+                    "arguments": json.dumps(self.candidate),
                 }
             ],
-            response_id="response-2",
-        )
+        }
 
 
-def kernel_receipt(fixture_id):
+class FakeScheme:
+    def __init__(self) -> None:
+        self.calls: list[list[str]] = []
+
+    def __call__(self, arguments: list[str]) -> str:
+        self.calls.append(arguments)
+        decisions = {
+            ("request", "await-proposal"): "model-proposal",
+            (
+                "transition",
+                "await-proposal",
+                "model-proposal",
+                "candidate",
+                "0",
+                "2",
+            ): "await-closure",
+            ("request", "await-closure"): "mrr-closure",
+            (
+                "transition",
+                "await-closure",
+                "mrr-closure",
+                "admitted",
+                "0",
+                "2",
+            ): "complete",
+        }
+        return decisions[tuple(arguments)]
+
+
+def admitted_receipt(candidate: Mapping[str, Any]) -> dict[str, Any]:
+    assert candidate == CANDIDATE
     return {
         "schema": "mrr.live-kernel-tool-receipt",
         "schema_version": PROTOCOL_VERSION,
-        "fixture_id": fixture_id,
-        "rust_test": "knowledge_provenance_uses_the_shared_kernel",
-        "exit_code": 0,
-        "accepted": True,
+        "status": "admitted",
+        "reachable": True,
+        "candidate_count": 3,
+        "closure_status": "Complete",
         "mrr_execution_time_ms": 1.25,
         "output_sha256": "a" * 64,
     }
 
 
-class P00HarnessTests(unittest.TestCase):
-    def test_provider_neutral_v0_1_smoke_binds_authoritative_receipt(self):
-        with tempfile.TemporaryDirectory() as directory:
-            model = FakeModel()
-            receipt = run_p00_smoke(
-                model,
-                model_name="deepseek-test-model",
-                reasoning_effort="low",
-                run_dir=Path(directory),
-                kernel_runner=kernel_receipt,
-            )
-            run_dir = Path(receipt["run_dir"])
+def run(tmp_path: Path, **overrides: Any) -> dict[str, Any]:
+    return run_p00_smoke(
+        overrides.pop("model", FakeModel()),
+        model_name="deepseek-v4-flash",
+        reasoning_effort="low",
+        run_dir=tmp_path,
+        kernel_runner=overrides.pop("kernel_runner", admitted_receipt),
+        scheme_runner=overrides.pop("scheme_runner", FakeScheme()),
+        **overrides,
+    )
 
-            self.assertEqual(receipt["protocol_version"], PROTOCOL_VERSION)
-            self.assertEqual(receipt["status"], "PASS")
-            self.assertFalse(receipt["benchmark_claim"])
-            self.assertEqual(receipt["authority"], "mrr-kernel-receipt")
-            self.assertEqual(len(model.requests), 2)
-            self.assertEqual(model.requests[0]["reasoning"], {"effort": "low"})
-            self.assertNotIn("tool_choice", model.requests[0])
-            self.assertNotIn("tools", model.requests[1])
-            self.assertTrue((run_dir / "trajectory.jsonl").is_file())
-            self.assertTrue((run_dir / "verdict.json").is_file())
 
-    def test_wrong_tool_argument_is_a_model_failure_before_kernel(self):
-        calls = []
-        temporary = tempfile.TemporaryDirectory()
-        self.addCleanup(temporary.cleanup)
-        directory = temporary.name
-        with self.assertRaises(LiveEvaluationError) as raised:
-            run_p00_smoke(
-                FakeModel("software-lifecycle"),
-                model_name="test",
-                reasoning_effort="low",
-                run_dir=Path(directory),
-                kernel_runner=lambda fixture: calls.append(fixture),
-            )
-        verdicts = list(Path(directory).glob("*/verdict.json"))
-        self.assertEqual(len(verdicts), 1)
-        failure = json.loads(verdicts[0].read_text(encoding="utf-8"))
-        self.assertEqual(failure["status"], "FAIL")
-        self.assertEqual(failure["failure_code"], "F02_WRONG_TOOL_ARGUMENTS")
-        self.assertEqual(raised.exception.failure_code, "F02_WRONG_TOOL_ARGUMENTS")
-        self.assertEqual(calls, [])
+def test_natural_task_is_scheduled_by_scheme_and_decided_by_mrr(tmp_path: Path) -> None:
+    scheme = FakeScheme()
+    model = FakeModel()
+    receipt = run(tmp_path, model=model, scheme_runner=scheme)
 
-    def test_model_cannot_replace_kernel_receipt(self):
-        def mutate(answer):
-            answer["kernel_receipt_sha256"] = "0" * 64
+    assert receipt["status"] == "PASS"
+    assert receipt["decision"] is True
+    assert receipt["authority"] == "materialized-mrr-closure"
+    assert receipt["scheduler_authority"] == "gerbil-scheme-aot"
+    assert len(model.requests) == 1
+    assert "instructions" not in model.requests[0]
+    assert len(scheme.calls) == 4
 
-        with (
-            tempfile.TemporaryDirectory() as directory,
-            self.assertRaises(LiveEvaluationError) as raised,
-        ):
-            run_p00_smoke(
-                FakeModel(mutate_answer=mutate),
-                model_name="test",
-                reasoning_effort="low",
-                run_dir=Path(directory),
-                kernel_runner=kernel_receipt,
-            )
-        self.assertEqual(
-            raised.exception.failure_code,
-            "F15_IGNORED_AUTHORITATIVE_RECEIPT",
-        )
 
-    def test_invalid_kernel_schema_is_not_reinterpreted_by_model(self):
-        def invalid(fixture_id):
-            receipt = kernel_receipt(fixture_id)
-            receipt["schema"] = "unknown"
-            return receipt
+def test_model_candidate_cannot_replace_kernel_receipt(tmp_path: Path) -> None:
+    def forged(_: Mapping[str, Any]) -> dict[str, Any]:
+        return {
+            "schema": "mrr.live-kernel-tool-receipt",
+            "schema_version": PROTOCOL_VERSION,
+            "status": "candidate",
+            "reachable": True,
+            "closure_status": "Complete",
+        }
 
-        with (
-            tempfile.TemporaryDirectory() as directory,
-            self.assertRaises(LiveEvaluationError) as raised,
-        ):
-            run_p00_smoke(
-                FakeModel(),
-                model_name="test",
-                reasoning_effort="low",
-                run_dir=Path(directory),
-                kernel_runner=invalid,
-            )
-        self.assertEqual(raised.exception.failure_code, "K02_INVALID_RECEIPT")
+    with pytest.raises(LiveEvaluationError, match="not authoritative"):
+        run(tmp_path, kernel_runner=forged)
 
-    def test_trajectory_is_append_only_and_run_directory_is_unique(self):
-        with tempfile.TemporaryDirectory() as directory:
-            first = run_p00_smoke(
-                FakeModel(),
-                model_name="test",
-                reasoning_effort="low",
-                run_dir=Path(directory),
-                kernel_runner=kernel_receipt,
-            )
-            second = run_p00_smoke(
-                FakeModel(),
-                model_name="test",
-                reasoning_effort="low",
-                run_dir=Path(directory),
-                kernel_runner=kernel_receipt,
-            )
-        self.assertNotEqual(first["run_id"], second["run_id"])
+
+def test_scheme_scheduler_mismatch_fails_before_model_call(tmp_path: Path) -> None:
+    model = FakeModel()
+
+    with pytest.raises(LiveEvaluationError, match="expected model-proposal"):
+        run(tmp_path, model=model, scheme_runner=lambda _: "mrr-closure")
+
+    assert model.requests == []
+
+
+def test_hidden_oracle_scores_kernel_result_not_model_text(tmp_path: Path) -> None:
+    def unreachable(candidate: Mapping[str, Any]) -> dict[str, Any]:
+        receipt = admitted_receipt(candidate)
+        receipt["reachable"] = False
+        return receipt
+
+    with pytest.raises(LiveEvaluationError, match="hidden oracle"):
+        run(tmp_path, kernel_runner=unreachable)
+
+
+def test_runs_are_append_only_and_receive_unique_directories(tmp_path: Path) -> None:
+    first = run(tmp_path)
+    second = run(tmp_path)
+
+    assert first["run_dir"] != second["run_dir"]
+    for receipt in (first, second):
+        run_dir = Path(receipt["run_dir"])
+        assert (run_dir / "manifest.json").is_file()
+        assert (run_dir / "scenario.json").is_file()
+        assert (run_dir / "hidden-oracle.json").is_file()
+        assert (run_dir / "trajectory.jsonl").is_file()
+        assert (run_dir / "verdict.json").is_file()

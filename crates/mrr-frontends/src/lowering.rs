@@ -54,14 +54,11 @@ impl QueryFrontend {
 
     pub fn compile(&self, name: &str, source: &str) -> Result<MetaQueryIr, FrontendError> {
         let parse = gql_syntax::parse(name, source);
-        if !parse.diagnostics.is_empty() {
-            return Err(FrontendError::Diagnostics(parse.diagnostics));
-        }
         let lowered = gql_ast::lower_from_syntax(&parse);
         if !lowered.diagnostics.is_empty() {
             return Err(FrontendError::Diagnostics(lowered.diagnostics));
         }
-        let Statement::Query(query) = lowered.statement else {
+        let Some(Statement::Query(query)) = lowered.statement else {
             return Err(FrontendError::Unsupported(
                 "only query statements lower to MetaQueryIR".into(),
             ));
@@ -75,8 +72,7 @@ fn lower_query(query: &ast::Query) -> Result<MetaQueryIr, FrontendError> {
         .map_err(|error| FrontendError::Unsupported(error.to_string()))?;
     let mut match_clause = None;
     let mut predicates = Vec::new();
-    let mut projection_expressions = None;
-    let mut explicit_projections = None;
+    let mut return_projections = None;
     let mut order_keys = Vec::new();
     let mut limit = None;
 
@@ -84,26 +80,32 @@ fn lower_query(query: &ast::Query) -> Result<MetaQueryIr, FrontendError> {
         match clause {
             QueryClause::Match(found) if match_clause.is_none() => match_clause = Some(found),
             QueryClause::Match(_) => return unsupported("multiple MATCH clauses"),
-            QueryClause::Where { expression } => predicates.push(lower_expression(expression)?),
-            QueryClause::Return { expressions } => {
-                projection_expressions = Some(expressions.as_slice());
+            QueryClause::Where { expression, .. } => predicates.push(lower_expression(expression)?),
+            QueryClause::Return { projections, .. } if return_projections.is_none() => {
+                return_projections = Some(projections.as_slice());
             }
-            QueryClause::ReturnAliased { projections } => {
-                explicit_projections = Some(projections.as_slice());
-            }
+            QueryClause::Return { .. } => return unsupported("multiple RETURN clauses"),
             QueryClause::Limit { value, .. } => limit = *value,
             QueryClause::OrderBy { keys, .. } => order_keys.extend(keys),
             QueryClause::OptionalMatch(_) => return unsupported("OPTIONAL MATCH"),
             QueryClause::Let { .. } => return unsupported("LET"),
             QueryClause::Union { .. } => return unsupported("UNION"),
             QueryClause::Offset { .. } => return unsupported("OFFSET"),
+            QueryClause::GroupBy { .. } => return unsupported("GROUP BY"),
+            QueryClause::Insert { .. } => return unsupported("INSERT"),
+            QueryClause::Set { .. } => return unsupported("SET"),
+            QueryClause::Remove { .. } => return unsupported("REMOVE"),
+            QueryClause::Delete { .. } => return unsupported("DELETE"),
         }
     }
 
     let matched = match_clause.ok_or_else(|| {
         FrontendError::Unsupported("the parity slice requires one MATCH clause".into())
     })?;
-    let (graph, property_predicates) = lower_graph(query_id, &matched.pattern)?;
+    let [pattern] = matched.patterns.as_slice() else {
+        return unsupported("multiple MATCH patterns");
+    };
+    let (graph, property_predicates) = lower_graph(query_id, pattern)?;
     predicates.splice(0..0, property_predicates);
 
     let filters = predicates
@@ -111,19 +113,7 @@ fn lower_query(query: &ast::Query) -> Result<MetaQueryIr, FrontendError> {
         .enumerate()
         .map(|(index, predicate)| Filter::new(operator_id(query_id, "filter", index), predicate))
         .collect();
-    let projections = if let Some(expressions) = projection_expressions {
-        expressions
-            .iter()
-            .enumerate()
-            .map(|(index, expression)| {
-                Ok(Projection::new(
-                    operator_id(query_id, "projection", index),
-                    lower_expression(expression)?,
-                    Binding::new(format!("result_{index}"))?,
-                ))
-            })
-            .collect::<Result<Vec<_>, FrontendError>>()?
-    } else if let Some(projections) = explicit_projections {
+    let projections = if let Some(projections) = return_projections {
         projections
             .iter()
             .enumerate()
@@ -323,14 +313,34 @@ fn lower_expression(expression: &ast::Expression) -> Result<Expression, Frontend
         }
         ast::Expression::Boolean(value, _) => Expression::Literal(Value::Boolean(*value)),
         ast::Expression::Null(_) => Expression::Literal(Value::Null),
-        ast::Expression::String(value, _) => Expression::Literal(Value::String(value.clone())),
+        ast::Expression::String(literal) => {
+            Expression::Literal(Value::String(literal.value.clone()))
+        }
+        ast::Expression::ByteString(value, _) => {
+            Expression::Literal(Value::ByteString(value.clone()))
+        }
+        ast::Expression::Date(value, _) => Expression::Literal(Value::Date(value.clone())),
+        ast::Expression::Time(value, _) => Expression::Literal(Value::Time(value.clone())),
+        ast::Expression::Timestamp(value, _) => {
+            Expression::Literal(Value::Timestamp(value.clone()))
+        }
+        ast::Expression::Duration(value, _) => Expression::Literal(Value::Duration(value.clone())),
         ast::Expression::Integer(value, _) => Expression::Literal(Value::Integer(*value)),
         ast::Expression::Decimal(value, _) => Expression::Literal(Value::Decimal(value.clone())),
+        ast::Expression::ApproximateNumeric(value, _) => {
+            Expression::Literal(Value::Float(value.clone()))
+        }
         ast::Expression::List(values, _) => Expression::Literal(Value::List(
             values
                 .iter()
                 .map(lower_literal)
                 .collect::<Result<Vec<_>, _>>()?,
+        )),
+        ast::Expression::Record(fields, _) => Expression::Literal(Value::Record(
+            fields
+                .iter()
+                .map(|field| Ok((field.name.canonical_text(), lower_literal(&field.value)?)))
+                .collect::<Result<Vec<_>, FrontendError>>()?,
         )),
         ast::Expression::PropertyAccess { base, property } => {
             let ast::Expression::Name(binding) = base.as_ref() else {
@@ -341,11 +351,16 @@ fn lower_expression(expression: &ast::Expression) -> Result<Expression, Frontend
                 key: PropertyKey::new(property.text.clone())?,
             }
         }
-        ast::Expression::Unary { operator, operand } => Expression::Unary {
-            operator: match operator {
-                ast::UnaryOperator::Not => UnaryOperator::Not,
+        ast::Expression::Unary { operator, operand } => match operator {
+            ast::UnaryOperator::Not => Expression::Unary {
+                operator: UnaryOperator::Not,
+                operand: Box::new(lower_expression(operand)?),
             },
-            operand: Box::new(lower_expression(operand)?),
+            ast::UnaryOperator::Negate => Expression::Unary {
+                operator: UnaryOperator::Negate,
+                operand: Box::new(lower_expression(operand)?),
+            },
+            ast::UnaryOperator::Plus => lower_expression(operand)?,
         },
         ast::Expression::Binary {
             operator,
@@ -356,8 +371,12 @@ fn lower_expression(expression: &ast::Expression) -> Result<Expression, Frontend
             operator: lower_binary_operator(*operator)?,
             right: Box::new(lower_expression(right)?),
         },
+        ast::Expression::IsLabeled { .. } => {
+            return unsupported("label predicate expression");
+        }
         ast::Expression::Subscript { .. } => return unsupported("subscript expression"),
         ast::Expression::Case { .. } => return unsupported("CASE expression"),
+        ast::Expression::FunctionCall { .. } => return unsupported("function call expression"),
     })
 }
 
@@ -384,6 +403,8 @@ fn lower_binary_operator(operator: ast::BinaryOperator) -> Result<BinaryOperator
         ast::BinaryOperator::Or => BinaryOperator::Or,
         ast::BinaryOperator::Modulo => return unsupported("modulo expression"),
         ast::BinaryOperator::In => return unsupported("IN expression"),
+        ast::BinaryOperator::Concatenate => return unsupported("concatenation expression"),
+        ast::BinaryOperator::Xor => return unsupported("XOR expression"),
     })
 }
 
@@ -404,28 +425,30 @@ fn append_clause(key: &mut Vec<u8>, clause: &QueryClause) {
     match clause {
         QueryClause::Match(found) => {
             append(key, "match");
-            append_pattern(key, &found.pattern.elements);
+            for pattern in &found.patterns {
+                append(key, "pattern");
+                append_pattern(key, &pattern.elements);
+            }
         }
         QueryClause::OptionalMatch(found) => {
             append(key, "optional-match");
-            append_pattern(key, &found.pattern.elements);
+            for pattern in &found.patterns {
+                append(key, "pattern");
+                append_pattern(key, &pattern.elements);
+            }
         }
-        QueryClause::Where { expression } => {
+        QueryClause::Where { expression, .. } => {
             append(key, "where");
             append_expression(key, expression);
         }
-        QueryClause::Let { binding, value } => {
+        QueryClause::Let { bindings, .. } => {
             append(key, "let");
-            append(key, &binding.text);
-            append_expression(key, value);
-        }
-        QueryClause::Return { expressions } => {
-            append(key, "return");
-            for expression in expressions {
-                append_expression(key, expression);
+            for binding in bindings {
+                append(key, &binding.binding.text);
+                append_expression(key, &binding.value);
             }
         }
-        QueryClause::ReturnAliased { projections } => {
+        QueryClause::Return { projections, .. } => {
             append(key, "return");
             for projection in projections {
                 append_expression(key, &projection.expression);
@@ -459,6 +482,39 @@ fn append_clause(key: &mut Vec<u8>, clause: &QueryClause) {
                 key,
                 &value.map_or_else(String::new, |value| value.to_string()),
             );
+        }
+        QueryClause::GroupBy { keys, .. } => {
+            append(key, "group");
+            for expression in keys {
+                append_expression(key, expression);
+            }
+        }
+        QueryClause::Insert { patterns, .. } => {
+            append(key, "insert");
+            for pattern in patterns {
+                append_pattern(key, &pattern.elements);
+            }
+        }
+        QueryClause::Set { items, .. } => {
+            append(key, "set");
+            for item in items {
+                append_expression(key, &item.target);
+                append_expression(key, &item.value);
+            }
+        }
+        QueryClause::Remove { targets, .. } => {
+            append(key, "remove");
+            for target in targets {
+                append_expression(key, target);
+            }
+        }
+        QueryClause::Delete {
+            targets, detach, ..
+        } => {
+            append(key, if *detach { "detach-delete" } else { "delete" });
+            for target in targets {
+                append_expression(key, target);
+            }
         }
     }
 }
@@ -507,13 +563,33 @@ fn append_expression(key: &mut Vec<u8>, expression: &ast::Expression) {
         ast::Expression::Name(value) => append(key, &format!("name:{}", value.text)),
         ast::Expression::Boolean(value, _) => append(key, &format!("bool:{value}")),
         ast::Expression::Null(_) => append(key, "null"),
-        ast::Expression::String(value, _) => append(key, &format!("string:{value}")),
+        ast::Expression::String(literal) => append(key, &format!("string:{}", literal.value)),
+        ast::Expression::ByteString(value, _) => {
+            append(key, "bytes");
+            for byte in value {
+                append(key, &format!("{byte:02X}"));
+            }
+        }
+        ast::Expression::Date(value, _) => append(key, &format!("date:{value}")),
+        ast::Expression::Time(value, _) => append(key, &format!("time:{value}")),
+        ast::Expression::Timestamp(value, _) => append(key, &format!("timestamp:{value}")),
+        ast::Expression::Duration(value, _) => append(key, &format!("duration:{value}")),
         ast::Expression::Integer(value, _) => append(key, &format!("integer:{value}")),
         ast::Expression::Decimal(value, _) => append(key, &format!("decimal:{value}")),
+        ast::Expression::ApproximateNumeric(value, _) => {
+            append(key, &format!("float:{value}"));
+        }
         ast::Expression::List(values, _) => {
             append(key, "list");
             for value in values {
                 append_expression(key, value);
+            }
+        }
+        ast::Expression::Record(fields, _) => {
+            append(key, "record");
+            for field in fields {
+                append(key, &field.name.canonical_text());
+                append_expression(key, &field.value);
             }
         }
         ast::Expression::Subscript { base, index } => {
@@ -539,7 +615,57 @@ fn append_expression(key: &mut Vec<u8>, expression: &ast::Expression) {
             append_expression(key, left);
             append_expression(key, right);
         }
+        ast::Expression::IsLabeled {
+            operand,
+            label,
+            negated,
+            ..
+        } => {
+            append(
+                key,
+                if *negated {
+                    "is-not-labeled"
+                } else {
+                    "is-labeled"
+                },
+            );
+            append_expression(key, operand);
+            append_label_expression(key, label);
+        }
         ast::Expression::Case { .. } => append(key, "case"),
+        ast::Expression::FunctionCall {
+            name, arguments, ..
+        } => {
+            append(key, "function");
+            append(key, &name.text);
+            for argument in arguments {
+                append_expression(key, argument);
+            }
+        }
+    }
+}
+
+fn append_label_expression(key: &mut Vec<u8>, label: &ast::LabelExpression) {
+    match label {
+        ast::LabelExpression::Name(identifier) => {
+            append(key, "label-name");
+            append(key, &identifier.text);
+        }
+        ast::LabelExpression::Wildcard => append(key, "label-wildcard"),
+        ast::LabelExpression::Not(operand) => {
+            append(key, "label-not");
+            append_label_expression(key, operand);
+        }
+        ast::LabelExpression::And(left, right) => {
+            append(key, "label-and");
+            append_label_expression(key, left);
+            append_label_expression(key, right);
+        }
+        ast::LabelExpression::Or(left, right) => {
+            append(key, "label-or");
+            append_label_expression(key, left);
+            append_label_expression(key, right);
+        }
     }
 }
 

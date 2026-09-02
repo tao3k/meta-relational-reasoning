@@ -57,17 +57,24 @@ compatibility surface. GQL and Cypher enter MRR only through the explicit
 
 * ISO modular conformance configuration
 
-ISO coverage is configured as a modular registry rather than one expanding
-feature list. =standard_releases= records editions and supplements, =modules=
-groups related normative surface, =feature_registry= owns stable feature
-identities and evidence, and =profiles= explicitly compose the modules that a
-build claims to support. A later ISO supplement adds a release entry and
-affected module entries; it does not silently widen =gql-frontend-v1=.
+ISO coverage is configured as a modular Gerbil declaration rather than one
+expanding feature list. =scheme/grammar/gql-profile.ss= owns releases, modules,
+stable feature identities, dependencies, evidence owners, and explicit profile
+composition. A later ISO supplement extends that declaration; it does not
+silently widen the selected profile.
 
 =gql-iso-audit-v1= is the complete audited inventory and makes no conformance
-claim. =gql-frontend-v1= is the intentionally narrow implementation profile.
-Partial and deferred features remain visible in the registry rather than being
-hidden by profile selection.
+claim. =gql-query-language-frontend-v1= is the intentionally narrow selected
+implementation profile. =gql-iso-language-frontend-v1= is the explicit target
+profile for the complete language frontend, not an active claim and not ISO
+certification. Partial and deferred features remain visible in the registry
+rather than being hidden by profile selection. The evidence and profile
+boundary is recorded in =docs/architecture/0024-iso-gql-language-profile.org=.
+There is deliberately no YAML feature ledger: Gerbil =syntax-case= validates
+the declaration shape, the native AOT ABI projects it into Rust, executable
+Rust tests own fixtures and layer behavior, and RFC 0024 owns the human audit.
+The separate =conformance/iso/normative-sources.yaml= remains only a licensed
+source/provenance registry; it is not a grammar or feature-status authority.
 
 * Purity boundary
 

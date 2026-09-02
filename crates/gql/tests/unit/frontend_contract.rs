@@ -90,7 +90,7 @@ fn graph_semantic_vertical_slices_do_not_require_relation_catalog_entries() {
             .analysis
             .ir
             .as_ref()
-            .and_then(|query| query.graph.as_ref())
+            .and_then(|query| query.graphs.first())
             .map(|graph| graph.elements.len()),
         Some(1)
     );
@@ -103,7 +103,10 @@ fn graph_semantic_vertical_slices_do_not_require_relation_catalog_entries() {
     assert!(graph_filter.parse.diagnostics.is_empty());
     assert!(graph_filter.analysis.diagnostics.is_empty());
     let ir = graph_filter.analysis.ir.expect("graph semantic IR");
-    assert_eq!(ir.graph.expect("graph").elements.len(), 3);
+    assert_eq!(
+        ir.graphs.into_iter().next().expect("graph").elements.len(),
+        3
+    );
     assert_eq!(ir.filters.len(), 1);
     assert_eq!(ir.projection.len(), 1);
 }
@@ -123,13 +126,14 @@ fn node_pattern_properties_survive_cst_ast_and_canonical_ir() {
     assert_eq!(count_node_kind(&root, SyntaxKind::PropertyMap), 1);
     assert_eq!(count_node_kind(&root, SyntaxKind::PropertyEntry), 3);
 
-    let crate::ast::Statement::Query(query) = &result.statement else {
+    let Some(crate::ast::Statement::Query(query)) = &result.statement else {
         panic!("statement is query");
     };
     let Some(crate::ast::QueryClause::Match(match_clause)) = query.clauses.first() else {
         panic!("MATCH clause exists");
     };
-    let Some(crate::ast::PatternElement::Node(node)) = match_clause.pattern.elements.first() else {
+    let Some(crate::ast::PatternElement::Node(node)) = match_clause.patterns[0].elements.first()
+    else {
         panic!("node pattern exists");
     };
     assert_eq!(
@@ -140,7 +144,7 @@ fn node_pattern_properties_survive_cst_ast_and_canonical_ir() {
         ["name", "age", "active"]
     );
     assert!(
-        matches!(node.properties[0].value, crate::ast::Expression::String(ref value, _) if value == "Ada")
+        matches!(node.properties[0].value, crate::ast::Expression::String(ref literal) if literal.value == "Ada")
     );
     assert!(matches!(
         node.properties[1].value,
@@ -164,8 +168,14 @@ fn node_pattern_properties_survive_cst_ast_and_canonical_ir() {
         result.analysis.diagnostics
     );
     let ir = result.analysis.ir.expect("property-pattern IR");
-    let Some(crate::ir::GraphPatternElement::Node(node)) =
-        ir.graph.expect("graph").elements.into_iter().next()
+    let Some(crate::ir::GraphPatternElement::Node(node)) = ir
+        .graphs
+        .into_iter()
+        .next()
+        .expect("graph")
+        .elements
+        .into_iter()
+        .next()
     else {
         panic!("canonical node pattern exists");
     };
@@ -174,7 +184,7 @@ fn node_pattern_properties_survive_cst_ast_and_canonical_ir() {
             .iter()
             .map(|property| property.key.as_str())
             .collect::<Vec<_>>(),
-        ["name", "age", "active"]
+        ["NAME", "AGE", "ACTIVE"]
     );
     assert!(
         matches!(node.properties[0].value, crate::ir::Expression::String(ref value) if value == "Ada")
@@ -232,13 +242,14 @@ fn edge_pattern_properties_survive_cst_ast_and_canonical_ir() {
     assert_eq!(count_node_kind(&root, SyntaxKind::PropertyMap), 1);
     assert_eq!(count_node_kind(&root, SyntaxKind::PropertyEntry), 2);
 
-    let crate::ast::Statement::Query(query) = &result.statement else {
+    let Some(crate::ast::Statement::Query(query)) = &result.statement else {
         panic!("statement is query");
     };
     let Some(crate::ast::QueryClause::Match(match_clause)) = query.clauses.first() else {
         panic!("MATCH clause exists");
     };
-    let Some(crate::ast::PatternElement::Edge(edge)) = match_clause.pattern.elements.get(1) else {
+    let Some(crate::ast::PatternElement::Edge(edge)) = match_clause.patterns[0].elements.get(1)
+    else {
         panic!("edge pattern exists");
     };
     assert_eq!(
@@ -282,17 +293,17 @@ fn edge_pattern_properties_survive_cst_ast_and_canonical_ir() {
     );
     let ir = result.analysis.ir.expect("edge-property IR");
     let Some(crate::ir::GraphPatternElement::Edge(edge)) =
-        ir.graph.as_ref().expect("graph").elements.get(1)
+        ir.graphs.first().expect("graph").elements.get(1)
     else {
         panic!("canonical edge pattern exists");
     };
-    assert_eq!(edge.binding.as_deref(), Some("e"));
+    assert_eq!(edge.binding.as_deref(), Some("E"));
     assert_eq!(
         edge.properties
             .iter()
             .map(|property| property.key.as_str())
             .collect::<Vec<_>>(),
-        ["since", "weight"]
+        ["SINCE", "WEIGHT"]
     );
     assert!(matches!(
         edge.properties[0].value,
@@ -303,7 +314,7 @@ fn edge_pattern_properties_survive_cst_ast_and_canonical_ir() {
         crate::ir::Expression::Integer(3)
     ));
     assert!(
-        matches!(ir.projection[0].expression, crate::ir::Expression::Binding(ref name) if name == "e")
+        matches!(ir.projection[0].expression, crate::ir::Expression::Binding(ref name) if name == "E")
     );
 }
 
@@ -348,8 +359,8 @@ fn union_vertical_slice_is_backend_independent() {
     );
     assert_eq!(result.parse.tree.rowan_root().text().to_string(), source);
     let ir = result.analysis.ir.expect("UNION IR");
-    assert_eq!(ir.union_branches.len(), 1);
-    assert_eq!(ir.union_branches[0].projection.len(), 1);
+    assert_eq!(ir.set_operations.len(), 1);
+    assert_eq!(ir.set_operations[0].right.projection.len(), 1);
 }
 
 #[test]
@@ -430,7 +441,7 @@ fn property_expression_vertical_slice_reaches_canonical_ir() {
     assert!(matches!(
         ir.filters.as_slice(),
         [crate::ir::Expression::Binary { left, right, .. }]
-            if matches!(left.as_ref(), crate::ir::Expression::PropertyAccess { property, .. } if property == "name")
+            if matches!(left.as_ref(), crate::ir::Expression::PropertyAccess { property, .. } if property == "NAME")
                 && matches!(right.as_ref(), crate::ir::Expression::Boolean(true))
     ));
     assert!(matches!(
@@ -438,7 +449,7 @@ fn property_expression_vertical_slice_reaches_canonical_ir() {
         [crate::ir::Projection {
             expression: crate::ir::Expression::PropertyAccess { property, .. },
             ..
-        }] if property == "name"
+        }] if property == "NAME"
     ));
 }
 
@@ -482,16 +493,16 @@ fn named_path_vertical_slice_reaches_canonical_ir() {
     );
     let ir = result.analysis.ir.expect("named path query IR");
     assert!(matches!(
-        ir.graph.as_ref().expect("graph pattern").elements.as_slice(),
+        ir.graphs.first().expect("graph pattern").elements.as_slice(),
         [crate::ir::GraphPatternElement::Path(path)]
-            if path.binding.as_deref() == Some("p")
+            if path.binding.as_deref() == Some("P")
     ));
     assert!(matches!(
         ir.projection.as_slice(),
         [crate::ir::Projection {
             expression: crate::ir::Expression::Binding(name),
             ..
-        }] if name == "p"
+        }] if name == "P"
     ));
 }
 
@@ -512,7 +523,7 @@ fn bounded_path_quantifier_vertical_slice_reaches_canonical_ir() {
     );
     let ir = result.analysis.ir.expect("quantified path query IR");
     assert!(matches!(
-        ir.graph.as_ref().expect("graph pattern").elements.as_slice(),
+        ir.graphs.first().expect("graph pattern").elements.as_slice(),
         [
             crate::ir::GraphPatternElement::Node(_),
             crate::ir::GraphPatternElement::Edge(edge),
@@ -541,7 +552,8 @@ fn optional_match_vertical_slice_reaches_canonical_ir() {
         result.analysis.diagnostics
     );
     let ir = result.analysis.ir.expect("optional match query IR");
-    assert_eq!(ir.optional_graphs.len(), 1);
+    assert_eq!(ir.optional_matches.len(), 1);
+    assert_eq!(ir.optional_matches[0].graphs.len(), 1);
     assert!(matches!(
         ir.projection.as_slice(),
         [
@@ -553,7 +565,7 @@ fn optional_match_vertical_slice_reaches_canonical_ir() {
                 expression: crate::ir::Expression::Binding(second),
                 ..
             }
-        ] if first == "a" && second == "b"
+        ] if first == "A" && second == "B"
     ));
 }
 

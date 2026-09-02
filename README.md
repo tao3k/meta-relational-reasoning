@@ -49,7 +49,7 @@ cargo tree -p gql-core
 ## Publish readiness policy
 
 `cargo package` is currently excluded for workspace member crates because the workspace
-contains local-only, unpublished dependency edges (including `mrr-rust-project-harness-policy`)
+contains local-only, unpublished dependency edges (including `mrr-asp-rust-project-policy`)
 that are intentionally part of current developer-gating design. The CI workflow keeps this
 policy explicit and skips publish dry-runs until a release topology that resolves these
 cross-crate dependencies is in place.

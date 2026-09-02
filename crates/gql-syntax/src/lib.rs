@@ -5,15 +5,19 @@
 
 #![forbid(unsafe_code)]
 
+mod character_string;
 mod generated;
 mod lexer;
 mod parser;
 mod syntax;
 
+pub use character_string::{CharacterStringForm, DecodedCharacterString, decode_character_string};
 pub use parser::parse;
 pub use syntax::{
-    GqlSyntax, GrammarProjectionReceipt, Keyword, Parse, SyntaxElement, SyntaxElementKind,
-    SyntaxKind, SyntaxNode, SyntaxTree, Token, TokenKind, grammar_projection_receipt,
+    GqlSyntax, GrammarProjectionReceipt, ISO_GQL_CHARACTER_STRING_FORMS,
+    ISO_GQL_NON_RESERVED_WORDS, ISO_GQL_NUMERIC_LITERAL_FORMS, Keyword, Parse, SyntaxElement,
+    SyntaxElementKind, SyntaxKind, SyntaxNode, SyntaxTree, Token, TokenKind,
+    grammar_projection_receipt, is_non_reserved_word,
 };
 
 pub use syntax::{RowanSyntaxNode, RowanSyntaxToken};

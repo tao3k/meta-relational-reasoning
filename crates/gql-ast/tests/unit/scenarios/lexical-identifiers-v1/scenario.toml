@@ -1,0 +1,11 @@
+id = "lexical-identifiers-v1"
+title = "ISO GQL lexical identifier hot path"
+policy_ids = ["RUST-AGENT-GQL-AST-PERF-001"]
+agent_goal = "Parse and lower the exact non-reserved-word set plus escaped Unicode and delimited identifier forms losslessly within a bounded p95; raw Unicode category contracts remain executable Rust tests."
+reference_repositories = ["opengql/grammar", "unicode-org/icu4x", "rust-analyzer/rowan"]
+reference_patterns = [
+  "Gerbil AOT owns the exact ISO non-reserved-word set",
+  "ICU4X compiled Unicode properties implement ID_Start, Pc, and ID_Continue without runtime initialization",
+  "Rowan preserves original spelling while AST lowering owns logical identifier values",
+]
+inputs = "inputs"

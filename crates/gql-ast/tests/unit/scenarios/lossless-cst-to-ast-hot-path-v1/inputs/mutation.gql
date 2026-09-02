@@ -1,0 +1,1 @@
+MATCH (person:Person) SET person.age = 42 REMOVE person.legacy DELETE person

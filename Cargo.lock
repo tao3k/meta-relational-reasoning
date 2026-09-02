@@ -95,6 +95,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "arrayvec"
+version = "0.7.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d3fb67a6e08acf24fdeccbac2cb6ac4305825bd1f117462e0e6f2f193345ad56"
+
+[[package]]
 name = "ascent"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -140,6 +146,36 @@ dependencies = [
 ]
 
 [[package]]
+name = "asp-rust"
+version = "0.1.2"
+source = "git+https://github.com/tao3k/asp-rust?rev=b64f80401c8e2688d7aa7809de714d5f22890ebf#b64f80401c8e2688d7aa7809de714d5f22890ebf"
+dependencies = [
+ "asp-rust-build-support",
+ "blake3",
+ "cargo-lock",
+ "cargo_toml",
+ "globset",
+ "libc",
+ "proc-macro2",
+ "quote",
+ "regex",
+ "semver",
+ "serde",
+ "serde_json",
+ "sha2 0.11.0",
+ "syn 3.0.4",
+ "toml 1.1.4+spec-1.1.0",
+]
+
+[[package]]
+name = "asp-rust-build-support"
+version = "0.1.0"
+source = "git+https://github.com/tao3k/asp-rust?rev=b64f80401c8e2688d7aa7809de714d5f22890ebf#b64f80401c8e2688d7aa7809de714d5f22890ebf"
+dependencies = [
+ "blake3",
+]
+
+[[package]]
 name = "autocfg"
 version = "1.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -150,6 +186,19 @@ name = "bitflags"
 version = "2.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b588b76d00fde79687d7646a9b5bdf3cc0f655e0bbd080335a95d7e96f3587da"
+
+[[package]]
+name = "blake3"
+version = "1.8.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6d9e454fc11f76977dc803893aff6304ed33d6a26efae8696573bea74baa27ae"
+dependencies = [
+ "arrayvec",
+ "cc",
+ "cfg-if",
+ "constant_time_eq",
+ "cpufeatures 0.3.0",
+]
 
 [[package]]
 name = "block-buffer"
@@ -174,6 +223,16 @@ name = "boxcar"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "38c99613cb3cd7429889a08dfcf651721ca971c86afa30798461f8eee994de47"
+
+[[package]]
+name = "bstr"
+version = "1.13.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6bb31b46c14244e20ee9984b11bf5c992b91fb6939fea616e3512c8baecdbe5f"
+dependencies = [
+ "memchr",
+ "serde_core",
+]
 
 [[package]]
 name = "bumpalo"
@@ -310,6 +369,12 @@ name = "const-oid"
 version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a6ef517f0926dd24a1582492c791b6a4818a4d94e789a334894aa15b0d12f55c"
+
+[[package]]
+name = "constant_time_eq"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3d52eff69cd5e647efe296129160853a42795992097e8af39800e1060caeea9b"
 
 [[package]]
 name = "countme"
@@ -474,7 +539,7 @@ checksum = "c6232dd377dcc64799954cbd3a9bb882e9cdc1308ccd87b1c098f1fb2eaf82a8"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 3.0.3",
+ "syn 3.0.4",
 ]
 
 [[package]]
@@ -615,22 +680,36 @@ dependencies = [
 ]
 
 [[package]]
+name = "globset"
+version = "0.4.20"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "07c34a9410465b45bd9787443bc7370f37735bad04b0f0cd57ff1a3186c98988"
+dependencies = [
+ "aho-corasick",
+ "bstr",
+ "log",
+ "regex-automata",
+ "regex-syntax",
+]
+
+[[package]]
 name = "gql"
 version = "0.1.0"
 dependencies = [
  "criterion",
  "gql-core",
- "mrr-rust-project-harness-policy",
+ "mrr-asp-rust-project-policy",
 ]
 
 [[package]]
 name = "gql-ast"
 version = "0.1.0"
 dependencies = [
+ "asp-rust-build-support",
  "criterion",
  "gql-source",
  "gql-syntax",
- "mrr-rust-project-harness-policy",
+ "mrr-asp-rust-project-policy",
 ]
 
 [[package]]
@@ -639,7 +718,7 @@ version = "0.1.0"
 dependencies = [
  "criterion",
  "gql-types",
- "mrr-rust-project-harness-policy",
+ "mrr-asp-rust-project-policy",
 ]
 
 [[package]]
@@ -654,7 +733,7 @@ dependencies = [
  "gql-source",
  "gql-syntax",
  "gql-types",
- "mrr-rust-project-harness-policy",
+ "mrr-asp-rust-project-policy",
 ]
 
 [[package]]
@@ -670,7 +749,7 @@ dependencies = [
  "gql-source",
  "gql-syntax",
  "gql-types",
- "mrr-rust-project-harness-policy",
+ "mrr-asp-rust-project-policy",
 ]
 
 [[package]]
@@ -679,7 +758,7 @@ version = "0.1.0"
 dependencies = [
  "criterion",
  "gql-types",
- "mrr-rust-project-harness-policy",
+ "mrr-asp-rust-project-policy",
 ]
 
 [[package]]
@@ -692,7 +771,7 @@ dependencies = [
  "gql-ir",
  "gql-source",
  "gql-types",
- "mrr-rust-project-harness-policy",
+ "mrr-asp-rust-project-policy",
 ]
 
 [[package]]
@@ -700,7 +779,7 @@ name = "gql-source"
 version = "0.1.0"
 dependencies = [
  "criterion",
- "mrr-rust-project-harness-policy",
+ "mrr-asp-rust-project-policy",
 ]
 
 [[package]]
@@ -709,7 +788,8 @@ version = "0.1.0"
 dependencies = [
  "criterion",
  "gql-source",
- "mrr-rust-project-harness-policy",
+ "icu_properties",
+ "mrr-asp-rust-project-policy",
  "rowan",
 ]
 
@@ -718,7 +798,7 @@ name = "gql-types"
 version = "0.1.0"
 dependencies = [
  "criterion",
- "mrr-rust-project-harness-policy",
+ "mrr-asp-rust-project-policy",
 ]
 
 [[package]]
@@ -969,6 +1049,7 @@ version = "0.1.0"
 dependencies = [
  "criterion",
  "mrr-ascent",
+ "mrr-asp-rust-project-policy",
  "mrr-bundle",
  "mrr-identity",
  "mrr-intent",
@@ -977,7 +1058,6 @@ dependencies = [
  "mrr-query",
  "mrr-relation",
  "mrr-revision",
- "mrr-rust-project-harness-policy",
  "mrr-transition",
  "sha2 0.10.9",
 ]
@@ -988,13 +1068,24 @@ version = "0.1.0"
 dependencies = [
  "ascent",
  "criterion",
+ "mrr-asp-rust-project-policy",
  "mrr-bundle",
  "mrr-identity",
  "mrr-logic",
  "mrr-query",
  "mrr-relation",
- "mrr-rust-project-harness-policy",
  "sha2 0.10.9",
+]
+
+[[package]]
+name = "mrr-asp-rust-project-policy"
+version = "0.1.0"
+dependencies = [
+ "asp-rust",
+ "asp-rust-build-support",
+ "criterion",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -1003,13 +1094,24 @@ version = "0.1.0"
 dependencies = [
  "ciborium",
  "criterion",
+ "mrr-asp-rust-project-policy",
  "mrr-identity",
  "mrr-logic",
  "mrr-query",
  "mrr-relation",
- "mrr-rust-project-harness-policy",
  "mrr-transition",
  "serde",
+]
+
+[[package]]
+name = "mrr-conformance"
+version = "0.1.0"
+dependencies = [
+ "criterion",
+ "meta-relational-reasoning",
+ "mrr-asp-rust-project-policy",
+ "mrr-intent",
+ "mrr-revision",
 ]
 
 [[package]]
@@ -1020,8 +1122,8 @@ dependencies = [
  "gql-ast",
  "gql-source",
  "gql-syntax",
+ "mrr-asp-rust-project-policy",
  "mrr-query",
- "mrr-rust-project-harness-policy",
 ]
 
 [[package]]
@@ -1029,13 +1131,13 @@ name = "mrr-gerbil"
 version = "0.1.0"
 dependencies = [
  "criterion",
+ "mrr-asp-rust-project-policy",
  "mrr-bundle",
  "mrr-gerbil-native-build",
  "mrr-identity",
  "mrr-logic",
  "mrr-query",
  "mrr-relation",
- "mrr-rust-project-harness-policy",
  "sha2 0.10.9",
 ]
 
@@ -1051,7 +1153,7 @@ name = "mrr-identity"
 version = "0.1.0"
 dependencies = [
  "criterion",
- "mrr-rust-project-harness-policy",
+ "mrr-asp-rust-project-policy",
  "serde",
  "serde_json",
  "sha2 0.10.9",
@@ -1062,8 +1164,8 @@ name = "mrr-intent"
 version = "0.1.0"
 dependencies = [
  "criterion",
+ "mrr-asp-rust-project-policy",
  "mrr-identity",
- "mrr-rust-project-harness-policy",
  "sha2 0.10.9",
 ]
 
@@ -1072,9 +1174,9 @@ name = "mrr-lineage"
 version = "0.1.0"
 dependencies = [
  "criterion",
+ "mrr-asp-rust-project-policy",
  "mrr-identity",
  "mrr-relation",
- "mrr-rust-project-harness-policy",
 ]
 
 [[package]]
@@ -1082,22 +1184,11 @@ name = "mrr-logic"
 version = "0.1.0"
 dependencies = [
  "criterion",
+ "mrr-asp-rust-project-policy",
  "mrr-identity",
  "mrr-query",
  "mrr-relation",
- "mrr-rust-project-harness-policy",
  "serde",
-]
-
-[[package]]
-name = "mrr-mvp-acceptance"
-version = "0.1.0"
-dependencies = [
- "criterion",
- "meta-relational-reasoning",
- "mrr-intent",
- "mrr-revision",
- "mrr-rust-project-harness-policy",
 ]
 
 [[package]]
@@ -1106,9 +1197,9 @@ version = "0.1.0"
 dependencies = [
  "ciborium",
  "criterion",
+ "mrr-asp-rust-project-policy",
  "mrr-identity",
  "mrr-relation",
- "mrr-rust-project-harness-policy",
  "serde",
 ]
 
@@ -1117,8 +1208,8 @@ name = "mrr-relation"
 version = "0.1.0"
 dependencies = [
  "criterion",
+ "mrr-asp-rust-project-policy",
  "mrr-identity",
- "mrr-rust-project-harness-policy",
  "serde",
 ]
 
@@ -1127,18 +1218,8 @@ name = "mrr-revision"
 version = "0.1.0"
 dependencies = [
  "criterion",
+ "mrr-asp-rust-project-policy",
  "mrr-identity",
- "mrr-rust-project-harness-policy",
-]
-
-[[package]]
-name = "mrr-rust-project-harness-policy"
-version = "0.1.0"
-dependencies = [
- "criterion",
- "rust-lang-project-harness",
- "serde",
- "serde_json",
 ]
 
 [[package]]
@@ -1146,9 +1227,9 @@ name = "mrr-transition"
 version = "0.1.0"
 dependencies = [
  "criterion",
+ "mrr-asp-rust-project-policy",
  "mrr-identity",
  "mrr-relation",
- "mrr-rust-project-harness-policy",
  "serde",
 ]
 
@@ -1362,24 +1443,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rust-lang-project-harness"
-version = "0.1.2"
-source = "git+https://github.com/tao3k/rust-lang-project-harness?rev=8f23f6cd211c02f4b0146d842025f3c639fcf1cc#8f23f6cd211c02f4b0146d842025f3c639fcf1cc"
-dependencies = [
- "cargo-lock",
- "cargo_toml",
- "proc-macro2",
- "quote",
- "regex",
- "semver",
- "serde",
- "serde_json",
- "sha2 0.11.0",
- "syn 2.0.119",
- "toml 1.1.4+spec-1.1.0",
-]
-
-[[package]]
 name = "rustc-hash"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1462,7 +1525,7 @@ checksum = "e7a5d71263a5a7d47b41f6b3f06ba276f10cc18b0931f1799f710578e2309348"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 3.0.3",
+ "syn 3.0.4",
 ]
 
 [[package]]
@@ -1552,9 +1615,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "3.0.3"
+version = "3.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "53e9bae58849f64dfa4f5d5ae372c8341f7305f82a3868709269343628b659a3"
+checksum = "e6275cddf4610d1775e6d1fe9469b2e77d0f39fd98fb7450901b821e0c53649f"
 dependencies = [
  "proc-macro2",
  "quote",

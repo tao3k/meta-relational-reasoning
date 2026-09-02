@@ -16,12 +16,11 @@ mrr-relation.workspace = true
 sha2.workspace = true
 
 [build-dependencies]
-mrr-rust-project-harness-policy.workspace = true
+mrr-asp-rust-project-policy.workspace = true
 mrr-gerbil-native-build.workspace = true
 
 [dev-dependencies]
 criterion.workspace = true
-mrr-rust-project-harness-policy.workspace = true
 
 [[bench]]
 name = "grammar_projection_perf"

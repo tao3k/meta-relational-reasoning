@@ -1,0 +1,1 @@
+CREATE GRAPH TYPE analytics.social_type AS { NODE TYPE Person LABELS Person & Actor {name STRING, age INT64} AS person, NODE TYPE Company (company LABEL Company {name STRING}), DIRECTED RELATIONSHIP TYPE WorksAt LABEL EmploymentKey IMPLIES LABELS Employment & Audited {since INT64} CONNECTING (person TO company), EDGE TYPE Transfer ({id INT64})-[{}]->() }

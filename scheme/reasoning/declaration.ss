@@ -17,6 +17,14 @@
           (why-not-reachable reachable-query))
          (transition-systems
           (closure-publication (reachable)))
+         (resource-language
+          (model-proposal external observational)
+          (mrr-closure internal authoritative)
+          (trajectory-sink external observational))
+         (reasoning-loop
+          (await-proposal model-proposal candidate await-closure)
+          (await-closure mrr-closure admitted complete)
+          (await-closure mrr-closure rejected await-proposal))
          (lineage-policy complete)
          (projection-policy #t #t)
          (validation-profile 64 #t)))))

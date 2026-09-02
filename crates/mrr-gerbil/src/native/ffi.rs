@@ -27,6 +27,14 @@ unsafe extern "C" {
         column: i64,
         index: i64,
     ) -> i32;
+    fn mrr_reasoning_native_driver_request_resource(phase: i32) -> i32;
+    fn mrr_reasoning_native_driver_transition(
+        phase: i32,
+        resource: i32,
+        status: i32,
+        cycle: i64,
+        max_cycles: i64,
+    ) -> i32;
 }
 
 pub(super) fn runtime_init() -> i32 {
@@ -84,4 +92,16 @@ pub(super) fn reasoning_nested_text_char(
     index: i64,
 ) -> i32 {
     unsafe { mrr_reasoning_native_nested_text_char(table, row, nested_row, column, index) }
+}
+pub(super) fn reasoning_driver_request_resource(phase: i32) -> i32 {
+    unsafe { mrr_reasoning_native_driver_request_resource(phase) }
+}
+pub(super) fn reasoning_driver_transition(
+    phase: i32,
+    resource: i32,
+    status: i32,
+    cycle: i64,
+    max_cycles: i64,
+) -> i32 {
+    unsafe { mrr_reasoning_native_driver_transition(phase, resource, status, cycle, max_cycles) }
 }

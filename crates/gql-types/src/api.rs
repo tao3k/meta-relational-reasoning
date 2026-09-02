@@ -11,10 +11,24 @@ pub enum ValueType {
     Integer,
     /// Decimal value represented as string form.
     Decimal,
+    /// Approximate numeric value represented in canonical lexical form.
+    Float,
     /// Text value.
     String,
+    /// Byte-string value.
+    ByteString,
+    /// Calendar date value.
+    Date,
+    /// Wall-clock time value.
+    Time,
+    /// Combined date and time value.
+    Timestamp,
+    /// ISO duration value.
+    Duration,
     /// List value.
     List,
+    /// Ordered record value.
+    Record,
     /// Node-typed value.
     Node,
     /// Edge-typed value.
@@ -36,10 +50,24 @@ pub enum Value {
     Integer(i64),
     /// Decimal value.
     Decimal(String),
+    /// Approximate numeric value.
+    Float(String),
     /// String value.
     String(String),
+    /// Byte-string value.
+    ByteString(Vec<u8>),
+    /// Calendar date value in canonical lexical form.
+    Date(String),
+    /// Wall-clock time value in canonical lexical form.
+    Time(String),
+    /// Combined date and time value in canonical lexical form.
+    Timestamp(String),
+    /// ISO duration value in canonical lexical form.
+    Duration(String),
     /// List value.
     List(Vec<Value>),
+    /// Ordered record value.
+    Record(Vec<(String, Value)>),
 }
 
 impl Value {
@@ -51,8 +79,15 @@ impl Value {
             Self::Boolean(_) => ValueType::Boolean,
             Self::Integer(_) => ValueType::Integer,
             Self::Decimal(_) => ValueType::Decimal,
+            Self::Float(_) => ValueType::Float,
             Self::String(_) => ValueType::String,
+            Self::ByteString(_) => ValueType::ByteString,
+            Self::Date(_) => ValueType::Date,
+            Self::Time(_) => ValueType::Time,
+            Self::Timestamp(_) => ValueType::Timestamp,
+            Self::Duration(_) => ValueType::Duration,
             Self::List(_) => ValueType::List,
+            Self::Record(_) => ValueType::Record,
         }
     }
 }

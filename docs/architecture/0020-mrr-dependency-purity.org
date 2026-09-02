@@ -30,7 +30,7 @@ import MRR frontend lowering or Gerbil projection code.
 
 * Executable gate
 
-The =mrr-rust-project-harness-policy= crate owns an allowlist for every MRR
+The =mrr-asp-rust-project-policy= crate owns an allowlist for every MRR
 crate's architecture dependencies. Any new GQL, MRR, or Ascent dependency not
 explicitly admitted for that crate fails the harness tests. Architecture
 dependencies must use their canonical package name; renamed dependency aliases

@@ -9,13 +9,12 @@ repository.workspace = true
 
 [dependencies]
 gql-source.workspace = true
-rowan = "0.16.1"
-
+icu_properties.workspace = true
+rowan.workspace = true
 [dev-dependencies]
 criterion.workspace = true
-mrr-rust-project-harness-policy.workspace = true
 [build-dependencies]
-mrr-rust-project-harness-policy.workspace = true
+mrr-asp-rust-project-policy.workspace = true
 
 [lints]
 workspace = true
