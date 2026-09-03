@@ -1,55 +1,70 @@
-# gql-rust
+# Meta-Relational Reasoning
 
-An ISO/IEC 39075-first, backend-neutral GQL compiler frontend for Rust.
+A language-neutral Meta-Relational Reasoning (MRR) workspace for building
+bounded, explainable reasoning systems with explicit identity, provenance,
+lineage, transition, and admission boundaries.
 
-The `gql-core` crate is the dependency-pure language implementation. The `gql`
-facade enables the optional Ascent derived-relation backend by default:
+The public Rust facade is `meta-relational-reasoning`. It composes the typed
+MRR contracts and exposes query, deduction, explanation, impact analysis, and
+atomic closure materialization without creating a second semantic authority.
+Ascent is the core fixed-point engine: it proposes bounded derivations, while
+the facade validates identities, lineage, snapshot transitions, budgets, and
+complete admission before a result can be materialized.
 
-```toml
-gql = "0.1"
-```
+Gerbil Scheme and POO own the declarative reasoning program, outer scheduling,
+resource ordering, retry budgets, and termination. The declaration is compiled
+ahead of time through `build.ss` into a fixed-width native ABI. Scheme does not
+run inside the Rust/Ascent query hot path.
 
-Consumers that need only the language implementation can either depend on
-`gql-core` directly or keep `gql` defaults disabled:
+GQL and Cypher are frontend adapters in this workspace, not the identity of the
+project. The ISO/IEC 39075 language profile remains evidence-driven and
+non-certifying. Rowan is used only as a lossless CST sink; external graph
+implementations such as SeleneDB, Grafeo, and froGQL are non-normative research
+references rather than dependencies or semantic authorities.
 
-```toml
-gql = { version = "0.1", default-features = false }
-```
+## Architecture
 
-Enabling Ascent never changes tokens, grammar, AST lowering, ISO types, or ISO
-semantic rules. It only adds catalog and execution capability for externally
-registered derived relations.
+- `meta-relational-reasoning` is the stable consumer facade.
+- `mrr-identity`, `mrr-relation`, `mrr-query`, and `mrr-logic` define typed
+  semantic contracts.
+- `mrr-bundle` admits complete reasoning bundles.
+- `mrr-ascent` computes bounded fixed-point candidates.
+- `mrr-lineage` and `mrr-transition` remain the sole lineage and snapshot-delta
+  validators.
+- `mrr-gerbil` consumes the Scheme AOT projection and exposes its typed native
+  boundary.
+- `mrr-conformance` exercises the public facade across multiple domains.
+- `gql-core` and `gql` implement the ISO GQL frontend adapter.
+- `experiments/mrr-live` evaluates real model proposals while keeping Scheme
+  scheduling and MRR receipts authoritative.
 
-This repository is an early foundation, not yet a conforming implementation of
-the full standard. External implementations may inform developer research, but
-they are not project dependencies, oracles, pinned identities, fixtures, or CI
-inputs and never override repository-owned architecture or ISO clause evidence.
-
-## Architecture gates
-
-- ISO language authority flows from the standard, never from an oracle.
-- Core crates must not depend on `ascent`; the legacy `gql-ascent` and
-  `gql-reasoning` authorities do not exist.
-- `mrr-ascent` consumes admitted MRR bundles and only proposes bounded closure
-  candidates; publication remains owned by the MRR facade.
-- Backend features must not add parser keywords.
-- Derived relations carry authority, provider, ruleset, snapshot, and closure
-  evidence.
+The project does not provide legacy compatibility modes or alternate admission
+paths. Provider output is observational input; it cannot publish facts, assign
+semantic authority, or replace an MRR receipt.
 
 ## Verification
 
 ```bash
-cargo test --workspace
-cargo test -p gql
-cargo tree -p gql-core
-./.devenv/devenv-profile-exec uv --project proofs/MRRProof run \
-  mrr-lean-validate crates/mrr-identity/src/api.rs
+./.devenv/devenv-profile-exec env \
+  GERBIL_PATH="$PWD/.gerbil" gxi build.ss compile
+./.devenv/devenv-profile-exec cargo test --workspace
+./.devenv/devenv-profile-exec cargo test -p mrr-conformance --all-targets
+./.devenv/devenv-profile-exec env GQL_HARNESS_VERIFY=1 \
+  cargo check --workspace --all-targets
+./.devenv/devenv-profile-exec uv --project proofs/MRRProof run pytest -q \
+  proofs/MRRProof/tests
+./.devenv/devenv-profile-exec uv --project experiments/mrr-live run pytest -q \
+  experiments/mrr-live/tests
 ```
 
-## Publish readiness policy
+## Status
 
-`cargo package` is currently excluded for workspace member crates because the workspace
-contains local-only, unpublished dependency edges (including `mrr-asp-rust-project-policy`)
-that are intentionally part of current developer-gating design. The CI workflow keeps this
-policy explicit and skips publish dry-runs until a release topology that resolves these
-cross-crate dependencies is in place.
+All workspace crates currently share the `0.1` release line. The repository is
+still pre-release research and engineering work: executable conformance gates
+are evidence for implemented contracts, not a claim of full ISO certification
+or general-purpose reasoning completeness.
+
+`cargo package` is intentionally excluded while workspace members retain
+local-only unpublished dependency edges used by the current policy and proof
+gates. Release packaging will be enabled only after those dependencies have a
+closed publication topology.
