@@ -1,0 +1,23 @@
+[package]
+name = "gql-ir"
+description = "Canonical typed semantic IR for GQL"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+gql-types.workspace = true
+
+[dev-dependencies]
+criterion.workspace = true
+[build-dependencies]
+mrr-asp-rust-project-policy.workspace = true
+
+[[bench]]
+name = "ir_perf"
+harness = false
+
+[lints]
+workspace = true

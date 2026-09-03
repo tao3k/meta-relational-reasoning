@@ -1,0 +1,58 @@
+#+title: RFC 0009 - Unified Lineage v1
+#+status: accepted
+
+* Contract
+
+=mrr-lineage= is the sole validator for derivation evidence and immutable
+explanation graphs.  Callers own all =FactId=, =DerivationId=,
+=LineageNodeId=, and =LineageEdgeId= allocation.  The lineage crate never
+queries source systems, evaluates rules, mutates generations, or publishes
+results.
+
+#+begin_src mermaid
+flowchart RL
+  R[Result] -->|selected_by| P[Projection]
+  P -->|depends_on| Q[Query operator]
+  Q -->|derived_from| F[Derived fact]
+  F -->|produced_by| D[Rule application]
+  D -->|depends_on| S[Source fact]
+  F -->|invalidated_by| T[Transition]
+#+end_src
+
+The admitted node roles are =SourceFact=, =QueryOperator=, =RuleApplication=,
+=DerivedFact=, =Transition=, =State=, =SafetyViolation=, =Projection=, and =Result=.  The admitted edge
+roles are =derived_from=, =selected_by=, =produced_by=, =depends_on=, and
+=invalidated_by=.
+
+* Admission
+
+An admitted graph is finite, has unique node and edge identities, references
+only present endpoints, contains no self-edge, and is acyclic.  Edges are
+oriented from conclusion toward evidence so reverse reasoning can traverse a
+stable explanation graph without inventing missing nodes.
+
+#+begin_src typst
+#set page(width: 150mm, height: auto, margin: 12mm)
+$ A(N, E) =
+  "unique-node-ids"(N) and
+  "unique-edge-ids"(E) and
+  "endpoints-present"(N, E) and
+  "no-self-edge"(E) and
+  "acyclic"(N, E). $
+$ "LineageGraph"(N, E) = cases(
+  (N, E) & "if" A(N, E),
+  "Error" & "otherwise",
+). $
+#+end_src
+
+* Derivation authority
+
+A =Derivation= is admitted only when it has non-empty unique support, does not
+self-support, and its output context exactly matches its =DerivationId=,
+=RuleId=, and =GenerationId=.  Derived output evidence must be complete and
+valid.  These checks make lineage admission the only path from an execution
+candidate to an authority-bearing derived fact.
+
+The graph is an immutable semantic object.  WHY, WHY-NOT, and IMPACT may
+project or traverse it, but cannot weaken admission or create a second lineage
+authority.

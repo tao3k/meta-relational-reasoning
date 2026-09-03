@@ -1,0 +1,69 @@
+#+title: MRR MVP Performance Baseline
+#+startup: overview
+
+* Status
+
+Normative MVP baseline recorded on 2026-08-31. These values are measurements,
+not performance promises. Regressions must be investigated against the same
+fixture shape and toolchain before the baseline is changed.
+
+* Environment
+
+- Architecture: arm64
+- Operating system: macOS 26.6.1
+- Rust: rustc 1.95.0 (59807616e 2026-04-14)
+- Runner: Criterion 0.8.2 quick measurement mode
+- Environment: the repository's refreshed devenv profile
+
+* Results
+
+| Operation               | 1K        | 10K       | 100K      |
+|-------------------------+-----------+-----------+-----------|
+| Query normalization     | 225.70 us | 3.2664 ms | 45.270 ms |
+| Relation ingestion      | 50.398 us | 599.67 us | 20.687 ms |
+| Ascent closure          | 40.566 ms | 332.35 ms | 11.603 s  |
+| WHY                     | 12.885 ms | 204.00 ms | 3.6068 s  |
+| WHY-NOT                 | 98.346 us | 881.37 us | 4.3777 ms |
+| IMPACT                  | 4.0782 ms | 52.795 ms | 940.61 ms |
+| State exploration       | 23.808 ms | 345.40 ms | 4.5752 s  |
+| Lineage reconstruction  | 6.5944 ms | 108.41 ms | 705.53 ms |
+
+All 24 scale points executed; compile-only results are not included. The Ascent
+fixture contains independent self edges so the output is linear while the
+configured theoretical pair budget remains explicit. The transition fixture is
+a deterministic chain and reaches the terminal unsafe state after the requested
+number of transitions.
+
+* Performance ownership
+
+The measured run exposed repeated full-edge scans in WHY and IMPACT and repeated
+full-action scans in state exploration. The MVP implementation now constructs
+deterministic adjacency and action-anchor indexes once per evaluation. The
+indexes change traversal complexity without changing identity allocation,
+lineage admission, transition validation, result ordering, or public authority.
+
+The executable Criterion owners are:
+
+- =crates/mrr-query/benches/query_perf.rs=
+- =crates/mrr-relation/benches/relation_perf.rs=
+- =crates/mrr-ascent/benches/ascent_perf.rs=
+- =crates/mrr-lineage/benches/lineage_perf.rs=
+- =crates/mrr-logic/benches/logic_perf.rs=
+- =crates/mrr-transition/benches/transition_perf.rs=
+
+Every owner contains the 1K, 10K, and 100K scales. Workspace all-targets checks
+compile every benchmark; an explicit Criterion run refreshes measurements.
+
+* Proof-validation collection boundary
+
+The repository root =pytest.ini= is the executable owner of Python proof-test
+discovery. It fixes =testpaths= to =proofs/MRRProof/tests= and excludes generated,
+environment, dependency, and build trees. =uv --project= selects the MRRProof
+environment but does not change the working directory, so leaving discovery
+unbounded would make proof validation traverse unrelated Rust targets and
+vendored research trees before collecting the same tests.
+
+This boundary does not skip Lean or Babel validation. Each selected Typst block
+is still compiled with its own provenance, Mermaid sources are parsed by the
+native grammar, and pinned local Lean checking remains an explicit proof gate rather
+than an incidental pytest collection side effect.

@@ -1,0 +1,1 @@
+MATCH (person:Person {name: 'Ada', age: 42})-[knows:KNOWS]->(friend:Person) WHERE person.age >= 21 RETURN person.name AS name, friend.name AS friend_name ORDER BY name LIMIT 25

@@ -1,0 +1,21 @@
+[package]
+name = "gql-source"
+description = "Source locations and diagnostics for the GQL frontend"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+
+[dev-dependencies]
+criterion.workspace = true
+[build-dependencies]
+mrr-asp-rust-project-policy.workspace = true
+
+[lints]
+workspace = true
+
+[[bench]]
+name = "source_perf"
+harness = false

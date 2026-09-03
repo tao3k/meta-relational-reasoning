@@ -1,0 +1,9 @@
+* Intent
+** Goal
+- Fire only policy-permitted workflow transitions.
+** Constraint
+- Require every declared approval.
+** Question
+- Why can TransitionT fire?
+** Invariant
+- No transition fires without approval.

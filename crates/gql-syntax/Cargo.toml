@@ -1,0 +1,24 @@
+[package]
+name = "gql-syntax"
+description = "Lossless syntax foundation for ISO GQL"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+gql-source.workspace = true
+icu_properties.workspace = true
+rowan.workspace = true
+[dev-dependencies]
+criterion.workspace = true
+[build-dependencies]
+mrr-asp-rust-project-policy.workspace = true
+
+[lints]
+workspace = true
+
+[[bench]]
+name = "syntax_perf"
+harness = false

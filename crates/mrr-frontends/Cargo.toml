@@ -1,0 +1,25 @@
+[package]
+name = "mrr-frontends"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+gql-ast.workspace = true
+gql-source.workspace = true
+gql-syntax.workspace = true
+mrr-query.workspace = true
+
+[build-dependencies]
+mrr-asp-rust-project-policy.workspace = true
+
+[dev-dependencies]
+criterion.workspace = true
+
+[[bench]]
+name = "frontend_perf"
+harness = false
+
+[lints]
+workspace = true

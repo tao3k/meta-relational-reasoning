@@ -1,0 +1,31 @@
+#+title: RFC 0015 - Bounded Relational Safety Checker
+#+status: accepted
+
+* Exploration contract
+
+The safety checker performs deterministic breadth-first exploration from the
+admitted initial state.  It records visited =StateId=s, so state cycles terminate,
+and checks every admitted invariant on the initial and newly discovered states.
+
+#+begin_src mermaid
+flowchart TD
+  I[Initial state] --> Q[BFS queue]
+  Q --> V{Invariant holds?}
+  V -->|no| U[Unsafe + shortest CounterexampleIR]
+  V -->|yes| A[Apply enabled actions]
+  A --> B{Budget available?}
+  B -->|no| N[Incomplete]
+  B -->|yes| Q
+  Q -->|exhausted| S[Safe]
+#+end_src
+
+#+begin_src typst
+#set page(width: 150mm, height: auto, margin: 12mm)
+$ "SafetyStatus" = {"Safe", "Unsafe", "Incomplete"} $
+$ "Safe" => forall s in "Reachable": "Invariant"(s) $
+$ "budget exhausted" => "Incomplete" $
+$ "violation" => "Unsafe"("shortest BFS path") $
+#+end_src
+
+=SafetyCheckReceipt= contains status, explored state/transition counts, and an
+optional =CounterexampleIr=.  A budget limit can never produce =Safe=.

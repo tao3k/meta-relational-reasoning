@@ -1,0 +1,32 @@
+#+title: MRR Differential Oracles
+#+startup: overview
+
+* Status
+
+Normative for MVP differential validation. Oracle implementations are test-only
+and never become production dependencies or compatibility paths.
+
+* Query and grammar parity
+
+The committed positive and negative GQL/Cypher corpora are evaluated through
+the Gerbil-owned grammar projection and the Rust CST frontend. The corpus gate
+requires equal acceptance for positive cases and equal rejection for negative
+cases. Rowan remains only the lossless CST sink.
+
+Grafeo, froGQL, and SeleneDB are literature and behavior references. They are
+not linked, imported, or exposed by the production workspace.
+
+* Transition parity
+
+The transition oracle contains ten finite fixtures: five safe and five unsafe.
+Each fixture is evaluated by the MRR bounded safety checker and by a generated
+TLA+ module executed with TLC from the reproducible devenv toolchain.
+
+For every fixture the safe or unsafe status must agree. For unsafe fixtures,
+the number of states in the TLC error trace must equal the number of states in
+the MRR counterexample IR. Generated TLA+, TLC state data, and logs live only in
+an isolated temporary directory and are removed after validation.
+
+TLC is an independent test oracle. It is not linked into MRR, is not used at
+runtime, and owns no state, identity, lineage, admission, or publication
+authority.

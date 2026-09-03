@@ -1,0 +1,48 @@
+#+title: Transition Semantics v1 Retrieval Notes
+#+options: toc:nil
+
+* Sources consulted
+
+- [[https://lamport.azurewebsites.net/pubs/fm99.pdf][Lamport, The Future of Computing: Logic or Biology? / TLA+ state-machine account]]:
+  specifications are described through an initial-state predicate and a
+  next-state relation composed of actions; invariants constrain every reachable
+  state.
+- [[https://lamport.azurewebsites.net/tla/high-level-view.html][Lamport, A High-Level View of TLA+]]: a state machine is defined by possible
+  initial states and possible successive-state pairs; fairness is a separate
+  progress condition.
+- [[https://arxiv.org/abs/2607.25333][Cheng et al., Specula, 2026]]: scenario-based model projection uses bounded
+  formal models and TLC exploration to expose invariant violations in system
+  code.
+- [[https://edu.info.uaic.ro/specificarea-si-verificarea-sistemelor/documente/Handbook-of-Model-Checking-by-Edmund-M.-Clarke.pdf][Holzmann, Explicit-State Model Checking]]: explicit-state checking stores
+  concrete state descriptors and transitions and explores reachability.
+
+* What MRR borrows
+
+MRR v1 borrows the separation between =InitialState= and an action-defined
+next-state relation, finite explicit reachability, state invariants, and
+counterexample paths.  Actions have typed preconditions and effects over a
+finite admitted fact universe.
+
+* What MRR deliberately does not implement
+
+The MVP does not implement temporal formulas, stuttering semantics, liveness,
+weak or strong fairness, arbitrary set theory, concurrency interleavings, or
+general TLA+ translation.  Specula is retrieval evidence for scenario
+decomposition, not a dependency or semantic authority.
+
+* Relations, generations, and states
+
+Typed relations supply the facts from which a finite state schema selects its
+allowed state coordinates.  A runtime =StateId= identifies one sorted set of
+present fact identities.  An MRR =GenerationId= identifies a semantic snapshot
+of admitted knowledge.  A state may be evaluated from facts associated with a
+generation, but state identity and generation identity are never equal or
+interchangeable.
+
+* Verification boundary
+
+The checker explores deterministic action order, records visited =StateId=s,
+and terminates on cycles.  State or transition budget exhaustion returns
+=Incomplete=.  An invariant violation returns a shortest BFS
+=CounterexampleIr=.  Exhausting the reachable graph without a violation is the
+only path to =Safe=.

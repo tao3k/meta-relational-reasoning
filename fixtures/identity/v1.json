@@ -1,0 +1,22 @@
+{
+  "schema": "mrr.identity.golden.v1",
+  "canonical_input_utf8": "depends_on",
+  "identities": {
+    "entity": "mrr:entity:v1:a2070a2e77fc4c70665fd2a861aa965b4937c8a340ba5ec5d926625b75133492",
+    "relation": "mrr:relation:v1:fb20e2c5b1cd7b4a575a0f1fdce0e00c444fab69698ed8c9da105654e0ccd4f7",
+    "fact": "mrr:fact:v1:acd3bdd342efef0c9ce30a6e46d41e358f5eace34a3502156ec67e62bc8eddb2",
+    "rule": "mrr:rule:v1:834504318dcf436968815497fddd0b6b1e55f3dbd20e8f8c94fd8b2a8c8d2543",
+    "derivation": "mrr:derivation:v1:27bc0346463b5b341b42e41d7c4a7c772a48010a81a66aa21139ab702669b84c",
+    "query": "mrr:query:v1:fedcec3b1593d25eb3d45d1ed45973357c29b3a7290a78518c12e89c27a6a7cc",
+    "query_operator": "mrr:query-operator:v1:514eb44525171261718ac6c70cfe1c6380c58f29cd888754bf5511429061970d",
+    "state": "mrr:state:v1:19a0b165f7bc5d46e9d8b7304bed8bd278221314425400cde5e66980ae6b2d0f",
+    "transition": "mrr:transition:v1:539ac3a016a0efddbf0f364a327420ab8cb32ad6fbe26f21f3ec288d42c6bea5",
+    "action": "mrr:action:v1:03d0a90e44a15908a7c0ec5a0ba0978e5801f9f94b9c7436eb022c820784bb8e",
+    "generation": "mrr:generation:v1:4b1bdf6612b2ef0829b4a218f2db5333c1b1ad9c363c34c3269dc6358f9bebb5",
+    "revision": "mrr:revision:v1:3b88214e3bc5286153cf4be02ba8c26f54b835aaf14eb0188fc451fa88867e51",
+    "rule_pack": "mrr:rule-pack:v1:483ea7108e980346d85a2b6c4a34346ffdab5c04d40dfdc1ad16052630be1af2",
+    "lineage_node": "mrr:lineage-node:v1:79608afaea86f7a842bdbb48ab6c00b153f9cfbe6d4a0d60e6b55b49f1f68763",
+    "lineage_edge": "mrr:lineage-edge:v1:73cf882062e9567f756d91e0499ec246800ffb8d4f78cbbb7a71090496f3c03f",
+    "reasoning_bundle": "mrr:reasoning-bundle:v1:c8cd37ba9f3d7bb6d2c97ed44da4e894f6516a801c4301d60dd0e102971e78df"
+  }
+}

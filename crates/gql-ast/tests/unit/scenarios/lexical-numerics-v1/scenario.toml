@@ -1,0 +1,11 @@
+id = "lexical-numerics-v1"
+title = "ISO GQL lexical numeric hot path"
+policy_ids = ["RUST-AGENT-GQL-AST-PERF-001"]
+agent_goal = "Parse and lower every Gerbil-owned exact and approximate numeric production losslessly within one bounded frontend hot path."
+reference_repositories = ["opengql/grammar", "rust-analyzer/rowan"]
+reference_patterns = [
+  "Gerbil AOT owns the nine exact and approximate numeric production families",
+  "The lexer performs one allocation-free ASCII scan per numeric token",
+  "Rowan preserves source spelling while AST and IR preserve exact versus approximate semantics",
+]
+inputs = "inputs"

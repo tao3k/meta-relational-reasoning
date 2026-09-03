@@ -1,0 +1,11 @@
+id = "filter-for-v1"
+title = "ISO GQL FILTER and FOR hot path"
+policy_ids = ["RUST-AGENT-GQL-AST-PERF-001"]
+agent_goal = "Parse and lower FILTER and FOR binding semantics with zero fallback."
+reference_repositories = ["opengql/grammar", "rust-analyzer/rowan"]
+reference_patterns = [
+  "Gerbil AOT owns FILTER and FOR shapes and typed recovery",
+  "Rowan preserves source and position bindings in source order",
+  "AST lowering retains explicit ordinality semantics without backend work",
+]
+inputs = "inputs"

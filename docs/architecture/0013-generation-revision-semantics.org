@@ -1,0 +1,36 @@
+#+title: RFC 0013 - Generation and External Revision Semantics
+#+status: accepted
+
+* Distinct coordinates
+
+MRR never equates an external logical change, external content revision,
+=RevisionId=, =GenerationId=, or runtime =StateId=.  They answer different
+questions and remain distinct Rust types and identity hash domains.
+
+#+begin_src mermaid
+flowchart LR
+  P[Provider] --> E[ExternalRevisionIdentity]
+  C[Logical change] --> E
+  R[Content revision] --> E
+  E --> I[RevisionId]
+  I --> B[RevisionBinding]
+  G[GenerationId] --> B
+  S[StateId] -. never part of binding .-> B
+#+end_src
+
+=ExternalRevisionIdentity= validates non-empty canonical provider,
+logical-change, and content-revision coordinates.  =RevisionId= is derived from
+their length-framed bytes under =mrr.external-revision.v1=.  A
+=RevisionBinding= then associates that stable revision with a caller-selected
+MRR generation.
+
+#+begin_src typst
+#set page(width: 150mm, height: auto, margin: 12mm)
+$ r = "RevisionId"("provider", "logical-change", "content-revision") $
+$ "RevisionBinding" = (r, gamma) $
+$ "logical-change" != "content-revision" != r != gamma != "runtime-state" $
+#+end_src
+
+Changing only content revision changes =RevisionId= while preserving the
+external logical-change coordinate.  Changing generation does not rewrite the
+external revision.  Runtime state remains owned by the transition layer.

@@ -1,0 +1,61 @@
+#+title: RFC 0007: GQL and Cypher Frontend Parity Slice
+#+author: gql-rust contributors
+#+options: toc:2
+#+property: header-args :eval never-export :exports code
+
+* Status
+
+Accepted MVP slice.
+
+* Decision
+
+=mrr-frontends= is a peripheral adapter crate.  Callers select =Gql= or
+=Cypher= explicitly; both adapters consume the Gerbil-projected Rowan syntax
+surface, lower the supported AST slice directly, and admit only shared
+=MetaQueryIr=.  They do not route through =gql-ir= or =gql-sema= and do not
+expose either contract.
+
+The parity slice is deliberately bounded to one =MATCH= graph pattern,
+node/relationship type labels, direction, bounded path quantifiers, property
+constraints and access, =WHERE= expressions, =RETURN= projection, ordering,
+and limit.  Unsupported mutation, optional matching, union, offset, case,
+subscript, and unowned operators fail before IR admission.
+
+Stable entity/relation type identities derive from language-neutral label
+content.  Query and operator identities derive from the span-free semantic AST
+projection, so source filename, whitespace, and selected frontend dialect do
+not change the admitted relational intent.
+
+#+name: rfc-0007-parity-flow
+#+begin_src mermaid
+flowchart LR
+  G[GQL source] --> GS[Gerbil projected syntax]
+  C[Cypher source] --> GS
+  GS --> R[Lossless Rowan CST]
+  R --> A[Frontend AST evidence]
+  A --> L[Direct language-neutral lowering]
+  L --> M[Normalized MetaQueryIR]
+  O[gql-ir reference implementation] -. differential oracle only .-> L
+#+end_src
+
+* Executable equality
+
+The focused acceptance query contains typed nodes, an outgoing typed relation,
+property access in a predicate, and a projection.  Both explicit frontend
+instances must return equal normalized IR and byte-identical versioned canonical
+encoding.
+
+#+name: rfc-0007-parity-mathematics
+#+begin_src typst
+#set page(paper: "a4", margin: 24mm)
+#set text(font: "Libertinus Serif", size: 10.5pt)
+
+= RFC 0007: Frontend Parity
+
+For the admitted common surface $S$ and semantic normalization $N$,
+
+$ N("lower"_"GQL"(s)) = N("lower"_"Cypher"(s)) $
+
+for every $s in S$.  Parser diagnostics or an unsupported construct produces
+no partial =MetaQueryIR= value.
+#+end_src

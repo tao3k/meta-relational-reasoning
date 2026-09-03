@@ -1,0 +1,11 @@
+id = "character-sequence-escapes-v1"
+title = "ISO GQL character-sequence escape hot path"
+policy_ids = ["RUST-AGENT-GQL-AST-PERF-001"]
+agent_goal = "Parse and lower both character-string delimiters, NO_ESCAPE, every admitted escape representation, and temporal reuse losslessly through the backend-neutral frontend hot path."
+reference_repositories = ["opengql/grammar", "rust-analyzer/rowan"]
+reference_patterns = [
+  "Gerbil AOT owns character-sequence forms and typed recovery identities",
+  "The lexer scans each quoted candidate once and emits at most one typed terminal",
+  "AST preserves decoded value, delimiter form, NO_ESCAPE, and source span while canonical IR keeps only semantic value",
+]
+inputs = "inputs"

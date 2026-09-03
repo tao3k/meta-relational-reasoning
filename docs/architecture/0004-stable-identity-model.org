@@ -1,0 +1,81 @@
+#+title: RFC 0004: Stable Identity Model
+#+author: gql-rust contributors
+#+options: toc:2
+#+property: header-args :eval never-export :exports code
+
+* Status
+
+Accepted architecture.
+
+* Decision
+
+=mrr-identity= is the sole owner of stable MRR semantic identities.  Every ID
+is a 256-bit SHA-256 digest derived from non-empty canonical semantic bytes.
+The hash input is framed by the fixed schema =mrr.identity.v1= and one of
+sixteen disjoint domains: entity, relation, fact, rule, rule-pack, derivation,
+query, query-operator, state, transition, action, generation, revision,
+lineage-node, lineage-edge, or reasoning-bundle.
+
+The framing preimage is the byte concatenation
+=mrr.identity.v1 || 0x00 || domain || 0x00 || canonical-input=.  The canonical
+text and Serde representation is =mrr:<domain>:v1:<lowercase-sha256>=.  Parsing
+rejects a wrong schema, domain, version, width, non-lowercase hexadecimal, and
+extra fields.  Empty canonical input is not an identity.
+
+There is no numeric constructor, raw digest constructor, legacy alias, or
+cross-domain conversion.  In particular, =SnapshotId= does not exist:
+=GenerationId= names an admitted semantic generation, =StateId= names a model
+state, and =RevisionId= names an external revision identity.  Their byte
+representations cannot be substituted for one another through the typed API.
+The Lean projection mirrors all sixteen domains as distinct structure types
+over a =Digest256= value carrying the invariant =value < 2^256=; it does not
+abbreviate any identity to =Nat=. Numeric proof-fixture atoms enter only through
+=Digest256.ofFixtureAtom= and are not identity values. A value of one identity
+structure cannot inhabit or compare as another domain.
+
+* Local proof authority
+
+The executable proof gate uses the pinned local
+=leanprover/lean4:v4.31.0= toolchain through =elan=. It kernel-checks the exact
+generated source, including the validated counterexample replay, and reports
+the SHA-256 of those UTF-8 source bytes, the exact Lean version, and the kernel
+exit status. The temporary source is removed after checking. No proof source,
+fixture, or derived obligation is sent to a network service.
+
+#+name: rfc-0004-identity-flow
+#+begin_src mermaid
+flowchart LR
+  S[Semantic owner] --> C[Canonical non-empty bytes]
+  C --> F[Schema and domain framing]
+  F --> H[SHA-256]
+  H --> T[Typed domain ID]
+  T --> E[mrr domain v1 lowercase digest]
+  E --> R[Fail-closed text and Serde replay]
+#+end_src
+
+* Stability contract
+
+The tracked =fixtures/identity/v1.json= artifact freezes one input across all
+sixteen domains.  Tests require the same canonical input to reproduce the same ID,
+all domains to differ, text and JSON to round-trip exactly, and malformed or
+cross-domain encodings to fail closed.  Changing framing, hashing, domain
+labels, or canonical encoding is a schema migration and cannot silently alter
+=v1=.
+
+#+name: rfc-0004-identity-mathematics
+#+begin_src typst
+#set page(paper: "a4", margin: 24mm)
+#set text(font: "Libertinus Serif", size: 10.5pt)
+#set heading(numbering: "1.")
+
+= RFC 0004: Stable Identity Model
+
+Let $D$ be the finite set of identity domains and $C$ the set of non-empty
+canonical byte strings.  For $d in D$ and $c in C$, define
+
+$ "Id"_d(c) = "SHA-256"("mrr.identity.v1" + "0x00" + d + "0x00" + c). $
+
+The typed constructor has codomain $"Id"_d$, so identities from different
+domains are not interchangeable.  The tracked golden vector fixes the exact
+version-one function for every $d in D$.
+#+end_src

@@ -1,0 +1,35 @@
+#+title: WHY Provenance Retrieval Notes
+#+options: toc:nil
+
+* Sources consulted
+
+Green, Karvounarakis, and Tannen establish semiring provenance as symbolic
+bookkeeping for relational query results and discuss recursive Datalog through
+fixed-point equations.  Later work emphasizes that recursive Datalog may have
+infinitely many derivation trees and that competing provenance interpretations
+must not be collapsed without an explicit semantic choice.
+
+- [[https://www.cs.ucdavis.edu/~green/papers/pods07.pdf][Green et al., Provenance Semirings, PODS 2007]]
+- [[https://proceedings.kr.org/2022/10/kr2022-0010-bourgaux-et-al.pdf][Bourgaux et al., Revisiting Semiring Provenance for Datalog, KR 2022]]
+
+* MVP choice
+
+MRR v1 does not claim a general provenance semiring.  It admits a finite,
+acyclic, identity-bearing explanation graph after bounded execution and exact
+lineage validation.  WHY is a projection over that admitted graph, not a second
+derivation engine.
+
+The default projection retains every admitted path reachable from the requested
+result.  A deterministic single path is available only through an explicitly
+named one-witness operation.  This avoids silently discarding alternate
+derivations while leaving room for a future algebraic provenance layer.
+
+* Deferred work
+
+- recursive provenance represented by cyclic equations;
+- multiplicities and semiring annotations;
+- minimal witness enumeration and ranking;
+- probabilistic or trust-valued provenance.
+
+These are not compatibility paths.  They are absent from the MVP public
+contract until their own authority and boundedness rules are admitted.

@@ -1,0 +1,30 @@
+[package]
+name = "mrr-ascent"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Bounded Ascent evaluation adapter for validated meta-relational bundles"
+
+[dependencies]
+ascent.workspace = true
+mrr-bundle.workspace = true
+mrr-identity.workspace = true
+mrr-logic.workspace = true
+mrr-query.workspace = true
+mrr-relation.workspace = true
+sha2.workspace = true
+
+[dev-dependencies]
+criterion.workspace = true
+
+[build-dependencies]
+mrr-asp-rust-project-policy.workspace = true
+
+[[test]]
+name = "unit_test"
+path = "tests/unit_test.rs"
+
+[[bench]]
+name = "ascent_perf"
+harness = false

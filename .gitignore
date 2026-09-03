@@ -1,0 +1,15 @@
+.DS_Store
+.idea
+*.log
+tmp/
+/experiments/mrr-live/runs/
+
+
+/.devenv
+/target
+/.pre-commit-config.yaml
+/.data
+/.gerbil
+.venv/
+.env
+.devenv.flake.nix

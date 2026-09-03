@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      run_deepseek_live:
+        description: Run the paid DeepSeek MRR live gate
+        required: true
+        default: false
+        type: boolean
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo test --workspace
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+      - run: cargo test -p gql --no-default-features
+      - run: cargo test -p gql --all-features
+      - name: Core dependency purity
+        shell: bash
+        run: |
+          if ! grep -Eq '^default = \["ascent"\]$' crates/gql/Cargo.toml; then
+            echo "gql facade must enable the optional Ascent backend by default."
+            exit 1
+          fi
+          forbidden="gql-ascent|ascent"
+          for crate in gql-core gql-ast gql-compiler gql-catalog gql-ir gql-sema gql-syntax gql-source gql-types; do
+            tree="$(cargo tree -p "$crate" --all-features)"
+            if grep -Eq "([[:space:]]|^)(${forbidden})([[:space:]@]|$)" <<<"$tree"; then
+              printf '%s\n' "$crate depends on forbidden backend crate ${forbidden}"
+              printf '%s\n' "$tree"
+              exit 1
+            fi
+          done
+      - name: Frontend feature-invariance contracts
+        run: |
+          cargo test -p gql frontend_contract
+          cargo test -p gql --no-default-features frontend_contract
+      - name: Publish dry-run sanity
+        run: |
+          echo "Publish readiness is intentionally excluded in this phase."
+          echo "Reason: every publishable workspace crate keeps the mandatory, unpublished harness policy in dev-dependencies, so Cargo package resolution cannot construct an uploadable crate without removing required policy enforcement."
+      - uses: astral-sh/setup-uv@v6
+      - name: MRRProof regressions
+        run: uv --project proofs/MRRProof run pytest -q
+      - name: MRR live offline regressions
+        run: uv --project experiments/mrr-live run pytest -q experiments/mrr-live/tests
+
+  deepseek-live:
+    if: github.event_name == 'workflow_dispatch' && inputs.run_deepseek_live
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: astral-sh/setup-uv@v6
+      - name: DeepSeek MRR live smoke
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+        run: uv --project experiments/mrr-live run mrr-live

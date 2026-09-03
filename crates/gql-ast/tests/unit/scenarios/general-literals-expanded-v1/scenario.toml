@@ -1,0 +1,11 @@
+id = "general-literals-expanded-v1"
+title = "ISO GQL expanded general literal hot path"
+policy_ids = ["RUST-AGENT-GQL-AST-PERF-001"]
+agent_goal = "Parse and lower contextual character, byte, temporal suffix, DATETIME, duration, nested-list, prefixed-record, and bare-record literals losslessly through the backend-neutral frontend hot path."
+reference_repositories = ["opengql/grammar", "rust-analyzer/rowan"]
+reference_patterns = [
+  "Gerbil AOT owns literal CST shapes and typed recovery identities",
+  "Rowan preserves exact source while AST preserves values, spans, and record field order",
+  "Frozen and expanded workloads have separate Scenario and Criterion identities",
+]
+inputs = "inputs"

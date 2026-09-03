@@ -1,0 +1,11 @@
+id = "dynamic-parameter-specification-v1"
+title = "ISO GQL dynamic parameter hot path"
+policy_ids = ["RUST-AGENT-GQL-AST-PERF-001"]
+agent_goal = "Parse and lower general parameter references with every separated-identifier form losslessly through the backend-neutral frontend hot path."
+reference_repositories = ["opengql/grammar", "rust-analyzer/rowan"]
+reference_patterns = [
+  "Gerbil AOT owns general and substituted parameter forms plus typed recovery identities",
+  "The lexer scans one parameter candidate once and emits at most one typed terminal",
+  "AST preserves decoded name, spelling form, and source span while canonical IR keeps semantic parameter identity",
+]
+inputs = "inputs"

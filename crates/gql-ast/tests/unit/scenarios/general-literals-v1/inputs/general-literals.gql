@@ -1,0 +1,1 @@
+RETURN "Ada""s" AS "Display", X'CA FE', DATE '2026-09-02', TIME '12:34:56', TIMESTAMP '2026-09-02T12:34:56', DURATION 'P1DT2H', [1, 'Ada', [2]], RECORD {name: 'Ada', age: 42}

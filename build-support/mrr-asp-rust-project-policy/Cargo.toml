@@ -1,0 +1,22 @@
+[package]
+name = "mrr-asp-rust-project-policy"
+version = "0.1.0"
+edition = "2024"
+publish = false
+build = "build.rs"
+
+[dependencies]
+asp-rust = { git = "https://github.com/tao3k/asp-rust", rev = "b64f80401c8e2688d7aa7809de714d5f22890ebf", version = "0.1.2", default-features = false }
+asp-rust-build-support = { git = "https://github.com/tao3k/asp-rust", rev = "b64f80401c8e2688d7aa7809de714d5f22890ebf", version = "0.1.0" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[build-dependencies]
+asp-rust = { git = "https://github.com/tao3k/asp-rust", rev = "b64f80401c8e2688d7aa7809de714d5f22890ebf", version = "0.1.2", default-features = false }
+
+[dev-dependencies]
+criterion = { version = "0.8.2" }
+
+[[bench]]
+name = "performance_verification"
+harness = false

@@ -1,0 +1,30 @@
+[package]
+name = "gql-core"
+description = "Dependency-pure ISO GQL language facade"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+gql-ast.workspace = true
+gql-catalog.workspace = true
+gql-compiler.workspace = true
+gql-ir.workspace = true
+gql-sema.workspace = true
+gql-source.workspace = true
+gql-syntax.workspace = true
+gql-types.workspace = true
+
+[dev-dependencies]
+criterion.workspace = true
+[build-dependencies]
+mrr-asp-rust-project-policy.workspace = true
+
+[[bench]]
+name = "core_perf"
+harness = false
+
+[lints]
+workspace = true

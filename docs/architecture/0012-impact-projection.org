@@ -1,0 +1,31 @@
+#+title: RFC 0012 - IMPACT Reverse Invalidation
+#+status: accepted
+
+* Contract
+
+IMPACT is the reverse traversal of an admitted =LineageGraph=.  Its input is a
+=FactId= that resolves to exactly one source or derived fact node.  Unknown and
+ambiguous facts fail closed.
+
+#+begin_src mermaid
+flowchart RL
+  R[Result] --> D[Derived fact]
+  D --> A[Rule application]
+  A --> S[Changed source fact]
+  U[Unrelated source] -. unaffected .-> S
+#+end_src
+
+Starting at the fact node, incoming lineage edges identify conclusions that
+depend on it.  The first layer is =directly_invalidated=; every subsequent
+reachable predecessor is =transitively_invalidated=.  All other graph nodes,
+excluding the changed fact node itself, are =unaffected=.
+
+#+begin_src typst
+#set page(width: 150mm, height: auto, margin: 12mm)
+$ D_1 = "predecessors"(G, {f}) $
+$ D_(n+1) = "predecessors"(G, D_n) \ (D_1 union dots union D_n) $
+$ "direct"(f) = D_1 quad "transitive"(f) = union_(n >= 2) D_n $
+#+end_src
+
+IMPACT never mutates or invalidates live facts.  It produces an immutable
+classification for an upstream generation/transition owner to act upon.

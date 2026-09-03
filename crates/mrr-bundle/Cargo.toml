@@ -1,0 +1,28 @@
+[package]
+name = "mrr-bundle"
+description = "Validated portable bundles for MRR"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+ciborium.workspace = true
+mrr-identity.workspace = true
+mrr-logic.workspace = true
+mrr-query.workspace = true
+mrr-relation.workspace = true
+mrr-transition.workspace = true
+serde.workspace = true
+
+[build-dependencies]
+mrr-asp-rust-project-policy.workspace = true
+[dev-dependencies]
+criterion.workspace = true
+[[bench]]
+name = "bundle_perf"
+harness = false
+
+[lints]
+workspace = true

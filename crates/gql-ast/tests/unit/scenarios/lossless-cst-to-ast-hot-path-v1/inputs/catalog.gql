@@ -1,0 +1,1 @@
+CREATE GRAPH TYPE social_type AS COPY OF base_type

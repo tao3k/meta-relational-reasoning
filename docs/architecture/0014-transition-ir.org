@@ -1,0 +1,36 @@
+#+title: RFC 0014 - Relational TransitionIR
+#+status: accepted
+
+* Model
+
+The finite MVP transition model consists of =StateSchema=, =InitialState=,
+=Action=, =Precondition=, =Effect=, and =Invariant=.  The schema is a finite
+universe of allowed =FactId=s; every initial fact, predicate, effect, and
+invariant reference must belong to it.
+
+#+begin_src mermaid
+flowchart LR
+  SS[StateSchema] --> I[InitialState]
+  SS --> A[Action]
+  P[Precondition] --> A
+  E[Effect] --> A
+  I --> N[Next-state relation]
+  A --> N
+  N --> S[StateSnapshot]
+  V[Invariant] --> S
+#+end_src
+
+State snapshots are canonical sorted fact sets with =StateId= derived under
+=mrr.state.v1=.  Actions have caller-owned =ActionId=s.  Preconditions are
+conjunctions of present/absent predicates.  Effects insert and retract facts;
+the same fact cannot appear on both sides.
+
+#+begin_src typst
+#set page(width: 150mm, height: auto, margin: 12mm)
+$ "enabled"(a, s) = forall p in P(a): p(s) $
+$ "apply"(a, s) = (s \ R(a)) union I(a) $
+$ "Next"(s, s') = exists a: "enabled"(a, s) and s' = "apply"(a, s) $
+#+end_src
+
+This is a safety-oriented state model.  It defines no fairness, liveness, clock,
+or production mutation authority.

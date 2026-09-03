@@ -1,0 +1,36 @@
+#+title: RFC 0010 - WHY Explanation Projection
+#+status: accepted
+
+* Ownership
+
+WHY consumes only an admitted =LineageGraph=.  It neither reevaluates rules nor
+queries sources, and it cannot create lineage nodes or edges.  The result is an
+immutable subgraph rooted at a caller-selected =LineageNodeId=.
+
+#+begin_src mermaid
+flowchart LR
+  C[Caller result ID] --> W[WHY projection]
+  L[Admitted LineageGraph] --> W
+  W --> E[ExplanationGraph]
+  W -. no evaluation .-> X[Rule engine]
+  W -. no mutation .-> Y[Live state]
+#+end_src
+
+* All-witness default
+
+The default =why= operation returns every node and edge reachable from the
+result along conclusion-to-evidence edges.  Alternate derivations are therefore
+retained.  =why_one_witness= is a separate explicit operation and chooses the
+lowest admitted edge identity at each branch because graph admission already
+canonicalizes edge order.
+
+#+begin_src typst
+#set page(width: 150mm, height: auto, margin: 12mm)
+#let why(graph, root) = graph.reachable-from(root)
+#let why-one(graph, root) = graph.reachable-from(root, choose: "lowest-edge-id")
+$ "why"(G, r) = (V_r, E_r) subset.eq G $
+$ "why-one"(G, r) subset.eq "why"(G, r) $
+#+end_src
+
+Unknown result identities fail closed.  Because the projection is a subset of
+an admitted finite acyclic graph, it preserves endpoint closure and acyclicity.

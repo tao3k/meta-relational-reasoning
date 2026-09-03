@@ -1,0 +1,11 @@
+id = "path-search-prefixes-v1"
+title = "ISO GQL graph match and path search prefix hot path"
+policy_ids = ["RUST-AGENT-GQL-AST-PERF-001"]
+agent_goal = "Parse and lower complete graph match, path search, traversal uniqueness, path target, and KEEP semantics with zero fallback."
+reference_repositories = ["opengql/grammar", "rust-analyzer/rowan"]
+reference_patterns = [
+  "Gerbil AOT owns graph match and path prefix shapes and typed recovery",
+  "Rowan preserves distinct per-path prefixes and KEEP source order",
+  "AST lowering retains graph-level and per-path authority without backend work",
+]
+inputs = "inputs"

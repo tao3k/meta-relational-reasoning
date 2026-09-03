@@ -1,0 +1,21 @@
+[package]
+name = "gql-types"
+description = "Backend-neutral GQL type and value model"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+
+[dev-dependencies]
+criterion.workspace = true
+[build-dependencies]
+mrr-asp-rust-project-policy.workspace = true
+
+[[bench]]
+name = "types_perf"
+harness = false
+
+[lints]
+workspace = true

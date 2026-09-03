@@ -1,0 +1,27 @@
+[package]
+name = "gql-sema"
+description = "Binding, catalog resolution, and type checking for GQL"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+gql-ast.workspace = true
+gql-catalog.workspace = true
+gql-ir.workspace = true
+gql-source.workspace = true
+gql-types.workspace = true
+
+[dev-dependencies]
+criterion.workspace = true
+[build-dependencies]
+mrr-asp-rust-project-policy.workspace = true
+
+[[bench]]
+name = "sema_perf"
+harness = false
+
+[lints]
+workspace = true

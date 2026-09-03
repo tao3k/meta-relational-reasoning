@@ -1,0 +1,9 @@
+* Intent
+** Goal
+- Derive accepted claims from explicit evidence.
+** Constraint
+- Preserve every evidence lineage path.
+** Question
+- Why is ClaimX accepted and ClaimY not accepted?
+** Invariant
+- No accepted claim lacks evidence.

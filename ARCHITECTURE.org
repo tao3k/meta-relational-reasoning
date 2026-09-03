@@ -1,0 +1,132 @@
+#+title: gql-rust and Meta-Relational Reasoning Architecture
+#+options: toc:2
+#+property: header-args :eval never-export :exports code
+
+* Dependency graph
+
+#+name: workspace-dependency-graph
+#+begin_src mermaid
+flowchart LR
+    grammar[Gerbil grammar object] --> syntax[gql-syntax: generated lexer rules and Rowan CST]
+    source[gql-source] --> syntax
+    syntax --> ast[gql-ast: typed view lowering]
+    ast --> sema[gql-sema]
+    sema --> ir[gql-ir]
+    ast --> compiler[gql-compiler]
+    core[gql-core: pure public language surface]
+    catalog[gql-catalog: ISO catalog declarations]
+    ast --> frontends[mrr-frontends explicit GQL and Cypher lowering]
+    frontends --> mrr[mrr-* language-neutral contracts]
+    mrr --> facade[meta-relational-reasoning]
+    mrr --> ascent[mrr-ascent bounded evaluator]
+    core --> gql[gql ergonomic facade]
+#+end_src
+
+* Frontend authority
+
+=scheme/grammar= is the declarative concrete-syntax authority. Its
+=syntax-case= DSL expands into a =poo-flow=/=gerbil-poo= grammar object and
+generates the tables consumed by =gql-syntax=. The Rust lexer emits tokens and
+the parser emits Rowan events directly into one lossless Rowan tree. Every
+source byte, including whitespace, comments, unknown characters, malformed
+delimiters, empty input, and trailing newlines, is represented in that tree.
+=gql-syntax::SyntaxNode= and the =gql-ast= lowering adapter are typed views over
+that Rowan tree; they do not construct a second owned CST or reparse source
+spans.
+
+Precedence, keyword spellings, syntax shapes, and recovery codes are defined
+once in that Gerbil object. The Rust parser consumes generated Pratt binding
+powers. Structural expression nodes are retained in Rowan and lowered into the
+graph-semantic IR. The full boundary is recorded in
+=docs/architecture/0002-gerbil-grammar-authority.org=.
+
+* Graph-semantic boundary
+
+The ISO semantic path is graph-pattern-first. A node-only =MATCH= is valid and
+does not require an edge, relation provider, or backend catalog entry. The
+canonical IR has first-class graph, pattern, node, edge, binding, direction,
+label, filter, =LET=, and projection concepts.
+
+=gql-catalog= contains only ISO catalog, graph, schema, node-type, edge-type,
+property, and procedure declarations. Language-neutral reasoning identities,
+relations, queries, rules, lineage, transitions, and bundles live in the
+corresponding =mrr-*= crates. There is no =gql-reasoning= or =gql-ascent=
+compatibility surface. GQL and Cypher enter MRR only through the explicit
+=mrr-frontends= lowering boundary, and evaluation is admitted through the
+=meta-relational-reasoning= facade.
+
+* ISO modular conformance configuration
+
+ISO coverage is configured as a modular Gerbil declaration rather than one
+expanding feature list. =scheme/grammar/gql-profile.ss= owns releases, modules,
+stable feature identities, dependencies, evidence owners, and explicit profile
+composition. A later ISO supplement extends that declaration; it does not
+silently widen the selected profile.
+
+=gql-iso-audit-v1= is the complete audited inventory and makes no conformance
+claim. =gql-query-language-frontend-v1= is the intentionally narrow selected
+implementation profile. =gql-iso-language-frontend-v1= is the explicit target
+profile for the complete language frontend, not an active claim and not ISO
+certification. Partial and deferred features remain visible in the registry
+rather than being hidden by profile selection. The evidence and profile
+boundary is recorded in =docs/architecture/0024-iso-gql-language-profile.org=.
+There is deliberately no YAML feature ledger: Gerbil =syntax-case= validates
+the declaration shape, the native AOT ABI projects it into Rust, executable
+Rust tests own fixtures and layer behavior, and RFC 0024 owns the human audit.
+The separate =conformance/iso/normative-sources.yaml= remains only a licensed
+source/provenance registry; it is not a grammar or feature-status authority.
+
+* Purity boundary
+
+=gql-source=, =gql-syntax=, =gql-ast=, =gql-types=, =gql-catalog=, =gql-sema=,
+=gql-ir=, =gql-compiler=, and =gql-core= must never depend on Ascent. Cargo
+features are additive, so purity-sensitive consumers should depend on
+=gql-core= directly.
+
+=mrr-ascent= is a bounded evaluator behind MRR admission. It may affect which
+closure candidates are proposed, but it cannot publish a materialized closure
+or alter parsing, graph-semantic IR, or valid ISO GQL meaning. The =gql= facade
+is always the pure language surface and has no reasoning-backend feature.
+
+No Ascent DSL is accepted by the GQL parser. Rulesets are registered outside
+the language and exposed through typed catalog descriptors.
+
+The complete MRR ownership and repository topology decision is recorded in
+=docs/architecture/0001-mrr-workspace-ownership.org=.
+
+* Mathematical publication view
+
+This Typst Babel block is a publication projection. The detailed formula and
+Lean correspondence are owned by RFC 0001.
+
+#+name: architecture-typst-publication
+#+begin_src typst
+#set page(paper: "a4", margin: 24mm)
+#set text(font: "Libertinus Serif", size: 10.5pt)
+
+= gql-rust and Meta-Relational Reasoning Architecture
+
+Let $"parse" : "Source" -> "CST"$ be lossless,
+$"lower" : "CST" -> "AST"$, and
+$"analyze" : "AST" -> "Result"("IR", "Diagnostics")$. The frontend contract requires
+$"bytes"("parse"(s)) = s$ and forbids a successful IR whenever semantic diagnostics
+contain an admission error.
+
+For the reasoning layer, let $M$ be the language-neutral MRR contract graph and
+$L_"GQL"$ and $L_"Cypher"$ be frontend adapters. Both lower into $M$; neither may
+redefine its identity, relation, rule, lineage, or transition semantics.
+
+The detailed bundle predicate $"BundleValid"(R, F_0, P, T)$ and its Lean proof
+obligations are specified in RFC 0001.
+#+end_src
+
+* Assurance status
+
+The current crates establish dependency direction and a deliberately narrow ISO
+frontend profile. Full ISO/IEC 39075 conformance is not claimed. The feature
+ledger is a feature-family audit: it records implemented, partial, and
+not-implemented standard surface separately from quality capabilities such as
+lossless recovery. Every entry has a stable identity, normative reference,
+positive and negative fixtures, layer status, scope notes, and validation
+evidence. Clause numbers are not fabricated without the licensed normative
+text.

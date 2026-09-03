@@ -1,0 +1,23 @@
+[package]
+name = "gql"
+description = "ISO GQL facade with optional reasoning backends"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+gql-core.workspace = true
+
+[dev-dependencies]
+criterion.workspace = true
+[build-dependencies]
+mrr-asp-rust-project-policy.workspace = true
+
+[[bench]]
+name = "gql_perf"
+harness = false
+
+[lints]
+workspace = true

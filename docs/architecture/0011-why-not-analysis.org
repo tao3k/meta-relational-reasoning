@@ -1,0 +1,42 @@
+#+title: RFC 0011 - Bounded WHY-NOT Analysis
+#+status: accepted
+
+* Contract
+
+WHY-NOT is a generation-bound proof search over safe =mrr-logic= rules and
+typed facts.  The input goal must be ground.  Rule heads are unified with the
+goal, bindings are propagated into every body atom, and any body-only unbound
+variable fails closed instead of becoming an existential guess.
+
+#+begin_src mermaid
+flowchart TD
+  G[Ground goal] --> F{Complete valid fact?}
+  F -->|yes| P[Proven]
+  F -->|no| R{Applicable rule?}
+  R -->|no| N[NoApplicableRule]
+  R -->|yes| B[Expand grounded premises]
+  B --> M[MissingPremises alternatives]
+  B --> I[Incomplete on cycle or budget]
+#+end_src
+
+* Alternatives and bounds
+
+Each applicable rule is an alternative proof.  Premises within a rule are a
+conjunction, so nested alternatives are combined by a bounded Cartesian
+product.  Duplicate missing atoms inside one alternative are removed without
+changing their deterministic rule/body order.
+
+#+begin_src typst
+#set page(width: 150mm, height: auto, margin: 12mm)
+$ "why-not"(g, gamma) = cases(
+  ("Proven", &"if a complete valid fact or rule proof exists"),
+  ("MissingPremises"(M_1, dots, M_n), &"if every finite proof alternative is blocked"),
+  ("NoApplicableRule", &"if no head unifies with g"),
+  ("Incomplete", &"if coverage or a bound prevents a conclusion"),
+) $
+#+end_src
+
+The mandatory bounds are recursion depth, expanded rule applications, and
+returned alternatives.  Cyclic expansion and partial or invalid matching
+evidence return =Incomplete=, never a negative truth claim.  This establishes
+the failure shape later shared by the repository-wide truth-state contract.

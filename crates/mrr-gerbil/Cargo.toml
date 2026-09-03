@@ -1,0 +1,30 @@
+[package]
+name = "mrr-gerbil"
+description = "Build-time Gerbil native projections and provenance admission for MRR"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+mrr-bundle.workspace = true
+mrr-identity.workspace = true
+mrr-logic.workspace = true
+mrr-query.workspace = true
+mrr-relation.workspace = true
+sha2.workspace = true
+
+[build-dependencies]
+mrr-asp-rust-project-policy.workspace = true
+mrr-gerbil-native-build.workspace = true
+
+[dev-dependencies]
+criterion.workspace = true
+
+[[bench]]
+name = "grammar_projection_perf"
+harness = false
+
+[lints.rust]
+unsafe_code = "deny"
