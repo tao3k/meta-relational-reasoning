@@ -2,17 +2,16 @@
 #![forbid(unsafe_code)]
 
 use super::identifier_lowering::identifier_from_token;
-use super::lowering::{
-    is_expression_kind, lower_expression, significant_node_span, syntax_node, syntax_tokens,
-};
+use super::lowering::{lower_expression, significant_node_span, syntax_node, syntax_tokens};
+use super::lowering_support::is_expression_kind;
 use super::pattern_graph_lowering::{lower_graph_pattern, lower_path_pattern};
 use super::{
     BinaryOperator, CatalogCreatePolicy, CatalogDropPolicy, CatalogObjectName, CatalogStatement,
     ClosedReferenceTypeSpecification, EdgeDirection, EdgeKind, EdgeTypeSpecification, Expression,
     GraphPattern, GraphTypeSource, GraphTypeSpecification, NestedGraphTypeSpecification,
-    NodeTypeReference, NodeTypeSpecification, PatternElement, ProcedureCall, PropertyType,
-    PropertyValueType, PropertyValueTypeForm, QueryClause, ReferenceValueTypeKind, SessionCommand,
-    SetItem, TransactionAccessMode, TransactionCommand, TypeParameter,
+    NodeTypeReference, NodeTypeSpecification, ProcedureCall, PropertyType, PropertyValueType,
+    PropertyValueTypeForm, QueryClause, ReferenceValueTypeKind, SessionCommand, SetItem,
+    TransactionAccessMode, TransactionCommand, TypeParameter,
 };
 use gql_source::Diagnostic;
 use gql_syntax::{Keyword, SyntaxKind, SyntaxNode, TokenKind};
@@ -415,7 +414,10 @@ fn lower_property_type(node: &SyntaxNode, source: &str) -> Option<PropertyType> 
     })
 }
 
-fn lower_property_value_type(node: &SyntaxNode, source: &str) -> Option<PropertyValueType> {
+pub(super) fn lower_property_value_type(
+    node: &SyntaxNode,
+    source: &str,
+) -> Option<PropertyValueType> {
     let atoms = node
         .children()
         .iter()
@@ -833,8 +835,8 @@ fn lower_graph_pattern_list(node: &SyntaxNode, source: &str) -> Vec<GraphPattern
                 SyntaxKind::GraphPattern => lower_graph_pattern(pattern, source),
                 SyntaxKind::PathPattern => {
                     lower_path_pattern(pattern, source).map(|path| GraphPattern {
-                        elements: vec![PatternElement::Path(path)],
-                        span: pattern.span(),
+                        elements: path.elements,
+                        span: path.span,
                     })
                 }
                 _ => None,

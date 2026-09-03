@@ -1,6 +1,7 @@
 //! Lossless lexer for the ISO GQL lexical surface admitted by the active profile.
 
 use crate::character_string::{CharacterStringForm, scan_character_string};
+use crate::parameter::{ParameterReferenceKind, scan_parameter_reference};
 pub(crate) use crate::syntax::keyword;
 use crate::syntax::recovery_diagnostic;
 use crate::syntax::{Token, TokenKind};
@@ -157,6 +158,29 @@ pub(crate) fn lex(text: &str) -> (Vec<Token>, Vec<Diagnostic>) {
                 TokenKind::String
             } else {
                 TokenKind::Identifier
+            };
+            tokens.push(Token::new(
+                kind,
+                Span::new(start as u32, cursor as u32),
+                &text[start..cursor],
+            ));
+            continue;
+        }
+
+        if ch == '$' {
+            let scan = scan_parameter_reference(text, start, is_identifier_continue);
+            cursor = scan.end;
+            if !scan.valid {
+                diagnostics.push(Diagnostic::error(
+                    recovery_diagnostic("dynamic-parameter")
+                        .expect("Gerbil grammar declares dynamic parameter recovery"),
+                    "parameter reference requires a separated identifier",
+                    Span::new(start as u32, cursor as u32),
+                ));
+            }
+            let kind = match scan.kind {
+                ParameterReferenceKind::Dynamic => TokenKind::DynamicParameter,
+                ParameterReferenceKind::Substituted => TokenKind::SubstitutedParameter,
             };
             tokens.push(Token::new(
                 kind,

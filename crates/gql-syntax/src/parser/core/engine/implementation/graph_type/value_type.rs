@@ -149,7 +149,7 @@ impl Parser<'_> {
         node(SyntaxKind::NotNullConstraint, children)
     }
 
-    pub(super) fn is_value_type_start(&self) -> bool {
+    pub(in crate::parser) fn is_value_type_start(&self) -> bool {
         self.matches_word("ANY")
             || self.matches_word("LIST")
             || self.matches_word("ARRAY")

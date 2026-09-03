@@ -45,7 +45,14 @@ fn trail_path_mode_survives_lossless_cst_ast_and_canonical_ir() {
     let Some(QueryClause::Match(match_clause)) = query.clauses.first() else {
         panic!("MATCH clause exists");
     };
-    assert_eq!(match_clause.mode, AstPathMode::Trail);
+    assert_eq!(match_clause.mode, None);
+    assert_eq!(
+        match_clause.patterns[0]
+            .prefix
+            .as_ref()
+            .and_then(|prefix| prefix.mode),
+        Some(AstPathMode::Trail)
+    );
     assert_eq!(
         &source[match_clause.span.start as usize..match_clause.span.end as usize],
         "MATCH TRAIL (a)-[:KNOWS]->{1,3}(b)"
@@ -58,8 +65,11 @@ fn trail_path_mode_survives_lossless_cst_ast_and_canonical_ir() {
     );
     let ir = result.analysis.ir.expect("canonical TRAIL IR");
     assert_eq!(
-        ir.graphs.into_iter().next().expect("graph").mode,
-        IrPathMode::Trail
+        ir.matches[0].paths[0]
+            .prefix
+            .as_ref()
+            .and_then(|prefix| prefix.mode),
+        Some(IrPathMode::Trail)
     );
 }
 
@@ -85,11 +95,19 @@ fn path_mode_without_pattern_is_typed_and_emits_no_ir() {
 #[test]
 fn every_declared_path_mode_and_the_implicit_walk_are_canonical() {
     let cases = [
-        ("WALK ", AstPathMode::Walk, IrPathMode::Walk),
-        ("TRAIL ", AstPathMode::Trail, IrPathMode::Trail),
-        ("ACYCLIC ", AstPathMode::Acyclic, IrPathMode::Acyclic),
-        ("SIMPLE ", AstPathMode::Simple, IrPathMode::Simple),
-        ("", AstPathMode::Walk, IrPathMode::Walk),
+        ("WALK ", Some(AstPathMode::Walk), Some(IrPathMode::Walk)),
+        ("TRAIL ", Some(AstPathMode::Trail), Some(IrPathMode::Trail)),
+        (
+            "ACYCLIC ",
+            Some(AstPathMode::Acyclic),
+            Some(IrPathMode::Acyclic),
+        ),
+        (
+            "SIMPLE ",
+            Some(AstPathMode::Simple),
+            Some(IrPathMode::Simple),
+        ),
+        ("", None, None),
     ];
 
     for (spelling, expected_ast, expected_ir) in cases {
@@ -103,17 +121,20 @@ fn every_declared_path_mode_and_the_implicit_walk_are_canonical() {
         let Some(QueryClause::Match(match_clause)) = query.clauses.first() else {
             panic!("MATCH clause exists");
         };
-        assert_eq!(match_clause.mode, expected_ast, "{spelling}");
+        assert_eq!(match_clause.mode, None, "{spelling}");
         assert_eq!(
-            result
-                .analysis
-                .ir
-                .expect("IR")
-                .graphs
-                .into_iter()
-                .next()
-                .expect("graph")
-                .mode,
+            match_clause.patterns[0]
+                .prefix
+                .as_ref()
+                .and_then(|prefix| prefix.mode),
+            expected_ast,
+            "{spelling}"
+        );
+        assert_eq!(
+            result.analysis.ir.expect("IR").matches[0].paths[0]
+                .prefix
+                .as_ref()
+                .and_then(|prefix| prefix.mode),
             expected_ir,
             "{spelling}"
         );

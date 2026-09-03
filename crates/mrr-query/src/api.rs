@@ -96,6 +96,24 @@ impl Binding {
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
+pub struct Parameter(String);
+
+impl Parameter {
+    pub fn new(name: impl Into<String>) -> Result<Self, QueryIrError> {
+        let name = name.into();
+        if !valid_name(&name) {
+            return Err(QueryIrError::InvalidName(name));
+        }
+        Ok(Self(name))
+    }
+
+    #[must_use]
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct PropertyKey(String);
 
 impl PropertyKey {
@@ -307,6 +325,13 @@ pub enum UnaryOperator {
     Not,
     Negate,
     IsNull,
+    IsNotNull,
+    IsTrue,
+    IsNotTrue,
+    IsFalse,
+    IsNotFalse,
+    IsUnknown,
+    IsNotUnknown,
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
@@ -328,6 +353,7 @@ pub enum BinaryOperator {
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub enum Expression {
     Binding(Binding),
+    Parameter(Parameter),
     Property {
         binding: Binding,
         key: PropertyKey,
@@ -348,6 +374,7 @@ impl Expression {
     fn validate(&self) -> Result<(), QueryIrError> {
         match self {
             Self::Binding(binding) => validate_binding(binding),
+            Self::Parameter(parameter) => validate_name(parameter.as_str()),
             Self::Property { binding, key } => {
                 validate_binding(binding)?;
                 validate_name(key.as_str())
@@ -428,13 +455,26 @@ pub enum AggregationFunction {
     Minimum,
     Maximum,
     Average,
+    CollectList,
+    StandardDeviationSample,
+    StandardDeviationPopulation,
+    PercentileContinuous,
+    PercentileDiscrete,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
+pub enum SetQuantifier {
+    All,
+    Distinct,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct Aggregation {
     operator: QueryOperatorId,
     function: AggregationFunction,
-    expression: Option<Expression>,
+    quantifier: Option<SetQuantifier>,
+    expressions: Vec<Expression>,
+    count_star: bool,
     alias: Binding,
 }
 
@@ -443,15 +483,44 @@ impl Aggregation {
     pub const fn new(
         operator: QueryOperatorId,
         function: AggregationFunction,
-        expression: Option<Expression>,
+        quantifier: Option<SetQuantifier>,
+        expressions: Vec<Expression>,
+        count_star: bool,
         alias: Binding,
     ) -> Self {
         Self {
             operator,
             function,
-            expression,
+            quantifier,
+            expressions,
+            count_star,
             alias,
         }
+    }
+
+    #[must_use]
+    pub const fn function(&self) -> AggregationFunction {
+        self.function
+    }
+
+    #[must_use]
+    pub const fn quantifier(&self) -> Option<SetQuantifier> {
+        self.quantifier
+    }
+
+    #[must_use]
+    pub fn expressions(&self) -> &[Expression] {
+        &self.expressions
+    }
+
+    #[must_use]
+    pub const fn is_count_star(&self) -> bool {
+        self.count_star
+    }
+
+    #[must_use]
+    pub const fn alias(&self) -> &Binding {
+        &self.alias
     }
 }
 
@@ -604,9 +673,6 @@ impl MetaQueryIr {
         if self.projections.is_empty() && self.aggregations.is_empty() {
             return Err(QueryIrError::EmptyOutput);
         }
-        if self.limit == Some(0) {
-            return Err(QueryIrError::ZeroLimit);
-        }
         for path in &self.graph.paths {
             validate_binding(&path.start.binding)?;
             for segment in &path.segments {
@@ -622,12 +688,23 @@ impl MetaQueryIr {
             validate_binding(&projection.alias)?;
         }
         for aggregation in &self.aggregations {
-            if aggregation.function != AggregationFunction::Count
-                && aggregation.expression.is_none()
+            let expected_arity = if matches!(
+                aggregation.function,
+                AggregationFunction::PercentileContinuous | AggregationFunction::PercentileDiscrete
+            ) {
+                2
+            } else if aggregation.count_star {
+                0
+            } else {
+                1
+            };
+            if aggregation.expressions.len() != expected_arity
+                || (aggregation.count_star && aggregation.function != AggregationFunction::Count)
+                || (aggregation.count_star && aggregation.quantifier.is_some())
             {
                 return Err(QueryIrError::AggregationRequiresExpression);
             }
-            if let Some(expression) = &aggregation.expression {
+            for expression in &aggregation.expressions {
                 expression.validate()?;
             }
             validate_binding(&aggregation.alias)?;
@@ -645,7 +722,6 @@ pub enum QueryIrError {
     EmptyGraphPattern,
     EmptyOutput,
     InvalidHopRange { min: u32, max: Option<u32> },
-    ZeroLimit,
     AggregationRequiresExpression,
     SchemaMismatch,
     TrailingBytes,

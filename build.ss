@@ -1,62 +1,35 @@
 #!/usr/bin/env gxi
-;;; Canonical GSLPH Building API entrypoint for MRR Gerbil native AOT artifacts.
+;;; -*- Gerbil -*-
+;;; Native MRR library build declaration.
 
-(import (only-in :std/cli/multicall define-entry-point define-multicall-main)
-        :gslph/src/build-api/framework
-        (only-in :gerbil/gambit copy-file delete-file exit file-exists? write))
+(import :clan/building
+        (only-in :asp-gerbil-scheme/src/build-api/package-spec
+                 asp-gerbil-scheme-package-spec!
+                 asp-gerbil-scheme-library-package-prototype
+                 asp-gerbil-scheme-package-build-profile
+                 asp-gerbil-scheme-package-native-spec)
+        (only-in :asp-gerbil-scheme/src/building/build-script
+                 defbuild-script
+                 framework-build-bindir))
 
-(def +mrr-native-aot-file+
-  "meta-relational-reasoning__scheme__grammar__native.scm")
+(asp-gerbil-scheme-package-spec!
+ (mrr-library-package-spec
+  @ asp-gerbil-scheme-library-package-prototype)
+ (role 'library)
+ (profile 'development)
+ (native-spec
+  '("scheme/grammar/core"
+    "scheme/grammar/gql-declaration"
+    "scheme/grammar/gql-profile"
+    "scheme/grammar/gql"
+    "scheme/grammar/cypher"
+    "scheme/reasoning/core"
+    "scheme/reasoning/default"
+    "scheme/grammar/native")))
 
-(def (mrr-grammar-staged-native-aot)
-  (string-append "scheme/generated/" +mrr-native-aot-file+))
-
-(def (mrr-native-aot-stages)
-  (list
-   (make-package-source-stage
-    "grammar-aot"
-    "."
-    "meta-relational-reasoning"
-    '("scheme/grammar/core"
-      "scheme/grammar/gql-declaration"
-      "scheme/grammar/gql-profile"
-      "scheme/grammar/gql"
-      "scheme/grammar/cypher"
-      "scheme/reasoning/core"
-      "scheme/reasoning/default"
-      "scheme/grammar/native")
-    #t)))
-
-(def (mrr-stage-native-aot!)
-  (let* ((source (string-append ".gerbil/lib/static/" +mrr-native-aot-file+))
-         (target (mrr-grammar-staged-native-aot)))
-    (unless (file-exists? source)
-      (error "GSLPH compile completed without the native AOT artifact" source))
-    (when (file-exists? target) (delete-file target))
-    (copy-file source target)
-    target))
-
-(define-multicall-main)
-
-(define-entry-point (meta)
-  (help: "List MRR Gerbil native build targets" getopt: [])
-  (write '(spec compile clean))
-  (newline))
-
-(define-entry-point (spec)
-  (help: "Print the declarative GSLPH native build spec" getopt: [])
-  (write (package-source-stages-spec (mrr-native-aot-stages)))
-  (newline))
-
-(define-entry-point (compile)
-  (help: "Compile and stage the MRR Gerbil native AOT artifact" getopt: [])
-  (package-source-stages-run! (mrr-native-aot-stages) [])
-  (mrr-stage-native-aot!)
-  (exit 0))
-
-(define-entry-point (clean)
-  (help: "Clean MRR Gerbil native build artifacts" getopt: [])
-  (package-source-stages-clean! (mrr-native-aot-stages))
-  (when (file-exists? (mrr-grammar-staged-native-aot))
-    (delete-file (mrr-grammar-staged-native-aot)))
-  (exit 0))
+(defbuild-script
+ (asp-gerbil-scheme-package-native-spec
+  mrr-library-package-spec)
+ profile: (asp-gerbil-scheme-package-build-profile
+           mrr-library-package-spec)
+ bindir: (framework-build-bindir))

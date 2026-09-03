@@ -2,7 +2,8 @@
 #![forbid(unsafe_code)]
 
 use super::identifier_lowering::identifier_from_token;
-use super::lowering::{is_expression_kind, lower_expression, significant_node_span};
+use super::lowering::{lower_expression, significant_node_span};
+use super::lowering_support::is_expression_kind;
 use super::{Expression, RecordField};
 use gql_syntax::{
     Keyword, SyntaxElement, SyntaxElementKind, SyntaxKind, SyntaxNode, TokenKind,

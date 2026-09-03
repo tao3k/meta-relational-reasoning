@@ -1,8 +1,8 @@
 use crate::{
-    Atom, BinaryOperator, Binding, Direction, Expression, Filter, GraphPattern, MetaQueryIr,
-    NodePattern, PathPattern, PathSegment, Projection, PropertyKey, QueryId, QueryIrError,
-    QueryOperatorId, RelationId, RelationPattern, RelationalGoal, RelationalGoalError, Term, Value,
-    Variable,
+    Aggregation, AggregationFunction, Atom, BinaryOperator, Binding, Direction, Expression, Filter,
+    GraphPattern, MetaQueryIr, NodePattern, PathPattern, PathSegment, Projection, PropertyKey,
+    QueryId, QueryIrError, QueryOperatorId, RelationId, RelationPattern, RelationalGoal,
+    RelationalGoalError, SetQuantifier, Term, Value, Variable,
 };
 use mrr_identity::EntityId;
 
@@ -19,6 +19,10 @@ fn binding(name: &str) -> Binding {
 }
 
 fn fixture_query() -> MetaQueryIr {
+    fixture_query_with_limit(Some(25))
+}
+
+fn fixture_query_with_limit(limit: Option<u64>) -> MetaQueryIr {
     let module = EntityId::from_canonical_bytes(b"type:module").expect("module type");
     let depends_on =
         RelationId::from_canonical_bytes(b"relation:depends-on").expect("relation type");
@@ -60,7 +64,7 @@ fn fixture_query() -> MetaQueryIr {
         vec![projection],
         Vec::new(),
         Vec::new(),
-        Some(25),
+        limit,
     )
     .expect("meta query")
 }
@@ -100,6 +104,17 @@ fn meta_query_normalizes_encodes_and_decodes_canonically() {
 }
 
 #[test]
+fn zero_limit_round_trips_as_a_canonical_empty_result_bound() {
+    let query = fixture_query_with_limit(Some(0)).normalized();
+    assert_eq!(query.limit(), Some(0));
+    let encoded = query.encode_canonical().expect("zero-limit encoding");
+    assert_eq!(
+        MetaQueryIr::decode_canonical(&encoded).expect("zero-limit decoding"),
+        query
+    );
+}
+
+#[test]
 fn malformed_query_contracts_fail_closed() {
     assert_eq!(
         Binding::new(" bad"),
@@ -123,5 +138,26 @@ fn malformed_query_contracts_fail_closed() {
     assert_eq!(
         MetaQueryIr::decode_canonical(b"wrong-schema"),
         Err(QueryIrError::SchemaMismatch)
+    );
+
+    let fixture = fixture_query();
+    assert_eq!(
+        MetaQueryIr::new(
+            query_id("invalid-count-star-quantifier"),
+            fixture.graph().clone(),
+            fixture.filters().to_vec(),
+            fixture.projections().to_vec(),
+            vec![Aggregation::new(
+                operator_id("invalid-count-star-quantifier"),
+                AggregationFunction::Count,
+                Some(SetQuantifier::Distinct),
+                Vec::new(),
+                true,
+                binding("rows"),
+            )],
+            Vec::new(),
+            None,
+        ),
+        Err(QueryIrError::AggregationRequiresExpression)
     );
 }

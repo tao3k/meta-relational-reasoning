@@ -14,3 +14,6 @@ mod gerbil_grammar_contract;
 
 #[path = "character_string_contract.rs"]
 mod character_string_contract;
+
+#[path = "parameter_contract.rs"]
+mod parameter_contract;

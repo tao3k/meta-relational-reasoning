@@ -1,0 +1,1 @@
+MATCH (n) RETURN n.name AS name, n.score AS score ORDER BY score ASCENDING NULLS LAST, name DESCENDING NULLS FIRST SKIP $offset LIMIT 0

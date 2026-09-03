@@ -90,8 +90,9 @@ fn graph_semantic_vertical_slices_do_not_require_relation_catalog_entries() {
             .analysis
             .ir
             .as_ref()
-            .and_then(|query| query.graphs.first())
-            .map(|graph| graph.elements.len()),
+            .and_then(|query| query.matches.first())
+            .and_then(|graph_match| graph_match.paths.first())
+            .map(|path| path.elements.len()),
         Some(1)
     );
 
@@ -103,10 +104,7 @@ fn graph_semantic_vertical_slices_do_not_require_relation_catalog_entries() {
     assert!(graph_filter.parse.diagnostics.is_empty());
     assert!(graph_filter.analysis.diagnostics.is_empty());
     let ir = graph_filter.analysis.ir.expect("graph semantic IR");
-    assert_eq!(
-        ir.graphs.into_iter().next().expect("graph").elements.len(),
-        3
-    );
+    assert_eq!(ir.matches[0].paths[0].elements.len(), 3);
     assert_eq!(ir.filters.len(), 1);
     assert_eq!(ir.projection.len(), 1);
 }
@@ -169,10 +167,14 @@ fn node_pattern_properties_survive_cst_ast_and_canonical_ir() {
     );
     let ir = result.analysis.ir.expect("property-pattern IR");
     let Some(crate::ir::GraphPatternElement::Node(node)) = ir
-        .graphs
+        .matches
         .into_iter()
         .next()
-        .expect("graph")
+        .expect("graph match")
+        .paths
+        .into_iter()
+        .next()
+        .expect("path pattern")
         .elements
         .into_iter()
         .next()
@@ -292,8 +294,7 @@ fn edge_pattern_properties_survive_cst_ast_and_canonical_ir() {
         result.analysis.diagnostics
     );
     let ir = result.analysis.ir.expect("edge-property IR");
-    let Some(crate::ir::GraphPatternElement::Edge(edge)) =
-        ir.graphs.first().expect("graph").elements.get(1)
+    let Some(crate::ir::GraphPatternElement::Edge(edge)) = ir.matches[0].paths[0].elements.get(1)
     else {
         panic!("canonical edge pattern exists");
     };
@@ -378,7 +379,10 @@ fn limit_vertical_slice_is_backend_independent() {
         result.analysis.diagnostics
     );
     assert_eq!(result.parse.tree.rowan_root().text().to_string(), source);
-    assert_eq!(result.analysis.ir.expect("LIMIT IR").limit, Some(10));
+    assert_eq!(
+        result.analysis.ir.expect("LIMIT IR").limit,
+        Some(crate::ir::NonNegativeIntegerSpecification::Literal(10))
+    );
 }
 
 #[test]
@@ -419,7 +423,10 @@ fn offset_vertical_slice_is_backend_independent() {
         result.analysis.diagnostics
     );
     assert_eq!(result.parse.tree.rowan_root().text().to_string(), source);
-    assert_eq!(result.analysis.ir.expect("OFFSET IR").offset, Some(2));
+    assert_eq!(
+        result.analysis.ir.expect("OFFSET IR").offset,
+        Some(crate::ir::NonNegativeIntegerSpecification::Literal(2))
+    );
 }
 
 #[test]
@@ -493,9 +500,8 @@ fn named_path_vertical_slice_reaches_canonical_ir() {
     );
     let ir = result.analysis.ir.expect("named path query IR");
     assert!(matches!(
-        ir.graphs.first().expect("graph pattern").elements.as_slice(),
-        [crate::ir::GraphPatternElement::Path(path)]
-            if path.binding.as_deref() == Some("P")
+        ir.matches[0].paths.as_slice(),
+        [path] if path.binding.as_deref() == Some("P")
     ));
     assert!(matches!(
         ir.projection.as_slice(),
@@ -523,7 +529,7 @@ fn bounded_path_quantifier_vertical_slice_reaches_canonical_ir() {
     );
     let ir = result.analysis.ir.expect("quantified path query IR");
     assert!(matches!(
-        ir.graphs.first().expect("graph pattern").elements.as_slice(),
+        ir.matches[0].paths[0].elements.as_slice(),
         [
             crate::ir::GraphPatternElement::Node(_),
             crate::ir::GraphPatternElement::Edge(edge),
@@ -553,7 +559,7 @@ fn optional_match_vertical_slice_reaches_canonical_ir() {
     );
     let ir = result.analysis.ir.expect("optional match query IR");
     assert_eq!(ir.optional_matches.len(), 1);
-    assert_eq!(ir.optional_matches[0].graphs.len(), 1);
+    assert_eq!(ir.optional_matches[0].graph_match.paths.len(), 1);
     assert!(matches!(
         ir.projection.as_slice(),
         [

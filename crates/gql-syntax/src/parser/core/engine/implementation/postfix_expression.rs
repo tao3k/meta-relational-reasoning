@@ -2,9 +2,106 @@
 #![forbid(unsafe_code)]
 
 use super::{Event, Parser, node};
-use crate::syntax::{SyntaxKind, TokenKind, recovery_diagnostic};
+use crate::syntax::{Keyword, SyntaxKind, TokenKind, aggregate_function_spec, recovery_diagnostic};
+use gql_source::Span;
 
 impl Parser<'_> {
+    pub(super) fn parse_aggregate_function(&mut self) -> Vec<Event> {
+        let Some(TokenKind::Keyword(keyword)) = self.current_kind() else {
+            unreachable!("aggregate parser requires a grammar-owned aggregate keyword");
+        };
+        let spec = aggregate_function_spec(keyword)
+            .expect("aggregate parser dispatch requires a grammar-owned function spec");
+        let start = self
+            .current()
+            .map_or(self.span_end(), |token| token.span.start);
+        let mut children = vec![self.bump_event()];
+        children.extend(self.skip_trivia());
+        if !self.matches_kind(TokenKind::Punctuation('(')) {
+            self.emit_return_syntax(
+                recovery_diagnostic("aggregate-function")
+                    .expect("Gerbil grammar owns aggregate recovery"),
+                "aggregate function requires `(`",
+                self.next_span_or(self.span_end()),
+            );
+            return node(SyntaxKind::AggregateFunctionExpression, children);
+        }
+        children.push(self.bump_event());
+        children.extend(self.skip_trivia());
+
+        if spec.permits_star && self.matches_kind(TokenKind::Punctuation('*')) {
+            children.push(self.bump_event());
+            children.extend(self.skip_trivia());
+            if self.matches_kind(TokenKind::Punctuation(')')) {
+                children.push(self.bump_event());
+            } else {
+                self.emit_return_syntax(
+                    recovery_diagnostic("aggregate-function")
+                        .expect("Gerbil grammar owns aggregate recovery"),
+                    "COUNT(*) requires `)` immediately after `*`",
+                    self.next_span_or(self.span_end()),
+                );
+            }
+            return node(SyntaxKind::AggregateFunctionExpression, children);
+        }
+
+        if matches!(
+            self.current_kind(),
+            Some(TokenKind::Keyword(Keyword::Distinct | Keyword::All))
+        ) {
+            if !spec.permits_quantifier {
+                self.emit_match_syntax(
+                    recovery_diagnostic("aggregate-function")
+                        .expect("Gerbil grammar owns aggregate recovery"),
+                    "aggregate function does not permit a set quantifier",
+                    self.next_span_or(self.span_end()),
+                );
+            }
+            children.extend(node(SyntaxKind::SetQuantifier, vec![self.bump_event()]));
+            children.extend(self.skip_trivia());
+        }
+
+        for argument_index in 0..spec.arity {
+            if self.at_eof() || self.matches_kind(TokenKind::Punctuation(')')) {
+                self.emit_return_syntax(
+                    recovery_diagnostic("aggregate-function")
+                        .expect("Gerbil grammar owns aggregate recovery"),
+                    "aggregate function is missing an argument",
+                    self.next_span_or(self.span_end()),
+                );
+                break;
+            }
+            children.extend(self.parse_expression());
+            children.extend(self.skip_trivia());
+            if argument_index + 1 < spec.arity {
+                if self.matches_kind(TokenKind::Punctuation(',')) {
+                    children.push(self.bump_event());
+                    children.extend(self.skip_trivia());
+                } else {
+                    self.emit_return_syntax(
+                        recovery_diagnostic("aggregate-function")
+                            .expect("Gerbil grammar owns aggregate recovery"),
+                        "binary aggregate function requires two comma-separated arguments",
+                        self.next_span_or(self.span_end()),
+                    );
+                    break;
+                }
+            }
+        }
+
+        if self.matches_kind(TokenKind::Punctuation(')')) {
+            children.push(self.bump_event());
+        } else {
+            self.emit_return_syntax(
+                recovery_diagnostic("aggregate-function")
+                    .expect("Gerbil grammar owns aggregate recovery"),
+                "aggregate function requires `)` after its arguments",
+                Span::new(start, self.span_end()),
+            );
+        }
+        node(SyntaxKind::AggregateFunctionExpression, children)
+    }
+
     pub(super) fn parse_postfix_expression(&mut self, base: Vec<Event>) -> Vec<Event> {
         let mut expression = base;
         loop {

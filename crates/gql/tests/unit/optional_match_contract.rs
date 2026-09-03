@@ -26,12 +26,14 @@ fn standalone_optional_match_is_one_canonical_left_outer_group() {
         result.analysis.diagnostics
     );
     let ir = result.analysis.ir.expect("standalone optional MATCH IR");
-    assert!(ir.graphs.is_empty());
+    assert!(ir.matches.is_empty());
     assert_eq!(ir.optional_matches.len(), 1);
-    assert_eq!(ir.optional_matches[0].graphs.len(), 1);
+    assert_eq!(ir.optional_matches[0].graph_match.paths.len(), 1);
     assert!(ir.optional_matches[0].predicate.is_none());
     assert!(matches!(
-        ir.optional_matches[0].graphs[0].elements.as_slice(),
+        ir.optional_matches[0].graph_match.paths[0]
+            .elements
+            .as_slice(),
         [
             GraphPatternElement::Node(_),
             GraphPatternElement::Edge(_),
@@ -42,7 +44,8 @@ fn standalone_optional_match_is_one_canonical_left_outer_group() {
 
 #[test]
 fn optional_match_pattern_list_remains_one_group_with_shared_bindings() {
-    let source = "MATCH (a) OPTIONAL MATCH TRAIL (a)-[:KNOWS]->(b), (b)-[:WORKS_AT]->(c) RETURN c";
+    let source =
+        "MATCH (a) OPTIONAL MATCH TRAIL (a)-[:KNOWS]->(b), TRAIL (b)-[:WORKS_AT]->(c) RETURN c";
     let result = Compiler.compile("optional-pattern-list.gql", source, &empty_catalog());
 
     assert!(
@@ -57,12 +60,15 @@ fn optional_match_pattern_list_remains_one_group_with_shared_bindings() {
     );
     let ir = result.analysis.ir.expect("optional pattern-list IR");
     assert_eq!(ir.optional_matches.len(), 1);
-    assert_eq!(ir.optional_matches[0].graphs.len(), 2);
+    assert_eq!(ir.optional_matches[0].graph_match.paths.len(), 2);
     assert!(
         ir.optional_matches[0]
-            .graphs
+            .graph_match
+            .paths
             .iter()
-            .all(|graph| graph.mode == PathMode::Trail)
+            .all(
+                |path| path.prefix.as_ref().and_then(|prefix| prefix.mode) == Some(PathMode::Trail)
+            )
     );
 }
 

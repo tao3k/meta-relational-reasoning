@@ -4,7 +4,6 @@ fn main() {
         "../../scheme/grammar/gql-declaration.ss",
         "../../scheme/grammar/native.ss",
         "../../scheme/reasoning/declaration.ss",
-        "../../scheme/generated/meta-relational-reasoning__scheme__grammar__native.scm",
         "native/runtime.c",
     ] {
         println!("cargo:rerun-if-changed={path}");

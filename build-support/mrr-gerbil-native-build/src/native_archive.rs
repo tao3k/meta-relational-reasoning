@@ -15,6 +15,7 @@ struct NativeArchiveBuild<'a> {
     manifest: &'a Path,
     out: PathBuf,
     gsc: PathBuf,
+    canonical_scm: PathBuf,
     scm: PathBuf,
     linker_c: PathBuf,
     linker_o: PathBuf,
@@ -26,9 +27,13 @@ struct NativeArchiveBuild<'a> {
 impl<'a> NativeArchiveBuild<'a> {
     fn new(manifest: &'a Path) -> Self {
         let out = PathBuf::from(env::var_os("OUT_DIR").expect("OUT_DIR"));
+        let workspace = manifest.ancestors().nth(2).expect("workspace root");
         Self {
             manifest,
             gsc: resolve_program(env::var_os("GERBIL_GSC").unwrap_or_else(|| "gsc".into())),
+            canonical_scm: workspace
+                .join(".gerbil/lib/static")
+                .join("meta-relational-reasoning__scheme__grammar__native.scm"),
             scm: out.join("native.scm"),
             linker_c: out.join("native_link.c"),
             linker_o: out.join("native_link.o"),
@@ -39,15 +44,12 @@ impl<'a> NativeArchiveBuild<'a> {
         }
     }
 
-    fn stage_declared_aot_module(&self) {
-        let generated = self
-            .manifest
-            .ancestors()
-            .nth(2)
-            .expect("workspace root")
-            .join("scheme/generated")
-            .join("meta-relational-reasoning__scheme__grammar__native.scm");
-        fs::copy(generated, &self.scm).expect("stage Gerbil native SCM");
+    fn stage_canonical_aot_module(&self) {
+        assert!(
+            self.canonical_scm.is_file(),
+            "canonical Gerbil AOT artifact is missing; run `gxi build.ss compile` before Cargo"
+        );
+        fs::copy(&self.canonical_scm, &self.scm).expect("stage canonical Gerbil AOT in OUT_DIR");
     }
 
     fn generate_native_sources(&self) {
@@ -121,10 +123,11 @@ impl<'a> NativeArchiveBuild<'a> {
     }
 }
 
-/// Materializes the staged Gerbil AOT artifact and emits Cargo link directives.
+/// Materializes the canonical Gerbil AOT artifact and emits Cargo link directives.
 pub fn build_native_archive(manifest: &Path) {
     let build = NativeArchiveBuild::new(manifest);
-    build.stage_declared_aot_module();
+    println!("cargo:rerun-if-changed={}", build.canonical_scm.display());
+    build.stage_canonical_aot_module();
     build.generate_native_sources();
     build.compile_objects();
     build.package_archive();

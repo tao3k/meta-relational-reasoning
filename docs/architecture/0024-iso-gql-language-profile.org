@@ -1217,6 +1217,621 @@ validator/decoder batch reports 681.28--921.48 nanoseconds, or
 before/after optimization claim is made from this first stable benchmark
 identity.
 
+* Dynamic-parameter specification admission
+
+The =dynamic-parameter-specification-v1= slice follows the OpenGQL grammar
+boundary =GENERAL_PARAMETER_REFERENCE = DOLLAR_SIGN PARAMETER_NAME= and
+=SUBSTITUTED_PARAMETER_REFERENCE = DOUBLE_DOLLAR_SIGN PARAMETER_NAME=, where a
+parameter name is a separated identifier.  Consequently =$42= is a valid
+extended parameter name; digit-start rejection in a reference implementation
+is not language authority.  Gerbil remains the declaration owner, and its AOT
+projection fixes the two forms and their semantic contexts before Rust builds.
+
+General parameters are value expressions.  The lossless Rowan CST retains the
+complete token and =DynamicParameterExpression= node; AST lowering decodes the
+semantic name while preserving extended/delimited form and exact source span;
+canonical IR carries only the semantic name.  MRR identity therefore equates
+=$limit= and =$"limit"= while distinguishing =$other=.  Substituted parameters
+are catalog references and fail closed in a value-expression context instead
+of becoming a second dynamic-value path.
+
+#+name: rfc-0024-dynamic-parameter-admission
+#+begin_src mermaid
+flowchart LR
+  G[Gerbil parameter-reference table] --> A[AOT lexical-form projection]
+  A --> L[Bounded one-pass parameter scanner]
+  L -->|general parameter| C[Lossless Rowan DynamicParameterExpression]
+  C --> D[Shared complete-token decoder]
+  D --> S[AST semantic name form and source span]
+  S --> I[Backend-neutral canonical IR Parameter]
+  I --> M[MRR QueryId from semantic name]
+  L -->|malformed| T[Exactly one typed lexical terminal]
+  L -->|substituted in value context| U[Exactly one typed context terminal]
+  T --> Z[No AST no IR no MRR admission]
+  U --> Z
+#+end_src
+
+#+name: rfc-0024-dynamic-parameter-logic
+#+begin_src typst
+Let $p = (k, r)$ be a complete parameter candidate with prefix kind
+$k in {"general", "substituted"}$ and parameter-name representation $r$.
+The scanner is total and bounded:
+
+$ "scan-param"(p): O(|r|) -> ("end", "form", "valid") $
+
+with constant auxiliary state.  For a general parameter admitted in a value
+expression, decoding yields semantic name $n$, spelling form $f$, and source
+interval $s$:
+
+$ "ast"(p) = (n, f, s), quad "ir"(p) = "Parameter"(n). $
+
+Source spelling is evidence rather than identity authority.  For any two
+admitted general parameters $p_1, p_2$,
+
+$ "mrr-id"(p_1) = "mrr-id"(p_2) "iff" "name"(p_1) = "name"(p_2). $
+
+Admission is fail closed:
+
+$ not "valid"(p) or k = "substituted" =>
+  |"terminal"(p)| = 1 and "AST" = "IR" = "MRR" = emptyset. $
+#+end_src
+
+The frozen 158-byte Scenario requires one statement, exact 158/158 lossless
+roundtrip bytes, zero diagnostics, zero fallback, a 250-microsecond target p95,
+a 2-millisecond hard ceiling, and at most 1MiB estimated memory.  Its first
+stable receipt records 114.042 microseconds total p95, 92.958 microseconds p50,
+444 estimated bytes, and all exact metrics satisfied.  Criterion independently
+reports 22.752--27.904 microseconds for lossless parsing, 15.318--19.131
+microseconds for CST-to-AST lowering, 39.009--51.365 microseconds for their
+combined path, and 153.53--190.13 nanoseconds for the semantic-name decoder.
+Outliers remain visible in Criterion output; these first measurements establish
+the benchmark identity and do not assert a causal optimization improvement.
+
+* Truth and null predicate admission
+
+The =truth-null-predicates-v1= slice implements the complete postfix families
+=valueExpressionPrimary IS [NOT] NULL= and
+=valueExpression IS [NOT] TRUE|FALSE|UNKNOWN=.  Gerbil owns the four declared
+predicate-test rows, the =UNKNOWN= truth keyword, the two Rowan node shapes,
+and =GQL-PARSE-PREDICATE-TEST-SYNTAX=.  The Pratt parser attaches these tests at
+comparison precedence; it does not route them through a second expression
+parser or treat =IS= as a general binary operator.
+The primary-only null boundary is executable: =1 + 2 IS NULL= is rejected once
+with =GQL-PARSE-NULL-PREDICATE-OPERAND=, while =(1 + 2) IS NULL= is admitted
+because the parentheses construct one value-expression primary.
+
+AST retains the operand, explicit truth value, negation bit, and exact source
+span.  Canonical IR and MRR represent the eight semantic operations explicitly:
+=IsNull=, =IsNotNull=, =IsTrue=, =IsNotTrue=, =IsFalse=, =IsNotFalse=,
+=IsUnknown=, and =IsNotUnknown=.  A truth test admits boolean, null, or unknown
+statically typed operands; a known non-boolean operand yields exactly
+=GQL-SEMA-TRUTH-PREDICATE-OPERAND= and publishes no IR.  A malformed suffix
+produces exactly one parser terminal and publishes neither AST statement nor
+IR.
+
+#+name: rfc-0024-truth-null-predicate-admission
+#+begin_src mermaid
+flowchart LR
+  G[Gerbil predicate-test table] --> A[AOT syntax and keyword projection]
+  A --> P[Pratt comparison-level postfix dispatch]
+  P -->|IS optional NOT NULL| N[Lossless Rowan NullPredicateExpression]
+  P -->|IS optional NOT truth value| T[Lossless Rowan TruthPredicateExpression]
+  N --> S[AST operand negation span]
+  T --> V[AST operand truth value negation span]
+  S --> I[Canonical explicit unary IR]
+  V --> I
+  I --> M[MRR explicit unary operator identity]
+  P -->|missing test value| E[Exactly one typed parser terminal]
+  P -->|composite unparenthesized null operand| R[Exactly one typed operand terminal]
+  V -->|known non boolean operand| Q[Exactly one typed sema terminal]
+  E --> Z[No AST no IR no MRR admission]
+  R --> Z
+  Q --> Z
+#+end_src
+
+#+name: rfc-0024-truth-null-predicate-logic
+#+begin_src typst
+Let $p = (x, k, n)$ be a postfix predicate test with operand $x$, test kind
+$k$, and negation bit $n$.  The admitted operator map is total over
+
+$ k in {"null", "true", "false", "unknown"}, quad n in {"false", "true"}. $
+
+The result type is non-null boolean:
+
+$ "type"("predicate"(x, k, n)) = "Boolean". $
+
+Null tests admit every value domain.  Truth tests admit only a statically
+boolean, null, or unresolved operand:
+
+$ "admit-truth"(x) "iff"
+  "type"(x) in {"Boolean", "Null", "Any"}. $
+
+For a known operand outside that set,
+
+$ |"terminal"(p)| = 1 and "IR" = "MRR" = emptyset. $
+
+The parser consumes the =IS= suffix once at comparison precedence.  Therefore
+mixed conjunction and disjunction retain the declared Pratt ordering rather
+than constructing an implementation-specific predicate tree.
+#+end_src
+
+The frozen 231-byte Scenario contains every positive and negated null/truth
+operator plus mixed =AND=/=OR= precedence.  It requires one statement, exact
+231/231 lossless roundtrip bytes, zero diagnostics, zero fallback, a
+300-microsecond target p95, a 2-millisecond hard ceiling, and at most 1MiB
+estimated memory.  The final-tree receipt records 162.958 microseconds total
+p95 and 590 estimated bytes.
+
+Before the predicate-lowering traversal was consolidated, Criterion reported
+37.497--48.391 microseconds for parsing, 35.843--46.412 microseconds for AST
+lowering, and 69.620--86.850 microseconds combined.  The owner refactor reduced
+each predicate from two immediate-child materializations and multiple token
+scans to one traversal.  The same benchmark identity then reported
+36.469--53.259, 26.094--33.559, and 73.246--107.56 microseconds respectively.
+The AST center moved downward, but Criterion reported a p-value of =0.12= and overlapping
+confidence intervals, so this receipt claims a deterministic traversal and
+allocation reduction, not a statistically significant wall-time improvement.
+
+* ISO aggregate function admission
+
+The =iso-aggregate-functions-v1= slice implements the complete aggregate
+family declared by the current OpenGQL grammar oracle: =COUNT(*)=; the general
+set functions =AVG=, =COUNT=, =MAX=, =MIN=, =SUM=, =COLLECT_LIST=,
+=STDDEV_SAMP=, and =STDDEV_POP= with optional =ALL=/=DISTINCT=; and the binary
+set functions =PERCENTILE_CONT= and =PERCENTILE_DISC=, whose set quantifier
+belongs only to the dependent first argument.  The oracle is evidence, not a
+dependency or runtime authority.
+
+Gerbil owns 11 aggregate-form rows, 12 keywords, typed Rowan shapes, arity and
+quantifier policy, and =GQL-PARSE-AGGREGATE-FUNCTION-SYNTAX=.  Native AOT
+projects that table into Rust.  The parser therefore constructs
+=AggregateFunctionExpression= and =SetQuantifier= directly; it does not route
+ISO aggregates through the generic function-call fallback.  AST preserves
+function identity, explicit/default quantifier, source-ordered arguments,
+=COUNT(*)= identity, and exact source span.  Canonical GQL IR and MRR retain the
+same backend-neutral distinctions.
+
+#+name: rfc-0024-aggregate-function-admission
+#+begin_src mermaid
+flowchart LR
+  G[Gerbil aggregate table] --> A[Native AOT grammar projection]
+  A --> P[Arity aware Rowan parser]
+  P --> C[AggregateFunctionExpression and SetQuantifier CST]
+  C --> S[Typed AST function quantifier arguments star span]
+  S --> I[Canonical GQL aggregate IR]
+  S --> M[MRR aggregation operator identity]
+  P -->|missing or extra argument| E[Exactly one typed parser terminal]
+  S -->|known non numeric numeric-family operand| N[Exactly one typed sema terminal]
+  E --> Z[No statement no IR no MRR admission]
+  N --> Z
+#+end_src
+
+#+name: rfc-0024-aggregate-function-logic
+#+begin_src typst
+Let $f$ be an aggregate function, $q in {emptyset, "ALL", "DISTINCT"}$ the
+explicit set quantifier, $a = (a_1, dots, a_n)$ the source-ordered argument
+sequence, and $s$ the row-count flag.  Admission requires
+
+$ n = cases(
+  0, f = "COUNT" and s,
+  2, f in {"PERCENTILE_CONT", "PERCENTILE_DISC"},
+  1, "otherwise",
+). $
+
+The star form is unique:
+
+$ s => f = "COUNT" and q = emptyset and a = emptyset. $
+
+For =AVG=, =SUM=, both standard deviations, and both percentile functions,
+every statically known operand is numeric.  Unknown operands remain admissible
+for later binding resolution.  A known non-numeric operand satisfies
+
+$ |"terminal"(f, q, a, s)| = 1 and "IR" = "MRR" = emptyset. $
+
+The two canonical projections preserve the same tuple:
+
+$ "GQL-IR"(f,q,a,s) ~=~ "MRR-IR"(f,q,a,s). $
+#+end_src
+
+The frozen 431-byte Scenario exercises both =COUNT= forms, every general-set
+function, both percentile functions, explicit =ALL=/=DISTINCT=, and default
+quantification.  It records 431/431 lossless bytes, one statement, zero
+diagnostics, zero fallback, 990 estimated bytes, and a 239.250-microsecond p95
+against a 500-microsecond target and 2-millisecond ceiling.  Criterion reports
+206.63--277.44 microseconds for lossless parsing, 138.93--186.38 microseconds
+for CST-to-AST lowering, and 366.79--499.21 microseconds combined.  These first
+measurements establish the benchmark identity; they do not justify a causal
+optimization claim, so no speculative cache or alternate parser path was
+introduced.
+
+* ISO value-type predicate admission
+
+The =value-type-predicates-v1= slice implements the complete OpenGQL
+=valueExpressionPrimary IS [NOT] typed valueType= family.  The =typed= marker
+admits both normative spellings, =TYPED= and =::=.  Gerbil owns the predicate
+row, =ValueTypePredicateExpression= shape, primary-operand policy, and the
+=GQL-PARSE-VALUE-TYPE-PREDICATE-SYNTAX= and
+=GQL-PARSE-VALUE-TYPE-PREDICATE-OPERAND= terminals.  The Rowan parser reuses
+the existing =PropertyValueType= tree, so scalar, list, record, dynamic-union,
+and reference types cannot drift into a second predicate-only type grammar.
+
+AST preserves the operand, full structural value type, negation bit, and exact
+source span.  Semantic analysis reuses the catalog value-type canonicalizer,
+including aliases, arity, length ranges, union uniqueness, nullability, and
+reference structure.  Canonical GQL IR carries =IsTyped { operand,
+value_type, negated }= and has no backend authority.  The MRR frontend rejects
+this expression explicitly until =mrr-query= owns an equally complete value
+type algebra; it does not erase the predicate, approximate the type as a
+string, or route it through a legacy unary operator.
+
+#+name: rfc-0024-value-type-predicate-admission
+#+begin_src mermaid
+flowchart LR
+  G[Gerbil value type predicate row] --> A[Native AOT grammar projection]
+  A --> P[Comparison level postfix parser]
+  P --> C[ValueTypePredicateExpression CST]
+  C --> V[Shared PropertyValueType CST]
+  V --> S[AST operand type negation span]
+  S --> I[Canonical GQL IsTyped IR]
+  P -->|missing type or malformed marker| E[Exactly one typed syntax terminal]
+  P -->|unparenthesized composite operand| O[Exactly one typed operand terminal]
+  S -->|invalid structural type| Q[Existing value type sema terminal]
+  E --> Z[No statement and no IR]
+  O --> Z
+  Q --> Z
+#+end_src
+
+#+name: rfc-0024-value-type-predicate-logic
+#+begin_src typst
+Let $p = (x, tau, n, m)$ be a value-type predicate, where $x$ is a value
+expression primary, $tau$ is a structural GQL value type, $n$ is the negation
+bit, and $m in {"TYPED", "::"}$ is the source marker.  Admission requires
+
+$ "primary"(x) and "valid-value-type"(tau). $
+
+Both spellings have identical canonical meaning:
+
+$ "IR"(x, tau, n, "TYPED") = "IR"(x, tau, n, "::")
+  = "IsTyped"(x, "canonical"(tau), n). $
+
+The result type is always non-null boolean:
+
+$ "type"("IsTyped"(x, tau, n)) = "Boolean". $
+
+For a malformed marker, absent type, non-primary operand, or invalid type,
+
+$ |"terminal"(p)| = 1 and "Statement" = "IR" = emptyset. $
+#+end_src
+
+The frozen 201-byte Scenario exercises both markers, positive and negated
+predicates, and scalar, list, record, closed dynamic-union, and reference value
+types.  It records one statement, zero diagnostics, zero fallback, 201/201
+lossless bytes, 530 estimated bytes, and a 246.208-microsecond p95 against a
+300-microsecond target and 2-millisecond ceiling.  Criterion reports
+179.18--240.97 microseconds for lossless parsing, 200.55--280.43 microseconds
+for CST-to-AST lowering, and 295.48--393.77 microseconds combined.  This is the
+first benchmark identity for the family, so no causal speedup is claimed and
+no speculative cache or alternate parser path was introduced.
+
+* ISO graph-element predicate admission
+
+The =graph-element-predicates-v1= slice closes OpenGQL 19.8 through 19.13 as
+one coherent graph-element predicate family: =IS [NOT] DIRECTED=,
+=IS [NOT] SOURCE OF=, =IS [NOT] DESTINATION OF=, =ALL_DIFFERENT=, =SAME=,
+and =PROPERTY_EXISTS=.  Gerbil owns eleven total predicate rows, four new
+Rowan node shapes, the three reserved function names, and
+=GQL-PARSE-GRAPH-ELEMENT-PREDICATE-SYNTAX=.  =DIRECTED=, =SOURCE=, and
+=DESTINATION= remain contextual non-reserved words; the parser recognizes them
+only after =IS= and therefore does not shrink the ISO identifier surface.
+
+The AOT projection generator now emits =parser_forms.rs= separately from
+syntax shapes, lexical forms, and aggregate forms.  This is an owner split,
+not a generated-file waiver: parser entrypoints, precedence, and recoveries
+remain generated from the same Scheme declaration while every generated Rust
+module stays below the project responsibility limit.
+
+AST preserves endpoint role, negation, ordered n-ary operands, property
+identity, and exact source spans.  Semantic analysis requires an edge for
+=DIRECTED=; a node followed by an edge for =SOURCE=/=DESTINATION=; and graph
+elements for identity and property-existence predicates.  Canonical GQL IR
+represents all four algebraic forms explicitly.  The MRR frontend rejects the
+family by the exact name =graph-element predicate expression= until
+=mrr-query= owns this graph-identity algebra; it does not erase or approximate
+the operation.
+
+#+name: rfc-0024-graph-element-predicate-admission
+#+begin_src mermaid
+flowchart LR
+  G[Gerbil predicate rows and CST shapes] --> A[Native AOT four module projection]
+  A --> P[Contextual postfix and reserved function parser]
+  P --> D[DirectedPredicateExpression]
+  P --> E[EndpointPredicateExpression]
+  P --> N[ElementIdentityPredicateExpression]
+  P --> X[PropertyExistsPredicateExpression]
+  D --> S[Typed AST roles order negation spans]
+  E --> S
+  N --> S
+  X --> S
+  S --> I[Backend neutral canonical GQL IR]
+  P -->|malformed arity or missing OF| T[Exactly one typed parser terminal]
+  S -->|binding kind mismatch| U[Exactly one typed sema terminal]
+  T --> Z[No statement no IR]
+  U --> Z
+  S -->|MRR algebra absent| F[Explicit fail closed boundary]
+#+end_src
+
+#+name: rfc-0024-graph-element-predicate-logic
+#+begin_src typst
+Let $N$ be the node domain and $E$ the edge domain.  The directed and endpoint
+predicates have the total admitted signatures
+
+$ "directed": E times "Bool" -> "Boolean", $
+$ "endpoint": N times E times {"source", "destination"} times "Bool"
+  -> "Boolean". $
+
+For an ordered sequence $x = (x_1, dots, x_k)$,
+
+$ "all-different"(x), "same"(x) : (N union E)^k -> "Boolean",
+  quad k >= 2. $
+
+Property existence preserves a canonical property key $q$:
+
+$ "property-exists": (N union E) times "PropertyKey" -> "Boolean". $
+
+If arity, punctuation, or =OF= is malformed, exactly one parser terminal is
+published.  If the statically known binding kinds violate a signature,
+
+$ |"terminal"(p)| = 1 and "IR" = emptyset. $
+#+end_src
+
+The frozen 180-byte Scenario exercises positive and negated directed and
+endpoint forms, a three-element =ALL_DIFFERENT=, =SAME=, and
+=PROPERTY_EXISTS=.  It records one statement, zero diagnostics, zero fallback,
+180/180 lossless bytes, 488 estimated bytes, and a 240.667-microsecond p95
+against a 300-microsecond target and 5-millisecond scheduler-noise ceiling.  Criterion reports
+183.28--262.16 microseconds for lossless parsing, 59.177--88.083 microseconds
+for CST-to-AST lowering, and 114.39--163.78 microseconds combined.  The
+intervals were collected under observable system noise and establish the first
+benchmark identity only; no causal speedup or speculative cache is claimed.
+
+* ISO graph match and path search prefix admission
+
+The =path-search-prefixes-v1= slice closes the graph-level match modes and the
+per-path search family as one atomic MATCH contract.  =REPEATABLE ELEMENT[S]
+[BINDINGS]= and =DIFFERENT EDGE[S]|RELATIONSHIP[S] [BINDINGS]= belong to the
+MATCH operation.  =WALK=, =TRAIL=, =SIMPLE=, and =ACYCLIC= belong to one path,
+as do =ALL=, =ANY [count]=, =ALL SHORTEST=, =ANY SHORTEST=, =SHORTEST count=,
+and =SHORTEST [count] GROUP[S]=.  =KEEP= owns a separate preferred prefix.
+
+Gerbil AOT owns =GraphMatchMode=, =PathPattern=, =PathPrefix=, =PathSearch=,
+and =KeepClause= plus their three typed recoveries.  Rowan retains these nodes
+losslessly.  AST preserves source-ordered path bindings, prefix spans, and the
+singular/plural path target.  Canonical GQL IR keeps one =GraphMatch= containing
+its mode, paths, and KEEP prefix; it does not flatten the group or copy a mode
+onto unrelated paths.  MRR rejects all three unsupported authorities by exact
+name until =mrr-query= has corresponding execution operators.
+
+#+name: rfc-0024-path-search-prefix-admission
+#+begin_src mermaid
+flowchart LR
+  G[Gerbil graph match and path search declaration] --> A[Native AOT projection]
+  A --> R[Lossless Rowan graph match and path prefix nodes]
+  R --> S[AST modes counts targets spans and source order]
+  S --> I[Atomic backend neutral GraphMatch IR]
+  R -->|invalid target count grouping or KEEP| T[Exactly one typed terminal]
+  T --> Z[No statement and no IR]
+  S -->|MRR operator absent| F[Explicit fail closed boundary]
+#+end_src
+
+#+name: rfc-0024-path-search-prefix-logic
+#+begin_src typst
+Let $m in {"repeatable-elements", "different-edges"}$ be the graph match mode,
+$p = (s, u, t)$ one path prefix with search strategy $s$, traversal uniqueness
+$u$, and source target $t in {emptyset, "PATH", "PATHS"}$, and $k$ the optional
+=KEEP= prefix.  For an ordered non-empty path sequence $P$,
+
+$ "admit"(m, P, k) <=> |P| >= 1
+  and forall p in P, "valid"(p)
+  and (k = emptyset or "valid"(k)). $
+
+Literal counts are non-negative integers, $c >= 0$; a dynamic parameter keeps
+its decoded parameter identity for runtime binding.  The
+canonical projection preserves atomic ownership and order:
+
+$ "IR"(m, (p_1, dots, p_n), k)
+  = "GraphMatch"(m, (p_1, dots, p_n), k). $
+
+For an invalid graph target, count, grouping, missing path, or missing KEEP
+prefix, $|"terminal"| = 1$ and $"Statement" = "IR" = emptyset$.
+#+end_src
+
+The frozen 152-byte Scenario records one statement, zero diagnostics, zero
+fallback, 152/152 lossless bytes, 432 estimated bytes, and a
+388.416-microsecond p95 against a 400-microsecond target and 5-millisecond hard
+ceiling.  Criterion reports 55.478--82.046 microseconds for lossless parsing,
+40.591--60.938 microseconds for CST-to-AST lowering, and 117.50--190.01
+microseconds combined.  High outliers were present in all three samples, so
+these intervals are reported as observed rather than as a causal speedup.
+This first measurement establishes the benchmark identity only; it
+does not support a causal optimization claim or a second parser/cache path.
+
+* ISO ordering and pagination admission
+
+The =order-page-v1= slice closes OpenGQL 14.9 and 16.16 through 16.19 as one
+ordering-and-pagination contract.  Every sort specification retains an
+aggregating value expression, optional =ASC|ASCENDING|DESC|DESCENDING= spelling,
+and optional =NULLS FIRST|LAST= placement.  =OFFSET= and =SKIP= share the same
+typed clause, while =LIMIT= and both offset synonyms consume the ISO
+=nonNegativeIntegerSpecification=: a =u64= literal including zero, or one
+dynamic parameter.  Zero is a valid empty-result bound; the removed
+=ZeroLimit= rejection is not retained as a compatibility policy.
+
+Gerbil AOT owns the four structural Rowan nodes and the ordering/page
+recoveries.  AST preserves whether direction and null placement were explicit,
+plus parameter form, decoded name, and span.  Canonical GQL IR resolves an
+omitted direction to ascending while retaining explicit null placement and the
+literal-or-parameter page identity.  MRR admits literal zero, rejects dynamic
+=LIMIT= and =NULLS ordering= by exact authority name, and never erases them.
+
+#+name: rfc-0024-order-page-admission
+#+begin_src mermaid
+flowchart LR
+  G[Gerbil ordering and page declaration] --> R[Lossless Rowan typed children]
+  R --> A[AST explicit direction null placement and parameter identity]
+  A --> I[Canonical backend neutral ordering and page IR]
+  R -->|malformed direction placement or count| T[Exactly one typed terminal]
+  T --> Z[No statement and no IR]
+  I -->|literal zero| E[Valid empty result bound]
+  I -->|MRR lacks dynamic or null authority| F[Exact fail closed boundary]
+#+end_src
+
+#+name: rfc-0024-order-page-logic
+#+begin_src typst
+Let a sort specification be $s = (e, d, n)$, where $e$ is an aggregating value
+expression, $d in {emptyset, "ascending", "descending"}$, and
+$n in {emptyset, "first", "last"}$.  Canonical direction resolves only the
+omitted source choice:
+
+$ "direction"(d) = cases(
+  "ascending" & d = emptyset,
+  d & d != emptyset,
+). $
+
+A page value is either $"literal"(k)$ with $k in NN$ (therefore $k >= 0$), or
+$"parameter"(q)$ with non-empty decoded identity $q$.  For a non-empty ordered
+sort sequence $S$ and optional offset and limit values $o,l$,
+
+$ "admit"(S,o,l) <=> |S| >= 1
+  and "valid"(o) and "valid"(l). $
+
+Malformed punctuation, direction, null placement, negative or fractional
+counts, substituted parameters, and absent values satisfy
+$|"terminal"| = 1$ and $"Statement" = "IR" = emptyset$.
+#+end_src
+
+The frozen 136-byte Scenario records one statement, zero diagnostics, zero
+fallback, 136/136 lossless bytes, 400 estimated bytes, and a
+156.833-microsecond p95 against a 400-microsecond target, 750-microsecond
+regression budget, and 5-millisecond hard ceiling.  The first Criterion baseline
+reported 44.126--61.028 microseconds for parsing, 58.926--87.865 microseconds
+for CST-to-AST lowering, and 103.49--158.99 microseconds combined.  A follow-up
+replaced recursive subtree token collection with direct typed-child reads,
+removing temporary token-vector allocation and preventing a non-reserved
+=FIRST= identifier from masquerading as null placement.  The follow-up run was
+system-noisy: parsing alone moved to 141.33--189.90 microseconds although parser
+code was unchanged, while lowering and combined samples reported no
+statistically significant change.  The optimization is therefore admitted for
+its structural correctness and lower allocation complexity; no causal speedup
+is claimed until a controlled benchmark establishes one.
+
+* ISO FILTER and FOR primitive-query admission
+
+The =filter-for-v1= slice closes OpenGQL 14.6 and 14.8 as one primitive-query
+contract.  Gerbil AOT owns =FilterStatement=, =ForStatement=, =ForItem=, and
+=ForOrdinalityOrOffset= plus the exact recoveries.  Rowan preserves source
+order and bytes.  AST retains the source binding, source expression, optional
+=ORDINALITY|OFFSET= kind, position binding, and every span.  Canonical GQL IR
+admits Boolean or unknown FILTER conditions, List or unknown FOR sources,
+assigns the item binding =Any= and the position binding =Integer=, and rejects
+duplicate identities without publishing partial IR.
+
+The bounded =MetaQueryIR= adapter admits FILTER as its existing predicate
+operator.  It rejects FOR by the exact name =FOR collection expansion= because
+that algebra does not own an unnest operator; it does not erase the clause or
+fabricate a graph binding.
+
+#+name: rfc-0024-filter-for-admission
+#+begin_src mermaid
+flowchart LR
+  G[Gerbil FILTER and FOR declaration] --> R[Lossless Rowan primitive query nodes]
+  R --> A[AST bindings source order and spans]
+  A --> I[Canonical GQL filter and for binding IR]
+  R -->|malformed condition IN or WITH binding| T[Exactly one typed terminal]
+  T --> Z[No statement and no IR]
+  I -->|FILTER| M[MetaQueryIR predicate]
+  I -->|FOR without unnest authority| F[Exact fail closed boundary]
+#+end_src
+
+#+name: rfc-0024-filter-for-logic
+#+begin_src typst
+Let a candidate be $c = (f, s, b, p)$, where $f$ is the FILTER value kind,
+$s$ the FOR source kind, $b$ states that the item binding is unique, and $p$
+states that an optional position binding is unique.  Then
+
+$ "admit"(c) <=> f in {"Boolean", "Any"}
+  and s in {"List", "Any"} and b and p. $
+
+For an admitted candidate, the canonical bindings are
+
+$ "type"("item") = "Any", quad "type"("position") = "Integer". $
+
+If any syntax, type, or identity condition fails, $|"terminal"| = 1$ and
+$"IR" = emptyset$.  Activation or backend identity is not part of this
+frontend admission relation.
+#+end_src
+
+The frozen 108-byte Scenario records one statement, zero diagnostics, zero
+fallback, 108/108 lossless bytes, 344 estimated bytes, and a
+176.125-microsecond p95 against a 400-microsecond target and 5-millisecond hard
+ceiling.  Criterion reports 39.298--61.130 microseconds for lossless parsing,
+28.378--43.141 microseconds for CST-to-AST lowering, and 71.810--120.56
+microseconds combined.  High-side outliers occurred in every sample, so this is
+a baseline receipt and not a causal speedup claim.
+
+* ISO primitive result statement admission
+
+The =primitive-result-v1= slice closes OpenGQL 14.10 and the result-body
+portion of 14.11 before SELECT reuses that authority.  Gerbil AOT owns the
+=FINISH= token, =FinishStatement= shape, parser entrypoint, and recovery code.
+The existing =SetQuantifier= node now also retains =RETURN ALL|DISTINCT=, while
+an asterisk remains an exact lossless token rather than a fabricated
+expression.  AST represents result quantifier, wildcard intent, explicit
+items, and FINISH separately.  Semantic analysis expands wildcard bindings in
+their first source-introduction order, retains result set semantics in
+backend-neutral IR, and admits FINISH as a projection-free terminal.  A
+wildcard without visible bindings and every malformed result statement fail
+closed with one typed diagnostic and no IR.
+
+#+name: rfc-0024-primitive-result-admission
+#+begin_src mermaid
+flowchart LR
+  G[Gerbil RETURN and FINISH authority] --> R[Lossless Rowan result nodes]
+  R --> A[AST quantifier wildcard items or finish]
+  A --> I[Canonical result quantifier and source ordered projection]
+  A --> F[Canonical projection free FINISH]
+  R -->|malformed result| T[Exactly one typed terminal]
+  A -->|wildcard and no visible binding| S[Typed semantic rejection]
+  T --> Z[No statement and no IR]
+  S --> N[No IR]
+#+end_src
+
+#+name: rfc-0024-primitive-result-logic
+#+begin_src typst
+Let a result candidate be $c = (k, q, B)$, where $k$ is either
+$"items"$, $"all-bindings"$, or $"finish"$; $q$ is $"all"$ or
+$"distinct"$; and $B = [b_1, dots, b_n]$ is the source-ordered visible
+binding sequence.  Admission is
+
+$ "admit"(c) <=> k != "all-bindings" or n > 0. $
+
+For wildcard projection,
+
+$ "projection"(c) = [(b_1, "type"(b_1)), dots,
+  (b_n, "type"(b_n))]. $
+
+For FINISH, $"projection"(c) = []$ and $"is-finish"(c) = "true"$.  If the
+admission predicate is false, $"IR" = emptyset$; no backend or runtime
+authority participates in this relation.
+#+end_src
+
+The frozen 37-byte Scenario records one statement, zero diagnostics, zero
+fallback, 37/37 lossless bytes, 202 estimated bytes, and a 120.333-microsecond
+p95 against a 300-microsecond target and 5-millisecond hard ceiling. Criterion
+reports 33.544--55.134 microseconds for parsing, 35.243--52.343 microseconds for
+CST-to-AST lowering, and 90.030--132.63 microseconds combined. High-side
+outliers occurred, so these values are a baseline receipt rather than a causal
+performance claim.
+
 * Zero-fallback admission evidence
 
 Parsing or lowering rejection now returns no =Statement=. Semantic analysis is

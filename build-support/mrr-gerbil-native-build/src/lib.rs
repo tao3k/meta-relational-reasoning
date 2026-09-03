@@ -1,4 +1,4 @@
-//! Target-native archive/link adapter for the AOT artifact staged by `build.ss`.
+//! Target-native archive/link adapter for the canonical AOT artifact built by `build.ss`.
 
 mod native_archive;
 

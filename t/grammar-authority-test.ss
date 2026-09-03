@@ -29,6 +29,8 @@
                     (.ref mrr-gql-grammar 'prefix-operators))
       (check-equal? (.ref mrr-cypher-grammar 'binary-operators)
                     (.ref mrr-gql-grammar 'binary-operators))
+      (check-equal? (.ref mrr-cypher-grammar 'aggregate-functions)
+                    (.ref mrr-gql-grammar 'aggregate-functions))
       (check-equal? (.ref mrr-cypher-grammar 'parser-entrypoints)
                     (.ref mrr-gql-grammar 'parser-entrypoints))
       (check-equal? (.ref mrr-cypher-grammar 'recoveries)
@@ -70,6 +72,9 @@
         (check-equal? (assq 'CharacterStringLiteralExpression kinds)
                       '(CharacterStringLiteralExpression
                         node (value form no-escape)))
+        (check-equal? (assq 'AggregateFunctionExpression kinds)
+                      '(AggregateFunctionExpression
+                        node (name quantifier argument star)))
         (check-equal? (assq 'ListExpression kinds)
                       '(ListExpression node (element)))
         (check-equal? (assq 'RecordExpression kinds)
@@ -84,6 +89,17 @@
         (check-equal? (assq 'Datetime keywords) '(Datetime "DATETIME"))
         (check-equal? (assq 'Duration keywords) '(Duration "DURATION"))
         (check-equal? (assq 'Record keywords) '(Record "RECORD"))))
+    (test-case "ISO aggregate family is declaration-owned"
+      (let (aggregates (.ref mrr-gql-grammar 'aggregate-functions))
+        (check-equal? (length aggregates) 11)
+        (check-equal? (car aggregates)
+                      '(count-star Count star forbidden 0))
+        (check-equal? (list-ref aggregates 10)
+                      '(percentile-discrete PercentileDisc binary dependent 2)))
+      (check-equal?
+       (assq 'aggregate-function (.ref mrr-gql-grammar 'recoveries))
+       '(aggregate-function
+         "GQL-PARSE-AGGREGATE-FUNCTION-SYNTAX" preserve-source)))
     (test-case "general literal recoveries are declaration-owned"
       (let (recoveries (.ref mrr-gql-grammar 'recoveries))
         (check-equal?
@@ -125,6 +141,61 @@
        (assq 'character-string-literal (.ref mrr-gql-grammar 'recoveries))
        '(character-string-literal
          "GQL-SYNTAX-INVALID-CHARACTER-STRING-LITERAL" preserve-source)))
+    (test-case "ISO parameter references are declaration-owned"
+      (let (forms (.ref mrr-gql-grammar 'parameter-references))
+        (check-equal? forms
+                      '((general dollar separated-identifier dynamic-value)
+                        (substituted double-dollar separated-identifier
+                                     catalog-reference))))
+      (check-equal?
+       (assq 'dynamic-parameter (.ref mrr-gql-grammar 'recoveries))
+       '(dynamic-parameter
+         "GQL-SYNTAX-INVALID-DYNAMIC-PARAMETER" preserve-source))
+      (check-equal?
+       (assq 'substituted-parameter-context (.ref mrr-gql-grammar 'recoveries))
+       '(substituted-parameter-context
+         "GQL-PARSE-SUBSTITUTED-PARAMETER-CONTEXT" preserve-source)))
+    (test-case "ISO predicate families are declaration-owned"
+      (let (forms (.ref mrr-gql-grammar 'predicate-tests))
+        (check-equal? (length forms) 11)
+        (check-equal? (car forms)
+                      '(null optional-not Null any-value))
+        (check-equal? (list-ref forms 4)
+                      '(value-type optional-not
+                        declared-value-type value-primary))
+        (check-equal? (drop forms 5)
+                      '((directed optional-not Directed edge-element)
+                        (source optional-not Source node-edge)
+                        (destination optional-not Destination node-edge)
+                        (all-different forbidden AllDifferent element-list-min-two)
+                        (same forbidden Same element-list-min-two)
+                        (property-exists forbidden PropertyExists element-property))))
+      (check-equal?
+       (assq 'ValueTypePredicateExpression
+             (.ref mrr-gql-grammar 'syntax-kinds))
+       '(ValueTypePredicateExpression
+         node (operand value-type negated marker)))
+      (check-equal?
+       (assq 'predicate-test (.ref mrr-gql-grammar 'recoveries))
+       '(predicate-test "GQL-PARSE-PREDICATE-TEST-SYNTAX"
+                        preserve-source))
+      (check-equal?
+       (assq 'null-predicate-operand (.ref mrr-gql-grammar 'recoveries))
+       '(null-predicate-operand "GQL-PARSE-NULL-PREDICATE-OPERAND"
+                                preserve-source))
+      (check-equal?
+       (assq 'value-type-predicate (.ref mrr-gql-grammar 'recoveries))
+       '(value-type-predicate
+         "GQL-PARSE-VALUE-TYPE-PREDICATE-SYNTAX" preserve-source))
+      (check-equal?
+       (assq 'value-type-predicate-operand
+             (.ref mrr-gql-grammar 'recoveries))
+       '(value-type-predicate-operand
+         "GQL-PARSE-VALUE-TYPE-PREDICATE-OPERAND" preserve-source))
+      (check-equal?
+       (assq 'graph-element-predicate (.ref mrr-gql-grammar 'recoveries))
+       '(graph-element-predicate
+         "GQL-PARSE-GRAPH-ELEMENT-PREDICATE-SYNTAX" preserve-source)))
     (test-case "block comment recovery is declaration-owned"
       (check-equal?
        (assq 'block-comment (.ref mrr-gql-grammar 'recoveries))
@@ -196,7 +267,7 @@
     (test-case "MATCH pattern-list shape and recovery are declaration-owned"
       (check-equal?
        (assq 'MatchClause (.ref mrr-gql-grammar 'syntax-kinds))
-       '(MatchClause node (mode patterns)))
+       '(MatchClause node (mode patterns keep)))
       (check-equal?
        (assq 'GraphPatternList (.ref mrr-gql-grammar 'syntax-kinds))
        '(GraphPatternList node (pattern)))
@@ -212,6 +283,111 @@
        (assq 'optional-match (.ref mrr-gql-grammar 'recoveries))
        '(optional-match "GQL-PARSE-OPTIONAL-MATCH-SYNTAX"
                         preserve-source)))
+    (test-case "ISO graph match and path search shapes are declaration-owned"
+      (let (kinds (.ref mrr-gql-grammar 'syntax-kinds))
+        (check-equal? (assq 'MatchClause kinds)
+                      '(MatchClause node (mode patterns keep)))
+        (check-equal? (assq 'PathPattern kinds)
+                      '(PathPattern node (binding prefix pattern)))
+        (check-equal? (assq 'GraphMatchMode kinds)
+                      '(GraphMatchMode node (kind target bindings)))
+        (check-equal? (assq 'PathPrefix kinds)
+                      '(PathPrefix node (search mode target)))
+        (check-equal? (assq 'PathSearch kinds)
+                      '(PathSearch node (kind count grouping)))
+        (check-equal? (assq 'KeepClause kinds)
+                      '(KeepClause node (prefix))))
+      (let (recoveries (.ref mrr-gql-grammar 'recoveries))
+        (check-equal?
+         (assq 'graph-match-mode recoveries)
+         '(graph-match-mode "GQL-PARSE-GRAPH-MATCH-MODE-SYNTAX"
+                            preserve-source))
+        (check-equal?
+         (assq 'path-search-prefix recoveries)
+         '(path-search-prefix "GQL-PARSE-PATH-SEARCH-PREFIX-SYNTAX"
+                              preserve-source))
+        (check-equal?
+         (assq 'keep-clause recoveries)
+         '(keep-clause "GQL-PARSE-KEEP-CLAUSE-SYNTAX"
+                       preserve-source))))
+    (test-case "ISO ordering and pagination shapes are declaration-owned"
+      (let (kinds (.ref mrr-gql-grammar 'syntax-kinds))
+        (check-equal?
+         (assq 'NonNegativeIntegerSpecification kinds)
+         '(NonNegativeIntegerSpecification node (value)))
+        (check-equal? (assq 'SortSpecification kinds)
+                      '(SortSpecification node (key ordering null-ordering)))
+        (check-equal? (assq 'OrderingSpecification kinds)
+                      '(OrderingSpecification node (direction)))
+        (check-equal? (assq 'NullOrdering kinds)
+                      '(NullOrdering node (placement))))
+      (let (keywords (.ref mrr-gql-grammar 'keywords))
+        (check-equal? (assq 'Ascending keywords) '(Ascending "ASCENDING"))
+        (check-equal? (assq 'Descending keywords) '(Descending "DESCENDING"))
+        (check-equal? (assq 'Nulls keywords) '(Nulls "NULLS"))
+        (check-equal? (assq 'Skip keywords) '(Skip "SKIP")))
+      (check-equal?
+       (assq 'Skip (.ref mrr-gql-grammar 'parser-entrypoints))
+       '(Skip OffsetClause none))
+      (let (recoveries (.ref mrr-gql-grammar 'recoveries))
+        (check-equal?
+         (assq 'order-by-clause recoveries)
+         '(order-by-clause "GQL-PARSE-ORDER-BY-SYNTAX" preserve-source))
+        (check-equal?
+         (assq 'limit-clause recoveries)
+         '(limit-clause "GQL-PARSE-LIMIT-SYNTAX" preserve-source))
+        (check-equal?
+         (assq 'offset-clause recoveries)
+         '(offset-clause "GQL-PARSE-OFFSET-SYNTAX" preserve-source))))
+    (test-case "ISO FILTER and FOR shapes are declaration-owned"
+      (let (kinds (.ref mrr-gql-grammar 'syntax-kinds))
+        (check-equal? (assq 'FilterStatement kinds)
+                      '(FilterStatement node (expression)))
+        (check-equal? (assq 'ForStatement kinds)
+                      '(ForStatement node (item ordinality)))
+        (check-equal? (assq 'ForItem kinds)
+                      '(ForItem node (binding source)))
+        (check-equal? (assq 'ForOrdinalityOrOffset kinds)
+                      '(ForOrdinalityOrOffset node (kind binding))))
+      (let (keywords (.ref mrr-gql-grammar 'keywords))
+        (check-equal? (assq 'Filter keywords) '(Filter "FILTER"))
+        (check-equal? (assq 'For keywords) '(For "FOR"))
+        (check-equal? (assq 'With keywords) '(With "WITH"))
+        (check-equal? (assq 'Ordinality keywords) '(Ordinality "ORDINALITY")))
+      (let (entrypoints (.ref mrr-gql-grammar 'parser-entrypoints))
+        (check-equal? (assq 'Filter entrypoints)
+                      '(Filter FilterStatement none))
+        (check-equal? (assq 'For entrypoints)
+                      '(For ForStatement none)))
+      (let (recoveries (.ref mrr-gql-grammar 'recoveries))
+        (check-equal?
+         (assq 'filter-statement recoveries)
+         '(filter-statement "GQL-PARSE-FILTER-SYNTAX" preserve-source))
+        (check-equal?
+         (assq 'for-statement recoveries)
+         '(for-statement "GQL-PARSE-FOR-SYNTAX" preserve-source))))
+    (test-case "ISO primitive result shapes are declaration-owned"
+      (let (kinds (.ref mrr-gql-grammar 'syntax-kinds))
+        (check-equal? (assq 'ReturnClause kinds)
+                      '(ReturnClause node (projection)))
+        (check-equal? (assq 'SetQuantifier kinds)
+                      '(SetQuantifier node (kind)))
+        (check-equal? (assq 'FinishStatement kinds)
+                      '(FinishStatement node (action))))
+      (let (keywords (.ref mrr-gql-grammar 'keywords))
+        (check-equal? (assq 'Return keywords) '(Return "RETURN"))
+        (check-equal? (assq 'Finish keywords) '(Finish "FINISH"))
+        (check-equal? (assq 'All keywords) '(All "ALL"))
+        (check-equal? (assq 'Distinct keywords) '(Distinct "DISTINCT")))
+      (let (entrypoints (.ref mrr-gql-grammar 'parser-entrypoints))
+        (check-equal? (assq 'Return entrypoints)
+                      '(Return ReturnClause marks-return))
+        (check-equal? (assq 'Finish entrypoints)
+                      '(Finish FinishStatement marks-return)))
+      (let (recoveries (.ref mrr-gql-grammar 'recoveries))
+        (check-equal?
+         (assq 'finish-statement recoveries)
+         '(finish-statement "GQL-PARSE-FINISH-SYNTAX" preserve-source))))
     (test-case "qualified nested graph type shapes are declaration-owned"
       (check-equal?
        (assq 'CatalogObjectName (.ref mrr-gql-grammar 'syntax-kinds))

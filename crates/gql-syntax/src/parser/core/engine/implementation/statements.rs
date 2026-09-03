@@ -507,36 +507,31 @@ impl Parser<'_> {
         let mut children = vec![self.bump_event()];
         children.extend(self.skip_trivia());
 
-        let has_path_mode = matches!(
-            self.current_kind(),
-            Some(TokenKind::Keyword(
-                Keyword::Walk | Keyword::Trail | Keyword::Acyclic | Keyword::Simple
-            ))
-        );
-        if has_path_mode {
-            children.extend(node(SyntaxKind::PathMode, vec![self.bump_event()]));
+        if self.is_graph_match_mode_start() {
+            children.extend(self.parse_graph_match_mode());
             children.extend(self.skip_trivia());
         }
 
         if path_pattern::looks_like_named_path_pattern(self.tokens, self.index)
+            || self.is_path_prefix_start()
             || self.matches_kind(TokenKind::Punctuation('('))
         {
             children.extend(self.parse_graph_pattern_list());
         } else {
             self.emit_match_syntax(
-                if has_path_mode {
-                    recovery_diagnostic("path-mode")
-                        .expect("Gerbil grammar owns path mode recovery")
-                } else {
-                    "GQL-PARSE-MATCH-SYNTAX"
-                },
-                if has_path_mode {
-                    "path mode must be followed by a graph pattern"
-                } else {
-                    "MATCH clause must start with a graph pattern"
-                },
+                "GQL-PARSE-MATCH-SYNTAX",
+                "MATCH clause must start with a graph pattern",
                 self.next_span_or(start),
             );
+        }
+
+        let keep_checkpoint = self.index;
+        let keep_trivia = self.skip_trivia();
+        if self.matches_word("KEEP") {
+            children.extend(keep_trivia);
+            children.extend(self.parse_keep_clause());
+        } else {
+            self.index = keep_checkpoint;
         }
 
         node(SyntaxKind::MatchClause, children)
@@ -551,8 +546,9 @@ impl Parser<'_> {
         loop {
             if path_pattern::looks_like_named_path_pattern(self.tokens, self.index) {
                 children.extend(self.parse_named_path_pattern());
-            } else if self.matches_kind(TokenKind::Punctuation('(')) {
-                children.extend(self.parse_graph_pattern());
+            } else if self.is_path_prefix_start() || self.matches_kind(TokenKind::Punctuation('('))
+            {
+                children.extend(self.parse_unnamed_path_pattern());
             } else {
                 self.emit_match_syntax(
                     diagnostic,

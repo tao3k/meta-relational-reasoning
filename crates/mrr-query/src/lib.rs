@@ -4,9 +4,9 @@
 mod api;
 pub use api::{
     Aggregation, AggregationFunction, Atom, BinaryOperator, Binding, Direction, Expression, Filter,
-    GraphPattern, META_QUERY_SCHEMA, MetaQueryIr, NodePattern, Ordering, PathPattern, PathSegment,
-    Projection, PropertyKey, QueryIrError, RelationPattern, RelationalGoal, RelationalGoalError,
-    SortDirection, Term, UnaryOperator, Variable,
+    GraphPattern, META_QUERY_SCHEMA, MetaQueryIr, NodePattern, Ordering, Parameter, PathPattern,
+    PathSegment, Projection, PropertyKey, QueryIrError, RelationPattern, RelationalGoal,
+    RelationalGoalError, SetQuantifier, SortDirection, Term, UnaryOperator, Variable,
 };
 pub use mrr_identity::{EntityId, QueryId, QueryOperatorId, RelationId};
 pub use mrr_relation::Value;

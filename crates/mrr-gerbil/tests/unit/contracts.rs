@@ -29,11 +29,16 @@ fn stale_scheme_input_fails_closed() {
 }
 
 #[test]
-fn gerbil_package_declares_poo_flow_and_poo_dependencies() {
+fn gerbil_package_pins_the_native_asp_build_stack() {
     let package = include_str!("../../../../gerbil.pkg");
-    assert!(package.contains("github.com/tao3k/poo-flow@"));
-    assert!(package.contains("github.com/tao3k/gerbil-scheme-language-project-harness@"));
+    assert!(package.contains(
+        "github.com/tao3k/poo-flow@377eeda30578ee5a65d21b23d0c457980a62ee69"
+    ));
+    assert!(package.contains(
+        "github.com/tao3k/asp-gerbil-scheme@ce21733fa91d6a0236aefb824953b7eae53f7524"
+    ));
     assert!(package.contains("github.com/mighty-gerbils/gerbil-poo@"));
+    assert!(!package.contains("gerbil-scheme-language-project-harness"));
 }
 
 #[test]
@@ -74,6 +79,20 @@ fn native_aot_binding_exposes_the_declaration_without_text_protocols() {
         .find(|shape| shape.name == "PathMode")
         .expect("PathMode syntax shape");
     assert_eq!(path_mode.fields, ["kind"]);
+    for (name, fields) in [
+        ("PathPattern", &["binding", "prefix", "pattern"][..]),
+        ("GraphMatchMode", &["kind", "target", "bindings"][..]),
+        ("PathPrefix", &["search", "mode", "target"][..]),
+        ("PathSearch", &["kind", "count", "grouping"][..]),
+        ("KeepClause", &["prefix"][..]),
+    ] {
+        let shape = grammar
+            .syntax_shapes
+            .iter()
+            .find(|shape| shape.name == name)
+            .unwrap_or_else(|| panic!("missing {name} syntax shape"));
+        assert_eq!(shape.fields, fields, "{name}");
+    }
     for keyword in ["WALK", "TRAIL", "ACYCLIC", "SIMPLE"] {
         assert!(
             grammar.keywords.iter().any(|entry| entry.text == keyword),
@@ -119,6 +138,73 @@ fn native_aot_binding_exposes_the_declaration_without_text_protocols() {
             && literal.lexeme == "U"
             && literal.action == "decode"
             && literal.class == "six-hex-digits"
+    }));
+    assert_eq!(grammar.parameter_references.len(), 2);
+    assert!(grammar.parameter_references.iter().any(|parameter| {
+        parameter.form == "general"
+            && parameter.prefix == "dollar"
+            && parameter.name == "separated-identifier"
+            && parameter.context == "dynamic-value"
+    }));
+    assert_eq!(
+        grammar
+            .predicate_tests
+            .iter()
+            .map(|predicate| (
+                predicate.kind.as_str(),
+                predicate.negation.as_str(),
+                predicate.value.as_str(),
+                predicate.operand.as_str(),
+            ))
+            .collect::<Vec<_>>(),
+        [
+            ("null", "optional-not", "Null", "any-value"),
+            ("truth", "optional-not", "True", "boolean-or-null"),
+            ("truth", "optional-not", "False", "boolean-or-null"),
+            ("truth", "optional-not", "UnknownTruth", "boolean-or-null",),
+            (
+                "value-type",
+                "optional-not",
+                "declared-value-type",
+                "value-primary",
+            ),
+            ("directed", "optional-not", "Directed", "edge-element"),
+            ("source", "optional-not", "Source", "node-edge"),
+            ("destination", "optional-not", "Destination", "node-edge",),
+            (
+                "all-different",
+                "forbidden",
+                "AllDifferent",
+                "element-list-min-two",
+            ),
+            ("same", "forbidden", "Same", "element-list-min-two"),
+            (
+                "property-exists",
+                "forbidden",
+                "PropertyExists",
+                "element-property",
+            ),
+        ]
+    );
+    assert_eq!(grammar.aggregate_functions.len(), 11);
+    assert!(grammar.aggregate_functions.iter().any(|aggregate| {
+        aggregate.name == "count-star"
+            && aggregate.keyword == "Count"
+            && aggregate.kind == "star"
+            && aggregate.quantifier == "forbidden"
+            && aggregate.arity == 0
+    }));
+    assert!(grammar.aggregate_functions.iter().any(|aggregate| {
+        aggregate.name == "percentile-discrete"
+            && aggregate.keyword == "PercentileDisc"
+            && aggregate.kind == "binary"
+            && aggregate.quantifier == "dependent"
+            && aggregate.arity == 2
+    }));
+    assert!(grammar.parameter_references.iter().any(|parameter| {
+        parameter.form == "substituted"
+            && parameter.prefix == "double-dollar"
+            && parameter.context == "catalog-reference"
     }));
     assert!(grammar.numeric_literals.iter().any(|literal| {
         literal.form == "approximate-scientific-unsuffixed"
@@ -216,6 +302,21 @@ fn native_aot_binding_exposes_the_declaration_without_text_protocols() {
         .find(|recovery| recovery.site == "inline-node-where")
         .expect("inline node WHERE recovery");
     assert_eq!(inline_where.code, "GQL-PARSE-INLINE-WHERE-SYNTAX");
+    for (site, code) in [
+        ("graph-match-mode", "GQL-PARSE-GRAPH-MATCH-MODE-SYNTAX"),
+        ("path-search-prefix", "GQL-PARSE-PATH-SEARCH-PREFIX-SYNTAX"),
+        ("keep-clause", "GQL-PARSE-KEEP-CLAUSE-SYNTAX"),
+    ] {
+        assert_eq!(
+            grammar
+                .recoveries
+                .iter()
+                .find(|recovery| recovery.site == site)
+                .unwrap_or_else(|| panic!("missing {site} recovery"))
+                .code,
+            code
+        );
+    }
     assert!(grammar.parser_entrypoints.iter().any(|entrypoint| {
         entrypoint.keyword == "Create" && entrypoint.action == "CreateSchemaStatement"
     }));

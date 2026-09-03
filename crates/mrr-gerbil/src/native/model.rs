@@ -39,6 +39,31 @@ pub(crate) struct CharacterStringLiteralSpec {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct ParameterReferenceSpec {
+    pub(crate) form: String,
+    pub(crate) prefix: String,
+    pub(crate) name: String,
+    pub(crate) context: String,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct PredicateTestSpec {
+    pub(crate) kind: String,
+    pub(crate) negation: String,
+    pub(crate) value: String,
+    pub(crate) operand: String,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct AggregateFunctionSpec {
+    pub(crate) name: String,
+    pub(crate) keyword: String,
+    pub(crate) kind: String,
+    pub(crate) quantifier: String,
+    pub(crate) arity: u8,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct OperatorSpec {
     pub(crate) kind: String,
     pub(crate) lexeme: String,
@@ -130,6 +155,9 @@ pub(crate) struct NativeGrammar {
     pub(crate) non_reserved_words: Vec<String>,
     pub(crate) numeric_literals: Vec<NumericLiteralSpec>,
     pub(crate) character_string_literals: Vec<CharacterStringLiteralSpec>,
+    pub(crate) parameter_references: Vec<ParameterReferenceSpec>,
+    pub(crate) predicate_tests: Vec<PredicateTestSpec>,
+    pub(crate) aggregate_functions: Vec<AggregateFunctionSpec>,
     pub(crate) prefix_operators: Vec<OperatorSpec>,
     pub(crate) binary_operators: Vec<OperatorSpec>,
     pub(crate) parser_entrypoints: Vec<ParserEntrypointSpec>,
@@ -171,6 +199,9 @@ impl NativeGrammar {
             non_reserved_words: load_non_reserved_words()?,
             numeric_literals: load_numeric_literals()?,
             character_string_literals: load_character_string_literals()?,
+            parameter_references: load_parameter_references()?,
+            predicate_tests: load_predicate_tests()?,
+            aggregate_functions: load_aggregate_functions()?,
             prefix_operators: load_operators(Table::PrefixOperators)?,
             binary_operators: load_operators(Table::BinaryOperators)?,
             parser_entrypoints: load_entrypoints()?,
@@ -235,6 +266,9 @@ enum Table {
     NonReservedWords = 14,
     NumericLiterals = 15,
     CharacterStringLiterals = 16,
+    ParameterReferences = 17,
+    PredicateTests = 18,
+    AggregateFunctions = 19,
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -404,6 +438,53 @@ fn load_character_string_literals() -> Result<Vec<CharacterStringLiteralSpec>, N
                     row,
                     3,
                 )?,
+            })
+        })
+        .collect()
+}
+
+fn load_parameter_references() -> Result<Vec<ParameterReferenceSpec>, NativeGrammarError> {
+    (0..count(Table::ParameterReferences, "parameter-references")?)
+        .map(|row| {
+            Ok(ParameterReferenceSpec {
+                form: text(Table::ParameterReferences, "parameter-references", row, 0)?,
+                prefix: text(Table::ParameterReferences, "parameter-references", row, 1)?,
+                name: text(Table::ParameterReferences, "parameter-references", row, 2)?,
+                context: text(Table::ParameterReferences, "parameter-references", row, 3)?,
+            })
+        })
+        .collect()
+}
+
+fn load_predicate_tests() -> Result<Vec<PredicateTestSpec>, NativeGrammarError> {
+    (0..count(Table::PredicateTests, "predicate-tests")?)
+        .map(|row| {
+            Ok(PredicateTestSpec {
+                kind: text(Table::PredicateTests, "predicate-tests", row, 0)?,
+                negation: text(Table::PredicateTests, "predicate-tests", row, 1)?,
+                value: text(Table::PredicateTests, "predicate-tests", row, 2)?,
+                operand: text(Table::PredicateTests, "predicate-tests", row, 3)?,
+            })
+        })
+        .collect()
+}
+
+fn load_aggregate_functions() -> Result<Vec<AggregateFunctionSpec>, NativeGrammarError> {
+    (0..count(Table::AggregateFunctions, "aggregate-functions")?)
+        .map(|row| {
+            let arity = text(Table::AggregateFunctions, "aggregate-functions", row, 4)?
+                .parse::<u8>()
+                .map_err(|_| NativeGrammarError::InvalidText {
+                    table: "aggregate-functions",
+                    row,
+                    column: 4,
+                })?;
+            Ok(AggregateFunctionSpec {
+                name: text(Table::AggregateFunctions, "aggregate-functions", row, 0)?,
+                keyword: text(Table::AggregateFunctions, "aggregate-functions", row, 1)?,
+                kind: text(Table::AggregateFunctions, "aggregate-functions", row, 2)?,
+                quantifier: text(Table::AggregateFunctions, "aggregate-functions", row, 3)?,
+                arity,
             })
         })
         .collect()

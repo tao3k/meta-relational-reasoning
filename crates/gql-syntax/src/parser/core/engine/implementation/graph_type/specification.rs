@@ -570,7 +570,7 @@ impl Parser<'_> {
         children
     }
 
-    pub(super) fn parse_property_value_type(
+    pub(in crate::parser) fn parse_property_value_type(
         &mut self,
         start: u32,
         diagnostic: &'static str,
@@ -926,7 +926,7 @@ impl Parser<'_> {
                 .eq_ignore_ascii_case(expected)
     }
 
-    pub(super) fn matches_word(&self, expected: &str) -> bool {
+    pub(in crate::parser) fn matches_word(&self, expected: &str) -> bool {
         self.current()
             .is_some_and(|token| token.text().eq_ignore_ascii_case(expected))
     }

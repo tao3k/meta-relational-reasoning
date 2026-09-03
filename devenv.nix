@@ -12,6 +12,9 @@
 
   # https://devenv.sh/basics/
   env.GREET = "devenv";
+  # Request all local performance cores; ASP Gerbil still applies its bounded
+  # memory-admission ceiling before launching compiler workers.
+  env.GERBIL_BUILD_CORES = "12";
   # https://devenv.sh/packages/
   packages = [
     pkgs.pkg-config

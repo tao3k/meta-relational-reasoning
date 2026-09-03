@@ -17,7 +17,9 @@
 (defsyntax (defmrr-grammar stx)
   (syntax-case stx
       (dialect extends syntax-kinds keywords non-reserved-words numeric-literals
-               character-string-literals prefix-operators binary-operators
+               character-string-literals parameter-references predicate-tests
+               aggregate-functions
+               prefix-operators binary-operators
                parser-entrypoints recoveries)
     ((_ binding
         (dialect declared-dialect-id declared-dialect-label declared-active?)
@@ -29,6 +31,13 @@
          (numeric-form numeric-notation numeric-suffix numeric-class) ...)
         (character-string-literals
          (character-form character-lexeme character-action character-class) ...)
+        (parameter-references
+         (parameter-form parameter-prefix parameter-name parameter-context) ...)
+        (predicate-tests
+         (predicate-kind predicate-negation predicate-value predicate-operand) ...)
+        (aggregate-functions
+         (aggregate-name aggregate-keyword aggregate-kind
+                         aggregate-quantifier aggregate-arity) ...)
         (prefix-operators ((prefix-kind prefix-lexeme)
                            prefix-precedence prefix-associativity) ...)
         (binary-operators ((binary-kind binary-lexeme)
@@ -59,6 +68,15 @@
             (character-string-literals
              (list (list 'character-form 'character-lexeme
                          'character-action 'character-class) ...))
+            (parameter-references
+             (list (list 'parameter-form 'parameter-prefix
+                         'parameter-name 'parameter-context) ...))
+            (predicate-tests
+             (list (list 'predicate-kind 'predicate-negation
+                         'predicate-value 'predicate-operand) ...))
+            (aggregate-functions
+             (list (list 'aggregate-name 'aggregate-keyword 'aggregate-kind
+                         'aggregate-quantifier aggregate-arity) ...))
             (prefix-operators
              (list (list 'prefix-kind
                          'prefix-lexeme

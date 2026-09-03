@@ -80,10 +80,14 @@ fn inline_node_where_survives_lossless_cst_ast_and_canonical_ir() {
     );
     let ir = result.analysis.ir.expect("canonical inline predicate IR");
     let Some(IrPatternElement::Node(node)) = ir
-        .graphs
+        .matches
         .into_iter()
         .next()
-        .expect("graph")
+        .expect("graph match")
+        .paths
+        .into_iter()
+        .next()
+        .expect("path pattern")
         .elements
         .into_iter()
         .next()

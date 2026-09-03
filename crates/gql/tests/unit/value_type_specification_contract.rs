@@ -33,7 +33,7 @@ fn contains_node_kind(node: &SyntaxNode, expected: SyntaxKind) -> bool {
 
 #[test]
 fn scalar_constructed_and_union_value_types_cross_frontend_admission() {
-    let source = "CREATE GRAPH TYPE analytics.types AS { NODE TYPE Sample { active BOOLEAN NOT NULL, name STRING(1, 80), code CHAR(8), payload BYTES(0, 4096), count INT(32), unsigned UINT64, amount DECIMAL(10, 2), ratio DOUBLE PRECISION, observed ZONED DATETIME, lifetime DURATION(YEAR TO MONTH), bounded LIST<STRING NOT NULL>[16] NOT NULL, postfix INT64 ARRAY[8], open LIST[32], profile RECORD { display STRING, rank TYPED UINT32 NOT NULL }, scalar ANY VALUE NOT NULL, dynamic_property ANY PROPERTY VALUE, choice ANY VALUE<STRING | INT64>, shorthand STRING | INT64, route PATH NOT NULL, absent NULL, impossible NOTHING } }";
+    let source = "CREATE GRAPH TYPE analytics.types AS { NODE TYPE Sample { active BOOLEAN NOT NULL, name STRING(1, 80), code CHAR(8), payload BYTES(0, 4096), `count` INT(32), unsigned UINT64, amount DECIMAL(10, 2), ratio DOUBLE PRECISION, observed ZONED DATETIME, lifetime DURATION(YEAR TO MONTH), bounded LIST<STRING NOT NULL>[16] NOT NULL, postfix INT64 ARRAY[8], open LIST[32], profile RECORD { display STRING, rank TYPED UINT32 NOT NULL }, scalar ANY VALUE NOT NULL, dynamic_property ANY PROPERTY VALUE, choice ANY VALUE<STRING | INT64>, shorthand STRING | INT64, route PATH NOT NULL, absent NULL, impossible NOTHING } }";
 
     let result = Compiler.compile("value-type-lattice.gql", source, &empty_catalog());
 

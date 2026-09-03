@@ -1,13 +1,17 @@
 //! Graph-pattern lowering for the public, backend-neutral GQL AST.
 
 use super::identifier_lowering::identifier_from_token;
-use super::lowering::{syntax_node, syntax_tokens};
+use super::lowering::{descendant_tokens, syntax_node, syntax_tokens};
 use super::pattern_lowering::{lower_inline_where_predicate, lower_pattern_properties};
 use super::{
-    EdgeDirection, EdgePattern, GraphPattern, NodePattern, PathPattern, PathQuantifier,
-    PatternElement,
+    DynamicParameterReference, EdgeDirection, EdgePattern, GraphPattern, NodePattern,
+    NonNegativeIntegerSpecification, ParameterNameForm, PathMode, PathPattern, PathPrefix,
+    PathQuantifier, PathSearch, PathTarget, PatternElement,
 };
-use gql_syntax::{SyntaxElement, SyntaxElementKind, SyntaxKind, SyntaxNode, TokenKind};
+use gql_syntax::{
+    ParameterNameForm as SyntaxParameterNameForm, SyntaxElement, SyntaxElementKind, SyntaxKind,
+    SyntaxNode, TokenKind, decode_parameter_reference,
+};
 
 pub(super) fn lower_graph_pattern(node: &SyntaxNode, source: &str) -> Option<GraphPattern> {
     let elements_in = node.children();
@@ -40,10 +44,30 @@ pub(super) fn lower_graph_pattern(node: &SyntaxNode, source: &str) -> Option<Gra
 }
 
 pub(super) fn lower_path_pattern(node: &SyntaxNode, source: &str) -> Option<PathPattern> {
-    let binding = syntax_tokens(node.children()).find_map(|token| {
-        (token.kind == TokenKind::Identifier).then(|| identifier_from_token(&token, source))
+    let children = node.children();
+    let has_binding_assignment = children.iter().any(|element| {
+        matches!(
+            &element.kind,
+            SyntaxElementKind::Token(token) if token.kind == TokenKind::Punctuation('=')
+        )
     });
-    let elements = node.children().into_iter().find_map(|element| {
+    let binding = has_binding_assignment
+        .then(|| {
+            children.iter().find_map(|element| {
+                let SyntaxElementKind::Token(token) = &element.kind else {
+                    return None;
+                };
+                (token.kind == TokenKind::Identifier).then(|| identifier_from_token(token, source))
+            })
+        })
+        .flatten();
+    let prefix = children.iter().find_map(|element| {
+        let child = syntax_node(element)?;
+        (child.kind() == SyntaxKind::PathPrefix)
+            .then(|| lower_path_prefix(child))
+            .flatten()
+    });
+    let elements = children.into_iter().find_map(|element| {
         let child = syntax_node(&element)?;
         (child.kind() == SyntaxKind::GraphPattern)
             .then(|| lower_graph_pattern(child, source))
@@ -53,9 +77,83 @@ pub(super) fn lower_path_pattern(node: &SyntaxNode, source: &str) -> Option<Path
 
     Some(PathPattern {
         binding,
+        prefix,
         elements,
         span: node.span(),
     })
+}
+
+pub(super) fn lower_path_prefix(node: &SyntaxNode) -> Option<PathPrefix> {
+    let tokens = descendant_tokens(node);
+    let has = |word: &str| {
+        tokens
+            .iter()
+            .any(|token| token.text().eq_ignore_ascii_case(word))
+    };
+    let count = tokens.iter().find_map(lower_path_count);
+    let search = if has("ALL") && has("SHORTEST") {
+        Some(PathSearch::AllShortest)
+    } else if has("ANY") && has("SHORTEST") {
+        Some(PathSearch::AnyShortest)
+    } else if has("SHORTEST") && (has("GROUP") || has("GROUPS")) {
+        Some(PathSearch::ShortestGroups { count })
+    } else if has("SHORTEST") {
+        Some(PathSearch::Shortest { count: count? })
+    } else if has("ALL") {
+        Some(PathSearch::All)
+    } else if has("ANY") {
+        Some(PathSearch::Any { count })
+    } else {
+        None
+    };
+    let mode = if has("TRAIL") {
+        Some(PathMode::Trail)
+    } else if has("ACYCLIC") {
+        Some(PathMode::Acyclic)
+    } else if has("SIMPLE") {
+        Some(PathMode::Simple)
+    } else if has("WALK") {
+        Some(PathMode::Walk)
+    } else {
+        None
+    };
+    let target = if has("PATHS") {
+        Some(PathTarget::Paths)
+    } else if has("PATH") {
+        Some(PathTarget::Path)
+    } else {
+        None
+    };
+    Some(PathPrefix {
+        search,
+        mode,
+        target,
+        span: node.span(),
+    })
+}
+
+fn lower_path_count(token: &gql_syntax::Token) -> Option<NonNegativeIntegerSpecification> {
+    match token.kind {
+        TokenKind::Number => token
+            .text()
+            .parse()
+            .ok()
+            .map(NonNegativeIntegerSpecification::Literal),
+        TokenKind::DynamicParameter => {
+            let decoded = decode_parameter_reference(token.text())?;
+            Some(NonNegativeIntegerSpecification::Parameter(
+                DynamicParameterReference {
+                    name: decoded.name.into_owned(),
+                    form: match decoded.form {
+                        SyntaxParameterNameForm::Extended => ParameterNameForm::Extended,
+                        SyntaxParameterNameForm::Delimited => ParameterNameForm::Delimited,
+                    },
+                    span: token.span,
+                },
+            ))
+        }
+        _ => None,
+    }
 }
 
 fn lower_path_quantifier(node: &SyntaxNode) -> Option<PathQuantifier> {

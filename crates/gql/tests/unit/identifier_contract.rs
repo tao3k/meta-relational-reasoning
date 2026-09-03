@@ -1,7 +1,10 @@
 use crate::Compiler;
-use crate::ast::{PatternElement, QueryClause, Statement};
+use crate::ast::{
+    Expression as AstExpression, ParameterNameForm, PatternElement, QueryClause, Statement,
+};
 use crate::catalog::{Catalog, CatalogName};
 use crate::ir::{Expression as IrExpression, GraphPatternElement};
+use crate::syntax::SyntaxKind;
 
 fn empty_catalog() -> Catalog {
     Catalog::new(
@@ -52,10 +55,14 @@ fn delimited_identifiers_are_lossless_and_normalized_through_canonical_ir() {
         );
         let ir = result.analysis.ir.expect("canonical identifier IR");
         let Some(GraphPatternElement::Node(node)) = ir
-            .graphs
+            .matches
             .into_iter()
             .next()
-            .expect("graph pattern")
+            .expect("graph match")
+            .paths
+            .into_iter()
+            .next()
+            .expect("path pattern")
             .elements
             .into_iter()
             .next()
@@ -100,7 +107,7 @@ fn grave_accent_identifiers_preserve_escape_and_span_through_ir() {
     );
 
     let ir = result.analysis.ir.expect("canonical identifier IR");
-    let Some(GraphPatternElement::Node(node)) = ir.graphs[0].elements.first() else {
+    let Some(GraphPatternElement::Node(node)) = ir.matches[0].paths[0].elements.first() else {
         panic!("canonical node pattern exists");
     };
     assert_eq!(
@@ -359,10 +366,14 @@ fn undelimited_identifiers_use_one_canonical_name_through_ir() {
     );
     let ir = result.analysis.ir.expect("canonical identifier IR");
     let Some(GraphPatternElement::Node(node)) = ir
-        .graphs
+        .matches
         .into_iter()
         .next()
-        .expect("graph pattern")
+        .expect("graph match")
+        .paths
+        .into_iter()
+        .next()
+        .expect("path pattern")
         .elements
         .into_iter()
         .next()
@@ -385,7 +396,7 @@ fn delimited_and_undelimited_identifiers_do_not_collapse_case() {
     assert_eq!(result.parse.tree.rowan_root().text().to_string(), source);
     assert!(result.analysis.diagnostics.is_empty());
     let ir = result.analysis.ir.expect("distinct property identities");
-    let Some(GraphPatternElement::Node(node)) = ir.graphs[0].elements.first() else {
+    let Some(GraphPatternElement::Node(node)) = ir.matches[0].paths[0].elements.first() else {
         panic!("canonical node pattern exists");
     };
     assert_eq!(node.properties[0].key, "Node");
@@ -423,10 +434,14 @@ fn unicode_undelimited_identifier_folding_reaches_one_ir_identity() {
     );
     let ir = result.analysis.ir.expect("Unicode canonical identifier IR");
     let Some(GraphPatternElement::Node(node)) = ir
-        .graphs
+        .matches
         .into_iter()
         .next()
-        .expect("graph pattern")
+        .expect("graph match")
+        .paths
+        .into_iter()
+        .next()
+        .expect("path pattern")
         .elements
         .into_iter()
         .next()
@@ -438,4 +453,128 @@ fn unicode_undelimited_identifier_folding_reaches_one_ir_identity() {
         ir.projection[0].expression,
         IrExpression::Binding("STRASSE".to_owned())
     );
+}
+
+#[test]
+fn dynamic_parameter_specifications_cross_lossless_cst_ast_and_canonical_ir() {
+    let source = r#"MATCH (n {named: $limit, ordinal: $42, quoted: $"MATCH", accent: $`say``hi`}) RETURN $limit"#;
+    let result = Compiler.compile(
+        "dynamic-parameter-specification.gql",
+        source,
+        &empty_catalog(),
+    );
+
+    assert_eq!(result.parse.tree.rowan_root().text().to_string(), source);
+    assert!(
+        result.parse.diagnostics.is_empty(),
+        "parse diagnostics: {:?}",
+        result.parse.diagnostics
+    );
+    assert!(
+        result.analysis.diagnostics.is_empty(),
+        "semantic diagnostics: {:?}",
+        result.analysis.diagnostics
+    );
+    assert_eq!(
+        result
+            .parse
+            .tree
+            .rowan_root()
+            .descendants()
+            .filter(|node| node.kind() == SyntaxKind::DynamicParameterExpression)
+            .count(),
+        5
+    );
+    let Some(Statement::Query(query)) = &result.statement else {
+        panic!("dynamic parameter source must remain a query");
+    };
+    let Some(QueryClause::Match(match_clause)) = query.clauses.first() else {
+        panic!("MATCH clause exists");
+    };
+    let Some(PatternElement::Node(node)) = match_clause.patterns[0].elements.first() else {
+        panic!("node pattern exists");
+    };
+    let parameters = node
+        .properties
+        .iter()
+        .map(|property| match &property.value {
+            AstExpression::Parameter(parameter) => parameter,
+            other => panic!("property value must be a parameter, got {other:?}"),
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(
+        parameters
+            .iter()
+            .map(|parameter| (parameter.name.as_str(), parameter.form))
+            .collect::<Vec<_>>(),
+        [
+            ("limit", ParameterNameForm::Extended),
+            ("42", ParameterNameForm::Extended),
+            ("MATCH", ParameterNameForm::Delimited),
+            ("say`hi", ParameterNameForm::Delimited),
+        ]
+    );
+    assert_eq!(
+        parameters
+            .iter()
+            .map(|parameter| {
+                &source[parameter.span.start as usize..parameter.span.end as usize]
+            })
+            .collect::<Vec<_>>(),
+        ["$limit", "$42", "$\"MATCH\"", "$`say``hi`"]
+    );
+
+    let ir = result
+        .analysis
+        .ir
+        .expect("dynamic parameters remain first-class backend-neutral IR");
+    let Some(GraphPatternElement::Node(node)) = ir.matches[0].paths[0].elements.first() else {
+        panic!("canonical node pattern exists");
+    };
+    assert_eq!(
+        node.properties
+            .iter()
+            .map(|property| &property.value)
+            .collect::<Vec<_>>(),
+        [
+            &IrExpression::Parameter("limit".into()),
+            &IrExpression::Parameter("42".into()),
+            &IrExpression::Parameter("MATCH".into()),
+            &IrExpression::Parameter("say`hi".into()),
+        ]
+    );
+    assert_eq!(
+        ir.projection[0].expression,
+        IrExpression::Parameter("limit".into())
+    );
+}
+
+#[test]
+fn malformed_or_context_invalid_parameter_references_fail_closed_once() {
+    for (source, expected) in [
+        ("RETURN $", "GQL-SYNTAX-INVALID-DYNAMIC-PARAMETER"),
+        (
+            "RETURN $$catalog_graph",
+            "GQL-PARSE-SUBSTITUTED-PARAMETER-CONTEXT",
+        ),
+        (
+            r#"RETURN $"unterminated"#,
+            "GQL-SYNTAX-INVALID-DYNAMIC-PARAMETER",
+        ),
+    ] {
+        let result = Compiler.compile("invalid-parameter-reference.gql", source, &empty_catalog());
+
+        assert_eq!(result.parse.tree.rowan_root().text().to_string(), source);
+        assert_eq!(
+            result
+                .parse
+                .diagnostics
+                .iter()
+                .map(|diagnostic| diagnostic.code)
+                .collect::<Vec<_>>(),
+            [expected],
+            "{source:?} must emit exactly one typed terminal"
+        );
+        assert!(result.analysis.ir.is_none());
+    }
 }

@@ -1,8 +1,12 @@
 use crate::catalog::{Catalog, CatalogName};
 use crate::syntax::TokenKind;
 
+#[path = "filter_for_contract.rs"]
+mod filter_for_contract;
 #[path = "frontend_contract.rs"]
 mod frontend_contract;
+#[path = "graph_element_predicate_contract.rs"]
+mod graph_element_predicate_contract;
 #[path = "graph_model_contract.rs"]
 mod graph_model_contract;
 
@@ -30,8 +34,14 @@ mod match_contract;
 mod node_pattern_contract;
 #[path = "optional_match_contract.rs"]
 mod optional_match_contract;
+#[path = "order_page_contract.rs"]
+mod order_page_contract;
 #[path = "path_pattern_contract.rs"]
 mod path_pattern_contract;
+#[path = "path_search_prefix_contract.rs"]
+mod path_search_prefix_contract;
+#[path = "primitive_result_contract.rs"]
+mod primitive_result_contract;
 #[path = "property_label_expression_contract.rs"]
 mod property_label_expression_contract;
 #[path = "quantified_path_contract.rs"]
@@ -94,10 +104,14 @@ fn node_only_vertical_slice_is_backend_independent() {
             .analysis
             .ir
             .expect("IR")
-            .graphs
+            .matches
             .into_iter()
             .next()
-            .expect("graph")
+            .expect("graph match")
+            .paths
+            .into_iter()
+            .next()
+            .expect("path pattern")
             .elements
             .len(),
         1
@@ -118,9 +132,6 @@ fn graph_filter_vertical_slice_is_backend_independent() {
     );
     assert_eq!(result.parse.tree.rowan_root().text().to_string(), source);
     let ir = result.analysis.ir.expect("IR");
-    assert_eq!(
-        ir.graphs.into_iter().next().expect("graph").elements.len(),
-        3
-    );
+    assert_eq!(ir.matches[0].paths[0].elements.len(), 3);
     assert_eq!(ir.filters.len(), 1);
 }

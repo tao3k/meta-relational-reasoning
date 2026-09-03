@@ -76,10 +76,14 @@ fn inline_edge_where_survives_lossless_cst_ast_and_canonical_ir() {
         .ir
         .expect("canonical inline edge predicate IR");
     let Some(IrPatternElement::Edge(edge)) = ir
-        .graphs
+        .matches
         .into_iter()
         .next()
-        .expect("graph")
+        .expect("graph match")
+        .paths
+        .into_iter()
+        .next()
+        .expect("path pattern")
         .elements
         .into_iter()
         .nth(1)

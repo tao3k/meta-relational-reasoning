@@ -8,10 +8,13 @@ use gql_ast::lower_from_syntax;
 mod ast_performance_scenario;
 
 use ast_performance_scenario::{
-    CATALOG_SOURCE, CHARACTER_SEQUENCE_ESCAPES_SOURCE, GENERAL_LITERALS_EXPANDED_SOURCE,
-    GENERAL_LITERALS_SOURCE, LEXICAL_IDENTIFIERS_SOURCE, LEXICAL_NUMERICS_SOURCE, MAX_TOTAL_MILLIS,
-    MUTATION_SOURCE, NESTED_GRAPH_TYPE_SOURCE, QUERY_SOURCE, REFERENCE_AND_PREDEFINED_SOURCE,
-    SOURCES, VALUE_TYPE_LATTICE_SOURCE, gql_ast_performance_scenario_package,
+    CATALOG_SOURCE, CHARACTER_SEQUENCE_ESCAPES_SOURCE, DYNAMIC_PARAMETERS_SOURCE,
+    FILTER_FOR_SOURCE, GENERAL_LITERALS_EXPANDED_SOURCE, GENERAL_LITERALS_SOURCE,
+    GRAPH_ELEMENT_PREDICATES_SOURCE, ISO_AGGREGATE_FUNCTIONS_SOURCE, LEXICAL_IDENTIFIERS_SOURCE,
+    LEXICAL_NUMERICS_SOURCE, MAX_TOTAL_MILLIS, MUTATION_SOURCE, NESTED_GRAPH_TYPE_SOURCE,
+    ORDER_PAGE_SOURCE, PATH_SEARCH_PREFIXES_SOURCE, PRIMITIVE_RESULT_SOURCE, QUERY_SOURCE,
+    REFERENCE_AND_PREDEFINED_SOURCE, SOURCES, TRUTH_NULL_PREDICATES_SOURCE,
+    VALUE_TYPE_LATTICE_SOURCE, VALUE_TYPE_PREDICATES_SOURCE, gql_ast_performance_scenario_package,
 };
 
 const BASELINE_SOURCES: [&str; 3] = [QUERY_SOURCE, CATALOG_SOURCE, MUTATION_SOURCE];
@@ -75,6 +78,25 @@ fn benchmark_character_sequence_decoder(criterion: &mut Criterion) {
                 black_box(
                     gql_syntax::decode_character_string(black_box(sequence))
                         .expect("benchmark sequence is valid"),
+                );
+            }
+        });
+    });
+    group.finish();
+}
+
+fn benchmark_parameter_decoder(criterion: &mut Criterion) {
+    const PARAMETERS: [&str; 5] = ["$limit", "$42", "$\"MATCH\"", "$`say``hi`", "$@\"raw\\n\""];
+    let bytes = PARAMETERS.iter().map(|value| value.len() as u64).sum();
+    let mut group = criterion.benchmark_group("dynamic-parameter-decoder-v1");
+    configure_group(&mut group);
+    group.throughput(Throughput::Bytes(bytes));
+    group.bench_function("decode-semantic-name", |bencher| {
+        bencher.iter(|| {
+            for parameter in PARAMETERS {
+                black_box(
+                    gql_syntax::decode_parameter_reference(black_box(parameter))
+                        .expect("benchmark parameter is valid"),
                 );
             }
         });
@@ -182,6 +204,61 @@ fn ast_hot_path(criterion: &mut Criterion) {
         CHARACTER_SEQUENCE_ESCAPES_SOURCE,
     );
     benchmark_character_sequence_decoder(criterion);
+    benchmark_single_source(
+        criterion,
+        "dynamic-parameter-specification-v1",
+        "dynamic-parameter-specification-benchmark.gql",
+        DYNAMIC_PARAMETERS_SOURCE,
+    );
+    benchmark_parameter_decoder(criterion);
+    benchmark_single_source(
+        criterion,
+        "truth-null-predicates-v1",
+        "truth-null-predicates-benchmark.gql",
+        TRUTH_NULL_PREDICATES_SOURCE,
+    );
+    benchmark_single_source(
+        criterion,
+        "iso-aggregate-functions-v1",
+        "iso-aggregate-functions-benchmark.gql",
+        ISO_AGGREGATE_FUNCTIONS_SOURCE,
+    );
+    benchmark_single_source(
+        criterion,
+        "value-type-predicates-v1",
+        "value-type-predicates-benchmark.gql",
+        VALUE_TYPE_PREDICATES_SOURCE,
+    );
+    benchmark_single_source(
+        criterion,
+        "graph-element-predicates-v1",
+        "graph-element-predicates-benchmark.gql",
+        GRAPH_ELEMENT_PREDICATES_SOURCE,
+    );
+    benchmark_single_source(
+        criterion,
+        "filter-for-v1",
+        "filter-for-benchmark.gql",
+        FILTER_FOR_SOURCE,
+    );
+    benchmark_single_source(
+        criterion,
+        "primitive-result-v1",
+        "primitive-result-benchmark.gql",
+        PRIMITIVE_RESULT_SOURCE,
+    );
+    benchmark_single_source(
+        criterion,
+        "path-search-prefixes-v1",
+        "path-search-prefixes-benchmark.gql",
+        PATH_SEARCH_PREFIXES_SOURCE,
+    );
+    benchmark_single_source(
+        criterion,
+        "order-page-v1",
+        "order-page-benchmark.gql",
+        ORDER_PAGE_SOURCE,
+    );
 }
 
 criterion_group!(benches, ast_hot_path);

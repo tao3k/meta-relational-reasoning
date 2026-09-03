@@ -1,0 +1,53 @@
+harness = "libtest"
+test = "path_search_prefixes_stay_inside_scenario_budget"
+snapshot = "gql_ast_path_search_prefixes_v1"
+target_total = "400us"
+max_total = "5ms"
+observed_total = "81417ns"
+regression_budget = "750us"
+memory_budget_bytes = 1048576
+observed_memory_bytes = 432
+target_rationale = "One bounded statement exercises the complete graph match, per-path search, traversal uniqueness, path target, and KEEP surface without semantic resolution, backend work, fallback, or runtime grammar dispatch."
+
+[measurement]
+clock = "std::time::Instant"
+statistic = "p95"
+warmup_iterations = 3
+measure_iterations = 25
+total_p50 = "51500ns"
+total_p95 = "81417ns"
+total_max = "225792ns"
+
+[observed_timings]
+ast_lowering = "17959ns"
+parse = "52958ns"
+
+[metrics.source_bytes]
+unit = "bytes"
+kind = "exact"
+target = 152
+observed = 152
+
+[metrics.statement_count]
+unit = "count"
+kind = "exact"
+target = 1
+observed = 1
+
+[metrics.diagnostic_count]
+unit = "count"
+kind = "maximum"
+target = 0
+observed = 0
+
+[metrics.fallback_count]
+unit = "count"
+kind = "exact"
+target = 0
+observed = 0
+
+[metrics.roundtrip_bytes]
+unit = "bytes"
+kind = "exact"
+target = 152
+observed = 152

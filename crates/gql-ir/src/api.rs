@@ -242,6 +242,8 @@ pub struct RecordField {
 pub enum Expression {
     /// Reference to a bound graph or LET value.
     Binding(String),
+    /// Dynamic value supplied through one general parameter reference.
+    Parameter(String),
     /// Boolean literal.
     Boolean(bool),
     /// Null literal.
@@ -286,8 +288,12 @@ pub enum Expression {
     Aggregate {
         /// Canonical aggregate operator.
         function: AggregateFunction,
+        /// Explicit `ALL` or `DISTINCT`; absence preserves the ISO default.
+        quantifier: Option<SetQuantifier>,
         /// Source-ordered aggregate arguments.
         arguments: Vec<Expression>,
+        /// Whether this is the unique `COUNT(*)` row-count form.
+        count_star: bool,
     },
     /// Unary expression.
     Unary {
@@ -314,6 +320,37 @@ pub enum Expression {
         /// Whether `IS NOT LABELED` was requested.
         negated: bool,
     },
+    /// Runtime value-type predicate over one canonical declared type.
+    IsTyped {
+        /// Value expression being tested.
+        operand: Box<Expression>,
+        /// Canonical backend-neutral value-type descriptor.
+        value_type: DeclaredValueType,
+        /// Whether `IS NOT TYPED` / `IS NOT ::` was requested.
+        negated: bool,
+    },
+    /// Whether an edge has a directed orientation.
+    IsDirected {
+        edge: Box<Expression>,
+        negated: bool,
+    },
+    /// Whether a node is the selected endpoint of an edge.
+    IsEndpoint {
+        node: Box<Expression>,
+        edge: Box<Expression>,
+        endpoint: EndpointKind,
+        negated: bool,
+    },
+    /// N-ary identity relation over graph elements in source order.
+    ElementIdentity {
+        kind: ElementIdentityKind,
+        elements: Vec<Expression>,
+    },
+    /// Whether a graph element owns a named property.
+    PropertyExists {
+        element: Box<Expression>,
+        property: String,
+    },
     /// Ordered simple or searched CASE expression.
     Case {
         /// Optional operand for simple CASE; absent for searched CASE.
@@ -325,11 +362,47 @@ pub enum Expression {
     },
 }
 
+/// Canonical graph endpoint role.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum EndpointKind {
+    Source,
+    Destination,
+}
+
+/// Canonical n-ary graph-element identity relation.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ElementIdentityKind {
+    AllDifferent,
+    Same,
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 /// Aggregate operators admitted by the query-syntax MVP.
 pub enum AggregateFunction {
     /// Count rows or non-null argument values.
     Count,
+    Average,
+    Maximum,
+    Minimum,
+    Sum,
+    CollectList,
+    StandardDeviationSample,
+    StandardDeviationPopulation,
+    PercentileContinuous,
+    PercentileDiscrete,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+/// Set quantifier retained by canonical aggregate IR.
+pub enum SetQuantifier {
+    All,
+    Distinct,
+}
+
+impl Default for SetQuantifier {
+    fn default() -> Self {
+        Self::All
+    }
 }
 
 /// Backend-neutral boolean algebra over canonical label names.
@@ -365,6 +438,22 @@ pub enum UnaryOperator {
     Plus,
     /// Numeric negation.
     Negate,
+    /// Null predicate.
+    IsNull,
+    /// Negated null predicate.
+    IsNotNull,
+    /// Truth-value test for true.
+    IsTrue,
+    /// Negated truth-value test for true.
+    IsNotTrue,
+    /// Truth-value test for false.
+    IsFalse,
+    /// Negated truth-value test for false.
+    IsNotFalse,
+    /// Truth-value test for unknown.
+    IsUnknown,
+    /// Negated truth-value test for unknown.
+    IsNotUnknown,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -495,6 +584,8 @@ pub enum Mutation {
 pub struct PathPattern {
     /// Optional name bound to the complete path value.
     pub binding: Option<String>,
+    /// Optional ISO path search and uniqueness prefix.
+    pub prefix: Option<PathPrefix>,
     /// Ordered graph pattern elements.
     pub elements: Vec<GraphPatternElement>,
 }
@@ -502,10 +593,26 @@ pub struct PathPattern {
 #[derive(Clone, Debug, Eq, PartialEq)]
 /// Graph pattern for a query block.
 pub struct GraphPattern {
-    /// Canonical path traversal uniqueness mode.
-    pub mode: PathMode,
     /// Ordered pattern elements in source order.
     pub elements: Vec<GraphPatternElement>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+/// One atomic MATCH operation preserving graph-level and per-path semantics.
+pub struct GraphMatch {
+    /// Optional graph-level element uniqueness mode.
+    pub mode: Option<GraphMatchMode>,
+    /// Source-ordered path patterns evaluated together.
+    pub paths: Vec<PathPattern>,
+    /// Optional preferred path prefix retained by KEEP.
+    pub keep: Option<PathPrefix>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+/// Graph-level element uniqueness mode.
+pub enum GraphMatchMode {
+    RepeatableElements,
+    DifferentEdges,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -522,12 +629,68 @@ pub enum PathMode {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+/// Canonical backend-neutral path prefix.
+pub struct PathPrefix {
+    pub search: Option<PathSearch>,
+    pub mode: Option<PathMode>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+/// Canonical path search strategy.
+pub enum PathSearch {
+    All,
+    Any {
+        count: Option<NonNegativeIntegerSpecification>,
+    },
+    AllShortest,
+    AnyShortest,
+    Shortest {
+        count: NonNegativeIntegerSpecification,
+    },
+    ShortestGroups {
+        count: Option<NonNegativeIntegerSpecification>,
+    },
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+/// Canonical non-negative integer specification without backend authority.
+pub enum NonNegativeIntegerSpecification {
+    Literal(u64),
+    Parameter(String),
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 /// A semantically resolved LET binding.
 pub struct LetBinding {
     /// Binding identity.
     pub binding: Binding,
     /// Bound value expression.
     pub value: Expression,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+/// One source-ordered ISO FOR expansion in canonical form.
+pub struct ForBinding {
+    /// Element binding introduced by FOR.
+    pub binding: Binding,
+    /// Canonical collection expression evaluated before the binding is introduced.
+    pub source: Expression,
+    /// Optional position binding introduced by WITH ORDINALITY or WITH OFFSET.
+    pub position: Option<ForPositionBinding>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+/// Canonical position binding for one FOR expansion.
+pub struct ForPositionBinding {
+    pub kind: ForPositionKind,
+    pub binding: Binding,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+/// Position convention retained from the ISO source statement.
+pub enum ForPositionKind {
+    Ordinality,
+    Offset,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -557,13 +720,22 @@ pub struct SortKey {
     pub expression: Expression,
     /// Sort direction.
     pub direction: SortDirection,
+    /// Explicit null placement, or `None` when the ISO default applies.
+    pub null_ordering: Option<NullOrdering>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+/// Canonical null placement for one ordering key.
+pub enum NullOrdering {
+    First,
+    Last,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 /// One atomic null-preserving OPTIONAL MATCH operation.
 pub struct OptionalMatch {
-    /// Graph-pattern components evaluated together by this optional operation.
-    pub graphs: Vec<GraphPattern>,
+    /// Complete graph match evaluated atomically by this optional operation.
+    pub graph_match: GraphMatch,
     /// Predicate scoped to the optional operation rather than the outer query filter.
     pub predicate: Option<Expression>,
 }
@@ -585,26 +757,32 @@ pub struct SetOperation {
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 /// Canonical graph-semantic query block before backend planning.
 pub struct QueryBlock {
-    /// Mandatory MATCH graph patterns in source order.
-    pub graphs: Vec<GraphPattern>,
+    /// Mandatory MATCH operations in source order.
+    pub matches: Vec<GraphMatch>,
     /// Atomic OPTIONAL MATCH operations in source order.
     pub optional_matches: Vec<OptionalMatch>,
     /// WHERE/filter expressions in source order.
     pub filters: Vec<Expression>,
     /// LET bindings in source order.
     pub let_bindings: Vec<LetBinding>,
+    /// FOR expansions in source order.
+    pub for_bindings: Vec<ForBinding>,
     /// Data modifications in source order.
     pub mutations: Vec<Mutation>,
     /// RETURN projection in source order.
     pub projection: Vec<Projection>,
+    /// Set semantics applied to the complete result projection.
+    pub projection_quantifier: SetQuantifier,
+    /// Whether the query terminates with FINISH and therefore returns no binding table.
+    pub is_finish: bool,
     /// GROUP BY expressions in source order.
     pub group_by: Vec<Expression>,
     /// Typed set operations and complete right branches in source order.
     pub set_operations: Vec<SetOperation>,
     /// Maximum number of rows preserved by this query block.
-    pub limit: Option<u64>,
+    pub limit: Option<NonNegativeIntegerSpecification>,
     /// Ordering keys evaluated before pagination.
     pub order_by: Vec<SortKey>,
     /// Number of rows skipped before applying the limit.
-    pub offset: Option<u64>,
+    pub offset: Option<NonNegativeIntegerSpecification>,
 }

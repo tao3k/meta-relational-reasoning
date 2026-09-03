@@ -1,7 +1,12 @@
 use crate::Compiler;
-use crate::ast::{Expression as AstExpression, QueryClause, Statement};
+use crate::ast::{
+    AggregateFunction as AstAggregateFunction, Expression as AstExpression, QueryClause,
+    SetQuantifier as AstSetQuantifier, Statement,
+};
 use crate::catalog::{Catalog, CatalogName};
-use crate::ir::{AggregateFunction, Expression as IrExpression, SetOperator, SortDirection};
+use crate::ir::{
+    AggregateFunction, Expression as IrExpression, SetOperator, SetQuantifier, SortDirection,
+};
 use crate::syntax::{SyntaxElementKind, SyntaxKind, SyntaxNode};
 
 fn node_receipt(node: &SyntaxNode, source: &str, output: &mut Vec<(SyntaxKind, String)>) {
@@ -51,10 +56,17 @@ fn complete_query_pipeline_reaches_one_canonical_branch() {
         [crate::ir::SortKey {
             expression: IrExpression::Binding(name),
             direction: SortDirection::Descending,
+            null_ordering: None,
         }] if name == "RANK"
     ));
-    assert_eq!(ir.offset, Some(2));
-    assert_eq!(ir.limit, Some(10));
+    assert_eq!(
+        ir.offset,
+        Some(crate::ir::NonNegativeIntegerSpecification::Literal(2))
+    );
+    assert_eq!(
+        ir.limit,
+        Some(crate::ir::NonNegativeIntegerSpecification::Literal(10))
+    );
 
     let Some(Statement::Query(query)) = result.statement else {
         panic!("query AST must be admitted");
@@ -135,6 +147,7 @@ fn grouping_aggregation_ordering_and_pagination_share_one_result_scope() {
         IrExpression::Aggregate {
             function: AggregateFunction::Count,
             ref arguments,
+            ..
         } if arguments == &[IrExpression::Binding("N".into())]
     ));
     assert!(matches!(
@@ -142,9 +155,213 @@ fn grouping_aggregation_ordering_and_pagination_share_one_result_scope() {
         [crate::ir::SortKey {
             expression: IrExpression::Binding(name),
             direction: SortDirection::Descending,
+            null_ordering: None,
         }] if name == "TOTAL"
     ));
-    assert_eq!((ir.offset, ir.limit), (Some(1), Some(10)));
+    assert_eq!(
+        (ir.offset, ir.limit),
+        (
+            Some(crate::ir::NonNegativeIntegerSpecification::Literal(1)),
+            Some(crate::ir::NonNegativeIntegerSpecification::Literal(10))
+        )
+    );
+}
+
+#[test]
+fn iso_aggregate_function_family_crosses_lossless_cst_and_canonical_ir() {
+    let source = concat!(
+        "MATCH (n) RETURN COUNT(*) AS rows, COUNT(DISTINCT n) AS distinct_nodes, ",
+        "AVG(ALL n.score) AS average_score, MAX(n.score) AS maximum_score, ",
+        "MIN(n.score) AS minimum_score, SUM(n.score) AS total_score, ",
+        "COLLECT_LIST(n.score) AS scores, STDDEV_SAMP(n.score) AS sample_deviation, ",
+        "STDDEV_POP(n.score) AS population_deviation, ",
+        "PERCENTILE_CONT(DISTINCT n.score, 0.5) AS continuous_median, ",
+        "PERCENTILE_DISC(ALL n.score, 1) AS discrete_maximum"
+    );
+    let result = Compiler.compile("iso-aggregate-family.gql", source, &empty_catalog());
+
+    assert_eq!(result.parse.tree.rowan_root().text().to_string(), source);
+    assert!(
+        result.parse.diagnostics.is_empty(),
+        "aggregate grammar must be admitted losslessly: {:?}",
+        result.parse.diagnostics
+    );
+    assert!(
+        result.analysis.diagnostics.is_empty(),
+        "aggregate semantics must be admitted: {:?}",
+        result.analysis.diagnostics
+    );
+    assert!(
+        result.analysis.ir.is_some(),
+        "aggregate IR must be complete"
+    );
+
+    let mut cst_nodes = Vec::new();
+    node_receipt(&result.parse.tree.root(), source, &mut cst_nodes);
+    assert_eq!(
+        cst_nodes
+            .iter()
+            .filter(|(kind, _)| *kind == SyntaxKind::AggregateFunctionExpression)
+            .count(),
+        11
+    );
+    assert_eq!(
+        cst_nodes
+            .iter()
+            .filter(|(kind, _)| *kind == SyntaxKind::SetQuantifier)
+            .count(),
+        4
+    );
+
+    let Some(Statement::Query(query)) = &result.statement else {
+        panic!("aggregate query AST must be admitted");
+    };
+    let Some(QueryClause::Return { projections, .. }) = query.clauses.last() else {
+        panic!("aggregate RETURN clause must be retained");
+    };
+    assert_eq!(projections.len(), 11);
+    let ast_functions = projections
+        .iter()
+        .map(|projection| match &projection.expression {
+            AstExpression::AggregateCall {
+                function,
+                quantifier,
+                arguments,
+                count_star,
+                span,
+            } => {
+                assert!(source[span.start as usize..span.end as usize].contains('('));
+                (*function, *quantifier, arguments.len(), *count_star)
+            }
+            expression => panic!("expected typed aggregate call, got {expression:?}"),
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(
+        ast_functions,
+        vec![
+            (AstAggregateFunction::Count, None, 0, true),
+            (
+                AstAggregateFunction::Count,
+                Some(AstSetQuantifier::Distinct),
+                1,
+                false,
+            ),
+            (
+                AstAggregateFunction::Average,
+                Some(AstSetQuantifier::All),
+                1,
+                false,
+            ),
+            (AstAggregateFunction::Maximum, None, 1, false),
+            (AstAggregateFunction::Minimum, None, 1, false),
+            (AstAggregateFunction::Sum, None, 1, false),
+            (AstAggregateFunction::CollectList, None, 1, false),
+            (
+                AstAggregateFunction::StandardDeviationSample,
+                None,
+                1,
+                false,
+            ),
+            (
+                AstAggregateFunction::StandardDeviationPopulation,
+                None,
+                1,
+                false,
+            ),
+            (
+                AstAggregateFunction::PercentileContinuous,
+                Some(AstSetQuantifier::Distinct),
+                2,
+                false,
+            ),
+            (
+                AstAggregateFunction::PercentileDiscrete,
+                Some(AstSetQuantifier::All),
+                2,
+                false,
+            ),
+        ]
+    );
+
+    let ir = result.analysis.ir.expect("aggregate IR");
+    let ir_functions = ir
+        .projection
+        .iter()
+        .map(|projection| match &projection.expression {
+            IrExpression::Aggregate {
+                function,
+                quantifier,
+                arguments,
+                count_star,
+            } => (*function, *quantifier, arguments.len(), *count_star),
+            expression => panic!("expected canonical aggregate IR, got {expression:?}"),
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(ir_functions[0], (AggregateFunction::Count, None, 0, true));
+    assert_eq!(
+        ir_functions[1],
+        (
+            AggregateFunction::Count,
+            Some(SetQuantifier::Distinct),
+            1,
+            false,
+        )
+    );
+    assert_eq!(
+        ir_functions[9],
+        (
+            AggregateFunction::PercentileContinuous,
+            Some(SetQuantifier::Distinct),
+            2,
+            false,
+        )
+    );
+    assert_eq!(
+        ir_functions[10],
+        (
+            AggregateFunction::PercentileDiscrete,
+            Some(SetQuantifier::All),
+            2,
+            false,
+        )
+    );
+}
+
+#[test]
+fn malformed_and_non_numeric_aggregates_fail_closed_once() {
+    let malformed = Compiler.compile(
+        "malformed-percentile.gql",
+        "MATCH (n) RETURN PERCENTILE_CONT(n.score) AS median",
+        &empty_catalog(),
+    );
+    assert!(malformed.statement.is_none());
+    assert!(malformed.analysis.ir.is_none());
+    assert_eq!(
+        malformed
+            .parse
+            .diagnostics
+            .iter()
+            .map(|diagnostic| diagnostic.code)
+            .collect::<Vec<_>>(),
+        ["GQL-PARSE-AGGREGATE-FUNCTION-SYNTAX"]
+    );
+
+    let non_numeric = Compiler.compile(
+        "non-numeric-aggregate.gql",
+        "MATCH (n) RETURN SUM('Ada') AS invalid_total",
+        &empty_catalog(),
+    );
+    assert!(non_numeric.statement.is_some());
+    assert!(non_numeric.analysis.ir.is_none());
+    assert_eq!(
+        non_numeric
+            .analysis
+            .diagnostics
+            .iter()
+            .map(|diagnostic| diagnostic.code)
+            .collect::<Vec<_>>(),
+        ["GQL-SEMA-AGGREGATE-NUMERIC-OPERAND"]
+    );
 }
 
 #[test]

@@ -1,8 +1,7 @@
 use crate::analyze;
 use gql_ast::{
-    BinaryOperator, EdgeDirection, EdgePattern, Expression, GraphPattern, Identifier,
-    IdentifierForm, MatchClause, NodePattern, PathMode, PathPattern, PatternElement, Query,
-    QueryClause, Statement,
+    BinaryOperator, EdgeDirection, EdgePattern, Expression, Identifier, IdentifierForm,
+    MatchClause, NodePattern, PathPattern, PatternElement, Query, QueryClause, Statement,
 };
 use gql_catalog::{Catalog, CatalogName};
 use gql_ir::{BinaryOperator as IrBinaryOperator, Expression as IrExpression, GraphPatternElement};
@@ -52,6 +51,8 @@ fn query(clauses: Vec<QueryClause>) -> Statement {
 macro_rules! return_clause {
     (expressions: $expressions:expr $(,)?) => {
         QueryClause::Return {
+            quantifier: None,
+            all_bindings: false,
             projections: $expressions
                 .into_iter()
                 .map(|expression| gql_ast::ReturnProjection {
@@ -64,11 +65,16 @@ macro_rules! return_clause {
     };
     (projections: $projections:expr $(,)?) => {
         QueryClause::Return {
+            quantifier: None,
+            all_bindings: false,
             projections: $projections,
             span: Span::default(),
         }
     };
 }
+
+#[path = "path_contracts.rs"]
+mod path_contracts;
 
 macro_rules! let_clause {
     (binding: $binding:expr, value: $value:expr $(,)?) => {
@@ -90,11 +96,14 @@ mod collection_membership;
 fn node_only_match_is_valid_without_relation_catalog_entries() {
     let statement = query(vec![
         QueryClause::Match(MatchClause {
-            mode: PathMode::Walk,
-            patterns: vec![GraphPattern {
+            mode: None,
+            patterns: vec![PathPattern {
+                binding: None,
+                prefix: None,
                 elements: vec![node("n")],
                 span: Span::default(),
             }],
+            keep: None,
             span: Span::default(),
         }),
         return_clause! { expressions: vec![Expression::Name(identifier("n"))],
@@ -109,7 +118,8 @@ fn node_only_match_is_valid_without_relation_catalog_entries() {
     );
     let ir = result.ir.expect("node-only query should produce IR");
     assert!(matches!(
-        ir.graphs
+        ir.matches[0]
+            .paths
             .first()
             .expect("graph pattern")
             .elements
@@ -125,11 +135,14 @@ fn node_only_match_is_valid_without_relation_catalog_entries() {
 fn return_projection_alias_reaches_canonical_ir() {
     let statement = query(vec![
         QueryClause::Match(MatchClause {
-            mode: PathMode::Walk,
-            patterns: vec![GraphPattern {
+            mode: None,
+            patterns: vec![PathPattern {
+                binding: None,
+                prefix: None,
                 elements: vec![node("n")],
                 span: Span::default(),
             }],
+            keep: None,
             span: Span::default(),
         }),
         return_clause! { projections: vec![gql_ast::ReturnProjection {
@@ -181,11 +194,14 @@ fn duplicate_return_projection_alias_is_rejected() {
 fn union_query_has_independent_graph_native_branches() {
     let statement = query(vec![
         QueryClause::Match(MatchClause {
-            mode: PathMode::Walk,
-            patterns: vec![GraphPattern {
+            mode: None,
+            patterns: vec![PathPattern {
+                binding: None,
+                prefix: None,
                 elements: vec![node("a")],
                 span: Span::default(),
             }],
+            keep: None,
             span: Span::default(),
         }),
         return_clause! { expressions: vec![Expression::Name(identifier("a"))],
@@ -194,11 +210,14 @@ fn union_query_has_independent_graph_native_branches() {
             span: Span::default(),
         },
         QueryClause::Match(MatchClause {
-            mode: PathMode::Walk,
-            patterns: vec![GraphPattern {
+            mode: None,
+            patterns: vec![PathPattern {
+                binding: None,
+                prefix: None,
                 elements: vec![node("b")],
                 span: Span::default(),
             }],
+            keep: None,
             span: Span::default(),
         }),
         return_clause! { expressions: vec![Expression::Name(identifier("b"))],
@@ -267,11 +286,14 @@ fn union_requires_matching_projection_arity() {
 fn union_does_not_leak_bindings_between_branches() {
     let statement = query(vec![
         QueryClause::Match(MatchClause {
-            mode: PathMode::Walk,
-            patterns: vec![GraphPattern {
+            mode: None,
+            patterns: vec![PathPattern {
+                binding: None,
+                prefix: None,
                 elements: vec![node("a")],
                 span: Span::default(),
             }],
+            keep: None,
             span: Span::default(),
         }),
         return_clause! { expressions: vec![Expression::Name(identifier("a"))],
@@ -298,7 +320,7 @@ fn limit_reaches_branch_local_canonical_ir() {
         return_clause! { expressions: vec![Expression::Integer(1, Span::default())],
         },
         QueryClause::Limit {
-            value: Some(10),
+            value: gql_ast::NonNegativeIntegerSpecification::Literal(10),
             span: Span::default(),
         },
         QueryClause::Union {
@@ -307,7 +329,7 @@ fn limit_reaches_branch_local_canonical_ir() {
         return_clause! { expressions: vec![Expression::Integer(2, Span::default())],
         },
         QueryClause::Limit {
-            value: Some(5),
+            value: gql_ast::NonNegativeIntegerSpecification::Literal(5),
             span: Span::default(),
         },
     ]);
@@ -318,39 +340,43 @@ fn limit_reaches_branch_local_canonical_ir() {
         result.diagnostics
     );
     let ir = result.ir.expect("LIMIT IR");
-    assert_eq!(ir.limit, Some(10));
-    assert_eq!(ir.set_operations[0].right.limit, Some(5));
+    assert_eq!(
+        ir.limit,
+        Some(gql_ir::NonNegativeIntegerSpecification::Literal(10))
+    );
+    assert_eq!(
+        ir.set_operations[0].right.limit,
+        Some(gql_ir::NonNegativeIntegerSpecification::Literal(5))
+    );
 }
 
 #[test]
-fn limit_rejects_zero_and_duplicates() {
+fn limit_accepts_zero_and_rejects_duplicates() {
     let statement = query(vec![
+        return_clause! { expressions: vec![Expression::Integer(1, Span::default())],
+        },
         QueryClause::Limit {
-            value: Some(0),
+            value: gql_ast::NonNegativeIntegerSpecification::Literal(0),
             span: Span::default(),
         },
         QueryClause::Limit {
-            value: Some(1),
+            value: gql_ast::NonNegativeIntegerSpecification::Literal(1),
             span: Span::default(),
         },
         QueryClause::Limit {
-            value: Some(2),
+            value: gql_ast::NonNegativeIntegerSpecification::Literal(2),
             span: Span::default(),
         },
     ]);
     let result = analyze(&statement, &catalog());
     assert!(result.ir.is_none());
-    assert!(
+    assert_eq!(
         result
             .diagnostics
             .iter()
-            .any(|diagnostic| { diagnostic.code == "GQL-SEMA-LIMIT-NONPOSITIVE" })
-    );
-    assert!(
-        result
-            .diagnostics
-            .iter()
-            .any(|diagnostic| { diagnostic.code == "GQL-SEMA-DUPLICATE-LIMIT" })
+            .map(|diagnostic| diagnostic.code)
+            .collect::<Vec<_>>(),
+        ["GQL-SEMA-DUPLICATE-LIMIT", "GQL-SEMA-DUPLICATE-LIMIT"]
     );
 }
 
@@ -358,11 +384,14 @@ fn limit_rejects_zero_and_duplicates() {
 fn order_by_reaches_branch_local_canonical_ir() {
     let statement = query(vec![
         QueryClause::Match(MatchClause {
-            mode: PathMode::Walk,
-            patterns: vec![GraphPattern {
+            mode: None,
+            patterns: vec![PathPattern {
+                binding: None,
+                prefix: None,
                 elements: vec![node("n")],
                 span: Span::default(),
             }],
+            keep: None,
             span: Span::default(),
         }),
         return_clause! { expressions: vec![Expression::Name(identifier("n"))],
@@ -370,7 +399,8 @@ fn order_by_reaches_branch_local_canonical_ir() {
         QueryClause::OrderBy {
             keys: vec![gql_ast::SortKey {
                 expression: Expression::Name(identifier("n")),
-                direction: gql_ast::SortDirection::Descending,
+                direction: Some(gql_ast::SortDirection::Descending),
+                null_ordering: None,
             }],
             span: Span::default(),
         },
@@ -409,11 +439,11 @@ fn offset_reaches_branch_local_canonical_ir() {
         return_clause! { expressions: vec![Expression::Integer(1, Span::default())],
         },
         QueryClause::Limit {
-            value: Some(10),
+            value: gql_ast::NonNegativeIntegerSpecification::Literal(10),
             span: Span::default(),
         },
         QueryClause::Offset {
-            value: Some(2),
+            value: gql_ast::NonNegativeIntegerSpecification::Literal(2),
             span: Span::default(),
         },
     ]);
@@ -423,18 +453,21 @@ fn offset_reaches_branch_local_canonical_ir() {
         "diagnostics: {:?}",
         result.diagnostics
     );
-    assert_eq!(result.ir.expect("OFFSET IR").offset, Some(2));
+    assert_eq!(
+        result.ir.expect("OFFSET IR").offset,
+        Some(gql_ir::NonNegativeIntegerSpecification::Literal(2))
+    );
 }
 
 #[test]
 fn offset_requires_limit_and_rejects_duplicates() {
     let statement = query(vec![
         QueryClause::Offset {
-            value: Some(0),
+            value: gql_ast::NonNegativeIntegerSpecification::Literal(0),
             span: Span::default(),
         },
         QueryClause::Offset {
-            value: Some(1),
+            value: gql_ast::NonNegativeIntegerSpecification::Literal(1),
             span: Span::default(),
         },
     ]);
@@ -458,11 +491,14 @@ fn offset_requires_limit_and_rejects_duplicates() {
 fn graph_pattern_filter_and_projection_are_canonical_ir() {
     let statement = query(vec![
         QueryClause::Match(MatchClause {
-            mode: PathMode::Walk,
-            patterns: vec![GraphPattern {
+            mode: None,
+            patterns: vec![PathPattern {
+                binding: None,
+                prefix: None,
                 elements: vec![node("a"), edge("CALLS"), node("b")],
                 span: Span::default(),
             }],
+            keep: None,
             span: Span::default(),
         }),
         QueryClause::Where {
@@ -485,9 +521,9 @@ fn graph_pattern_filter_and_projection_are_canonical_ir() {
     );
     let ir = result.ir.expect("graph query should produce IR");
     assert_eq!(
-        ir.graphs
-            .into_iter()
-            .next()
+        ir.matches[0]
+            .paths
+            .first()
             .expect("graph pattern")
             .elements
             .len(),
@@ -507,11 +543,14 @@ fn graph_pattern_filter_and_projection_are_canonical_ir() {
 fn let_binding_is_preserved_as_semantic_ir() {
     let statement = query(vec![
         QueryClause::Match(MatchClause {
-            mode: PathMode::Walk,
-            patterns: vec![GraphPattern {
+            mode: None,
+            patterns: vec![PathPattern {
+                binding: None,
+                prefix: None,
                 elements: vec![node("n")],
                 span: Span::default(),
             }],
+            keep: None,
             span: Span::default(),
         }),
         let_clause! { binding: identifier("limit"),
@@ -551,11 +590,14 @@ fn let_binding_is_preserved_as_semantic_ir() {
 fn unresolved_expression_binding_is_rejected_without_backend_lookup() {
     let statement = query(vec![
         QueryClause::Match(MatchClause {
-            mode: PathMode::Walk,
-            patterns: vec![GraphPattern {
+            mode: None,
+            patterns: vec![PathPattern {
+                binding: None,
+                prefix: None,
                 elements: vec![node("n")],
                 span: Span::default(),
             }],
+            keep: None,
             span: Span::default(),
         }),
         QueryClause::Where {
@@ -582,11 +624,14 @@ fn property_access_and_scalar_literals_lower_to_graph_ir() {
     };
     let statement = query(vec![
         QueryClause::Match(MatchClause {
-            mode: PathMode::Walk,
-            patterns: vec![GraphPattern {
+            mode: None,
+            patterns: vec![PathPattern {
+                binding: None,
+                prefix: None,
                 elements: vec![node("n")],
                 span: Span::default(),
             }],
+            keep: None,
             span: Span::default(),
         }),
         QueryClause::Where {
@@ -648,165 +693,6 @@ fn decimal_literal_preserves_decimal_value_type_in_ir() {
             alias: None,
             value_type: gql_types::ValueType::Decimal,
         }]
-    );
-}
-
-#[test]
-fn named_path_binding_has_path_value_semantics() {
-    let statement = query(vec![
-        QueryClause::Match(MatchClause {
-            mode: PathMode::Walk,
-            patterns: vec![GraphPattern {
-                elements: vec![PatternElement::Path(PathPattern {
-                    binding: Some(identifier("p")),
-                    elements: vec![node("a"), edge("CALLS"), node("b")],
-                    span: Span::default(),
-                })],
-                span: Span::default(),
-            }],
-            span: Span::default(),
-        }),
-        return_clause! { expressions: vec![Expression::Name(identifier("p"))],
-        },
-    ]);
-
-    let result = analyze(&statement, &catalog());
-    assert!(
-        result.diagnostics.is_empty(),
-        "diagnostics: {:?}",
-        result.diagnostics
-    );
-    let ir = result.ir.expect("named path query should produce IR");
-    assert!(matches!(
-        ir.graphs.first().expect("graph pattern").elements.as_slice(),
-        [GraphPatternElement::Path(path)]
-            if path.binding.as_deref() == Some("P") && path.elements.len() == 3
-    ));
-    assert_eq!(
-        ir.projection,
-        vec![gql_ir::Projection {
-            expression: IrExpression::Binding("P".into()),
-            alias: None,
-            value_type: gql_types::ValueType::Path,
-        }]
-    );
-}
-
-#[test]
-fn bounded_path_quantifier_reaches_graph_ir() {
-    let statement = query(vec![
-        QueryClause::Match(MatchClause {
-            mode: PathMode::Walk,
-            patterns: vec![GraphPattern {
-                elements: vec![
-                    node("a"),
-                    PatternElement::Edge(EdgePattern {
-                        binding: None,
-                        labels: vec![identifier("CALLS")],
-                        properties: Vec::new(),
-                        predicate: None,
-                        direction: EdgeDirection::Out,
-                        quantifier: Some(gql_ast::PathQuantifier {
-                            min: 1,
-                            max: Some(3),
-                            span: Span::default(),
-                        }),
-                        span: Span::default(),
-                    }),
-                    node("b"),
-                ],
-                span: Span::default(),
-            }],
-            span: Span::default(),
-        }),
-        return_clause! { expressions: vec![Expression::Name(identifier("b"))],
-        },
-    ]);
-
-    let result = analyze(&statement, &catalog());
-    assert!(
-        result.diagnostics.is_empty(),
-        "diagnostics: {:?}",
-        result.diagnostics
-    );
-    let ir = result.ir.expect("quantified query should produce IR");
-    assert!(matches!(
-        ir.graphs.first().expect("graph pattern").elements.as_slice(),
-        [
-            GraphPatternElement::Node(_),
-            GraphPatternElement::Edge(edge),
-            GraphPatternElement::Node(_)
-        ] if edge.quantifier
-            .as_ref()
-            .map(|quantifier| (quantifier.min, quantifier.max))
-            == Some((1, Some(3)))
-    ));
-}
-
-#[test]
-fn optional_match_preserves_one_group_and_exposes_new_binding() {
-    let statement = query(vec![
-        QueryClause::Match(MatchClause {
-            mode: PathMode::Walk,
-            patterns: vec![GraphPattern {
-                elements: vec![node("a")],
-                span: Span::default(),
-            }],
-            span: Span::default(),
-        }),
-        QueryClause::OptionalMatch(MatchClause {
-            mode: PathMode::Walk,
-            patterns: vec![GraphPattern {
-                elements: vec![node("a"), edge("CALLS"), node("b")],
-                span: Span::default(),
-            }],
-            span: Span::default(),
-        }),
-        return_clause! { expressions: vec![Expression::Name(identifier("b"))],
-        },
-    ]);
-
-    let result = analyze(&statement, &catalog());
-    assert!(
-        result.diagnostics.is_empty(),
-        "diagnostics: {:?}",
-        result.diagnostics
-    );
-    let ir = result.ir.expect("optional query should produce IR");
-    assert_eq!(ir.optional_matches.len(), 1);
-    assert_eq!(ir.optional_matches[0].graphs.len(), 1);
-    assert_eq!(
-        ir.projection,
-        vec![gql_ir::Projection {
-            expression: IrExpression::Binding("B".into()),
-            alias: None,
-            value_type: gql_types::ValueType::Node,
-        }]
-    );
-
-    let standalone = analyze(
-        &query(vec![
-            QueryClause::OptionalMatch(MatchClause {
-                mode: PathMode::Walk,
-                patterns: vec![GraphPattern {
-                    elements: vec![node("a")],
-                    span: Span::default(),
-                }],
-                span: Span::default(),
-            }),
-            return_clause! { expressions: vec![Expression::Name(identifier("a"))],
-            },
-        ]),
-        &catalog(),
-    );
-    assert!(standalone.diagnostics.is_empty());
-    assert_eq!(
-        standalone
-            .ir
-            .expect("standalone optional MATCH")
-            .optional_matches
-            .len(),
-        1
     );
 }
 

@@ -71,10 +71,14 @@ fn every_quantifier_form_reaches_the_same_canonical_bounds() {
 
         let ir = result.analysis.ir.expect("canonical quantified-path IR");
         let Some(IrPatternElement::Edge(edge)) = ir
-            .graphs
+            .matches
             .into_iter()
             .next()
-            .expect("graph")
+            .expect("graph match")
+            .paths
+            .into_iter()
+            .next()
+            .expect("path pattern")
             .elements
             .into_iter()
             .nth(1)

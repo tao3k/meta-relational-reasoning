@@ -1,0 +1,11 @@
+id = "graph-element-predicates-v1"
+title = "ISO GQL graph-element predicate hot path"
+policy_ids = ["RUST-AGENT-GQL-AST-PERF-001"]
+agent_goal = "Parse and lower the complete directed, endpoint, identity, and property-existence predicate family with zero fallback."
+reference_repositories = ["opengql/grammar", "rust-analyzer/rowan"]
+reference_patterns = [
+  "Gerbil AOT owns all graph-element predicate shapes and typed recovery",
+  "The Rowan parser preserves contextual graph words and n-ary source order",
+  "AST lowering retains element roles, property identity, negation, and source spans",
+]
+inputs = "inputs"

@@ -29,7 +29,8 @@ use gql_ir::{
 use gql_source::Diagnostic;
 use gql_types::ValueType;
 
-use crate::api::{Analysis, build_graph_pattern, lower_expression, register_pattern_bindings};
+use crate::api::{Analysis, build_graph_pattern, lower_expression};
+use crate::binding_analysis::register_pattern_bindings;
 
 pub(crate) fn analyze_non_query_statement(
     statement: &Statement,
@@ -57,9 +58,7 @@ pub(crate) fn analyze_data_clause(
             }
             let patterns = patterns
                 .iter()
-                .map(|pattern| {
-                    build_graph_pattern(pattern, gql_ast::PathMode::Walk, bindings, diagnostics)
-                })
+                .map(|pattern| build_graph_pattern(pattern, bindings, diagnostics))
                 .collect();
             block.mutations.push(IrMutation::Insert { patterns });
         }
@@ -522,7 +521,7 @@ fn lower_graph_type_properties(
         .collect()
 }
 
-fn lower_declared_value_type(
+pub(crate) fn lower_declared_value_type(
     value_type: &AstPropertyValueType,
     diagnostics: &mut Vec<Diagnostic>,
 ) -> DeclaredValueType {

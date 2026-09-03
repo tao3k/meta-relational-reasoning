@@ -2,7 +2,7 @@
 
 use std::collections::HashMap;
 
-use gql_ast::{BinaryOperator, Expression, UnaryOperator};
+use gql_ast::{AggregateFunction, BinaryOperator, Expression, UnaryOperator};
 use gql_types::ValueType;
 
 pub(super) fn expression_type(
@@ -11,6 +11,7 @@ pub(super) fn expression_type(
 ) -> Option<ValueType> {
     match expression {
         Expression::Name(identifier) => bindings.get(&identifier.canonical_text()).cloned(),
+        Expression::Parameter(_) => Some(ValueType::Any),
         Expression::Boolean(_, _) => Some(ValueType::Boolean),
         Expression::Null(_) => Some(ValueType::Null),
         Expression::String(_) => Some(ValueType::String),
@@ -25,14 +26,30 @@ pub(super) fn expression_type(
         Expression::List(_, _) => Some(ValueType::List),
         Expression::Record(_, _) => Some(ValueType::Record),
         Expression::Subscript { .. } | Expression::PropertyAccess { .. } => Some(ValueType::Any),
-        Expression::FunctionCall { name, .. } if name.canonical_text() == "COUNT" => {
-            Some(ValueType::Integer)
-        }
+        Expression::AggregateCall { function, .. } => Some(match function {
+            AggregateFunction::Count => ValueType::Integer,
+            AggregateFunction::CollectList => ValueType::List,
+            AggregateFunction::Average
+            | AggregateFunction::StandardDeviationSample
+            | AggregateFunction::StandardDeviationPopulation
+            | AggregateFunction::PercentileContinuous
+            | AggregateFunction::PercentileDiscrete => ValueType::Float,
+            AggregateFunction::Maximum | AggregateFunction::Minimum | AggregateFunction::Sum => {
+                ValueType::Any
+            }
+        }),
         Expression::FunctionCall { .. } => Some(ValueType::Any),
         Expression::Unary { operator, operand } => match operator {
             UnaryOperator::Not => Some(ValueType::Boolean),
             UnaryOperator::Plus | UnaryOperator::Negate => expression_type(operand, bindings),
         },
+        Expression::NullPredicate { .. }
+        | Expression::TruthPredicate { .. }
+        | Expression::ValueTypePredicate { .. }
+        | Expression::DirectedPredicate { .. }
+        | Expression::EndpointPredicate { .. }
+        | Expression::ElementIdentityPredicate { .. }
+        | Expression::PropertyExistsPredicate { .. } => Some(ValueType::Boolean),
         Expression::Binary {
             operator,
             left,

@@ -28,10 +28,14 @@ fn compiler_preserves_rowan_source_for_node_only_vertical_slice() {
         .ir
         .expect("node-only query should produce IR");
     assert_eq!(
-        ir.graphs
+        ir.matches
             .into_iter()
             .next()
-            .expect("graph pattern")
+            .expect("graph match")
+            .paths
+            .into_iter()
+            .next()
+            .expect("path pattern")
             .elements
             .len(),
         1
@@ -149,10 +153,14 @@ fn compiler_preserves_graph_filter_and_projection_vertical_slice() {
     assert_eq!(result.parse.tree.rowan_root().text().to_string(), source);
     let ir = result.analysis.ir.expect("graph query should produce IR");
     assert_eq!(
-        ir.graphs
+        ir.matches
             .into_iter()
             .next()
-            .expect("graph pattern")
+            .expect("graph match")
+            .paths
+            .into_iter()
+            .next()
+            .expect("path pattern")
             .elements
             .len(),
         3
@@ -285,7 +293,10 @@ fn compiler_lowers_limit_to_canonical_ir() {
         result.analysis.diagnostics
     );
     assert_eq!(result.parse.tree.rowan_root().text().to_string(), source);
-    assert_eq!(result.analysis.ir.expect("LIMIT IR").limit, Some(10));
+    assert_eq!(
+        result.analysis.ir.expect("LIMIT IR").limit,
+        Some(gql_ir::NonNegativeIntegerSpecification::Literal(10))
+    );
 }
 
 #[test]
@@ -324,5 +335,8 @@ fn compiler_lowers_offset_to_canonical_ir() {
         result.analysis.diagnostics
     );
     assert_eq!(result.parse.tree.rowan_root().text().to_string(), source);
-    assert_eq!(result.analysis.ir.expect("OFFSET IR").offset, Some(2));
+    assert_eq!(
+        result.analysis.ir.expect("OFFSET IR").offset,
+        Some(gql_ir::NonNegativeIntegerSpecification::Literal(2))
+    );
 }

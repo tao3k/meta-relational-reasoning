@@ -116,15 +116,28 @@ pub enum QueryClause {
         bindings: Vec<LetBinding>,
         span: Span,
     },
+    Filter {
+        expression: Expression,
+        span: Span,
+    },
+    For {
+        item: ForItem,
+        span: Span,
+    },
     Return {
+        quantifier: Option<SetQuantifier>,
+        all_bindings: bool,
         projections: Vec<ReturnProjection>,
+        span: Span,
+    },
+    Finish {
         span: Span,
     },
     Union {
         span: Span,
     },
     Limit {
-        value: Option<u64>,
+        value: NonNegativeIntegerSpecification,
         span: Span,
     },
     OrderBy {
@@ -132,7 +145,7 @@ pub enum QueryClause {
         span: Span,
     },
     Offset {
-        value: Option<u64>,
+        value: NonNegativeIntegerSpecification,
         span: Span,
     },
     GroupBy {
@@ -174,11 +187,36 @@ pub struct LetBinding {
     pub span: Span,
 }
 
+/// One ISO FOR binding over a value-expression source.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ForItem {
+    pub binding: Identifier,
+    pub source: Expression,
+    pub ordinality: Option<ForOrdinalityBinding>,
+    pub span: Span,
+}
+
+/// Source spelling of the optional FOR position binding.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ForOrdinalityKind {
+    Ordinality,
+    Offset,
+}
+
+/// Optional position binding introduced by WITH ORDINALITY or WITH OFFSET.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ForOrdinalityBinding {
+    pub kind: ForOrdinalityKind,
+    pub binding: Identifier,
+    pub span: Span,
+}
+
 /// An ordering expression with its source direction.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SortKey {
     pub expression: Expression,
-    pub direction: SortDirection,
+    pub direction: Option<SortDirection>,
+    pub null_ordering: Option<NullOrdering>,
 }
 
 /// Source ordering direction.
@@ -186,6 +224,13 @@ pub struct SortKey {
 pub enum SortDirection {
     Ascending,
     Descending,
+}
+
+/// Explicit source-level null placement for one sort specification.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum NullOrdering {
+    First,
+    Last,
 }
 
 /// A RETURN expression with an optional output alias.
@@ -198,9 +243,17 @@ pub struct ReturnProjection {
 /// A `MATCH` clause with a compiled graph pattern.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct MatchClause {
-    pub mode: PathMode,
-    pub patterns: Vec<GraphPattern>,
+    pub mode: Option<GraphMatchMode>,
+    pub patterns: Vec<PathPattern>,
+    pub keep: Option<PathPrefix>,
     pub span: Span,
+}
+
+/// Graph-level element uniqueness requested by one MATCH operation.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum GraphMatchMode {
+    RepeatableElements,
+    DifferentEdges,
 }
 
 /// Path traversal uniqueness mode attached to a MATCH graph pattern.
@@ -269,8 +322,49 @@ pub struct PathQuantifier {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct PathPattern {
     pub binding: Option<Identifier>,
+    pub prefix: Option<PathPrefix>,
     pub elements: Vec<PatternElement>,
     pub span: Span,
+}
+
+/// Source-level path search and uniqueness prefix attached to one path only.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PathPrefix {
+    pub search: Option<PathSearch>,
+    pub mode: Option<PathMode>,
+    pub target: Option<PathTarget>,
+    pub span: Span,
+}
+
+/// ISO GQL path search strategy.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum PathSearch {
+    All,
+    Any {
+        count: Option<NonNegativeIntegerSpecification>,
+    },
+    AllShortest,
+    AnyShortest,
+    Shortest {
+        count: NonNegativeIntegerSpecification,
+    },
+    ShortestGroups {
+        count: Option<NonNegativeIntegerSpecification>,
+    },
+}
+
+/// ISO non-negative integer specification shared by path search and pagination.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum NonNegativeIntegerSpecification {
+    Literal(u64),
+    Parameter(DynamicParameterReference),
+}
+
+/// Lossless singular/plural path target spelling.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum PathTarget {
+    Path,
+    Paths,
 }
 
 /// Relationship direction recovered from parser token neighborhoods.
@@ -346,10 +440,26 @@ pub struct CharacterStringLiteral {
     pub span: Span,
 }
 
+/// Source representation selected for an ISO GQL parameter name.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum ParameterNameForm {
+    Extended,
+    Delimited,
+}
+
+/// One general parameter reference retained independently from graph bindings.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct DynamicParameterReference {
+    pub name: String,
+    pub form: ParameterNameForm,
+    pub span: Span,
+}
+
 /// Lowered expression form used by analysis.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Expression {
     Name(Identifier),
+    Parameter(DynamicParameterReference),
     Boolean(bool, Span),
     Null(Span),
     String(CharacterStringLiteral),
@@ -376,6 +486,13 @@ pub enum Expression {
         arguments: Vec<Expression>,
         span: Span,
     },
+    AggregateCall {
+        function: AggregateFunction,
+        quantifier: Option<SetQuantifier>,
+        arguments: Vec<Expression>,
+        count_star: bool,
+        span: Span,
+    },
     Unary {
         operator: UnaryOperator,
         operand: Box<Expression>,
@@ -384,6 +501,45 @@ pub enum Expression {
         operator: BinaryOperator,
         left: Box<Expression>,
         right: Box<Expression>,
+    },
+    NullPredicate {
+        operand: Box<Expression>,
+        negated: bool,
+        span: Span,
+    },
+    TruthPredicate {
+        operand: Box<Expression>,
+        value: TruthValue,
+        negated: bool,
+        span: Span,
+    },
+    ValueTypePredicate {
+        operand: Box<Expression>,
+        value_type: PropertyValueType,
+        negated: bool,
+        span: Span,
+    },
+    DirectedPredicate {
+        edge: Box<Expression>,
+        negated: bool,
+        span: Span,
+    },
+    EndpointPredicate {
+        node: Box<Expression>,
+        edge: Box<Expression>,
+        endpoint: EndpointKind,
+        negated: bool,
+        span: Span,
+    },
+    ElementIdentityPredicate {
+        kind: ElementIdentityKind,
+        elements: Vec<Expression>,
+        span: Span,
+    },
+    PropertyExistsPredicate {
+        element: Box<Expression>,
+        property: Identifier,
+        span: Span,
     },
     IsLabeled {
         operand: Box<Expression>,
@@ -397,6 +553,50 @@ pub enum Expression {
         else_result: Option<Box<Expression>>,
         span: Span,
     },
+}
+
+/// Endpoint role selected by an ISO source/destination predicate.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum EndpointKind {
+    Source,
+    Destination,
+}
+
+/// N-ary graph-element identity relation selected by the source syntax.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ElementIdentityKind {
+    AllDifferent,
+    Same,
+}
+
+/// ISO GQL aggregate function identity, independent of backend execution.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum AggregateFunction {
+    Average,
+    Count,
+    Maximum,
+    Minimum,
+    Sum,
+    CollectList,
+    StandardDeviationSample,
+    StandardDeviationPopulation,
+    PercentileContinuous,
+    PercentileDiscrete,
+}
+
+/// Explicit set quantifier on an aggregate value argument.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum SetQuantifier {
+    All,
+    Distinct,
+}
+
+/// ISO truth value named by an `IS [NOT]` predicate test.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum TruthValue {
+    True,
+    False,
+    Unknown,
 }
 
 /// Boolean algebra over graph-element labels.

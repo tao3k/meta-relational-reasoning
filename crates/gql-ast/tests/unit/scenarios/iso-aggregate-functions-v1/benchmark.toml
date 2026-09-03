@@ -1,0 +1,53 @@
+harness = "libtest"
+test = "iso_aggregate_functions_stay_inside_scenario_budget"
+snapshot = "gql_ast_iso_aggregate_functions_v1"
+target_total = "500us"
+max_total = "2ms"
+observed_total = "239250ns"
+regression_budget = "500us"
+memory_budget_bytes = 1048576
+observed_memory_bytes = 990
+target_rationale = "One bounded statement exercises COUNT star, explicit ALL/DISTINCT, all general-set functions, and both binary percentile functions without semantic resolution, backend work, fallback, or runtime grammar dispatch."
+
+[measurement]
+clock = "std::time::Instant"
+statistic = "p95"
+warmup_iterations = 3
+measure_iterations = 25
+total_p50 = "101750ns"
+total_p95 = "239250ns"
+total_max = "437209ns"
+
+[observed_timings]
+ast_lowering = "85416ns"
+parse = "70125ns"
+
+[metrics.source_bytes]
+unit = "bytes"
+kind = "exact"
+target = 431
+observed = 431
+
+[metrics.statement_count]
+unit = "count"
+kind = "exact"
+target = 1
+observed = 1
+
+[metrics.diagnostic_count]
+unit = "count"
+kind = "maximum"
+target = 0
+observed = 0
+
+[metrics.fallback_count]
+unit = "count"
+kind = "exact"
+target = 0
+observed = 0
+
+[metrics.roundtrip_bytes]
+unit = "bytes"
+kind = "exact"
+target = 431
+observed = 431

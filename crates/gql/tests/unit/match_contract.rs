@@ -23,7 +23,7 @@ fn count_kind(node: &SyntaxNode, expected: SyntaxKind) -> usize {
 #[test]
 fn comma_separated_match_patterns_preserve_components_and_shared_bindings() {
     let source =
-        "MATCH TRAIL (a:Person)-[:KNOWS]->(b), (b)-[:WORKS_AT]->(c:Company) RETURN a, b, c";
+        "MATCH TRAIL (a:Person)-[:KNOWS]->(b), TRAIL (b)-[:WORKS_AT]->(c:Company) RETURN a, b, c";
     let result = Compiler.compile("match-pattern-list.gql", source, &empty_catalog());
 
     assert!(
@@ -58,14 +58,17 @@ fn comma_separated_match_patterns_preserve_components_and_shared_bindings() {
         result.analysis.diagnostics
     );
     let ir = result.analysis.ir.expect("canonical MATCH IR");
-    assert_eq!(ir.graphs.len(), 2);
+    assert_eq!(ir.matches.len(), 1);
+    assert_eq!(ir.matches[0].paths.len(), 2);
     assert!(
-        ir.graphs
+        ir.matches[0]
+            .paths
             .iter()
-            .all(|graph| graph.mode == IrPathMode::Trail)
+            .all(|path| path.prefix.as_ref().and_then(|prefix| prefix.mode)
+                == Some(IrPathMode::Trail))
     );
     assert!(
-        matches!(ir.graphs[1].elements.first(), Some(IrPatternElement::Node(node))
+        matches!(ir.matches[0].paths[1].elements.first(), Some(IrPatternElement::Node(node))
         if node.binding.as_deref() == Some("B"))
     );
 }
@@ -86,13 +89,13 @@ fn successive_match_clauses_extend_the_canonical_graph_sequence() {
         result.analysis.diagnostics
     );
     let ir = result.analysis.ir.expect("canonical MATCH IR");
-    assert_eq!(ir.graphs.len(), 2);
+    assert_eq!(ir.matches.len(), 2);
     assert!(
-        matches!(ir.graphs[0].elements.as_slice(), [IrPatternElement::Node(node)]
+        matches!(ir.matches[0].paths[0].elements.as_slice(), [IrPatternElement::Node(node)]
         if node.binding.as_deref() == Some("A"))
     );
     assert!(
-        matches!(ir.graphs[1].elements.as_slice(), [IrPatternElement::Node(node)]
+        matches!(ir.matches[1].paths[0].elements.as_slice(), [IrPatternElement::Node(node)]
         if node.binding.as_deref() == Some("B"))
     );
 }

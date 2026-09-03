@@ -4,7 +4,8 @@ use crate::syntax::{
     prefix_operator_precedence, top_level_parser_entrypoint,
 };
 use crate::{
-    ISO_GQL_CHARACTER_STRING_FORMS, ISO_GQL_NON_RESERVED_WORDS, ISO_GQL_NUMERIC_LITERAL_FORMS,
+    ISO_GQL_AGGREGATE_FUNCTION_FORMS, ISO_GQL_CHARACTER_STRING_FORMS, ISO_GQL_NON_RESERVED_WORDS,
+    ISO_GQL_NUMERIC_LITERAL_FORMS, ISO_GQL_PARAMETER_REFERENCE_FORMS, ISO_GQL_PREDICATE_TEST_FORMS,
     SyntaxKind, is_non_reserved_word, parse,
 };
 use gql_source::Span;
@@ -52,6 +53,64 @@ fn gerbil_projection_owns_keywords_shapes_and_provenance() {
         "preserve-representations",
         "raw",
     )));
+    assert_eq!(
+        ISO_GQL_PARAMETER_REFERENCE_FORMS,
+        &[
+            ("general", "dollar", "separated-identifier", "dynamic-value",),
+            (
+                "substituted",
+                "double-dollar",
+                "separated-identifier",
+                "catalog-reference",
+            ),
+        ]
+    );
+    assert_eq!(
+        ISO_GQL_PREDICATE_TEST_FORMS,
+        &[
+            ("null", "optional-not", "Null", "any-value"),
+            ("truth", "optional-not", "True", "boolean-or-null"),
+            ("truth", "optional-not", "False", "boolean-or-null"),
+            ("truth", "optional-not", "UnknownTruth", "boolean-or-null",),
+            (
+                "value-type",
+                "optional-not",
+                "declared-value-type",
+                "value-primary",
+            ),
+            ("directed", "optional-not", "Directed", "edge-element"),
+            ("source", "optional-not", "Source", "node-edge"),
+            ("destination", "optional-not", "Destination", "node-edge"),
+            (
+                "all-different",
+                "forbidden",
+                "AllDifferent",
+                "element-list-min-two",
+            ),
+            ("same", "forbidden", "Same", "element-list-min-two"),
+            (
+                "property-exists",
+                "forbidden",
+                "PropertyExists",
+                "element-property",
+            ),
+        ]
+    );
+    assert_eq!(ISO_GQL_AGGREGATE_FUNCTION_FORMS.len(), 11);
+    assert!(ISO_GQL_AGGREGATE_FUNCTION_FORMS.contains(&(
+        "count-star",
+        "Count",
+        "star",
+        "forbidden",
+        0,
+    )));
+    assert!(ISO_GQL_AGGREGATE_FUNCTION_FORMS.contains(&(
+        "percentile-continuous",
+        "PercentileCont",
+        "binary",
+        "dependent",
+        2,
+    )));
     assert!(ISO_GQL_CHARACTER_STRING_FORMS.contains(&(
         "escaped-unicode6",
         "U",
@@ -69,6 +128,16 @@ fn gerbil_projection_owns_keywords_shapes_and_provenance() {
         "BinaryExpression",
         "node",
         &["left", "operator", "right"],
+    )));
+    assert!(receipt.syntax_shapes.contains(&(
+        "AggregateFunctionExpression",
+        "node",
+        &["name", "quantifier", "argument", "star"],
+    )));
+    assert!(receipt.syntax_shapes.contains(&(
+        "ValueTypePredicateExpression",
+        "node",
+        &["operand", "value-type", "negated", "marker"],
     )));
     assert!(
         receipt
@@ -92,11 +161,11 @@ fn gerbil_projection_owns_keywords_shapes_and_provenance() {
             "quantifier",
         ],
     )));
-    assert!(
-        receipt
-            .syntax_shapes
-            .contains(&("MatchClause", "node", &["mode", "patterns"],))
-    );
+    assert!(receipt.syntax_shapes.contains(&(
+        "MatchClause",
+        "node",
+        &["mode", "patterns", "keep"],
+    )));
     assert!(
         receipt
             .syntax_shapes
@@ -106,6 +175,51 @@ fn gerbil_projection_owns_keywords_shapes_and_provenance() {
         receipt
             .syntax_shapes
             .contains(&("PathMode", "node", &["kind"],))
+    );
+    assert!(receipt.syntax_shapes.contains(&(
+        "PathPattern",
+        "node",
+        &["binding", "prefix", "pattern"],
+    )));
+    assert!(receipt.syntax_shapes.contains(&(
+        "GraphMatchMode",
+        "node",
+        &["kind", "target", "bindings"],
+    )));
+    assert!(
+        receipt
+            .syntax_shapes
+            .contains(&("PathPrefix", "node", &["search", "mode", "target"],))
+    );
+    assert!(receipt.syntax_shapes.contains(&(
+        "PathSearch",
+        "node",
+        &["kind", "count", "grouping"],
+    )));
+    assert!(
+        receipt
+            .syntax_shapes
+            .contains(&("FilterStatement", "node", &["expression"],))
+    );
+    assert!(
+        receipt
+            .syntax_shapes
+            .contains(&("ForStatement", "node", &["item", "ordinality"],))
+    );
+    assert!(
+        receipt
+            .syntax_shapes
+            .contains(&("ForItem", "node", &["binding", "source"],))
+    );
+    assert!(receipt.syntax_shapes.contains(&(
+        "ForOrdinalityOrOffset",
+        "node",
+        &["kind", "binding"],
+    )));
+    assert!(
+        receipt
+            .syntax_shapes
+            .contains(&("KeepClause", "node", &["prefix"],))
     );
     assert!(
         receipt
@@ -153,6 +267,31 @@ fn gerbil_projection_owns_keywords_shapes_and_provenance() {
         "preserve-source",
     )));
     assert!(receipt.recoveries.contains(&(
+        "graph-match-mode",
+        "GQL-PARSE-GRAPH-MATCH-MODE-SYNTAX",
+        "preserve-source",
+    )));
+    assert!(receipt.recoveries.contains(&(
+        "path-search-prefix",
+        "GQL-PARSE-PATH-SEARCH-PREFIX-SYNTAX",
+        "preserve-source",
+    )));
+    assert!(receipt.recoveries.contains(&(
+        "keep-clause",
+        "GQL-PARSE-KEEP-CLAUSE-SYNTAX",
+        "preserve-source",
+    )));
+    assert!(receipt.recoveries.contains(&(
+        "filter-statement",
+        "GQL-PARSE-FILTER-SYNTAX",
+        "preserve-source",
+    )));
+    assert!(receipt.recoveries.contains(&(
+        "for-statement",
+        "GQL-PARSE-FOR-SYNTAX",
+        "preserve-source",
+    )));
+    assert!(receipt.recoveries.contains(&(
         "path-quantifier",
         "GQL-PARSE-PATH-QUANTIFIER",
         "preserve-source",
@@ -172,6 +311,14 @@ fn gerbil_projection_drives_lossless_event_parser_dispatch() {
     let return_entry = top_level_parser_entrypoint(Keyword::Return)
         .expect("RETURN must enter the generated event parser");
     assert_eq!(return_entry.action, GrammarParserAction::ReturnClause);
+
+    let filter_entry = top_level_parser_entrypoint(Keyword::Filter)
+        .expect("FILTER must enter the generated event parser");
+    assert_eq!(filter_entry.action, GrammarParserAction::FilterStatement);
+
+    let for_entry = top_level_parser_entrypoint(Keyword::For)
+        .expect("FOR must enter the generated event parser");
+    assert_eq!(for_entry.action, GrammarParserAction::ForStatement);
 
     let create_schema = top_level_parser_entrypoint(Keyword::Create)
         .expect("CREATE must enter generated catalog dispatch");

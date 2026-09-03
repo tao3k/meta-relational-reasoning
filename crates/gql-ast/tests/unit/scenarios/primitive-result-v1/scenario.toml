@@ -1,0 +1,11 @@
+id = "primitive-result-v1"
+title = "ISO GQL primitive result hot path"
+policy_ids = ["RUST-AGENT-GQL-AST-PERF-001"]
+agent_goal = "Parse and lower RETURN result quantifiers and wildcard projection with zero fallback."
+reference_repositories = ["opengql/grammar", "rust-analyzer/rowan"]
+reference_patterns = [
+  "Gerbil AOT owns RETURN and FINISH shapes and typed recovery",
+  "Rowan preserves source and result quantifiers losslessly",
+  "AST lowering retains wildcard projection intent without backend work",
+]
+inputs = "inputs"

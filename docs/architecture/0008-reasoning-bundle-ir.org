@@ -30,7 +30,7 @@ No partially validated bundle is returned.
 #+begin_src mermaid
 flowchart LR
     D[Gerbil define-reasoning-module declaration] --> A[build.ss AOT]
-    A --> N[staged native.scm]
+    A --> N[canonical project .gerbil native.scm]
     N --> F[fixed-width native ABI]
     F --> U[ReasoningBundleDeclaration]
     U --> R[relation and reference validation]
@@ -44,7 +44,7 @@ flowchart LR
 
 Gerbil describes the build-time program. Rust owns validation, canonical
 encoding, stable identity, and runtime admission. The Cargo build helper only
-links the already staged native artifact. No Gerbil process or Scheme value is
+links the canonical project native artifact. No Gerbil process or Scheme value is
 present on a query or deduction hot path.
 
 =gql-reasoning= provider traits do not exist in this model. Query frontends,

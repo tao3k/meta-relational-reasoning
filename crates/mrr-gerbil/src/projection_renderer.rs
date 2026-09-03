@@ -28,7 +28,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         return Ok(());
     }
     let mut workspace = PathBuf::from(".");
-    let mut output = PathBuf::from("crates/gql-syntax/src/generated.rs");
+    let mut output = PathBuf::from("crates/gql-syntax/src/generated/projection.rs");
     let mut check = false;
     let mut arguments = env::args().skip(1);
     while let Some(argument) = arguments.next() {
@@ -45,23 +45,132 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let fingerprint = workspace_input_fingerprint(&workspace)?;
-    let body = format_rust_projection(&render_native_projection_in_child()?)?;
-    let stamped = stamp_projection(&body, &fingerprint);
+    let rendered = render_native_projection_in_child()?;
+    let (projection_body, lexical_body, aggregate_body, parser_body) = split_projection(&rendered)?;
+    let projection = stamp_projection(&format_rust_projection(&projection_body)?, &fingerprint);
+    let lexical = stamp_projection(&format_rust_projection(&lexical_body)?, &fingerprint);
+    let aggregate = stamp_projection(&format_rust_projection(&aggregate_body)?, &fingerprint);
+    let parser = stamp_projection(&format_rust_projection(&parser_body)?, &fingerprint);
     let output = workspace.join(output);
+    let lexical_output = output
+        .parent()
+        .ok_or("generated projection has no parent directory")?
+        .join("lexical_forms.rs");
+    let aggregate_output = output
+        .parent()
+        .ok_or("generated projection has no parent directory")?
+        .join("aggregate_forms.rs");
+    let parser_output = output
+        .parent()
+        .ok_or("generated projection has no parent directory")?
+        .join("parser_forms.rs");
     if check {
         let tracked = fs::read_to_string(&output)?;
         validate_projection(&tracked, &fingerprint)?;
-        if tracked != stamped {
+        let tracked_lexical = fs::read_to_string(&lexical_output)?;
+        validate_projection(&tracked_lexical, &fingerprint)?;
+        let tracked_aggregate = fs::read_to_string(&aggregate_output)?;
+        validate_projection(&tracked_aggregate, &fingerprint)?;
+        let tracked_parser = fs::read_to_string(&parser_output)?;
+        validate_projection(&tracked_parser, &fingerprint)?;
+        if tracked != projection
+            || tracked_lexical != lexical
+            || tracked_aggregate != aggregate
+            || tracked_parser != parser
+        {
             return Err(
                 "tracked Rust grammar projection differs from the native Gerbil ABI".into(),
             );
         }
-        println!("native grammar projection is current: {}", output.display());
+        println!(
+            "native grammar projection is current: {}, {}, {}, {}",
+            output.display(),
+            lexical_output.display(),
+            aggregate_output.display(),
+            parser_output.display()
+        );
     } else {
-        fs::write(&output, stamped)?;
-        println!("wrote native grammar projection: {}", output.display());
+        if let Some(parent) = lexical_output.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        fs::write(&output, projection)?;
+        fs::write(&lexical_output, lexical)?;
+        fs::write(&aggregate_output, aggregate)?;
+        fs::write(&parser_output, parser)?;
+        println!(
+            "wrote native grammar projection: {}, {}, {}, {}",
+            output.display(),
+            lexical_output.display(),
+            aggregate_output.display(),
+            parser_output.display()
+        );
     }
     Ok(())
+}
+
+const LEXICAL_BEGIN: &str = "// @generated-part lexical-forms begin";
+const LEXICAL_END: &str = "// @generated-part lexical-forms end";
+const AGGREGATE_BEGIN: &str = "// @generated-part aggregate-forms begin";
+const AGGREGATE_END: &str = "// @generated-part aggregate-forms end";
+const PARSER_BEGIN: &str = "// @generated-part parser-forms begin";
+const PARSER_END: &str = "// @generated-part parser-forms end";
+
+fn split_projection(
+    source: &str,
+) -> Result<(String, String, String, String), Box<dyn std::error::Error>> {
+    let begin = source
+        .find(LEXICAL_BEGIN)
+        .ok_or("native projection omitted lexical begin marker")?;
+    let end = source
+        .find(LEXICAL_END)
+        .ok_or("native projection omitted lexical end marker")?;
+    if end <= begin {
+        return Err("native projection lexical markers are out of order".into());
+    }
+    let aggregate_begin = source
+        .find(AGGREGATE_BEGIN)
+        .ok_or("native projection omitted aggregate begin marker")?;
+    let aggregate_end = source
+        .find(AGGREGATE_END)
+        .ok_or("native projection omitted aggregate end marker")?;
+    if aggregate_end <= aggregate_begin || aggregate_begin <= end {
+        return Err("native projection aggregate markers are out of order".into());
+    }
+    let parser_begin = source
+        .find(PARSER_BEGIN)
+        .ok_or("native projection omitted parser begin marker")?;
+    let parser_end = source
+        .find(PARSER_END)
+        .ok_or("native projection omitted parser end marker")?;
+    if parser_end <= parser_begin || parser_begin <= aggregate_end {
+        return Err("native projection parser markers are out of order".into());
+    }
+    let lexical_start = begin + LEXICAL_BEGIN.len();
+    let lexical = format!(
+        "// Generated through the Gerbil native AOT bindings; do not edit.\n//! Lexical form tables projected from the Gerbil grammar authority.\n{}\n",
+        source[lexical_start..end].trim()
+    );
+    let aggregate_start = aggregate_begin + AGGREGATE_BEGIN.len();
+    let aggregate = format!(
+        "// Generated through the Gerbil native AOT bindings; do not edit.\n//! Aggregate grammar forms projected from the Gerbil grammar authority.\n{}\n",
+        source[aggregate_start..aggregate_end].trim()
+    );
+    let parser_start = parser_begin + PARSER_BEGIN.len();
+    let parser = format!(
+        "// Generated through the Gerbil native AOT bindings; do not edit.\n//! Parser grammar forms projected from the Gerbil grammar authority.\n{}\n",
+        source[parser_start..parser_end].trim()
+    );
+    let mut projection = String::with_capacity(
+        source.len()
+            - (end - begin)
+            - (aggregate_end - aggregate_begin)
+            - (parser_end - parser_begin),
+    );
+    projection.push_str(&source[..begin]);
+    projection.push_str(&source[end + LEXICAL_END.len()..aggregate_begin]);
+    projection.push_str(&source[aggregate_end + AGGREGATE_END.len()..parser_begin]);
+    projection.push_str(&source[parser_end + PARSER_END.len()..]);
+    Ok((projection, lexical, aggregate, parser))
 }
 
 fn render_native_projection_in_child() -> Result<String, Box<dyn std::error::Error>> {
@@ -115,7 +224,6 @@ fn render_rust_projection(grammar: &NativeGrammar) -> Result<String, std::fmt::E
         rust,
         "//! Property-graph grammar projection consumed by the Rowan CST frontend."
     )?;
-    writeln!(rust, "use crate::syntax::TokenKind;")?;
     writeln!(
         rust,
         "pub(crate) const GRAMMAR_PROJECTION_SCHEMA: &str = \"mrr.gerbil-grammar-projection.v1\";"
@@ -136,6 +244,7 @@ fn render_rust_projection(grammar: &NativeGrammar) -> Result<String, std::fmt::E
     }
     writeln!(rust, "}}")?;
 
+    writeln!(rust, "{LEXICAL_BEGIN}")?;
     let non_reserved_words = grammar.non_reserved_words.join(" ");
     writeln!(
         rust,
@@ -187,6 +296,59 @@ fn render_rust_projection(grammar: &NativeGrammar) -> Result<String, std::fmt::E
         )?;
     }
     writeln!(rust, "];")?;
+    writeln!(
+        rust,
+        "/// Gerbil-owned parameter reference forms: form, prefix, name grammar, semantic context."
+    )?;
+    writeln!(
+        rust,
+        "pub const ISO_GQL_PARAMETER_REFERENCE_FORMS: &[(&str, &str, &str, &str)] = &["
+    )?;
+    for parameter in &grammar.parameter_references {
+        writeln!(
+            rust,
+            "    ({:?}, {:?}, {:?}, {:?}),",
+            parameter.form, parameter.prefix, parameter.name, parameter.context
+        )?;
+    }
+    writeln!(rust, "];")?;
+    writeln!(
+        rust,
+        "/// Gerbil-owned postfix predicate tests: kind, negation, value, operand domain."
+    )?;
+    writeln!(
+        rust,
+        "pub const ISO_GQL_PREDICATE_TEST_FORMS: &[(&str, &str, &str, &str)] = &["
+    )?;
+    for predicate in &grammar.predicate_tests {
+        writeln!(
+            rust,
+            "    ({:?}, {:?}, {:?}, {:?}),",
+            predicate.kind, predicate.negation, predicate.value, predicate.operand
+        )?;
+    }
+    writeln!(rust, "];")?;
+    writeln!(
+        rust,
+        "/// Gerbil-owned aggregate forms: semantic name, keyword, family, quantifier policy, arity."
+    )?;
+    writeln!(
+        rust,
+        "pub const ISO_GQL_AGGREGATE_FUNCTION_FORMS: &[(&str, &str, &str, &str, u8)] = &["
+    )?;
+    for aggregate in &grammar.aggregate_functions {
+        writeln!(
+            rust,
+            "    ({:?}, {:?}, {:?}, {:?}, {}),",
+            aggregate.name,
+            aggregate.keyword,
+            aggregate.kind,
+            aggregate.quantifier,
+            aggregate.arity
+        )?;
+    }
+    writeln!(rust, "];")?;
+    writeln!(rust, "{LEXICAL_END}")?;
     writeln!(rust, "impl SyntaxKind {{")?;
     writeln!(rust, "    pub const ALL: &'static [Self] = &[")?;
     for shape in &grammar.syntax_shapes {
@@ -257,6 +419,51 @@ fn render_rust_projection(grammar: &NativeGrammar) -> Result<String, std::fmt::E
     writeln!(rust, "        _ => None,")?;
     writeln!(rust, "    }}")?;
     writeln!(rust, "}}")?;
+
+    writeln!(rust, "{AGGREGATE_BEGIN}")?;
+    writeln!(rust, "use super::projection::Keyword;")?;
+    writeln!(rust, "#[derive(Clone, Copy, Debug, Eq, PartialEq)]")?;
+    writeln!(
+        rust,
+        "pub(crate) struct GrammarAggregateFunctionSpec {{ pub(crate) arity: u8, pub(crate) permits_star: bool, pub(crate) permits_quantifier: bool }}"
+    )?;
+    writeln!(
+        rust,
+        "pub(crate) fn aggregate_function_spec(keyword: Keyword) -> Option<GrammarAggregateFunctionSpec> {{"
+    )?;
+    writeln!(rust, "    match keyword {{")?;
+    let mut aggregate_keywords = Vec::new();
+    for aggregate in &grammar.aggregate_functions {
+        if aggregate_keywords.contains(&aggregate.keyword) {
+            continue;
+        }
+        aggregate_keywords.push(aggregate.keyword.clone());
+        let rows = grammar
+            .aggregate_functions
+            .iter()
+            .filter(|candidate| candidate.keyword == aggregate.keyword)
+            .collect::<Vec<_>>();
+        let permits_star = rows.iter().any(|row| row.kind == "star");
+        let value_row = rows
+            .iter()
+            .find(|row| row.kind != "star")
+            .copied()
+            .unwrap_or(aggregate);
+        let permits_quantifier = value_row.quantifier != "forbidden";
+        writeln!(
+            rust,
+            "        Keyword::{} => Some(GrammarAggregateFunctionSpec {{ arity: {}, permits_star: {permits_star}, permits_quantifier: {permits_quantifier} }}),",
+            aggregate.keyword, value_row.arity
+        )?;
+    }
+    writeln!(rust, "        _ => None,")?;
+    writeln!(rust, "    }}")?;
+    writeln!(rust, "}}")?;
+    writeln!(rust, "{AGGREGATE_END}")?;
+
+    writeln!(rust, "{PARSER_BEGIN}")?;
+    writeln!(rust, "use crate::syntax::TokenKind;")?;
+    writeln!(rust, "use super::projection::Keyword;")?;
 
     let mut actions = Vec::new();
     for entry in &grammar.parser_entrypoints {
@@ -380,6 +587,7 @@ fn render_rust_projection(grammar: &NativeGrammar) -> Result<String, std::fmt::E
         rust,
         "pub(crate) fn recovery_diagnostic(site: &str) -> Option<&'static str> {{ GRAMMAR_RECOVERIES.iter().find_map(|(candidate, code, _)| (*candidate == site).then_some(*code)) }}"
     )?;
+    writeln!(rust, "{PARSER_END}")?;
 
     Ok(rust)
 }

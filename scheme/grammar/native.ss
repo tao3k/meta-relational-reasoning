@@ -9,7 +9,9 @@
 (defsyntax (defmrr-native-grammar stx)
   (syntax-case stx
       (dialect extends syntax-kinds keywords non-reserved-words numeric-literals
-               character-string-literals prefix-operators binary-operators
+               character-string-literals parameter-references predicate-tests
+               aggregate-functions
+               prefix-operators binary-operators
                parser-entrypoints recoveries)
     ((_ grammar-binding
         (dialect dialect-id dialect-label active?)
@@ -21,6 +23,13 @@
          (numeric-form numeric-notation numeric-suffix numeric-class) ...)
         (character-string-literals
          (character-form character-lexeme character-action character-class) ...)
+        (parameter-references
+         (parameter-form parameter-prefix parameter-name parameter-context) ...)
+        (predicate-tests
+         (predicate-kind predicate-negation predicate-value predicate-operand) ...)
+        (aggregate-functions
+         (aggregate-name aggregate-keyword aggregate-kind
+                         aggregate-quantifier aggregate-arity) ...)
         (prefix-operators ((prefix-kind prefix-lexeme)
                            prefix-precedence prefix-associativity) ...)
         (binary-operators ((binary-kind binary-lexeme)
@@ -36,6 +45,13 @@
             (numeric-form numeric-notation numeric-suffix numeric-class) ...)
            (character-string-literals
             (character-form character-lexeme character-action character-class) ...)
+           (parameter-references
+            (parameter-form parameter-prefix parameter-name parameter-context) ...)
+           (predicate-tests
+            (predicate-kind predicate-negation predicate-value predicate-operand) ...)
+           (aggregate-functions
+            (aggregate-name aggregate-keyword aggregate-kind
+                            aggregate-quantifier aggregate-arity) ...)
            (prefix-operators
             (prefix-kind prefix-lexeme
                          prefix-precedence prefix-associativity) ...)
@@ -172,6 +188,9 @@
     ((14) (grammar-table 'non-reserved-words))
     ((15) (grammar-table 'numeric-literals))
     ((16) (grammar-table 'character-string-literals))
+    ((17) (grammar-table 'parameter-references))
+    ((18) (grammar-table 'predicate-tests))
+    ((19) (grammar-table 'aggregate-functions))
     (else #f)))
 
 (def (reasoning-rows table)

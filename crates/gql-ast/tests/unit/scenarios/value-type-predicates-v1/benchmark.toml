@@ -1,0 +1,53 @@
+harness = "libtest"
+test = "value_type_predicates_stay_inside_scenario_budget"
+snapshot = "gql_ast_value_type_predicates_v1"
+target_total = "300us"
+max_total = "2ms"
+observed_total = "246208ns"
+regression_budget = "500us"
+memory_budget_bytes = 1048576
+observed_memory_bytes = 530
+target_rationale = "One bounded statement exercises both typed markers, positive and negated predicates, scalar, list, record, dynamic-union, and reference value types without semantic resolution, backend work, fallback, or runtime grammar dispatch."
+
+[measurement]
+clock = "std::time::Instant"
+statistic = "p95"
+warmup_iterations = 3
+measure_iterations = 25
+total_p50 = "79792ns"
+total_p95 = "246208ns"
+total_max = "272916ns"
+
+[observed_timings]
+ast_lowering = "83542ns"
+parse = "92084ns"
+
+[metrics.source_bytes]
+unit = "bytes"
+kind = "exact"
+target = 201
+observed = 201
+
+[metrics.statement_count]
+unit = "count"
+kind = "exact"
+target = 1
+observed = 1
+
+[metrics.diagnostic_count]
+unit = "count"
+kind = "maximum"
+target = 201
+observed = 201
+
+[metrics.fallback_count]
+unit = "count"
+kind = "exact"
+target = 0
+observed = 0
+
+[metrics.roundtrip_bytes]
+unit = "bytes"
+kind = "exact"
+target = 0
+observed = 0

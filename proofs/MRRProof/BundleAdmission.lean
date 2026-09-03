@@ -306,4 +306,227 @@ theorem closure_admission_rejects_any_failed_owner
       (fun lineageFailed => lineageFailed materializable.right.left)
       (fun transitionFailed => transitionFailed materializable.right.right))
 
+inductive GraphElementKind where
+  | node
+  | edge
+  | scalar
+  deriving DecidableEq
+
+inductive GraphElementPredicate where
+  | directed : GraphElementKind -> GraphElementPredicate
+  | endpoint : GraphElementKind -> GraphElementKind -> GraphElementPredicate
+  | identity : List GraphElementKind -> GraphElementPredicate
+  | propertyExists : GraphElementKind -> GraphElementPredicate
+  deriving DecidableEq
+
+def isGraphElementKind : GraphElementKind -> Bool
+  | .node | .edge => true
+  | .scalar => false
+
+def graphElementPredicateAdmitted : GraphElementPredicate -> Bool
+  | .directed edge => edge == .edge
+  | .endpoint node edge => node == .node && edge == .edge
+  | .identity elements => elements.length >= 2 && elements.all isGraphElementKind
+  | .propertyExists element => isGraphElementKind element
+
+def canonicalGraphElementPredicateIr? (predicate : GraphElementPredicate) : Option Bool :=
+  if graphElementPredicateAdmitted predicate then some true else none
+
+theorem graph_element_predicate_admission_is_typed
+    (predicate : GraphElementPredicate)
+    (admitted : graphElementPredicateAdmitted predicate = true) :
+    canonicalGraphElementPredicateIr? predicate = some true := by
+  simp [canonicalGraphElementPredicateIr?, admitted]
+
+theorem graph_element_predicate_rejection_emits_no_ir
+    (predicate : GraphElementPredicate)
+    (rejected : graphElementPredicateAdmitted predicate = false) :
+    canonicalGraphElementPredicateIr? predicate = none := by
+  simp [canonicalGraphElementPredicateIr?, rejected]
+
+inductive GraphMatchMode where
+  | repeatableElements
+  | differentEdges
+  deriving DecidableEq
+
+inductive PathTraversalMode where
+  | walk
+  | trail
+  | simple
+  | acyclic
+  deriving DecidableEq
+
+inductive PathSearchMode where
+  | all
+  | any : Option Nat -> PathSearchMode
+  | allShortest
+  | anyShortest
+  | shortest : Nat -> PathSearchMode
+  | shortestGroups : Option Nat -> PathSearchMode
+  deriving DecidableEq
+
+structure PathPrefixAdmission where
+  search : PathSearchMode
+  traversal : PathTraversalMode
+  deriving DecidableEq
+
+structure GraphMatchAdmission where
+  mode : GraphMatchMode
+  paths : List PathPrefixAdmission
+  keep : Option PathPrefixAdmission
+  deriving DecidableEq
+
+def pathSearchAdmitted (_ : PathSearchMode) : Bool := true
+
+def pathPrefixAdmitted (pathPrefix : PathPrefixAdmission) : Bool :=
+  pathSearchAdmitted pathPrefix.search
+
+def graphMatchAdmitted (candidate : GraphMatchAdmission) : Bool :=
+  !candidate.paths.isEmpty && candidate.paths.all pathPrefixAdmitted &&
+    candidate.keep.all pathPrefixAdmitted
+
+def canonicalGraphMatchIr? (candidate : GraphMatchAdmission) : Option GraphMatchAdmission :=
+  if graphMatchAdmitted candidate then some candidate else none
+
+theorem graph_match_path_prefix_admission_is_typed
+    (candidate : GraphMatchAdmission)
+    (admitted : graphMatchAdmitted candidate = true) :
+    canonicalGraphMatchIr? candidate = some candidate := by
+  simp [canonicalGraphMatchIr?, admitted]
+
+theorem graph_match_path_prefix_rejection_emits_no_ir
+    (candidate : GraphMatchAdmission)
+    (rejected : graphMatchAdmitted candidate = false) :
+    canonicalGraphMatchIr? candidate = none := by
+  simp [canonicalGraphMatchIr?, rejected]
+
+inductive PageValue where
+  | literal : Nat -> PageValue
+  | parameter : String -> PageValue
+  deriving DecidableEq
+
+inductive OrderDirection where
+  | ascending
+  | descending
+  deriving DecidableEq
+
+inductive NullPlacement where
+  | first
+  | last
+  deriving DecidableEq
+
+structure SortAdmission where
+  direction : Option OrderDirection
+  nullPlacement : Option NullPlacement
+  deriving DecidableEq
+
+structure OrderPageAdmission where
+  sorts : List SortAdmission
+  offset : Option PageValue
+  limit : Option PageValue
+  deriving DecidableEq
+
+def pageValueAdmitted : PageValue -> Bool
+  | .literal _ => true
+  | .parameter name => !name.isEmpty
+
+def orderPageAdmitted (candidate : OrderPageAdmission) : Bool :=
+  !candidate.sorts.isEmpty && candidate.offset.all pageValueAdmitted &&
+    candidate.limit.all pageValueAdmitted
+
+def canonicalOrderPageIr? (candidate : OrderPageAdmission) : Option OrderPageAdmission :=
+  if orderPageAdmitted candidate then some candidate else none
+
+theorem order_page_admission_is_typed
+    (candidate : OrderPageAdmission)
+    (admitted : orderPageAdmitted candidate = true) :
+    canonicalOrderPageIr? candidate = some candidate := by
+  simp [canonicalOrderPageIr?, admitted]
+
+theorem order_page_rejection_emits_no_ir
+    (candidate : OrderPageAdmission)
+    (rejected : orderPageAdmitted candidate = false) :
+    canonicalOrderPageIr? candidate = none := by
+  simp [canonicalOrderPageIr?, rejected]
+
+inductive PrimitiveQueryValueKind where
+  | boolean
+  | list
+  | any
+  | scalar
+  deriving DecidableEq
+
+structure FilterForAdmission where
+  filterKind : PrimitiveQueryValueKind
+  sourceKind : PrimitiveQueryValueKind
+  bindingUnique : Bool
+  positionUnique : Bool
+  deriving DecidableEq
+
+def filterKindAdmitted : PrimitiveQueryValueKind -> Bool
+  | .boolean | .any => true
+  | .list | .scalar => false
+
+def forSourceKindAdmitted : PrimitiveQueryValueKind -> Bool
+  | .list | .any => true
+  | .boolean | .scalar => false
+
+def filterForAdmitted (candidate : FilterForAdmission) : Bool :=
+  filterKindAdmitted candidate.filterKind &&
+    forSourceKindAdmitted candidate.sourceKind &&
+    candidate.bindingUnique && candidate.positionUnique
+
+def canonicalFilterForIr? (candidate : FilterForAdmission) : Option FilterForAdmission :=
+  if filterForAdmitted candidate then some candidate else none
+
+theorem filter_for_admission_is_typed
+    (candidate : FilterForAdmission)
+    (admitted : filterForAdmitted candidate = true) :
+    canonicalFilterForIr? candidate = some candidate := by
+  simp [canonicalFilterForIr?, admitted]
+
+theorem filter_for_rejection_emits_no_ir
+    (candidate : FilterForAdmission)
+    (rejected : filterForAdmitted candidate = false) :
+    canonicalFilterForIr? candidate = none := by
+  simp [canonicalFilterForIr?, rejected]
+
+inductive PrimitiveResultKind where
+  | returnItems
+  | returnAllBindings
+  | finish
+  deriving DecidableEq
+
+inductive ResultSetQuantifier where
+  | all
+  | distinct
+  deriving DecidableEq
+
+structure PrimitiveResultAdmission where
+  kind : PrimitiveResultKind
+  quantifier : ResultSetQuantifier
+  visibleBindingCount : Nat
+  deriving DecidableEq
+
+def primitiveResultAdmitted (candidate : PrimitiveResultAdmission) : Bool :=
+  match candidate.kind with
+  | .returnAllBindings => candidate.visibleBindingCount > 0
+  | .returnItems | .finish => true
+
+def canonicalPrimitiveResultIr?
+    (candidate : PrimitiveResultAdmission) : Option PrimitiveResultAdmission :=
+  if primitiveResultAdmitted candidate then some candidate else none
+
+theorem primitive_result_admission_is_typed
+    (candidate : PrimitiveResultAdmission)
+    (admitted : primitiveResultAdmitted candidate = true) :
+    canonicalPrimitiveResultIr? candidate = some candidate := by
+  simp [canonicalPrimitiveResultIr?, admitted]
+
+theorem primitive_result_rejection_emits_no_ir
+    (candidate : PrimitiveResultAdmission)
+    (rejected : primitiveResultAdmitted candidate = false) :
+    canonicalPrimitiveResultIr? candidate = none := by
+  simp [canonicalPrimitiveResultIr?, rejected]
+
 end MRRProof

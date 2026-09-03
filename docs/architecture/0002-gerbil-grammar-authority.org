@@ -16,15 +16,15 @@ into the fixed-width native ABI tables consumed by Rust. The POO objects inherit
 the shared grammar prototype through =poo-flow= and =gerbil-poo=. There is no
 fallback dialect, alias, or translation delta.
 
-=gerbil.pkg= declares =poo-flow=, =gerbil-poo=, and the directly imported GSLPH
-Building API at exact revisions. Root =build.ss= is the sole Gerbil AOT
-entrypoint and uses GSLPH to compile =core.ss=, =gql.ss=,
-=cypher.ss=, and =native.ss=. It stages the compiled native SCM artifact under
-=scheme/generated/=. Cargo never invokes =gxi= or =gxc=.
+=gerbil.pkg= declares =poo-flow=, =gerbil-poo=, and the directly imported
+=asp-gerbil-scheme= Building Framework at exact revisions. Root =build.ss= is
+the sole Gerbil AOT entrypoint and uses its package-spec plus =std/make= bridge
+to compile =core.ss=, =gql.ss=, =cypher.ss=, and =native.ss= into the standard
+project =.gerbil/lib/static= artifact root. Cargo never invokes =gxi= or =gxc=.
 
 The =gerbil-scheme-native-build= interface from =gerbil-scheme-rust= PR 16 is
 pinned as a workspace dependency. The thin Cargo build adapter consumes only
-the already staged artifact, materializes the target-native Gambit objects,
+that canonical AOT artifact, materializes the target-native Gambit objects,
 packages the static archive, and emits link directives. It is neither a Scheme
 build entrypoint nor a grammar authority.
 
@@ -54,11 +54,11 @@ flowchart LR
     cypher[cypher.ss active openCypher profile] --> object
     poo --> object
     flow --> object
-    build[build.ss GSLPH AOT owner] --> core
+    build[build.ss ASP Gerbil AOT owner] --> core
     build --> gql
     build --> cypher
     build --> abi
-    abi --> staged[staged native.scm]
+    abi --> staged[canonical project .gerbil native.scm]
     pr16[gerbil-scheme-rust PR 16 native build API] --> adapter[thin Cargo target-link adapter]
     staged --> adapter
     adapter --> native[static native grammar ABI]
@@ -91,7 +91,7 @@ selected explicitly by the frontend and lower into the same MetaQueryIR.
 * Runtime boundary
 
 =build.ss compile= invokes the Gerbil compiler before Cargo. =mrr-gerbil= links
-the staged AOT module and reads it through a safe Rust model over an isolated
+the canonical project AOT module and reads it through a safe Rust model over an isolated
 raw-FFI module. The emitted Rust projection is checked into the repository and
 consumed directly by =gql-syntax=. Parsing, AST lowering, semantic analysis,
 and query execution do not spawn Gerbil and do not inspect raw Scheme handles.
@@ -103,7 +103,7 @@ does not enter the query hot path.
 
 The projection header binds a framed SHA-256 of =gerbil.pkg=, the grammar
 declaration and owners, and the native ABI source to a SHA-256 of the emitted
-Rust body and the admitted PR 16 revision. Missing staged AOT, malformed macro
+Rust body and the admitted PR 16 revision. Missing canonical AOT, malformed macro
 forms, input drift, body drift, ABI-version drift, and PR revision drift fail
 closed.
 

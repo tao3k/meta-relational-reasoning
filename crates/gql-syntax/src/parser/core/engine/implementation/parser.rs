@@ -6,8 +6,9 @@ use gql_source::{Diagnostic, SourceText, Span};
 
 use crate::parser::core::keyword_name;
 use crate::syntax::{
-    GrammarParserAction, Keyword, SyntaxKind, SyntaxTree, Token, TokenKind, binary_operator_spec,
-    prefix_operator_precedence, recovery_diagnostic, top_level_parser_entrypoint,
+    GrammarParserAction, Keyword, SyntaxKind, SyntaxTree, Token, TokenKind,
+    aggregate_function_spec, binary_operator_spec, prefix_operator_precedence, recovery_diagnostic,
+    top_level_parser_entrypoint,
 };
 
 /// Parser output consumed directly by the Rowan tree sink.
@@ -50,6 +51,26 @@ pub(in crate::parser) fn node(kind: SyntaxKind, mut children: Vec<Event>) -> Vec
     events.append(&mut children);
     events.push(Event::Finish);
     events
+}
+
+fn is_value_expression_primary_kind(kind: SyntaxKind) -> bool {
+    matches!(
+        kind,
+        SyntaxKind::NameExpression
+            | SyntaxKind::LiteralExpression
+            | SyntaxKind::CharacterStringLiteralExpression
+            | SyntaxKind::DynamicParameterExpression
+            | SyntaxKind::ParenthesizedExpression
+            | SyntaxKind::PropertyAccessExpression
+            | SyntaxKind::FunctionCallExpression
+            | SyntaxKind::ListExpression
+            | SyntaxKind::ByteStringLiteralExpression
+            | SyntaxKind::TemporalLiteralExpression
+            | SyntaxKind::DurationLiteralExpression
+            | SyntaxKind::RecordExpression
+            | SyntaxKind::SubscriptExpression
+            | SyntaxKind::CaseExpression
+    )
 }
 
 fn build_rowan_root(events: &[Event]) -> rowan::GreenNode {
@@ -103,8 +124,11 @@ impl<'a> Parser<'a> {
                 GrammarParserAction::MatchClause => self.parse_match_clause(),
                 GrammarParserAction::OptionalMatchClause => self.parse_optional_match_clause(),
                 GrammarParserAction::ReturnClause => self.parse_return_clause(),
+                GrammarParserAction::FinishStatement => self.parse_finish_statement(),
                 GrammarParserAction::WhereClause => self.parse_where_clause(),
                 GrammarParserAction::LetClause => self.parse_let_clause(),
+                GrammarParserAction::FilterStatement => self.parse_filter_statement(),
+                GrammarParserAction::ForStatement => self.parse_for_statement(),
                 GrammarParserAction::UnionClause => self.parse_union_clause(),
                 GrammarParserAction::LimitClause => self.parse_limit_clause(),
                 GrammarParserAction::OrderByClause => self.parse_order_by_clause(),
@@ -146,35 +170,6 @@ impl<'a> Parser<'a> {
         }
 
         node(SyntaxKind::OptionalMatchClause, children)
-    }
-
-    pub(super) fn parse_named_path_pattern(&mut self) -> Vec<Event> {
-        let start = self.span_start();
-        let mut children = vec![self.bump_event()];
-        children.extend(self.skip_trivia());
-
-        if self.matches_kind(TokenKind::Punctuation('=')) {
-            children.push(self.bump_event());
-        } else {
-            self.emit_match_syntax(
-                "GQL-PARSE-PATH-SYNTAX",
-                "named path pattern must contain `=`",
-                self.next_span_or(start),
-            );
-        }
-        children.extend(self.skip_trivia());
-
-        if self.matches_kind(TokenKind::Punctuation('(')) {
-            children.extend(self.parse_graph_pattern());
-        } else {
-            self.emit_match_syntax(
-                "GQL-PARSE-PATH-SYNTAX",
-                "named path pattern must contain a graph pattern",
-                self.next_span_or(start),
-            );
-        }
-
-        node(SyntaxKind::PathPattern, children)
     }
 
     fn parse_where_clause(&mut self) -> Vec<Event> {
@@ -675,6 +670,14 @@ impl<'a> Parser<'a> {
                 lhs = self.parse_label_predicate_suffix(lhs, trivia);
                 continue;
             }
+            if self.matches_kind(TokenKind::Keyword(Keyword::Is)) {
+                if 30 < minimum_precedence {
+                    self.index = operator_start;
+                    break;
+                }
+                lhs = self.parse_predicate_test_suffix(lhs, trivia);
+                continue;
+            }
             let Some(specification) = self
                 .current_kind()
                 .and_then(|first| binary_operator_spec(first, self.peek_kind(1)))
@@ -696,6 +699,73 @@ impl<'a> Parser<'a> {
             lhs = node(SyntaxKind::BinaryExpression, children);
         }
         lhs
+    }
+
+    fn parse_predicate_test_suffix(
+        &mut self,
+        operand: Vec<Event>,
+        trivia: Vec<Event>,
+    ) -> Vec<Event> {
+        let operand_is_primary = operand.first().is_some_and(
+            |event| matches!(event, Event::Start(kind) if is_value_expression_primary_kind(*kind)),
+        );
+        let operand_is_element_reference = operand
+            .first()
+            .is_some_and(|event| matches!(event, Event::Start(SyntaxKind::NameExpression)));
+        let start = self.span_start();
+        let mut children = operand;
+        children.extend(trivia);
+        children.push(self.bump_event());
+        children.extend(self.skip_trivia());
+
+        if self.matches_kind(TokenKind::Keyword(Keyword::Not)) {
+            children.push(self.bump_event());
+            children.extend(self.skip_trivia());
+        }
+
+        if self.matches_kind(TokenKind::Keyword(Keyword::Typed))
+            || self.matches_kind(TokenKind::Punctuation(':'))
+        {
+            return self.parse_value_type_predicate_suffix(children, operand_is_primary, start);
+        }
+        if self.matches_word("DIRECTED")
+            || self.matches_word("SOURCE")
+            || self.matches_word("DESTINATION")
+        {
+            return self.parse_graph_element_predicate_suffix(
+                children,
+                operand_is_element_reference,
+                start,
+            );
+        }
+
+        let kind = match self.current_kind() {
+            Some(TokenKind::Keyword(Keyword::Null)) => {
+                if !operand_is_primary {
+                    self.emit_match_syntax(
+                        recovery_diagnostic("null-predicate-operand")
+                            .expect("Gerbil grammar owns NULL predicate operand recovery"),
+                        "IS NULL requires a value expression primary; parenthesize a composite expression",
+                        Span::new(start, self.current().map_or(self.span_end(), |token| token.span.end)),
+                    );
+                }
+                SyntaxKind::NullPredicateExpression
+            }
+            Some(TokenKind::Keyword(Keyword::True | Keyword::False | Keyword::UnknownTruth)) => {
+                SyntaxKind::TruthPredicateExpression
+            }
+            _ => {
+                self.emit_match_syntax(
+                    recovery_diagnostic("predicate-test")
+                        .expect("Gerbil grammar owns predicate-test recovery"),
+                    "IS predicate requires NULL, TRUE, FALSE, or UNKNOWN",
+                    Span::new(start, self.span_end()),
+                );
+                return node(SyntaxKind::TruthPredicateExpression, children);
+            }
+        };
+        children.push(self.bump_event());
+        node(kind, children)
     }
 
     fn parse_prefix_expression(&mut self) -> Vec<Event> {
@@ -723,6 +793,12 @@ impl<'a> Parser<'a> {
         let base = match self.current_kind() {
             None => node(SyntaxKind::Expression, Vec::new()),
             Some(TokenKind::Keyword(Keyword::Case)) => self.parse_case_expression(),
+            Some(TokenKind::Keyword(keyword)) if aggregate_function_spec(keyword).is_some() => {
+                return self.parse_aggregate_function();
+            }
+            Some(TokenKind::Keyword(
+                Keyword::AllDifferent | Keyword::Same | Keyword::PropertyExists,
+            )) => return self.parse_graph_element_predicate_function(),
             Some(TokenKind::Punctuation('[')) => self.parse_list_expression(),
             Some(TokenKind::Punctuation('{')) => self.parse_record_expression(false),
             Some(TokenKind::Keyword(Keyword::Record)) => self.parse_record_expression(true),
@@ -750,6 +826,23 @@ impl<'a> Parser<'a> {
                     _ => SyntaxKind::NameExpression,
                 };
                 node(kind, vec![self.bump_event()])
+            }
+            Some(TokenKind::DynamicParameter) => node(
+                SyntaxKind::DynamicParameterExpression,
+                vec![self.bump_event()],
+            ),
+            Some(TokenKind::SubstitutedParameter) => {
+                let span = self.current().map(|token| token.span).unwrap_or_else(|| {
+                    let end = self.span_end();
+                    Span::new(end, end)
+                });
+                self.emit_match_syntax(
+                    recovery_diagnostic("substituted-parameter-context")
+                        .expect("Gerbil grammar owns substituted parameter context recovery"),
+                    "substituted parameter references are not value expressions",
+                    span,
+                );
+                node(SyntaxKind::Expression, vec![self.bump_event()])
             }
             Some(TokenKind::Keyword(Keyword::True | Keyword::False | Keyword::Null)) => {
                 node(SyntaxKind::LiteralExpression, vec![self.bump_event()])

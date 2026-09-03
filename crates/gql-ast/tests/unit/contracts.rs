@@ -181,7 +181,7 @@ fn lower_limit_clause() {
     assert!(matches!(
         query.clauses.last(),
         Some(QueryClause::Limit {
-            value: Some(10),
+            value: crate::NonNegativeIntegerSpecification::Literal(10),
             ..
         })
     ));
@@ -198,8 +198,8 @@ fn lower_order_by_clause_with_directions() {
         panic!("ORDER BY clause exists");
     };
     assert_eq!(keys.len(), 2);
-    assert_eq!(keys[0].direction, crate::SortDirection::Descending);
-    assert_eq!(keys[1].direction, crate::SortDirection::Ascending);
+    assert_eq!(keys[0].direction, Some(crate::SortDirection::Descending));
+    assert_eq!(keys[1].direction, Some(crate::SortDirection::Ascending));
 }
 
 #[test]
@@ -211,7 +211,10 @@ fn lower_offset_clause() {
     };
     assert!(matches!(
         query.clauses.last(),
-        Some(QueryClause::Offset { value: Some(2), .. })
+        Some(QueryClause::Offset {
+            value: crate::NonNegativeIntegerSpecification::Literal(2),
+            ..
+        })
     ));
 }
 
@@ -526,9 +529,7 @@ fn lower_named_path_pattern_preserves_binding_and_nested_elements() {
         panic!("match clause exists");
     };
 
-    let [PatternElement::Path(path)] = match_clause.patterns[0].elements.as_slice() else {
-        panic!("expected one named path element");
-    };
+    let path = &match_clause.patterns[0];
     assert_eq!(
         path.binding.as_ref().map(|binding| binding.text.as_str()),
         Some("p")

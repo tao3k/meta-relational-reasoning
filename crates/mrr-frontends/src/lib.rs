@@ -2,6 +2,7 @@
 #![forbid(unsafe_code)]
 
 mod lowering;
+mod value_type_identity;
 
 pub use lowering::{FrontendError, QueryFrontend, QueryLanguage};
 

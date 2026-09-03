@@ -9,12 +9,17 @@ use asp_rust_build_support::{
 
 use super::ast_performance_scenario::{
     CHARACTER_SEQUENCE_ESCAPES_SOURCE, CHARACTER_SEQUENCE_ESCAPES_SOURCE_BYTES,
+    DYNAMIC_PARAMETERS_SOURCE, DYNAMIC_PARAMETERS_SOURCE_BYTES, FILTER_FOR_SOURCE,
     GENERAL_LITERALS_EXPANDED_SOURCE, GENERAL_LITERALS_EXPANDED_SOURCE_BYTES,
-    GENERAL_LITERALS_SOURCE, GENERAL_LITERALS_SOURCE_BYTES, LEXICAL_IDENTIFIERS_SOURCE,
-    LEXICAL_IDENTIFIERS_SOURCE_BYTES, LEXICAL_NUMERICS_SOURCE, LEXICAL_NUMERICS_SOURCE_BYTES,
-    MAX_TOTAL_MILLIS, MEMORY_BUDGET_BYTES, REFERENCE_AND_PREDEFINED_SOURCE,
-    REFERENCE_AND_PREDEFINED_SOURCE_BYTES, SOURCE_BYTES, SOURCES, VALUE_TYPE_LATTICE_SOURCE,
-    VALUE_TYPE_SOURCE_BYTES, gql_ast_performance_scenario_package,
+    GENERAL_LITERALS_SOURCE, GENERAL_LITERALS_SOURCE_BYTES, GRAPH_ELEMENT_PREDICATES_SOURCE,
+    ISO_AGGREGATE_FUNCTIONS_SOURCE, ISO_AGGREGATE_FUNCTIONS_SOURCE_BYTES,
+    LEXICAL_IDENTIFIERS_SOURCE, LEXICAL_IDENTIFIERS_SOURCE_BYTES, LEXICAL_NUMERICS_SOURCE,
+    LEXICAL_NUMERICS_SOURCE_BYTES, MAX_TOTAL_MILLIS, MEMORY_BUDGET_BYTES, ORDER_PAGE_SOURCE,
+    PATH_SEARCH_PREFIXES_SOURCE, PRIMITIVE_RESULT_SOURCE, REFERENCE_AND_PREDEFINED_SOURCE,
+    REFERENCE_AND_PREDEFINED_SOURCE_BYTES, SOURCE_BYTES, SOURCES, TRUTH_NULL_PREDICATES_SOURCE,
+    TRUTH_NULL_PREDICATES_SOURCE_BYTES, VALUE_TYPE_LATTICE_SOURCE, VALUE_TYPE_PREDICATES_SOURCE,
+    VALUE_TYPE_PREDICATES_SOURCE_BYTES, VALUE_TYPE_SOURCE_BYTES,
+    gql_ast_performance_scenario_package,
 };
 use crate::lower_from_syntax;
 
@@ -134,6 +139,78 @@ fn run_character_sequence_escapes_hot_path() -> AspRustScenarioObservation {
         "character-sequences.gql",
         CHARACTER_SEQUENCE_ESCAPES_SOURCE,
         CHARACTER_SEQUENCE_ESCAPES_SOURCE_BYTES,
+    )
+}
+
+fn run_dynamic_parameters_hot_path() -> AspRustScenarioObservation {
+    run_single_source_hot_path(
+        "dynamic-parameters.gql",
+        DYNAMIC_PARAMETERS_SOURCE,
+        DYNAMIC_PARAMETERS_SOURCE_BYTES,
+    )
+}
+
+fn run_truth_null_predicates_hot_path() -> AspRustScenarioObservation {
+    run_single_source_hot_path(
+        "predicates.gql",
+        TRUTH_NULL_PREDICATES_SOURCE,
+        TRUTH_NULL_PREDICATES_SOURCE_BYTES,
+    )
+}
+
+fn run_iso_aggregate_functions_hot_path() -> AspRustScenarioObservation {
+    run_single_source_hot_path(
+        "aggregates.gql",
+        ISO_AGGREGATE_FUNCTIONS_SOURCE,
+        ISO_AGGREGATE_FUNCTIONS_SOURCE_BYTES,
+    )
+}
+
+fn run_value_type_predicates_hot_path() -> AspRustScenarioObservation {
+    run_single_source_hot_path(
+        "value-type-predicates.gql",
+        VALUE_TYPE_PREDICATES_SOURCE,
+        VALUE_TYPE_PREDICATES_SOURCE_BYTES,
+    )
+}
+
+fn run_graph_element_predicates_hot_path() -> AspRustScenarioObservation {
+    run_single_source_hot_path(
+        "graph-element-predicates.gql",
+        GRAPH_ELEMENT_PREDICATES_SOURCE,
+        GRAPH_ELEMENT_PREDICATES_SOURCE.len() as u64,
+    )
+}
+
+fn run_filter_for_hot_path() -> AspRustScenarioObservation {
+    run_single_source_hot_path(
+        "filter-for.gql",
+        FILTER_FOR_SOURCE,
+        FILTER_FOR_SOURCE.len() as u64,
+    )
+}
+
+fn run_primitive_result_hot_path() -> AspRustScenarioObservation {
+    run_single_source_hot_path(
+        "primitive-result.gql",
+        PRIMITIVE_RESULT_SOURCE,
+        PRIMITIVE_RESULT_SOURCE.len() as u64,
+    )
+}
+
+fn run_path_search_prefixes_hot_path() -> AspRustScenarioObservation {
+    run_single_source_hot_path(
+        "path-search-prefixes.gql",
+        PATH_SEARCH_PREFIXES_SOURCE,
+        PATH_SEARCH_PREFIXES_SOURCE.len() as u64,
+    )
+}
+
+fn run_order_page_hot_path() -> AspRustScenarioObservation {
+    run_single_source_hot_path(
+        "order-page.gql",
+        ORDER_PAGE_SOURCE,
+        ORDER_PAGE_SOURCE.len() as u64,
     )
 }
 
@@ -330,4 +407,182 @@ fn character_sequence_escapes_stay_inside_scenario_budget() {
     assert!(rendered.contains("snapshot = \"gql_ast_character_sequence_escapes_v1\""));
     assert!(rendered.contains("observed = 0"));
     eprintln!("measured character-sequence Scenario:\n{rendered}");
+}
+
+#[test]
+fn dynamic_parameters_stay_inside_scenario_budget() {
+    let _lane = hold_performance_scenario_lane();
+    let package = gql_ast_performance_scenario_package();
+    assert_eq!(package.package_name, "gql-ast");
+    let scenario = scenario_by_name(&package, "dynamic-parameter-specification-v1");
+    let measurement = measure_asp_rust_scenario(scenario, run_dynamic_parameters_hot_path)
+        .expect("measure the ISO dynamic-parameter AST Scenario");
+
+    assert!(measurement.total_p95 <= Duration::from_millis(2));
+    assert!(measurement.observed_memory_bytes <= MEMORY_BUDGET_BYTES);
+    let rendered = render_asp_rust_scenario_benchmark_toml(scenario, &measurement)
+        .expect("render the measured dynamic-parameter Scenario receipt");
+    assert!(rendered.contains("snapshot = \"gql_ast_dynamic_parameter_specification_v1\""));
+    assert!(rendered.contains("observed = 0"));
+    eprintln!("measured dynamic-parameter Scenario:\n{rendered}");
+}
+
+#[test]
+fn truth_null_predicates_stay_inside_scenario_budget() {
+    let _lane = hold_performance_scenario_lane();
+    let package = gql_ast_performance_scenario_package();
+    assert_eq!(package.package_name, "gql-ast");
+    let scenario = scenario_by_name(&package, "truth-null-predicates-v1");
+    let measurement = measure_asp_rust_scenario(scenario, run_truth_null_predicates_hot_path)
+        .expect("measure the ISO truth/null predicate AST Scenario");
+
+    assert!(measurement.total_p95 <= Duration::from_millis(2));
+    assert!(measurement.observed_memory_bytes <= MEMORY_BUDGET_BYTES);
+    let rendered = render_asp_rust_scenario_benchmark_toml(scenario, &measurement)
+        .expect("render the measured truth/null predicate Scenario receipt");
+    assert!(rendered.contains("snapshot = \"gql_ast_truth_null_predicates_v1\""));
+    assert!(rendered.contains("observed = 0"));
+    eprintln!("measured truth/null predicate Scenario:\n{rendered}");
+}
+
+#[test]
+fn iso_aggregate_functions_stay_inside_scenario_budget() {
+    let _lane = hold_performance_scenario_lane();
+    let package = gql_ast_performance_scenario_package();
+    assert_eq!(package.package_name, "gql-ast");
+    let scenario = scenario_by_name(&package, "iso-aggregate-functions-v1");
+    let measurement = measure_asp_rust_scenario(scenario, run_iso_aggregate_functions_hot_path)
+        .expect("measure the ISO aggregate function AST Scenario");
+
+    assert!(measurement.total_p95 <= Duration::from_millis(2));
+    assert!(measurement.observed_memory_bytes <= MEMORY_BUDGET_BYTES);
+    let rendered = render_asp_rust_scenario_benchmark_toml(scenario, &measurement)
+        .expect("render the measured aggregate function Scenario receipt");
+    assert!(rendered.contains("snapshot = \"gql_ast_iso_aggregate_functions_v1\""));
+    assert!(rendered.contains("observed = 0"));
+    eprintln!("measured aggregate function Scenario:\n{rendered}");
+}
+
+#[test]
+fn value_type_predicates_stay_inside_scenario_budget() {
+    let _lane = hold_performance_scenario_lane();
+    let package = gql_ast_performance_scenario_package();
+    assert_eq!(package.package_name, "gql-ast");
+    let scenario = scenario_by_name(&package, "value-type-predicates-v1");
+    let measurement = measure_asp_rust_scenario(scenario, run_value_type_predicates_hot_path)
+        .expect("measure the ISO value-type predicate AST Scenario");
+
+    assert!(measurement.total_p95 <= Duration::from_millis(2));
+    assert!(measurement.observed_memory_bytes <= MEMORY_BUDGET_BYTES);
+    let rendered = render_asp_rust_scenario_benchmark_toml(scenario, &measurement)
+        .expect("render the measured value-type predicate Scenario receipt");
+    assert!(rendered.contains("snapshot = \"gql_ast_value_type_predicates_v1\""));
+    assert!(rendered.contains("observed = 0"));
+    eprintln!("measured value-type predicate Scenario:\n{rendered}");
+}
+
+#[test]
+fn graph_element_predicates_stay_inside_scenario_budget() {
+    let _lane = hold_performance_scenario_lane();
+    let package = gql_ast_performance_scenario_package();
+    assert_eq!(package.package_name, "gql-ast");
+    let scenario = scenario_by_name(&package, "graph-element-predicates-v1");
+    let measurement = measure_asp_rust_scenario(scenario, run_graph_element_predicates_hot_path)
+        .expect("measure the ISO graph-element predicate AST Scenario");
+
+    assert!(
+        measurement.total_p95 <= Duration::from_millis(MAX_TOTAL_MILLIS),
+        "graph-element predicate p95 {:?} exceeded the scenario hard ceiling",
+        measurement.total_p95
+    );
+    assert!(measurement.observed_memory_bytes <= MEMORY_BUDGET_BYTES);
+    let rendered = render_asp_rust_scenario_benchmark_toml(scenario, &measurement)
+        .expect("render the measured graph-element predicate Scenario receipt");
+    assert!(rendered.contains("snapshot = \"gql_ast_graph_element_predicates_v1\""));
+    assert!(rendered.contains("observed = 0"));
+    eprintln!("measured graph-element predicate Scenario:\n{rendered}");
+}
+
+#[test]
+fn filter_for_stays_inside_scenario_budget() {
+    let _lane = hold_performance_scenario_lane();
+    let package = gql_ast_performance_scenario_package();
+    let scenario = scenario_by_name(&package, "filter-for-v1");
+    let measurement = measure_asp_rust_scenario(scenario, run_filter_for_hot_path)
+        .expect("measure the ISO FILTER and FOR AST Scenario");
+
+    assert!(
+        measurement.total_p95 <= Duration::from_millis(MAX_TOTAL_MILLIS),
+        "FILTER/FOR p95 {:?} exceeded the scenario hard ceiling",
+        measurement.total_p95
+    );
+    assert!(measurement.observed_memory_bytes <= MEMORY_BUDGET_BYTES);
+    let rendered = render_asp_rust_scenario_benchmark_toml(scenario, &measurement)
+        .expect("render the measured FILTER/FOR Scenario receipt");
+    assert!(rendered.contains("snapshot = \"gql_ast_filter_for_v1\""));
+    assert!(rendered.contains("observed = 0"));
+    eprintln!("measured FILTER/FOR Scenario:\n{rendered}");
+}
+
+#[test]
+fn primitive_result_stays_inside_scenario_budget() {
+    let _lane = hold_performance_scenario_lane();
+    let package = gql_ast_performance_scenario_package();
+    let scenario = scenario_by_name(&package, "primitive-result-v1");
+    let measurement = measure_asp_rust_scenario(scenario, run_primitive_result_hot_path)
+        .expect("measure the ISO primitive result AST Scenario");
+
+    assert!(
+        measurement.total_p95 <= Duration::from_millis(MAX_TOTAL_MILLIS),
+        "primitive result p95 {:?} exceeded the scenario hard ceiling",
+        measurement.total_p95
+    );
+    assert!(measurement.observed_memory_bytes <= MEMORY_BUDGET_BYTES);
+    let rendered = render_asp_rust_scenario_benchmark_toml(scenario, &measurement)
+        .expect("render the measured primitive result Scenario receipt");
+    assert!(rendered.contains("snapshot = \"gql_ast_primitive_result_v1\""));
+    assert!(rendered.contains("observed = 0"));
+    eprintln!("measured primitive result Scenario:\n{rendered}");
+}
+
+#[test]
+fn path_search_prefixes_stay_inside_scenario_budget() {
+    let _lane = hold_performance_scenario_lane();
+    let package = gql_ast_performance_scenario_package();
+    let scenario = scenario_by_name(&package, "path-search-prefixes-v1");
+    let measurement = measure_asp_rust_scenario(scenario, run_path_search_prefixes_hot_path)
+        .expect("measure the ISO path-search prefix AST Scenario");
+
+    assert!(
+        measurement.total_p95 <= Duration::from_millis(MAX_TOTAL_MILLIS),
+        "path-search prefix p95 {:?} exceeded the scenario hard ceiling",
+        measurement.total_p95
+    );
+    assert!(measurement.observed_memory_bytes <= MEMORY_BUDGET_BYTES);
+    let rendered = render_asp_rust_scenario_benchmark_toml(scenario, &measurement)
+        .expect("render the measured path-search prefix Scenario receipt");
+    assert!(rendered.contains("snapshot = \"gql_ast_path_search_prefixes_v1\""));
+    assert!(rendered.contains("observed = 0"));
+    eprintln!("measured path-search prefix Scenario:\n{rendered}");
+}
+
+#[test]
+fn order_page_stays_inside_scenario_budget() {
+    let _lane = hold_performance_scenario_lane();
+    let package = gql_ast_performance_scenario_package();
+    let scenario = scenario_by_name(&package, "order-page-v1");
+    let measurement = measure_asp_rust_scenario(scenario, run_order_page_hot_path)
+        .expect("measure the ISO ordering and pagination AST Scenario");
+
+    assert!(
+        measurement.total_p95 <= Duration::from_millis(MAX_TOTAL_MILLIS),
+        "ordering and pagination p95 {:?} exceeded the scenario hard ceiling",
+        measurement.total_p95
+    );
+    assert!(measurement.observed_memory_bytes <= MEMORY_BUDGET_BYTES);
+    let rendered = render_asp_rust_scenario_benchmark_toml(scenario, &measurement)
+        .expect("render the measured ordering and pagination Scenario receipt");
+    assert!(rendered.contains("snapshot = \"gql_ast_order_page_v1\""));
+    assert!(rendered.contains("observed = 0"));
+    eprintln!("measured ordering and pagination Scenario:\n{rendered}");
 }

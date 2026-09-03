@@ -2,13 +2,17 @@
 #![forbid(unsafe_code)]
 
 use super::Parser;
-use crate::syntax::{Keyword, TokenKind, is_non_reserved_word};
+use crate::syntax::{
+    GrammarParserAction, Keyword, TokenKind, is_non_reserved_word, top_level_parser_entrypoint,
+};
 
 impl Parser<'_> {
     pub(in crate::parser) fn is_expression_start(&self, kind: TokenKind) -> bool {
         matches!(
             kind,
             TokenKind::Identifier
+                | TokenKind::DynamicParameter
+                | TokenKind::SubstitutedParameter
                 | TokenKind::String
                 | TokenKind::ByteString
                 | TokenKind::Number
@@ -22,25 +26,31 @@ impl Parser<'_> {
     }
 
     pub(in crate::parser) fn is_clause_keyword(&self, kind: TokenKind) -> bool {
-        matches!(
-            kind,
-            TokenKind::Keyword(Keyword::Match)
-                | TokenKind::Keyword(Keyword::Optional)
-                | TokenKind::Keyword(Keyword::Where)
-                | TokenKind::Keyword(Keyword::Let)
-                | TokenKind::Keyword(Keyword::Return)
-                | TokenKind::Keyword(Keyword::Union)
-                | TokenKind::Keyword(Keyword::Limit)
-                | TokenKind::Keyword(Keyword::Order)
-                | TokenKind::Keyword(Keyword::Group)
-                | TokenKind::Keyword(Keyword::Offset)
-                | TokenKind::Keyword(Keyword::Insert)
-                | TokenKind::Keyword(Keyword::Set)
-                | TokenKind::Keyword(Keyword::Remove)
-                | TokenKind::Keyword(Keyword::Delete)
-                | TokenKind::Keyword(Keyword::Detach)
-                | TokenKind::Keyword(Keyword::Nodetach)
-        )
+        let TokenKind::Keyword(keyword) = kind else {
+            return false;
+        };
+        top_level_parser_entrypoint(keyword).is_some_and(|entrypoint| {
+            matches!(
+                entrypoint.action,
+                GrammarParserAction::MatchClause
+                    | GrammarParserAction::OptionalMatchClause
+                    | GrammarParserAction::ReturnClause
+                    | GrammarParserAction::FinishStatement
+                    | GrammarParserAction::WhereClause
+                    | GrammarParserAction::LetClause
+                    | GrammarParserAction::FilterStatement
+                    | GrammarParserAction::ForStatement
+                    | GrammarParserAction::UnionClause
+                    | GrammarParserAction::LimitClause
+                    | GrammarParserAction::OrderByClause
+                    | GrammarParserAction::OffsetClause
+                    | GrammarParserAction::GroupByClause
+                    | GrammarParserAction::InsertStatement
+                    | GrammarParserAction::SetStatement
+                    | GrammarParserAction::RemoveStatement
+                    | GrammarParserAction::DeleteStatement
+            )
+        })
     }
 
     pub(in crate::parser) fn is_clause_boundary(&self, kind: TokenKind) -> bool {

@@ -1,0 +1,11 @@
+id = "truth-null-predicates-v1"
+title = "ISO GQL null and truth-value predicate hot path"
+policy_ids = ["RUST-AGENT-GQL-AST-PERF-001"]
+agent_goal = "Parse and lower the complete IS [NOT] NULL and IS [NOT] TRUE/FALSE/UNKNOWN predicate family with exact precedence and zero fallback."
+reference_repositories = ["opengql/grammar", "rust-analyzer/rowan"]
+reference_patterns = [
+  "Gerbil AOT owns predicate forms, truth-value keywords, CST shapes, and typed recovery",
+  "The Pratt parser admits postfix predicate tests at the comparison precedence without a second expression parser",
+  "AST retains truth value, negation, and source span while canonical IR and MRR use explicit unary operators",
+]
+inputs = "inputs"

@@ -1,0 +1,1 @@
+LET values = [1, 2, 3] FOR value IN values WITH ORDINALITY position FILTER value > 1 RETURN value, position

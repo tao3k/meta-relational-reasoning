@@ -1,5 +1,8 @@
 use crate::{FrontendError, QueryFrontend, QueryLanguage};
-use mrr_query::{BinaryOperator, Direction, Expression, UnaryOperator, Value};
+use mrr_query::{
+    AggregationFunction, BinaryOperator, Direction, Expression, Parameter, SetQuantifier,
+    UnaryOperator, Value,
+};
 
 const PARITY_QUERY: &str =
     "MATCH (a:Module)-[:DEPENDS_ON]->(b:Module) WHERE a.name = 'runtime' RETURN b";
@@ -59,6 +62,23 @@ fn unsupported_surface_fails_closed_before_meta_query_admission() {
 }
 
 #[test]
+fn primitive_result_semantics_absent_from_meta_query_ir_fail_closed_by_exact_name() {
+    for (source, expected) in [
+        ("MATCH (n) RETURN DISTINCT n", "RETURN DISTINCT"),
+        ("MATCH (n) RETURN *", "RETURN *"),
+        ("MATCH (n) FINISH", "FINISH result statement"),
+    ] {
+        assert_eq!(
+            QueryFrontend::new(QueryLanguage::Gql)
+                .compile("primitive-result.gql", source)
+                .expect_err("MetaQueryIR must not erase primitive result semantics"),
+            FrontendError::Unsupported(expected.into()),
+            "source={source}"
+        );
+    }
+}
+
+#[test]
 fn numeric_unary_operators_lower_without_a_compatibility_operator() {
     let query = QueryFrontend::new(QueryLanguage::Gql)
         .compile("unary.gql", "MATCH (n) RETURN -1, +2")
@@ -82,11 +102,44 @@ fn operators_absent_from_meta_query_ir_fail_closed_by_exact_name() {
     for (source, expected) in [
         ("MATCH (n) RETURN TRUE XOR FALSE", "XOR expression"),
         ("MATCH (n) RETURN 'a' || 'b'", "concatenation expression"),
+        (
+            "MATCH (n) RETURN n IS TYPED INT64",
+            "value-type predicate expression",
+        ),
+        (
+            "MATCH (a)-[e]->(b) RETURN e IS DIRECTED",
+            "graph-element predicate expression",
+        ),
     ] {
         assert_eq!(
             QueryFrontend::new(QueryLanguage::Gql)
                 .compile("unsupported-expression.gql", source)
                 .expect_err("target query algebra must reject an absent operator"),
+            FrontendError::Unsupported(expected.into())
+        );
+    }
+}
+
+#[test]
+fn graph_match_and_path_search_authority_fail_closed_by_exact_name() {
+    for (source, expected) in [
+        (
+            "MATCH REPEATABLE ELEMENTS (a)-[e]->(b) RETURN a",
+            "graph match mode",
+        ),
+        (
+            "MATCH ALL SHORTEST TRAIL PATHS (a)-[e]->(b) RETURN a",
+            "path search prefix",
+        ),
+        (
+            "MATCH (a)-[e]->(b) KEEP ANY 2 WALK PATHS RETURN a",
+            "KEEP path prefix",
+        ),
+    ] {
+        assert_eq!(
+            QueryFrontend::new(QueryLanguage::Gql)
+                .compile("unsupported-path-authority.gql", source)
+                .expect_err("MetaQueryIR has no path-search execution authority"),
             FrontendError::Unsupported(expected.into())
         );
     }
@@ -101,6 +154,28 @@ fn complete_query_pipeline_is_rejected_as_one_unit_without_partial_consumption()
             .compile("complete-pipeline.gql", source)
             .expect_err("MetaQueryIR cannot partially consume the GQL query pipeline"),
         FrontendError::Unsupported("LET".into())
+    );
+}
+
+#[test]
+fn filter_lowers_to_meta_query_filter_while_for_fails_closed_by_operator_name() {
+    let filter = QueryFrontend::new(QueryLanguage::Gql)
+        .compile("filter.gql", "MATCH (n) FILTER n.score > 1 RETURN n")
+        .expect("FILTER is representable by MetaQueryIR");
+    assert_eq!(filter.filters().len(), 1);
+    assert!(matches!(
+        filter.filters()[0].predicate(),
+        Expression::Binary {
+            operator: BinaryOperator::Greater,
+            ..
+        }
+    ));
+
+    assert_eq!(
+        QueryFrontend::new(QueryLanguage::Gql)
+            .compile("for.gql", "MATCH (n) FOR value IN [1, 2] RETURN value",)
+            .expect_err("MetaQueryIR has no collection-expansion operator"),
+        FrontendError::Unsupported("FOR collection expansion".into())
     );
 }
 
@@ -163,6 +238,49 @@ fn general_literal_values_lower_to_backend_neutral_meta_query_ir() {
 }
 
 #[test]
+fn iso_aggregate_family_lowers_to_explicit_meta_query_aggregations() {
+    let source = concat!(
+        "MATCH (n) RETURN COUNT(*) AS rows, COUNT(DISTINCT n) AS nodes, ",
+        "PERCENTILE_CONT(ALL n.score, 0.5) AS median"
+    );
+    let query = QueryFrontend::new(QueryLanguage::Gql)
+        .compile("aggregate-family.gql", source)
+        .expect("aggregate family lowers to MetaQueryIR");
+
+    assert!(query.projections().is_empty());
+    assert_eq!(query.aggregations().len(), 3);
+    assert_eq!(
+        query.aggregations()[0].function(),
+        AggregationFunction::Count
+    );
+    assert!(query.aggregations()[0].is_count_star());
+    assert!(query.aggregations()[0].expressions().is_empty());
+    assert_eq!(
+        query.aggregations()[1].quantifier(),
+        Some(SetQuantifier::Distinct)
+    );
+    assert_eq!(query.aggregations()[1].expressions().len(), 1);
+    assert_eq!(
+        query.aggregations()[2].function(),
+        AggregationFunction::PercentileContinuous
+    );
+    assert_eq!(
+        query.aggregations()[2].quantifier(),
+        Some(SetQuantifier::All)
+    );
+    assert_eq!(query.aggregations()[2].expressions().len(), 2);
+
+    let replay = QueryFrontend::new(QueryLanguage::Gql)
+        .compile("aggregate-family.gql", source)
+        .expect("aggregate replay");
+    assert_eq!(query.id(), replay.id());
+    assert_eq!(
+        query.encode_canonical().expect("aggregate canonical bytes"),
+        replay.encode_canonical().expect("aggregate replay bytes")
+    );
+}
+
+#[test]
 fn character_string_source_forms_share_only_semantically_equal_mrr_identity() {
     let frontend = QueryFrontend::new(QueryLanguage::Gql);
     let single = frontend
@@ -188,5 +306,110 @@ fn character_string_source_forms_share_only_semantically_equal_mrr_identity() {
     assert_eq!(
         no_escape.projections()[0].expression(),
         &Expression::Literal(Value::String(r"A\nB".into()))
+    );
+}
+
+#[test]
+fn dynamic_parameter_identity_uses_decoded_name_not_source_delimiters() {
+    let extended = QueryFrontend::new(QueryLanguage::Gql)
+        .compile(
+            "parameter-extended.gql",
+            "MATCH (n {value: $limit}) RETURN $limit",
+        )
+        .expect("extended dynamic parameter");
+    let delimited = QueryFrontend::new(QueryLanguage::Gql)
+        .compile(
+            "parameter-delimited.gql",
+            "MATCH (n {value: $\"limit\"}) RETURN $\"limit\"",
+        )
+        .expect("delimited dynamic parameter");
+    let changed = QueryFrontend::new(QueryLanguage::Gql)
+        .compile(
+            "parameter-changed.gql",
+            "MATCH (n {value: $other}) RETURN $other",
+        )
+        .expect("changed dynamic parameter");
+
+    assert_eq!(extended.id(), delimited.id());
+    assert_eq!(
+        extended
+            .encode_canonical()
+            .expect("extended canonical bytes"),
+        delimited
+            .encode_canonical()
+            .expect("delimited canonical bytes")
+    );
+    assert_eq!(
+        extended.projections()[0].expression(),
+        &Expression::Parameter(Parameter::new("limit").expect("parameter identity"))
+    );
+    assert_ne!(extended.id(), changed.id());
+}
+
+#[test]
+fn null_and_truth_predicates_lower_to_explicit_mrr_unary_operators() {
+    let query = QueryFrontend::new(QueryLanguage::Gql)
+        .compile(
+            "truth-null-predicates.gql",
+            "MATCH (n) WHERE n.deleted IS NULL RETURN n.deleted IS NOT NULL, TRUE IS TRUE, NULL IS UNKNOWN",
+        )
+        .expect("truth/null predicate slice");
+
+    assert!(matches!(
+        query.filters()[0].predicate(),
+        Expression::Unary {
+            operator: UnaryOperator::IsNull,
+            ..
+        }
+    ));
+    assert!(matches!(
+        query.projections()[0].expression(),
+        Expression::Unary {
+            operator: UnaryOperator::IsNotNull,
+            ..
+        }
+    ));
+    assert!(matches!(
+        query.projections()[1].expression(),
+        Expression::Unary {
+            operator: UnaryOperator::IsTrue,
+            ..
+        }
+    ));
+    assert!(matches!(
+        query.projections()[2].expression(),
+        Expression::Unary {
+            operator: UnaryOperator::IsUnknown,
+            ..
+        }
+    ));
+
+    let negated = QueryFrontend::new(QueryLanguage::Gql)
+        .compile(
+            "truth-null-predicates-negated.gql",
+            "MATCH (n) WHERE n.deleted IS NOT NULL RETURN TRUE IS NOT TRUE",
+        )
+        .expect("negated truth/null predicate slice");
+    assert_ne!(query.id(), negated.id());
+}
+
+#[test]
+fn zero_limit_is_valid_while_unowned_page_semantics_fail_closed_by_exact_name() {
+    let frontend = QueryFrontend::new(QueryLanguage::Gql);
+    let zero = frontend
+        .compile("zero-limit.gql", "MATCH (n) RETURN n LIMIT 0")
+        .expect("ISO zero LIMIT is a valid empty-result bound");
+    assert_eq!(zero.limit(), Some(0));
+
+    assert_eq!(
+        frontend.compile("dynamic-limit.gql", "MATCH (n) RETURN n LIMIT $limit",),
+        Err(FrontendError::Unsupported("dynamic LIMIT".into()))
+    );
+    assert_eq!(
+        frontend.compile(
+            "null-ordering.gql",
+            "MATCH (n) RETURN n ORDER BY n NULLS LAST LIMIT 1",
+        ),
+        Err(FrontendError::Unsupported("NULLS ordering".into()))
     );
 }

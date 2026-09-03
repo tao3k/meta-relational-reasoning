@@ -1,6 +1,7 @@
 //! Lowering helpers for converting parse trees into public GQL AST structures.
 #![forbid(unsafe_code)]
 
+use super::aggregate_lowering::lower_aggregate_call;
 use super::data_management_lowering::{
     lower_catalog_statement, lower_data_clause, lower_procedure_statement, lower_session_statement,
     lower_transaction_statement,
@@ -8,18 +9,24 @@ use super::data_management_lowering::{
 use super::general_literal_lowering::lower_general_literal;
 use super::identifier_lowering::identifier_from_token;
 use super::label_lowering::lower_label_predicate;
+use super::lowering_support::is_expression_kind;
 use super::numeric_lowering::lower_numeric_literal;
-use super::pattern_graph_lowering::{lower_graph_pattern, lower_path_pattern};
+use super::order_page_lowering::{lower_non_negative_integer_specification, lower_order_by_clause};
+use super::pattern_graph_lowering::{lower_path_pattern, lower_path_prefix};
+use super::predicate_lowering::{lower_graph_element_predicate, lower_predicate_test};
+use super::primitive_query_lowering::lower_primitive_query_clause;
+use super::value_type_predicate_lowering::lower_value_type_predicate;
 use super::{
-    BinaryOperator, CharacterStringForm, CharacterStringLiteral, Expression, GraphPattern,
-    Identifier, LetBinding, MatchClause, PathMode, PatternElement, Query, QueryClause,
-    ReturnProjection, SortDirection, SortKey, Statement, SyntaxParseOutput, UnaryOperator,
+    BinaryOperator, CharacterStringForm, CharacterStringLiteral, DynamicParameterReference,
+    Expression, GraphMatchMode, Identifier, LetBinding, MatchClause, ParameterNameForm, Query,
+    QueryClause, ReturnProjection, Statement, SyntaxParseOutput, UnaryOperator,
 };
 use gql_source::{Diagnostic, Span};
 use gql_syntax::{
-    CharacterStringForm as SyntaxCharacterStringForm, Keyword, Parse as SyntaxParse, SyntaxElement,
+    CharacterStringForm as SyntaxCharacterStringForm, Keyword,
+    ParameterNameForm as SyntaxParameterNameForm, Parse as SyntaxParse, SyntaxElement,
     SyntaxElementKind, SyntaxKind, SyntaxNode, Token, TokenKind, decode_character_string,
-    is_non_reserved_word,
+    decode_parameter_reference, is_non_reserved_word,
 };
 /// Lower a parsed syntax tree into the AST result used by semantic analysis.
 #[must_use]
@@ -129,26 +136,54 @@ fn lower_query(node: &SyntaxNode, source: &str, diagnostics: &mut Vec<Diagnostic
                     clauses.push(clause);
                 }
             }
+            SyntaxKind::FilterStatement => {
+                if let Some(clause) =
+                    lower_primitive_query_clause(child, source, diagnostics, lower_expression)
+                {
+                    clauses.push(clause);
+                }
+            }
+            SyntaxKind::ForStatement => {
+                if let Some(clause) =
+                    lower_primitive_query_clause(child, source, diagnostics, lower_expression)
+                {
+                    clauses.push(clause);
+                }
+            }
             SyntaxKind::ReturnClause => {
                 let projections = lower_return_clause(child, source);
                 clauses.push(QueryClause::Return {
+                    quantifier: lower_result_set_quantifier(child),
+                    all_bindings: syntax_tokens(child.children())
+                        .any(|token| token.kind == TokenKind::Punctuation('*')),
                     projections,
                     span: significant_node_span(child),
                 });
             }
-            SyntaxKind::UnionClause => clauses.push(QueryClause::Union { span: child.span() }),
-            SyntaxKind::LimitClause => clauses.push(QueryClause::Limit {
-                value: first_number(child),
-                span: child.span(),
-            }),
-            SyntaxKind::OrderByClause => clauses.push(QueryClause::OrderBy {
-                keys: lower_order_by_clause(child, source),
-                span: child.span(),
-            }),
-            SyntaxKind::OffsetClause => clauses.push(QueryClause::Offset {
-                value: first_number(child),
+            SyntaxKind::FinishStatement => clauses.push(QueryClause::Finish {
                 span: significant_node_span(child),
             }),
+            SyntaxKind::UnionClause => clauses.push(QueryClause::Union { span: child.span() }),
+            SyntaxKind::LimitClause => {
+                if let Some(value) = lower_non_negative_integer_specification(child) {
+                    clauses.push(QueryClause::Limit {
+                        value,
+                        span: child.span(),
+                    });
+                }
+            }
+            SyntaxKind::OrderByClause => clauses.push(QueryClause::OrderBy {
+                keys: lower_order_by_clause(child, source, lower_expression),
+                span: child.span(),
+            }),
+            SyntaxKind::OffsetClause => {
+                if let Some(value) = lower_non_negative_integer_specification(child) {
+                    clauses.push(QueryClause::Offset {
+                        value,
+                        span: significant_node_span(child),
+                    });
+                }
+            }
             SyntaxKind::GroupByClause => clauses.push(QueryClause::GroupBy {
                 keys: lower_expression_list(child, source),
                 span: significant_node_span(child),
@@ -191,23 +226,17 @@ pub(super) fn significant_node_span(node: &SyntaxNode) -> Span {
 }
 
 fn lower_match_clause(node: &SyntaxNode, source: &str) -> Option<MatchClause> {
-    let patterns = node.children().into_iter().find_map(|element| {
-        let list = syntax_node(&element)?;
+    let children = node.children();
+    let patterns = children.iter().find_map(|element| {
+        let list = syntax_node(element)?;
         (list.kind() == SyntaxKind::GraphPatternList).then(|| {
             list.children()
                 .iter()
                 .filter_map(|element| {
                     let child = syntax_node(element)?;
-                    match child.kind() {
-                        SyntaxKind::GraphPattern => lower_graph_pattern(child, source),
-                        SyntaxKind::PathPattern => {
-                            lower_path_pattern(child, source).map(|path| GraphPattern {
-                                elements: vec![PatternElement::Path(path)],
-                                span: child.span(),
-                            })
-                        }
-                        _ => None,
-                    }
+                    (child.kind() == SyntaxKind::PathPattern)
+                        .then(|| lower_path_pattern(child, source))
+                        .flatten()
                 })
                 .collect::<Vec<_>>()
         })
@@ -217,26 +246,32 @@ fn lower_match_clause(node: &SyntaxNode, source: &str) -> Option<MatchClause> {
     }
 
     Some(MatchClause {
-        mode: node
-            .children()
-            .iter()
-            .find_map(|element| {
-                let SyntaxElementKind::Node(mode) = &element.kind else {
-                    return None;
-                };
-                if mode.kind() != SyntaxKind::PathMode {
-                    return None;
+        mode: children.iter().find_map(|element| {
+            let mode = syntax_node(element)?;
+            (mode.kind() == SyntaxKind::GraphMatchMode).then(|| {
+                if syntax_tokens(mode.children())
+                    .any(|token| token.text().eq_ignore_ascii_case("REPEATABLE"))
+                {
+                    GraphMatchMode::RepeatableElements
+                } else {
+                    GraphMatchMode::DifferentEdges
                 }
-                syntax_tokens(mode.children()).find_map(|token| match token.kind {
-                    TokenKind::Keyword(Keyword::Walk) => Some(PathMode::Walk),
-                    TokenKind::Keyword(Keyword::Trail) => Some(PathMode::Trail),
-                    TokenKind::Keyword(Keyword::Acyclic) => Some(PathMode::Acyclic),
-                    TokenKind::Keyword(Keyword::Simple) => Some(PathMode::Simple),
-                    _ => None,
-                })
             })
-            .unwrap_or(PathMode::Walk),
+        }),
         patterns,
+        keep: children.iter().find_map(|element| {
+            let keep = syntax_node(element)?;
+            (keep.kind() == SyntaxKind::KeepClause)
+                .then(|| {
+                    keep.children().iter().find_map(|element| {
+                        let prefix = syntax_node(element)?;
+                        (prefix.kind() == SyntaxKind::PathPrefix)
+                            .then(|| lower_path_prefix(prefix))
+                            .flatten()
+                    })
+                })
+                .flatten()
+        }),
         span: node.span(),
     })
 }
@@ -285,6 +320,21 @@ fn lower_return_clause(node: &SyntaxNode, source: &str) -> Vec<ReturnProjection>
     projections
 }
 
+fn lower_result_set_quantifier(node: &SyntaxNode) -> Option<super::SetQuantifier> {
+    node.children().iter().find_map(|element| {
+        let child = syntax_node(element)?;
+        (child.kind() == SyntaxKind::SetQuantifier).then(|| {
+            if syntax_tokens(child.children())
+                .any(|token| token.kind == TokenKind::Keyword(Keyword::Distinct))
+            {
+                super::SetQuantifier::Distinct
+            } else {
+                super::SetQuantifier::All
+            }
+        })
+    })
+}
+
 fn lower_where_clause(
     node: &SyntaxNode,
     source: &str,
@@ -326,7 +376,8 @@ pub(super) fn lower_expression(node: &SyntaxNode, source: &str) -> Option<Expres
     match node.kind() {
         SyntaxKind::NameExpression
         | SyntaxKind::LiteralExpression
-        | SyntaxKind::CharacterStringLiteralExpression => {
+        | SyntaxKind::CharacterStringLiteralExpression
+        | SyntaxKind::DynamicParameterExpression => {
             node.children().iter().find_map(|element| match element {
                 SyntaxElement {
                     kind: SyntaxElementKind::Token(token),
@@ -379,6 +430,20 @@ pub(super) fn lower_expression(node: &SyntaxNode, source: &str) -> Option<Expres
                 right: Box::new(right),
             })
         }
+        SyntaxKind::NullPredicateExpression | SyntaxKind::TruthPredicateExpression => {
+            lower_predicate_test(node, |child| {
+                is_expression_kind(child.kind())
+                    .then(|| lower_expression(child, source))
+                    .flatten()
+            })
+        }
+        SyntaxKind::ValueTypePredicateExpression => lower_value_type_predicate(node, source),
+        SyntaxKind::DirectedPredicateExpression
+        | SyntaxKind::EndpointPredicateExpression
+        | SyntaxKind::ElementIdentityPredicateExpression
+        | SyntaxKind::PropertyExistsPredicateExpression => {
+            lower_graph_element_predicate(node, source)
+        }
         SyntaxKind::LabelPredicateExpression => lower_label_predicate(node, source),
         SyntaxKind::PropertyAccessExpression => {
             let base = node.children().iter().find_map(|element| match element {
@@ -418,6 +483,7 @@ pub(super) fn lower_expression(node: &SyntaxNode, source: &str) -> Option<Expres
                 span: significant_node_span(node),
             })
         }
+        SyntaxKind::AggregateFunctionExpression => lower_aggregate_call(node, source),
         SyntaxKind::ListExpression => {
             let items = node
                 .children()
@@ -462,29 +528,6 @@ pub(super) fn lower_expression(node: &SyntaxNode, source: &str) -> Option<Expres
         }
         _ => None,
     }
-}
-
-pub(super) fn is_expression_kind(kind: SyntaxKind) -> bool {
-    matches!(
-        kind,
-        SyntaxKind::Expression
-            | SyntaxKind::NameExpression
-            | SyntaxKind::LiteralExpression
-            | SyntaxKind::CharacterStringLiteralExpression
-            | SyntaxKind::ByteStringLiteralExpression
-            | SyntaxKind::TemporalLiteralExpression
-            | SyntaxKind::DurationLiteralExpression
-            | SyntaxKind::UnaryExpression
-            | SyntaxKind::BinaryExpression
-            | SyntaxKind::LabelPredicateExpression
-            | SyntaxKind::PropertyAccessExpression
-            | SyntaxKind::FunctionCallExpression
-            | SyntaxKind::ListExpression
-            | SyntaxKind::RecordExpression
-            | SyntaxKind::SubscriptExpression
-            | SyntaxKind::ParenthesizedExpression
-            | SyntaxKind::CaseExpression
-    )
 }
 
 fn lower_case_expression(node: &SyntaxNode, source: &str) -> Option<Expression> {
@@ -789,6 +832,17 @@ fn lower_expression_token(token: &Token, source: &str) -> Option<Expression> {
             lower_character_string_literal(token)
         }
         TokenKind::Identifier => Some(Expression::Name(identifier_from_token(token, source))),
+        TokenKind::DynamicParameter => {
+            let decoded = decode_parameter_reference(token.text())?;
+            Some(Expression::Parameter(DynamicParameterReference {
+                name: decoded.name.into_owned(),
+                form: match decoded.form {
+                    SyntaxParameterNameForm::Extended => ParameterNameForm::Extended,
+                    SyntaxParameterNameForm::Delimited => ParameterNameForm::Delimited,
+                },
+                span: token.span,
+            }))
+        }
         TokenKind::Keyword(_) if is_non_reserved_word(token.text()) => {
             Some(Expression::Name(identifier_from_token(token, source)))
         }
@@ -901,61 +955,21 @@ fn first_identifier(node: &SyntaxNode, source: &str) -> Option<Identifier> {
     node.children()
         .into_iter()
         .find_map(|element| match element.kind {
-            SyntaxElementKind::Token(token) if token.kind == TokenKind::Identifier => {
+            SyntaxElementKind::Token(token)
+                if token.kind == TokenKind::Identifier || is_non_reserved_word(token.text()) =>
+            {
                 Some(identifier_from_token(&token, source))
             }
             _ => None,
         })
 }
 
-fn first_number(node: &SyntaxNode) -> Option<u64> {
+pub(super) fn descendant_tokens(node: &SyntaxNode) -> Vec<Token> {
     node.children()
         .into_iter()
-        .find_map(|element| match element.kind {
-            SyntaxElementKind::Token(token) if token.kind == TokenKind::Number => {
-                token.text().parse().ok()
-            }
-            _ => None,
+        .flat_map(|element| match element.kind {
+            SyntaxElementKind::Token(token) => vec![token],
+            SyntaxElementKind::Node(child) => descendant_tokens(&child),
         })
-}
-
-fn lower_order_by_clause(node: &SyntaxNode, source: &str) -> Vec<SortKey> {
-    let mut keys = Vec::new();
-    let mut pending = None;
-    for element in node.children() {
-        match element.kind {
-            SyntaxElementKind::Node(child)
-                if is_expression_kind(child.kind())
-                    && let Some(expression) = lower_expression(&child, source)
-                    && let Some(expression) = pending.replace(expression) =>
-            {
-                keys.push(SortKey {
-                    expression,
-                    direction: SortDirection::Ascending,
-                });
-            }
-            SyntaxElementKind::Token(token)
-                if matches!(token.kind, TokenKind::Keyword(Keyword::Asc | Keyword::Desc)) =>
-            {
-                if let Some(expression) = pending.take() {
-                    keys.push(SortKey {
-                        expression,
-                        direction: if token.kind == TokenKind::Keyword(Keyword::Desc) {
-                            SortDirection::Descending
-                        } else {
-                            SortDirection::Ascending
-                        },
-                    });
-                }
-            }
-            _ => {}
-        }
-    }
-    if let Some(expression) = pending {
-        keys.push(SortKey {
-            expression,
-            direction: SortDirection::Ascending,
-        });
-    }
-    keys
+        .collect()
 }

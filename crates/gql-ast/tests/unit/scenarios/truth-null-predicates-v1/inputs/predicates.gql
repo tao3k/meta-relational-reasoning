@@ -1,0 +1,1 @@
+MATCH (n) WHERE n.deleted IS NULL OR n.active IS NOT FALSE AND n.reviewed IS TRUE RETURN n.deleted IS NOT NULL, n.active IS TRUE, n.active IS NOT TRUE, n.active IS FALSE, n.active IS NOT FALSE, NULL IS UNKNOWN, NULL IS NOT UNKNOWN

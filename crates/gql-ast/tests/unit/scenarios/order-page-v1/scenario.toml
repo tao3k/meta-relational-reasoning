@@ -1,0 +1,11 @@
+id = "order-page-v1"
+title = "ISO GQL ordering and pagination hot path"
+policy_ids = ["RUST-AGENT-GQL-AST-PERF-001"]
+agent_goal = "Parse and lower complete ordering and pagination semantics with zero fallback."
+reference_repositories = ["opengql/grammar", "rust-analyzer/rowan"]
+reference_patterns = [
+  "Gerbil AOT owns ordering, null placement, and pagination shapes and typed recovery",
+  "Rowan preserves sort specifications and page parameters in source order",
+  "AST lowering retains explicit source choices while canonical IR resolves defaults without backend work",
+]
+inputs = "inputs"

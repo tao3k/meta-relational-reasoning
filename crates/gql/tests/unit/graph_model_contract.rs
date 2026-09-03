@@ -47,8 +47,7 @@ fn unlabeled_edge_binding_survives_ast_and_canonical_ir() {
         result.analysis.diagnostics
     );
     let ir = result.analysis.ir.expect("canonical unlabeled edge IR");
-    let Some(IrPatternElement::Edge(edge)) = ir.graphs.first().expect("graph").elements.get(1)
-    else {
+    let Some(IrPatternElement::Edge(edge)) = ir.matches[0].paths[0].elements.get(1) else {
         panic!("canonical edge exists");
     };
     assert_eq!(edge.binding.as_deref(), Some("E"));
