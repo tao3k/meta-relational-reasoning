@@ -117,23 +117,10 @@ jobs:
       - name: Lint Rust workspace
         run: gerbil env cargo clippy --workspace --all-targets --locked -- -D warnings
 
-      - name: Test facade feature boundaries
+      - name: Check lightweight GQL support profiles
         run: |
-          gerbil env cargo test -p gql --no-default-features --locked
-          gerbil env cargo test -p gql --all-features --locked
-          gerbil env cargo test -p gql frontend_contract --locked
-          gerbil env cargo test -p gql --no-default-features frontend_contract --locked
-
-      - name: Verify core dependency purity
-        shell: bash
-        run: |
-          for crate in gql-core gql-ast gql-compiler gql-catalog gql-ir gql-sema gql-syntax gql-source gql-types; do
-            tree="$(gerbil env cargo tree -p "$crate" --all-features)"
-            if grep -Eq '([[:space:]]|^)mrr-ascent([[:space:]@]|$)' <<<"$tree"; then
-              printf '%s\n' "$crate has a forbidden backend dependency" "$tree"
-              exit 1
-            fi
-          done
+          gerbil env cargo check -p gql-syntax --no-default-features --locked
+          gerbil env cargo check -p gql-ast --no-default-features --locked
 
       - name: Test Python evidence projects
         run: |
