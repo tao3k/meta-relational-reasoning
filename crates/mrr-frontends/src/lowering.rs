@@ -10,6 +10,9 @@ use mrr_query::{
     SetQuantifier, SortDirection, UnaryOperator, Value,
 };
 
+/// Stable V1 schema for source-bound parser-owned compilation evidence.
+pub const PARSER_OWNED_COMPILATION_SCHEMA_V1: &str = "mrr.parser-owned-compilation.v1";
+
 use crate::value_type_identity::{append, append_value_type};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -36,6 +39,25 @@ pub enum FrontendError {
     Unsupported(String),
     /// The shared query owner rejected the lowered semantic contract.
     InvalidQuery(QueryIrError),
+    /// The parser-owned native runtime or its lossless CST rejected the request.
+    ParserOwned(String),
+}
+
+/// Authority and source binding retained outside language-neutral MetaQueryIR.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ParserOwnedCompilationReceipt {
+    pub schema: &'static str,
+    pub source_name: String,
+    pub source_digest: String,
+    pub grammar_digest: String,
+    pub query_id: QueryId,
+}
+
+/// Parser-owned compilation result plus its V1 provenance receipt.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ParserOwnedCompilation {
+    pub query: MetaQueryIr,
+    pub receipt: ParserOwnedCompilationReceipt,
 }
 
 impl From<QueryIrError> for FrontendError {
@@ -67,6 +89,41 @@ impl QueryFrontend {
             ));
         };
         lower_query(&query)
+    }
+
+    /// Compiles the admitted ISO parity slice through the parser-owned AOT CST.
+    ///
+    /// This is an explicit migration boundary: it does not fall back to the
+    /// smaller legacy Rust parser when the complete grammar accepts a shape
+    /// whose semantic lowering is not yet owned here.
+    pub fn compile_parser_owned(
+        &self,
+        name: &str,
+        source: &str,
+    ) -> Result<MetaQueryIr, FrontendError> {
+        self.compile_parser_owned_with_receipt(name, source)
+            .map(|compilation| compilation.query)
+    }
+
+    /// Compiles through the parser-owned path and retains source authority.
+    pub fn compile_parser_owned_with_receipt(
+        &self,
+        name: &str,
+        source: &str,
+    ) -> Result<ParserOwnedCompilation, FrontendError> {
+        if self.language != QueryLanguage::Gql {
+            return unsupported("parser-owned lowering is only authoritative for ISO GQL");
+        }
+        let lowered = crate::parser_owned::lower_parser_owned_ast(source)?;
+        let query = lower_query(&lowered.query)?;
+        let receipt = ParserOwnedCompilationReceipt {
+            schema: PARSER_OWNED_COMPILATION_SCHEMA_V1,
+            source_name: name.into(),
+            source_digest: lowered.source_digest,
+            grammar_digest: lowered.grammar_digest,
+            query_id: query.id(),
+        };
+        Ok(ParserOwnedCompilation { query, receipt })
     }
 }
 
@@ -128,13 +185,17 @@ fn lower_query(query: &ast::Query) -> Result<MetaQueryIr, FrontendError> {
     if matched.keep.is_some() {
         return unsupported("KEEP path prefix");
     }
-    let [pattern] = matched.patterns.as_slice() else {
-        return unsupported("multiple MATCH patterns");
-    };
-    if pattern.prefix.is_some() {
+    if matched.patterns.is_empty() {
+        return unsupported("empty MATCH pattern list");
+    }
+    if matched
+        .patterns
+        .iter()
+        .any(|pattern| pattern.prefix.is_some())
+    {
         return unsupported("path search prefix");
     }
-    let (graph, property_predicates) = lower_graph(query_id, pattern)?;
+    let (graph, property_predicates) = lower_graph(query_id, &matched.patterns)?;
     predicates.splice(0..0, property_predicates);
 
     let filters = predicates
@@ -214,13 +275,20 @@ fn lower_query(query: &ast::Query) -> Result<MetaQueryIr, FrontendError> {
 
 fn lower_graph(
     query: QueryId,
-    graph: &ast::PathPattern,
+    patterns: &[ast::PathPattern],
 ) -> Result<(GraphPattern, Vec<Expression>), FrontendError> {
     let mut predicates = Vec::new();
-    let (path, path_predicates) = lower_path(&graph.elements, 0)?;
-    predicates.extend(path_predicates);
+    let paths = patterns
+        .iter()
+        .enumerate()
+        .map(|(index, pattern)| {
+            let (path, path_predicates) = lower_path(&pattern.elements, index)?;
+            predicates.extend(path_predicates);
+            Ok(path)
+        })
+        .collect::<Result<Vec<_>, FrontendError>>()?;
     Ok((
-        GraphPattern::new(operator_id(query, "graph", 0), vec![path])?,
+        GraphPattern::new(operator_id(query, "graph", 0), paths)?,
         predicates,
     ))
 }

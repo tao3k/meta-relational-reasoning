@@ -2,9 +2,11 @@ fn main() {
     for path in [
         "../../gerbil.pkg",
         "../../scheme/grammar/gql-declaration.ss",
+        "../../scheme/grammar/parser-authority-receipt-declaration.ss",
         "../../scheme/grammar/native.ss",
+        "../../scheme/grammar/native-program.ss",
         "../../scheme/reasoning/declaration.ss",
-        "native/runtime.c",
+        "../../scheme/search/enhanced-tree-sitter-query-declaration.ss",
     ] {
         println!("cargo:rerun-if-changed={path}");
     }

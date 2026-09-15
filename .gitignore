@@ -10,6 +10,7 @@ tmp/
 /.pre-commit-config.yaml
 /.data
 /.gerbil
+manifest.ss
 .venv/
 .env
 .devenv.flake.nix

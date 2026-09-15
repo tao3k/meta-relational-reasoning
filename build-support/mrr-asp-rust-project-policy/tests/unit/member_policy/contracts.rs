@@ -84,7 +84,13 @@ const MRR_DEPENDENCY_POLICY: &[(&str, &[&str])] = &[
     ),
     (
         "mrr-frontends",
-        &["gql-ast", "gql-source", "gql-syntax", "mrr-query"],
+        &[
+            "gql-ast",
+            "gql-source",
+            "gql-syntax",
+            "mrr-gerbil",
+            "mrr-query",
+        ],
     ),
     (
         "meta-relational-reasoning",

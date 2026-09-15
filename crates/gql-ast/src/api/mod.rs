@@ -18,6 +18,7 @@ mod types;
 mod value_type_predicate_lowering;
 
 pub use lowering::lower_from_syntax;
+pub use numeric_lowering::lower_numeric_literal;
 pub use types::{
     AggregateFunction, BinaryOperator, CaseBranch, CatalogCreatePolicy, CatalogDropPolicy,
     CatalogObjectName, CatalogStatement, CharacterStringForm, CharacterStringLiteral,

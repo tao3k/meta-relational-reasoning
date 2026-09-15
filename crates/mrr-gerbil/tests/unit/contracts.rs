@@ -5,6 +5,8 @@ use std::sync::{Arc, Barrier};
 use std::{collections::BTreeMap, collections::BTreeSet, path::Path};
 
 const INPUT: &str = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+const TEST_GRAMMAR_DIGEST: &str =
+    "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 
 #[test]
 fn stamped_projection_round_trips_through_admission() {
@@ -29,16 +31,296 @@ fn stale_scheme_input_fails_closed() {
 }
 
 #[test]
-fn gerbil_package_pins_the_native_asp_build_stack() {
+fn gerbil_package_owns_only_the_linked_parser_edge() {
     let package = include_str!("../../../../gerbil.pkg");
-    assert!(package.contains(
-        "github.com/tao3k/poo-flow@377eeda30578ee5a65d21b23d0c457980a62ee69"
-    ));
-    assert!(package.contains(
-        "github.com/tao3k/asp-gerbil-scheme@ce21733fa91d6a0236aefb824953b7eae53f7524"
-    ));
-    assert!(package.contains("github.com/mighty-gerbils/gerbil-poo@"));
+    assert!(
+        package.contains("github.com/tao3k/gerbil-parser@77cda410c92a40b0ada5900c35296b16ed281735")
+    );
+    assert_eq!(package.matches("github.com/tao3k/").count(), 1);
+    assert!(!package.contains("github.com/tao3k/poo-flow@"));
+    assert!(!package.contains("github.com/tao3k/asp-gerbil-scheme@"));
+    assert!(!package.contains("github.com/mighty-gerbils/gerbil-poo@"));
     assert!(!package.contains("gerbil-scheme-language-project-harness"));
+}
+
+#[test]
+fn rust_commands_inherit_the_canonical_gxpkg_environment() {
+    let devenv = include_str!("../../../../devenv.nix");
+    let readme = include_str!("../../../../README.md");
+    let ci = include_str!("../../../../.github/workflows/ci.yml");
+
+    assert!(devenv.contains("scripts.mrr-cargo.exec"));
+    assert!(devenv.contains("exec gerbil env cargo \"$@\""));
+    assert!(readme.contains("devenv-profile-exec mrr-cargo test --workspace"));
+    assert!(!readme.contains("devenv-profile-exec cargo test --workspace"));
+    assert!(ci.contains("gerbil env cargo test --workspace --locked"));
+    assert!(ci.contains("macos-latest"));
+    assert!(!ci.contains("gparse"));
+    assert!(!ci.contains("audit-spec"));
+}
+
+#[test]
+fn native_aot_reuses_the_upstream_program_builder_and_runtime() {
+    let workspace = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .and_then(Path::parent)
+        .expect("mrr-gerbil is a workspace crate");
+    let adapter =
+        include_str!("../../../../build-support/mrr-gerbil-native-build/src/native_archive.rs");
+    let ffi = include_str!("../../src/native/ffi.rs");
+
+    assert!(adapter.contains("build_program_archive_with_contract"));
+    assert!(adapter.contains("ProgramArchiveObserver"));
+    assert!(!adapter.contains("Command::new(\"gxc\")"));
+    assert!(!adapter.contains("Command::new(\"gcc\")"));
+    assert!(ffi.contains("gerbil_scheme_rust_runtime_init_program(Some(mrr_grammar_linker))"));
+    assert!(
+        !workspace
+            .join("crates/mrr-gerbil/native/runtime.c")
+            .exists()
+    );
+}
+
+#[test]
+fn native_projection_identifies_its_parser_owned_grammar() {
+    let authority = crate::load_parser_authority()
+        .expect("native projection must expose canonical parser authority");
+    assert_eq!(authority.schema, "gerbil-parser.language-grammar.v1");
+    assert_eq!(authority.language, "gql");
+    assert_eq!(authority.version, "edition-1-2024-04");
+    assert_eq!(
+        authority.contract,
+        "iso-iec-39075-2024.opengql-1.9.0-syntax.v1"
+    );
+    assert_eq!(authority.grammar_schema, "gerbil-parser.grammar-ir.v1");
+    assert_eq!(authority.grammar_id, "gql-iso-grammar");
+}
+
+#[test]
+fn parser_owned_parse_artifact_crosses_the_native_boundary_losslessly() {
+    let source = "MATCH (n {name: '\u{827e}\u{8fbe}'}) RETURN n\n";
+    let artifact = crate::parse_gql_artifact(source).expect("parser-owned ParseArtifact v1");
+    assert_eq!(artifact.schema, crate::PARSE_ARTIFACT_SCHEMA_V1);
+    assert_eq!(artifact.kind_catalog.kinds().len(), 581);
+    assert_eq!(artifact.kind_catalog.kind_id("GqlProgram"), Some(0));
+    assert_eq!(
+        artifact.kind_catalog.terminal_kind_id("identifier"),
+        artifact.kind_catalog.kind_id("LexicalIdentifier")
+    );
+    assert_eq!(
+        artifact.kind_catalog.kinds().last().map(|kind| kind.name()),
+        Some("UnknownToken")
+    );
+    assert_eq!(artifact.status, crate::ParseArtifactStatus::Accepted);
+    assert!(artifact.grammar_digest.starts_with("sha256:"));
+    assert_eq!(
+        artifact.source_digest,
+        "sha256:ccb1b889245b5e30f8c82eb07c54e54f4fa50e165cdced14692f413f439b79a0"
+    );
+    assert!(matches!(
+        artifact.events.first(),
+        Some(crate::ParseEvent::StartNode { kind, start: 0, .. }) if kind == "GqlProgram"
+    ));
+    let replayed = artifact
+        .events
+        .iter()
+        .filter_map(|event| match event {
+            crate::ParseEvent::Token { lexeme, .. } => Some(lexeme.as_str()),
+            _ => None,
+        })
+        .collect::<String>();
+    assert_eq!(replayed, source);
+    let unicode = artifact
+        .events
+        .iter()
+        .find_map(|event| match event {
+            crate::ParseEvent::Token {
+                lexeme, start, end, ..
+            } if lexeme.contains('\u{827e}') => Some((lexeme, start, end)),
+            _ => None,
+        })
+        .expect("Unicode token");
+    assert_eq!(*unicode.2 - *unicode.1, unicode.0.len() as u32);
+    let cst = artifact
+        .to_rowan_cst()
+        .expect("accepted ParseArtifact must sink into Rowan");
+    assert_eq!(cst.root().text().to_string(), source);
+    assert_eq!(cst.root().kind().raw(), 0);
+    assert_eq!(
+        cst.catalog().kinds()[usize::from(cst.root().kind().raw())].name(),
+        "GqlProgram"
+    );
+}
+
+#[test]
+fn parser_owned_artifact_is_bound_to_the_exact_requested_source() {
+    let source = "MATCH (n) RETURN n";
+    let mut artifact = crate::parse_gql_artifact(source).expect("source-bound artifact");
+    artifact.source_digest = "sha256:stale".into();
+    assert_eq!(
+        crate::native::parse_artifact::validate_source_digest(&artifact, source),
+        Err(crate::ParseArtifactLoadError::InvalidSourceDigest(
+            "sha256:stale".into()
+        ))
+    );
+}
+
+#[test]
+fn parser_owned_failure_does_not_publish_partial_cst_events() {
+    let artifact = crate::parse_gql_artifact("MATCH (\n").expect("typed rejected artifact");
+    assert_eq!(artifact.schema, crate::PARSE_ARTIFACT_SCHEMA_V1);
+    assert_eq!(artifact.status, crate::ParseArtifactStatus::Rejected);
+    assert!(
+        artifact
+            .events
+            .iter()
+            .all(|event| matches!(event, crate::ParseEvent::Token { .. }))
+    );
+    assert_eq!(
+        artifact.to_rowan_cst(),
+        Err(crate::ParserCstError::RejectedArtifact)
+    );
+}
+
+fn parse_artifact_payload(schema: &str) -> serde_json::Value {
+    serde_json::json!({
+        "schema": schema,
+        "status": "accepted",
+        "grammarDigest": TEST_GRAMMAR_DIGEST,
+        "sourceDigest": "sha256:source",
+        "events": []
+    })
+}
+
+fn parser_kind_descriptor() -> serde_json::Value {
+    serde_json::json!({
+        "schema": crate::PARSER_NATIVE_DESCRIPTOR_SCHEMA_V1,
+        "grammarDigest": TEST_GRAMMAR_DIGEST,
+        "syntaxKinds": [
+            ["GqlProgram", "node", []],
+            ["UnknownToken", "token", ["text"]]
+        ],
+        "terminals": [["unknown", "UnknownToken"]]
+    })
+}
+
+fn test_parser_kind_catalog() -> std::sync::Arc<crate::ParserKindCatalog> {
+    std::sync::Arc::new(
+        crate::native::parse_artifact::load_kind_catalog(&parser_kind_descriptor())
+            .expect("test parser kind catalog"),
+    )
+}
+
+fn assert_invalid_kind_catalog(descriptor: serde_json::Value) {
+    assert_eq!(
+        crate::native::parse_artifact::load_kind_catalog(&descriptor),
+        Err(crate::ParseArtifactLoadError::InvalidHostDescriptor)
+    );
+}
+
+#[test]
+fn parser_kind_catalog_rejects_stale_descriptor_authority() {
+    let mut wrong_schema = parser_kind_descriptor();
+    wrong_schema["schema"] = serde_json::json!("gerbil-parser.native-descriptor.unknown");
+    assert_invalid_kind_catalog(wrong_schema);
+
+    let mut malformed_grammar_digest = parser_kind_descriptor();
+    malformed_grammar_digest["grammarDigest"] = serde_json::json!("sha256:not-a-digest");
+    assert_invalid_kind_catalog(malformed_grammar_digest);
+}
+
+#[test]
+fn parser_kind_catalog_rejects_duplicate_and_unknown_kinds() {
+    let mut duplicate = parser_kind_descriptor();
+    duplicate["syntaxKinds"] = serde_json::json!([
+        ["GqlProgram", "node", []],
+        ["GqlProgram", "token", ["text"]]
+    ]);
+    assert_invalid_kind_catalog(duplicate);
+
+    let mut unknown_category = parser_kind_descriptor();
+    unknown_category["syntaxKinds"][0][1] = serde_json::json!("opaque");
+    assert_invalid_kind_catalog(unknown_category);
+}
+
+#[test]
+fn parser_kind_catalog_rejects_invalid_terminal_ownership() {
+    let mut duplicate = parser_kind_descriptor();
+    duplicate["terminals"] =
+        serde_json::json!([["unknown", "UnknownToken"], ["unknown", "UnknownToken"]]);
+    assert_invalid_kind_catalog(duplicate);
+
+    let mut missing_kind = parser_kind_descriptor();
+    missing_kind["terminals"][0][1] = serde_json::json!("MissingToken");
+    assert_invalid_kind_catalog(missing_kind);
+
+    let mut node_kind = parser_kind_descriptor();
+    node_kind["terminals"][0][1] = serde_json::json!("GqlProgram");
+    assert_invalid_kind_catalog(node_kind);
+}
+
+#[test]
+fn unknown_parse_artifact_schema_fails_closed() {
+    let error = crate::native::parse_artifact::decode_parse_artifact(
+        &parse_artifact_payload("gerbil-parser.parse-artifact.v2"),
+        test_parser_kind_catalog(),
+    )
+    .expect_err("only ParseArtifact V1 is admitted");
+    assert_eq!(
+        error,
+        crate::ParseArtifactLoadError::InvalidSchema("gerbil-parser.parse-artifact.v2".to_owned())
+    );
+}
+
+#[test]
+fn parse_artifact_grammar_must_match_the_admitted_native_descriptor() {
+    let mut payload = parse_artifact_payload(crate::PARSE_ARTIFACT_SCHEMA_V1);
+    payload["grammarDigest"] = serde_json::json!(
+        "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    );
+    assert!(matches!(
+        crate::native::parse_artifact::decode_parse_artifact(&payload, test_parser_kind_catalog()),
+        Err(crate::ParseArtifactLoadError::InvalidGrammarDigest(_))
+    ));
+}
+
+#[test]
+fn parallel_parser_callers_share_one_ordered_native_owner() {
+    const SOURCES: [&str; 8] = [
+        "MATCH (a) RETURN a\n",
+        "MATCH (b) RETURN b\n",
+        "MATCH (c) RETURN c\n",
+        "MATCH (d) RETURN d\n",
+        "MATCH (e) RETURN e\n",
+        "MATCH (f) RETURN f\n",
+        "MATCH (g) RETURN g\n",
+        "MATCH (h) RETURN h\n",
+    ];
+    let barrier = Arc::new(Barrier::new(SOURCES.len()));
+
+    std::thread::scope(|scope| {
+        for source in SOURCES {
+            let barrier = Arc::clone(&barrier);
+            scope.spawn(move || {
+                barrier.wait();
+                let artifact = crate::parse_gql_artifact(source)
+                    .expect("resident native owner must answer every concurrent caller");
+                assert_eq!(artifact.status, crate::ParseArtifactStatus::Accepted);
+                let replayed = artifact
+                    .events
+                    .iter()
+                    .filter_map(|event| match event {
+                        crate::ParseEvent::Token { lexeme, .. } => Some(lexeme.as_str()),
+                        _ => None,
+                    })
+                    .collect::<String>();
+                assert_eq!(
+                    replayed, source,
+                    "native parser response crossed request order"
+                );
+            });
+        }
+    });
 }
 
 #[test]
@@ -319,6 +601,58 @@ fn native_aot_binding_exposes_the_declaration_without_text_protocols() {
     }
     assert!(grammar.parser_entrypoints.iter().any(|entrypoint| {
         entrypoint.keyword == "Create" && entrypoint.action == "CreateSchemaStatement"
+    }));
+}
+
+#[test]
+fn native_aot_binding_exposes_the_scheme_owned_enhanced_query_table() {
+    let table = crate::load_enhanced_tree_sitter_query_operator_table()
+        .expect("Scheme-owned enhanced Tree-sitter Query table must load");
+
+    assert_eq!(table.profile_id, "mrr.enhanced-tree-sitter-query.v1");
+    assert_eq!(table.owner, "mrr-gerbil-aot");
+    assert_eq!(
+        table.declaration_digest,
+        "blake3-256:e9f88db6f6cab915cad26739fd9c9da58e1dbd8e73b7e314adb08ff6fca45d2a"
+    );
+    assert_eq!(table.operators.len(), 12);
+    assert!(
+        table
+            .operators
+            .iter()
+            .all(|operator| operator.spelling.starts_with("#asp-"))
+    );
+
+    let related = table
+        .operators
+        .iter()
+        .find(|operator| operator.spelling == "#asp-related?")
+        .expect("relation predicate");
+    assert_eq!(related.minimum_arity, 3);
+    assert_eq!(related.maximum_arity, Some(4));
+    assert_eq!(related.lowering, "related");
+    assert_eq!(related.operands[3].domain, "endpoint-selector");
+    assert_eq!(related.operands[3].cardinality, "optional");
+
+    let select = table
+        .operators
+        .iter()
+        .find(|operator| operator.spelling == "#asp-select!")
+        .expect("result directive");
+    assert_eq!(select.kind, "directive");
+    assert_eq!(select.minimum_arity, 2);
+    assert_eq!(select.maximum_arity, None);
+    assert_eq!(select.operands[1].domain, "result-field");
+    assert_eq!(select.operands[1].cardinality, "one-or-more");
+
+    assert!(
+        table
+            .recoveries
+            .iter()
+            .all(|recovery| recovery.strategy == "reject")
+    );
+    assert!(table.recoveries.iter().any(|recovery| {
+        recovery.site == "fact" && recovery.code == "enhanced-query-fact-not-resident"
     }));
 }
 

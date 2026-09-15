@@ -11,11 +11,8 @@ use gql_source::Diagnostic;
 use gql_types::ValueType;
 
 type InferExpression = fn(&Expression, &HashMap<String, ValueType>) -> Option<ValueType>;
-type LowerExpression = fn(
-    &Expression,
-    &HashMap<String, ValueType>,
-    &mut Vec<Diagnostic>,
-) -> Option<IrExpression>;
+type LowerExpression =
+    fn(&Expression, &HashMap<String, ValueType>, &mut Vec<Diagnostic>) -> Option<IrExpression>;
 
 pub(crate) fn analyze_result_clause(
     clause: &QueryClause,
@@ -103,7 +100,10 @@ fn lower_explicit_projections(
         {
             diagnostics.push(Diagnostic::error(
                 "GQL-SEMA-DUPLICATE-PROJECTION-ALIAS",
-                format!("projection alias `{}` is declared more than once", alias.text),
+                format!(
+                    "projection alias `{}` is declared more than once",
+                    alias.text
+                ),
                 alias.span,
             ));
             continue;

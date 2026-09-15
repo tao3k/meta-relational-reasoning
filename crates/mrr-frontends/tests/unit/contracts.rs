@@ -1,4 +1,4 @@
-use crate::{FrontendError, QueryFrontend, QueryLanguage};
+use crate::{FrontendError, PARSER_OWNED_COMPILATION_SCHEMA_V1, QueryFrontend, QueryLanguage};
 use mrr_query::{
     AggregationFunction, BinaryOperator, Direction, Expression, Parameter, SetQuantifier,
     UnaryOperator, Value,
@@ -34,6 +34,330 @@ fn gql_and_cypher_lower_to_the_same_meta_query_ir() {
             ..
         } if right.as_ref() == &Expression::Literal(Value::String("runtime".into()))
     ));
+}
+
+#[test]
+fn parser_owned_gql_lowers_to_the_same_meta_query_ir() {
+    let frontend = QueryFrontend::new(QueryLanguage::Gql);
+    let legacy = frontend
+        .compile("parity.gql", PARITY_QUERY)
+        .expect("legacy parity slice");
+    let parser_owned = frontend
+        .compile_parser_owned("parity.gql", PARITY_QUERY)
+        .expect("parser-owned parity slice");
+    assert_eq!(parser_owned, legacy);
+}
+
+#[test]
+fn parser_owned_compilation_receipt_binds_source_grammar_and_query() {
+    let compilation = QueryFrontend::new(QueryLanguage::Gql)
+        .compile_parser_owned_with_receipt("parity.gql", PARITY_QUERY)
+        .expect("source-bound parser-owned compilation");
+    let receipt = &compilation.receipt;
+
+    assert_eq!(receipt.schema, PARSER_OWNED_COMPILATION_SCHEMA_V1);
+    assert_eq!(receipt.source_name, "parity.gql");
+    assert_eq!(
+        receipt.source_digest,
+        "sha256:b4974dbe0e0751df01f7010fa245d91c5b2db689c951b2add81b6e3ba14d10a5"
+    );
+    assert!(receipt.grammar_digest.starts_with("sha256:"));
+    assert_eq!(receipt.query_id, compilation.query.id());
+}
+
+#[test]
+fn parser_owned_properties_and_unicode_are_lossless() {
+    let source = "MATCH (n:Person {name: '\u{827e}\u{8fbe}', age: 42}) RETURN n";
+    let query = QueryFrontend::new(QueryLanguage::Gql)
+        .compile_parser_owned("unicode.gql", source)
+        .expect("parser-owned Unicode property query");
+
+    assert_eq!(query.graph().paths()[0].start().binding().as_str(), "n");
+    assert_eq!(query.filters().len(), 2);
+    assert_eq!(query.projections().len(), 1);
+}
+
+#[test]
+fn parser_owned_expression_filter_order_and_limit_reach_meta_query_ir() {
+    let frontend = QueryFrontend::new(QueryLanguage::Gql);
+    let unary = frontend
+        .compile_parser_owned("unary.gql", "MATCH (n) RETURN -1, +2")
+        .expect("parser-owned unary expressions");
+    assert!(matches!(
+        unary.projections()[0].expression(),
+        Expression::Unary {
+            operator: UnaryOperator::Negate,
+            ..
+        }
+    ));
+    assert_eq!(
+        unary.projections()[1].expression(),
+        &Expression::Literal(Value::Integer(2))
+    );
+
+    let source = "MATCH (n) FILTER n.score > 1 RETURN n ORDER BY n DESC LIMIT 0";
+    let query = frontend
+        .compile_parser_owned("order-limit.gql", source)
+        .expect("parser-owned filter/order/limit");
+    assert!(matches!(
+        query.filters()[0].predicate(),
+        Expression::Binary {
+            operator: BinaryOperator::Greater,
+            ..
+        }
+    ));
+    assert_eq!(
+        query,
+        frontend
+            .compile("order-limit.gql", source)
+            .expect("legacy differential oracle")
+    );
+    assert_eq!(query.limit(), Some(0));
+}
+
+#[test]
+fn parser_owned_parameters_and_truth_predicates_match_the_legacy_oracle() {
+    let frontend = QueryFrontend::new(QueryLanguage::Gql);
+    for source in [
+        "MATCH (n {value: $limit}) RETURN $limit",
+        "MATCH (n) WHERE n.deleted IS NULL RETURN n.deleted IS NOT NULL, TRUE IS TRUE, NULL IS UNKNOWN",
+        "MATCH (n) WHERE n.deleted IS NOT NULL RETURN FALSE IS NOT FALSE",
+    ] {
+        assert_eq!(
+            frontend
+                .compile_parser_owned("parser-owned-expression.gql", source)
+                .expect("parser-owned parameter or truth predicate"),
+            frontend
+                .compile("legacy-expression.gql", source)
+                .expect("legacy differential oracle")
+        );
+    }
+
+    let parameter = frontend
+        .compile_parser_owned(
+            "parser-owned-parameter.gql",
+            "MATCH (n {value: $limit}) RETURN $limit",
+        )
+        .expect("parser-owned dynamic parameter");
+    assert_eq!(
+        parameter.projections()[0].expression(),
+        &Expression::Parameter(Parameter::new("limit").expect("parameter identity"))
+    );
+
+    let predicates = frontend
+        .compile_parser_owned(
+            "parser-owned-predicates.gql",
+            "MATCH (n) WHERE n.deleted IS NULL RETURN n.deleted IS NOT NULL, TRUE IS TRUE, NULL IS UNKNOWN",
+        )
+        .expect("parser-owned NULL and truth predicates");
+    assert!(matches!(
+        predicates.filters()[0].predicate(),
+        Expression::Unary {
+            operator: UnaryOperator::IsNull,
+            ..
+        }
+    ));
+    assert!(matches!(
+        predicates.projections()[2].expression(),
+        Expression::Unary {
+            operator: UnaryOperator::IsUnknown,
+            ..
+        }
+    ));
+}
+
+#[test]
+fn parser_owned_rejection_never_falls_back_to_legacy_parser() {
+    let error = QueryFrontend::new(QueryLanguage::Gql)
+        .compile_parser_owned("rejected.gql", "MATCH (\n")
+        .expect_err("rejected ParseArtifact must fail closed");
+    assert!(matches!(error, FrontendError::ParserOwned(_)));
+}
+
+#[test]
+fn parser_owned_upstream_grammar_gaps_remain_typed_and_fail_closed() {
+    for (source_name, source) in [
+        (
+            "parameter-delimited.gql",
+            "MATCH (n {value: $\"limit\"}) RETURN $\"limit\"",
+        ),
+        ("binary-literal.gql", "MATCH (n) RETURN X'CAFE'"),
+        ("count-star.gql", "MATCH (n) RETURN COUNT(*)"),
+    ] {
+        let error = QueryFrontend::new(QueryLanguage::Gql)
+            .compile_parser_owned(source_name, source)
+            .expect_err("unsupported upstream parser syntax must not reach legacy fallback");
+        assert!(
+            matches!(error, FrontendError::ParserOwned(_)),
+            "{source_name}: {error:?}"
+        );
+    }
+}
+
+#[test]
+fn parser_owned_aggregates_match_the_legacy_oracle() {
+    let frontend = QueryFrontend::new(QueryLanguage::Gql);
+    for source in [
+        "MATCH (n) RETURN COUNT(n)",
+        "MATCH (n) RETURN AVG(DISTINCT n.score)",
+        "MATCH (n) RETURN SUM(ALL n.score)",
+        "MATCH (n) RETURN PERCENTILE_CONT(n.score, 0.5)",
+    ] {
+        assert_eq!(
+            frontend
+                .compile_parser_owned("parser-owned-aggregate.gql", source)
+                .expect("parser-owned aggregate"),
+            frontend
+                .compile("legacy-aggregate.gql", source)
+                .expect("legacy aggregate differential oracle")
+        );
+    }
+}
+
+#[test]
+fn parser_owned_numeric_and_structured_literals_match_the_legacy_oracle() {
+    let frontend = QueryFrontend::new(QueryLanguage::Gql);
+    for source in [
+        "MATCH (n) RETURN 0.5, 1e3",
+        "MATCH (n) RETURN DATE '2024-01-02', TIME '12:34:56'",
+        "MATCH (n) RETURN DATETIME '2024-01-02T12:34:56', DURATION 'P1D'",
+        "MATCH (n) RETURN [1, 2], RECORD {a: 1, b: 'two'}",
+    ] {
+        assert_eq!(
+            frontend
+                .compile_parser_owned("parser-owned-literal.gql", source)
+                .expect("parser-owned literal"),
+            frontend
+                .compile("legacy-literal.gql", source)
+                .expect("legacy literal differential oracle")
+        );
+    }
+}
+
+#[test]
+fn parser_owned_arithmetic_and_boolean_precedence_matches_the_legacy_oracle() {
+    let frontend = QueryFrontend::new(QueryLanguage::Gql);
+    for source in [
+        "MATCH (n) RETURN n.score + 1, 2 * 3, 10 / 2, 7 - 3",
+        "MATCH (n) WHERE (n.score > 2) AND (n.active = TRUE) RETURN n",
+        "MATCH (n) WHERE NOT ((n.active = FALSE) OR (n.score < 0)) RETURN n",
+    ] {
+        assert_eq!(
+            frontend
+                .compile_parser_owned("parser-owned-operators.gql", source)
+                .expect("parser-owned operators"),
+            frontend
+                .compile("legacy-operators.gql", source)
+                .expect("legacy operator differential oracle")
+        );
+    }
+
+    for source in [
+        "MATCH (n) RETURN n.score + 1 * 2",
+        "MATCH (n) WHERE n.score > 2 AND n.active = TRUE RETURN n",
+    ] {
+        assert_eq!(
+            frontend
+                .compile_parser_owned("ambiguous-precedence.gql", source)
+                .expect_err("parser CST must encode precedence before admission"),
+            FrontendError::Unsupported(
+                "parser-owned lowering does not admit mixed operator precedence not encoded by parser CST"
+                    .into()
+            )
+        );
+    }
+}
+
+#[test]
+fn parser_owned_multiple_match_paths_reach_one_graph_pattern() {
+    let frontend = QueryFrontend::new(QueryLanguage::Gql);
+    let source = concat!(
+        "MATCH (a:Person {name: 'Ada'})-[e:KNOWS]->(b), ",
+        "(c)<-[f:LIKES {weight: 1}]-(d) RETURN a, b, c, d"
+    );
+    let parser_owned = frontend
+        .compile_parser_owned("parser-owned-multiple-paths.gql", source)
+        .expect("parser-owned multiple path pattern");
+    assert_eq!(
+        parser_owned,
+        frontend
+            .compile("legacy-multiple-paths.gql", source)
+            .expect("legacy multiple path differential oracle")
+    );
+    assert_eq!(parser_owned.graph().paths().len(), 2);
+    assert_eq!(
+        parser_owned.graph().paths()[0].segments()[0]
+            .relation()
+            .direction(),
+        Direction::Outgoing
+    );
+    assert_eq!(
+        parser_owned.graph().paths()[1].segments()[0]
+            .relation()
+            .direction(),
+        Direction::Incoming
+    );
+    assert_eq!(parser_owned.filters().len(), 2);
+
+    let anonymous = frontend
+        .compile_parser_owned("anonymous-multiple-paths.gql", "MATCH (), () RETURN 1")
+        .expect("anonymous bindings remain path-scoped");
+    assert_eq!(
+        anonymous.graph().paths()[0].start().binding().as_str(),
+        "_node_0_0"
+    );
+    assert_eq!(
+        anonymous.graph().paths()[1].start().binding().as_str(),
+        "_node_1_0"
+    );
+
+    let correlated_source = "MATCH (a)-[e]->(b), (a)-[f]->(c) RETURN a";
+    let correlated = frontend
+        .compile_parser_owned("correlated-multiple-paths.gql", correlated_source)
+        .expect("an explicit binding correlates graph paths");
+    assert_eq!(
+        correlated,
+        frontend
+            .compile("legacy-correlated-multiple-paths.gql", correlated_source)
+            .expect("legacy correlated path differential oracle")
+    );
+    assert_eq!(
+        correlated.graph().paths()[0].start().binding().as_str(),
+        "a"
+    );
+    assert_eq!(
+        correlated.graph().paths()[1].start().binding().as_str(),
+        "a"
+    );
+}
+
+#[test]
+fn parser_owned_entrypoint_rejects_non_gql_authority() {
+    assert_eq!(
+        QueryFrontend::new(QueryLanguage::Cypher)
+            .compile_parser_owned("query.cypher", PARITY_QUERY)
+            .expect_err("Cypher is not owned by the ISO parser"),
+        FrontendError::Unsupported(
+            "parser-owned lowering is only authoritative for ISO GQL".into()
+        )
+    );
+}
+
+#[test]
+fn parser_owned_entrypoint_rejects_unlowered_semantics() {
+    for (source, expected) in [
+        ("MATCH (n) RETURN *", "RETURN *"),
+        ("MATCH REPEATABLE ELEMENTS (n) RETURN n", "MatchMode"),
+        ("MATCH ALL SHORTEST PATHS (n) RETURN n", "PathPatternPrefix"),
+        ("MATCH (n) RETURN n OFFSET 1", "OffsetClause"),
+    ] {
+        assert_eq!(
+            QueryFrontend::new(QueryLanguage::Gql)
+                .compile_parser_owned("unsupported.gql", source)
+                .expect_err("unlowered semantics must never be erased"),
+            FrontendError::Unsupported(format!("parser-owned lowering does not admit {expected}"))
+        );
+    }
 }
 
 #[test]

@@ -15,11 +15,13 @@ surface, lower the supported AST slice directly, and admit only shared
 =MetaQueryIr=.  They do not route through =gql-ir= or =gql-sema= and do not
 expose either contract.
 
-The parity slice is deliberately bounded to one =MATCH= graph pattern,
-node/relationship type labels, direction, bounded path quantifiers, property
-constraints and access, =WHERE= expressions, =RETURN= projection, ordering,
-and limit.  Unsupported mutation, optional matching, union, offset, case,
-subscript, and unowned operators fail before IR admission.
+The parity slice is deliberately bounded to one =MATCH= clause containing one
+or more graph path patterns, node/relationship type labels, direction,
+property constraints and access, =WHERE= expressions, =RETURN= projection,
+aggregates, ordering, and limit. Unsupported mutation, optional matching,
+path quantifiers, union, offset, case, subscript, and unowned operators fail
+before IR admission. Until the parser CST publishes precedence grouping,
+mixed-precedence expressions require explicit parentheses.
 
 Stable entity/relation type identities derive from language-neutral label
 content.  Query and operator identities derive from the span-free semantic AST

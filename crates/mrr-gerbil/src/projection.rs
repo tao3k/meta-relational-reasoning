@@ -12,6 +12,8 @@ const BRIDGE_REVISION: &str = "a83fb649ddbbeaabdb538a6eaf0ded10838f7fad";
 const INPUT_PATHS: &[&str] = &[
     "build.ss",
     "gerbil.pkg",
+    "scheme/grammar/parser-authority.ss",
+    "scheme/grammar/parser-authority-receipt-declaration.ss",
     "scheme/grammar/gql-declaration.ss",
     "scheme/grammar/gql-profile.ss",
     "scheme/grammar/core.ss",
@@ -20,6 +22,7 @@ const INPUT_PATHS: &[&str] = &[
     "scheme/reasoning/core.ss",
     "scheme/reasoning/declaration.ss",
     "scheme/reasoning/default.ss",
+    "scheme/search/enhanced-tree-sitter-query-declaration.ss",
     "scheme/grammar/native.ss",
 ];
 

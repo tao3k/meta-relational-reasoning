@@ -634,18 +634,20 @@ dependencies = [
 [[package]]
 name = "gerbil-scheme-native-build"
 version = "0.1.0"
-source = "git+https://github.com/tao3k/gerbil-scheme-rust.git?rev=a83fb649ddbbeaabdb538a6eaf0ded10838f7fad#a83fb649ddbbeaabdb538a6eaf0ded10838f7fad"
+source = "git+https://github.com/tao3k/gerbil-scheme-rust.git?rev=eea727c283b5827abcd8f9d35fce6762836afe76#eea727c283b5827abcd8f9d35fce6762836afe76"
 dependencies = [
  "cbindgen",
  "cc",
  "gerbil-scheme-rust-project-harness-policy",
+ "serde",
+ "serde_json",
  "sha2 0.10.9",
 ]
 
 [[package]]
 name = "gerbil-scheme-rust-project-harness"
 version = "0.1.2"
-source = "git+https://github.com/tao3k/gerbil-scheme-rust.git?rev=a83fb649ddbbeaabdb538a6eaf0ded10838f7fad#a83fb649ddbbeaabdb538a6eaf0ded10838f7fad"
+source = "git+https://github.com/tao3k/gerbil-scheme-rust.git?rev=eea727c283b5827abcd8f9d35fce6762836afe76#eea727c283b5827abcd8f9d35fce6762836afe76"
 dependencies = [
  "cargo-lock",
  "cargo_toml",
@@ -663,9 +665,18 @@ dependencies = [
 [[package]]
 name = "gerbil-scheme-rust-project-harness-policy"
 version = "0.1.0"
-source = "git+https://github.com/tao3k/gerbil-scheme-rust.git?rev=a83fb649ddbbeaabdb538a6eaf0ded10838f7fad#a83fb649ddbbeaabdb538a6eaf0ded10838f7fad"
+source = "git+https://github.com/tao3k/gerbil-scheme-rust.git?rev=eea727c283b5827abcd8f9d35fce6762836afe76#eea727c283b5827abcd8f9d35fce6762836afe76"
 dependencies = [
  "gerbil-scheme-rust-project-harness",
+]
+
+[[package]]
+name = "gerbil-scheme-sys"
+version = "0.1.0"
+source = "git+https://github.com/tao3k/gerbil-scheme-rust.git?rev=eea727c283b5827abcd8f9d35fce6762836afe76#eea727c283b5827abcd8f9d35fce6762836afe76"
+dependencies = [
+ "gerbil-scheme-native-build",
+ "gerbil-scheme-rust-project-harness-policy",
 ]
 
 [[package]]
@@ -1123,14 +1134,18 @@ dependencies = [
  "gql-source",
  "gql-syntax",
  "mrr-asp-rust-project-policy",
+ "mrr-gerbil",
  "mrr-query",
+ "rowan",
 ]
 
 [[package]]
 name = "mrr-gerbil"
 version = "0.1.0"
 dependencies = [
+ "blake3",
  "criterion",
+ "gerbil-scheme-sys",
  "mrr-asp-rust-project-policy",
  "mrr-bundle",
  "mrr-gerbil-native-build",
@@ -1138,6 +1153,8 @@ dependencies = [
  "mrr-logic",
  "mrr-query",
  "mrr-relation",
+ "rowan",
+ "serde_json",
  "sha2 0.10.9",
 ]
 

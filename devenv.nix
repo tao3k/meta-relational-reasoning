@@ -6,6 +6,14 @@
   ...
 }:
 
+let
+  gerbilCommand = ''
+    exec env -u CC -u CFLAGS -u CPPFLAGS -u LDFLAGS \
+      -u CPATH -u C_INCLUDE_PATH -u CPLUS_INCLUDE_PATH -u LIBRARY_PATH \
+      -u NIX_CFLAGS_COMPILE -u NIX_LDFLAGS -u DEVELOPER_DIR -u SDKROOT \
+      gerbil "$@"
+  '';
+in
 {
   dotenv.enable = true;
   dotenv.filename = [ ".env" ];
@@ -53,11 +61,14 @@
   scripts.hello.exec = ''
     echo hello from $GREET
   '';
-  scripts.mrr-gerbil-deps.exec = ''
-    env -u CC -u CFLAGS -u CPPFLAGS -u LDFLAGS \
-      -u CPATH -u C_INCLUDE_PATH -u CPLUS_INCLUDE_PATH -u LIBRARY_PATH \
-      -u NIX_CFLAGS_COMPILE -u NIX_LDFLAGS -u DEVELOPER_DIR -u SDKROOT \
-      gxpkg deps --install
+  # Homebrew Gerbil/Gambit must use the host SDK.  Keep Nix's compiler
+  # environment for Rust, and quarantine it only at the standard Gerbil edge.
+  scripts.mrr-gerbil.exec = gerbilCommand;
+  scripts.mrr-gerbil-deps.exec = "mrr-gerbil deps --install";
+  # Preserve devenv's Rust compiler/SDK while inheriting gxpkg's canonical
+  # project package path. Cargo's AOT adapter sanitizes its Gerbil children.
+  scripts.mrr-cargo.exec = ''
+    exec gerbil env cargo "$@"
   '';
 
   # https://devenv.sh/basics/

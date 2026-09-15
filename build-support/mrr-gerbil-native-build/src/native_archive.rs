@@ -1,147 +1,221 @@
+//! Thin Cargo adapter for the canonical Gerbil AOT program builder.
+
 use std::env;
 use std::ffi::OsStr;
 use std::fs;
+use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::time::Duration;
 
 use gerbil_scheme_native_build::{
-    NativeLinkLibrary, NativeStaticLinkPlan, build_static_archive_from_link_plan,
-    discover_gambit_link_search_dir_from_gsc,
+    ProgramArchiveContract, ProgramArchiveObservation, ProgramArchiveObserver,
+    ProgramArchiveOperation, ProgramArchiveRequest, build_program_archive_with_contract,
+    observe_program_archive_operation, source_workspace,
 };
 
-const NATIVE_MODULE_NAME: &str = "meta-relational-reasoning/scheme/grammar/native";
+const REQUIRED_MODULES: &[&str] = &[
+    "meta-relational-reasoning/scheme/grammar/native-program",
+    "meta-relational-reasoning/scheme/grammar/native",
+    "gerbil-parser/src/ffi/parse-artifact-v1",
+];
 
-struct NativeArchiveBuild<'a> {
-    manifest: &'a Path,
-    out: PathBuf,
-    gsc: PathBuf,
-    canonical_scm: PathBuf,
-    scm: PathBuf,
-    linker_c: PathBuf,
-    linker_o: PathBuf,
-    native_c: PathBuf,
-    native_o: PathBuf,
-    runtime_o: PathBuf,
+struct CargoObserver;
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum ObservationChannel {
+    Silent,
+    Trace,
+    Warning,
 }
 
-impl<'a> NativeArchiveBuild<'a> {
-    fn new(manifest: &'a Path) -> Self {
-        let out = PathBuf::from(env::var_os("OUT_DIR").expect("OUT_DIR"));
-        let workspace = manifest.ancestors().nth(2).expect("workspace root");
-        Self {
-            manifest,
-            gsc: resolve_program(env::var_os("GERBIL_GSC").unwrap_or_else(|| "gsc".into())),
-            canonical_scm: workspace
-                .join(".gerbil/lib/static")
-                .join("meta-relational-reasoning__scheme__grammar__native.scm"),
-            scm: out.join("native.scm"),
-            linker_c: out.join("native_link.c"),
-            linker_o: out.join("native_link.o"),
-            native_c: out.join("native.c"),
-            native_o: out.join("native.o"),
-            runtime_o: out.join("runtime.o"),
-            out,
+impl ProgramArchiveObserver for CargoObserver {
+    fn observe(&self, observation: ProgramArchiveObservation<'_>) {
+        match observation_channel(
+            observation.phase,
+            observation.state,
+            observation.elapsed,
+            gerbil_build_verbose_level(),
+        ) {
+            ObservationChannel::Silent => {}
+            ObservationChannel::Trace => {
+                let mut output = io::stderr().lock();
+                writeln!(output, "[mrr-gerbil-native] {observation}")
+                    .expect("write native build trace");
+                output.flush().expect("flush native build trace");
+            }
+            ObservationChannel::Warning => {
+                let mut output = io::stdout().lock();
+                writeln!(output, "cargo:warning=[mrr-gerbil-native] {observation}")
+                    .expect("write failed native build observation");
+                output
+                    .flush()
+                    .expect("flush failed native build observation");
+            }
         }
     }
 
-    fn stage_canonical_aot_module(&self) {
+    fn observe_source_input(&self, source: &Path) {
+        println!("cargo:rerun-if-changed={}", source.display());
+    }
+}
+
+/// Materializes the MRR program and delegates its complete AOT graph to the
+/// upstream Gerbil-to-Rust builder.
+pub fn build_native_archive(manifest: &Path) {
+    println!("cargo:rerun-if-env-changed=GERBIL_GSC");
+    println!("cargo:rerun-if-env-changed=GERBIL_GXPKG");
+    println!("cargo:rerun-if-env-changed=GERBIL_BUILD_VERBOSE");
+    let build = NativeBuild::new(manifest);
+    let observer = CargoObserver;
+    build.stage_program(&observer);
+    build.package_archive(&observer);
+}
+
+struct NativeBuild {
+    workspace: PathBuf,
+    program_source: PathBuf,
+    program_stage: PathBuf,
+    program_manifest: PathBuf,
+    gsc: PathBuf,
+    gxpkg: PathBuf,
+}
+
+impl NativeBuild {
+    fn new(manifest: &Path) -> Self {
+        let workspace = manifest
+            .ancestors()
+            .nth(2)
+            .expect("workspace root")
+            .to_path_buf();
+        let out = PathBuf::from(env::var_os("OUT_DIR").expect("OUT_DIR"));
+        let program_stage = out.join("gerbil-program");
+        Self {
+            program_source: workspace.join("scheme/grammar/native-program.ss"),
+            program_manifest: program_stage.join("program.json"),
+            program_stage,
+            workspace,
+            gsc: resolve_program(env::var_os("GERBIL_GSC").unwrap_or_else(|| "gsc".into())),
+            gxpkg: resolve_program(env::var_os("GERBIL_GXPKG").unwrap_or_else(|| "gxpkg".into())),
+        }
+    }
+
+    fn stage_program(&self, observer: &CargoObserver) {
         assert!(
-            self.canonical_scm.is_file(),
-            "canonical Gerbil AOT artifact is missing; run `gxi build.ss compile` before Cargo"
+            self.program_source.is_file(),
+            "canonical Gerbil AOT root is missing: {}",
+            self.program_source.display()
         );
-        fs::copy(&self.canonical_scm, &self.scm).expect("stage canonical Gerbil AOT in OUT_DIR");
-    }
-
-    fn generate_native_sources(&self) {
-        run(
-            clean_command(&self.gsc)
-                .args(["-link", "-linker-name", "mrr_grammar_linker", "-o"])
-                .arg(&self.linker_c)
-                .arg(&self.scm),
-            "generate Gambit link unit",
-        );
-        let expression = format!(
-            "(compile-file-to-target {} output: {} module-name: \"{NATIVE_MODULE_NAME}\")",
-            scheme_string(&self.scm),
-            scheme_string(&self.native_c)
-        );
-        run(
-            clean_command(&self.gsc).arg("-e").arg(expression),
-            "generate Gerbil module C",
-        );
-    }
-
-    fn compile_objects(&self) {
-        self.compile_object(
-            &self.native_o,
-            &self.native_c,
-            &[],
-            "compile Gerbil module object",
-        );
-        self.compile_object(
-            &self.linker_o,
-            &self.linker_c,
-            &["-cc-options", "-Dmain=mrr_grammar_gambit_main"],
-            "compile Gambit link object",
-        );
-        self.compile_object(
-            &self.runtime_o,
-            &self.manifest.join("native/runtime.c"),
-            &[],
-            "compile grammar runtime shim",
-        );
-    }
-
-    fn compile_object(&self, output: &Path, input: &Path, options: &[&str], operation: &str) {
-        let mut command = clean_command(&self.gsc);
-        command
-            .arg("-obj")
-            .args(options)
-            .arg("-o")
-            .arg(output)
-            .arg(input);
-        run(&mut command, operation);
-    }
-
-    fn package_archive(&self) {
-        let gambit = discover_gambit_link_search_dir_from_gsc(&self.gsc)
-            .expect("discover Gambit library for selected gsc");
-        let receipt = build_static_archive_from_link_plan(
-            "mrr_grammar_native",
-            &NativeStaticLinkPlan {
-                module_objects: vec![self.runtime_o.clone(), self.native_o.clone()],
-                link_object: self.linker_o.clone(),
-                link_search_dirs: vec![gambit.search_dir],
-                link_libraries: native_link_libraries(),
+        println!("cargo:rerun-if-changed={}", self.program_source.display());
+        observe_program_archive_operation(
+            observer,
+            ProgramArchiveOperation {
+                phase: "program-stage",
+                operation: "stage compiler-owned Gerbil AOT program",
+                subject: Some("meta-relational-reasoning/scheme/grammar/native-program"),
             },
-            &self.out,
+            || {
+                fs::create_dir_all(&self.program_stage).map_err(|error| error.to_string())?;
+                let program_build = source_workspace().join("scheme/program-build.ss");
+                if !program_build.is_file() {
+                    return Err(format!(
+                        "gerbil-scheme-rust program builder is missing: {}",
+                        program_build.display()
+                    ));
+                }
+                let expression = format!(
+                    "(begin (import {}) (gerbil-rs-stage-program {} {}))",
+                    scheme_string(&program_build),
+                    scheme_string(&self.program_source),
+                    scheme_string(&self.program_stage),
+                );
+                run(
+                    clean_command(&self.gxpkg)
+                        .current_dir(&self.workspace)
+                        .args(["env", "gxi", "-e"])
+                        .arg(expression),
+                    "stage compiler-owned Gerbil AOT program",
+                )
+            },
         )
-        .expect("package MRR Gerbil native archive");
+        .expect("stage compiler-owned Gerbil AOT program");
+    }
+
+    fn package_archive(&self, observer: &CargoObserver) {
+        let receipt = build_program_archive_with_contract(
+            ProgramArchiveRequest {
+                manifest: &self.program_manifest,
+                gsc: &self.gsc,
+                archive_name: "mrr_grammar_native",
+                linker_name: "mrr_grammar_linker",
+                out_dir: &self.program_stage,
+            },
+            ProgramArchiveContract {
+                required_modules: REQUIRED_MODULES,
+                linker_main_symbol: "mrr_grammar_gambit_main",
+                additional_objects: &[],
+            },
+            observer,
+        )
+        .expect("package MRR and parser Gerbil native archive");
         for directive in receipt.cargo_directives {
             println!("{}", directive.line());
         }
     }
 }
 
-/// Materializes the canonical Gerbil AOT artifact and emits Cargo link directives.
-pub fn build_native_archive(manifest: &Path) {
-    let build = NativeArchiveBuild::new(manifest);
-    println!("cargo:rerun-if-changed={}", build.canonical_scm.display());
-    build.stage_canonical_aot_module();
-    build.generate_native_sources();
-    build.compile_objects();
-    build.package_archive();
+pub(crate) fn observation_channel(
+    phase: &str,
+    state: &str,
+    elapsed: Option<Duration>,
+    verbose_level: u8,
+) -> ObservationChannel {
+    if state == "failed" {
+        return ObservationChannel::Warning;
+    }
+
+    let phase_summary = matches!(
+        phase,
+        "program-stage"
+            | "program-plan"
+            | "module-c-batch"
+            | "gsc-link"
+            | "native-object-batch"
+            | "static-archive"
+    );
+    let slow_terminal = elapsed.is_some_and(|elapsed| elapsed.as_millis() >= 5_000);
+    if verbose_level >= 9 || (verbose_level > 0 && (phase_summary || slow_terminal)) {
+        ObservationChannel::Trace
+    } else {
+        ObservationChannel::Silent
+    }
 }
 
-fn native_link_libraries() -> Vec<NativeLinkLibrary> {
-    let mut libraries = vec![
-        NativeLinkLibrary::new("static=gambit"),
-        NativeLinkLibrary::new("dylib=m"),
-    ];
-    if env::var("CARGO_CFG_TARGET_OS").as_deref() != Ok("windows") {
-        libraries.push(NativeLinkLibrary::new("dylib=dl"));
+fn gerbil_build_verbose_level() -> u8 {
+    env::var("GERBIL_BUILD_VERBOSE")
+        .ok()
+        .map(|value| {
+            value
+                .parse::<u8>()
+                .unwrap_or_else(|_| u8::from(!value.is_empty() && value != "0"))
+        })
+        .unwrap_or(0)
+}
+
+fn run(command: &mut Command, operation: &str) -> Result<(), String> {
+    let output = command
+        .output()
+        .map_err(|error| format!("{operation}: {error}"))?;
+    if output.status.success() {
+        Ok(())
+    } else {
+        Err(format!(
+            "{operation}: {}; {}{}",
+            output.status,
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        ))
     }
-    libraries
 }
 
 fn clean_command(program: &Path) -> Command {
@@ -164,22 +238,15 @@ fn clean_command(program: &Path) -> Command {
     command
 }
 
-fn run(command: &mut Command, operation: &str) {
-    let status = command
-        .status()
-        .unwrap_or_else(|error| panic!("{operation}: {error}"));
-    assert!(status.success(), "{operation} failed with {status}");
-}
-
 fn resolve_program(program: impl AsRef<OsStr>) -> PathBuf {
     let program = PathBuf::from(program.as_ref());
     if program.components().count() > 1 {
         return program;
     }
     env::split_paths(&env::var_os("PATH").expect("PATH"))
-        .map(|dir| dir.join(&program))
+        .map(|directory| directory.join(&program))
         .find(|path| path.is_file())
-        .expect("locate gsc on PATH")
+        .expect("locate Gerbil tool on PATH")
 }
 
 fn scheme_string(path: &Path) -> String {

@@ -1,25 +1,63 @@
-//! Process-global serialization boundary for the embedded Gambit runtime.
+//! Single-owner execution boundary for the embedded Gambit runtime.
 
-use std::sync::{Mutex, MutexGuard};
+use std::sync::{OnceLock, mpsc};
+use std::thread;
 
-static NATIVE_RUNTIME: Mutex<()> = Mutex::new(());
+use super::ffi;
 
-const RUNTIME_INITIALIZED: i32 = 0;
-const RUNTIME_ALREADY_INITIALIZED: i32 = 6;
+type NativeJob = Box<dyn FnOnce() + Send + 'static>;
 
-/// Capability proving exclusive access to the process-global Gambit runtime.
-pub(super) struct NativeRuntimeAccess {
-    _guard: MutexGuard<'static, ()>,
+static NATIVE_RUNTIME: OnceLock<Result<mpsc::Sender<NativeJob>, NativeRuntimeError>> =
+    OnceLock::new();
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(super) enum NativeRuntimeError {
+    Unavailable,
+    Status(i32),
 }
 
-pub(super) fn native_runtime_access() -> Result<NativeRuntimeAccess, ()> {
-    NATIVE_RUNTIME
-        .lock()
-        .map(|guard| NativeRuntimeAccess { _guard: guard })
-        .map_err(|_| ())
-}
-
-/// Classifies the idempotent initialization receipts owned by the native shim.
-pub(super) const fn native_runtime_status_is_ready(status: i32) -> bool {
-    matches!(status, RUNTIME_INITIALIZED | RUNTIME_ALREADY_INITIALIZED)
+/// Executes one complete native operation on the unique Gambit owner thread.
+///
+/// A mutex is insufficient: Rust callers can acquire it from different OS
+/// threads, while Gambit's allocation state is thread-affine.
+pub(super) fn with_native_runtime<T, F>(operation: F) -> Result<T, NativeRuntimeError>
+where
+    T: Send + 'static,
+    F: FnOnce() -> T + Send + 'static,
+{
+    let runtime = NATIVE_RUNTIME.get_or_init(|| {
+        let (sender, receiver) = mpsc::channel::<NativeJob>();
+        let (ready_sender, ready_receiver) = mpsc::sync_channel(0);
+        thread::Builder::new()
+            .name("mrr-gerbil-runtime".to_owned())
+            .spawn(move || {
+                let status = ffi::runtime_init();
+                if ready_sender.send(status).is_err() {
+                    return;
+                }
+                if status != 0 {
+                    return;
+                }
+                while let Ok(job) = receiver.recv() {
+                    job();
+                }
+            })
+            .map_err(|_| NativeRuntimeError::Unavailable)?;
+        match ready_receiver.recv() {
+            Ok(0) => Ok(sender),
+            Ok(status) => Err(NativeRuntimeError::Status(status)),
+            Err(_) => Err(NativeRuntimeError::Unavailable),
+        }
+    });
+    let (result_sender, result_receiver) = mpsc::sync_channel(0);
+    runtime
+        .as_ref()
+        .map_err(|error| *error)?
+        .send(Box::new(move || {
+            let _ = result_sender.send(Ok(operation()));
+        }))
+        .map_err(|_| NativeRuntimeError::Unavailable)?;
+    result_receiver
+        .recv()
+        .map_err(|_| NativeRuntimeError::Unavailable)?
 }

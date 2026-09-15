@@ -17,6 +17,7 @@ pub use api::{
     RecordField, ReferenceValueTypeKind, ReturnProjection, SessionCommand, SetItem, SetQuantifier,
     SortDirection, SortKey, Statement, SyntaxParseOutput, TransactionAccessMode,
     TransactionCommand, TruthValue, TypeParameter, UnaryOperator, lower_from_syntax,
+    lower_numeric_literal,
 };
 
 #[cfg(test)]

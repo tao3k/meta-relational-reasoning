@@ -3,3 +3,7 @@
 mod native_archive;
 
 pub use native_archive::build_native_archive;
+
+#[cfg(test)]
+#[path = "../tests/unit/mod.rs"]
+mod tests;

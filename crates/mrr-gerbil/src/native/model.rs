@@ -1,13 +1,11 @@
 //! Safe typed Rust bindings for the declaration-owned Gerbil AOT grammar ABI.
 
-use std::sync::OnceLock;
-
 use super::{
     ffi,
-    runtime::{NativeRuntimeAccess, native_runtime_access, native_runtime_status_is_ready},
+    runtime::{NativeRuntimeError, with_native_runtime},
 };
 
-const ABI_VERSION: u32 = 2;
+const ABI_VERSION: u32 = 3;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct SyntaxShape {
@@ -147,8 +145,20 @@ pub struct IsoProfile {
     pub feature_dependencies: Vec<FeatureDependencySpec>,
 }
 
+/// Identity of the parser-owned grammar from which the MRR projection derives.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ParserAuthority {
+    pub schema: String,
+    pub language: String,
+    pub version: String,
+    pub contract: String,
+    pub grammar_schema: String,
+    pub grammar_id: String,
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct NativeGrammar {
+    pub(crate) parser_authority: ParserAuthority,
     pub(crate) profile_schema: String,
     pub(crate) syntax_shapes: Vec<SyntaxShape>,
     pub(crate) keywords: Vec<KeywordSpec>,
@@ -174,16 +184,14 @@ pub(crate) struct NativeGrammar {
 impl NativeGrammar {
     /// Loads the complete grammar through the native AOT bindings.
     pub(crate) fn load() -> Result<Self, NativeGrammarError> {
-        let runtime =
-            native_runtime_access().map_err(|()| NativeGrammarError::RuntimeLockPoisoned)?;
-        Self::load_with_runtime(&runtime)
+        with_native_runtime(Self::load_on_owner).map_err(|error| match error {
+            NativeRuntimeError::Unavailable => NativeGrammarError::RuntimeLockPoisoned,
+            NativeRuntimeError::Status(status) => NativeGrammarError::RuntimeStatus(status),
+        })?
     }
 
-    /// Loads while the caller holds the process-global Gambit runtime capability.
-    pub(super) fn load_with_runtime(
-        _runtime: &NativeRuntimeAccess,
-    ) -> Result<Self, NativeGrammarError> {
-        initialize()?;
+    /// Loads while executing on the process-global Gambit owner thread.
+    pub(super) fn load_on_owner() -> Result<Self, NativeGrammarError> {
         let actual = ffi::abi_version();
         if actual != ABI_VERSION {
             return Err(NativeGrammarError::AbiMismatch {
@@ -193,6 +201,7 @@ impl NativeGrammar {
         }
         let syntax_shapes = load_syntax_shapes()?;
         Ok(Self {
+            parser_authority: load_parser_authority_table()?,
             profile_schema: text(Table::ProfileSchema, "profile-schema", 0, 0)?,
             syntax_shapes,
             keywords: load_keywords()?,
@@ -214,6 +223,27 @@ impl NativeGrammar {
             features: load_features()?,
             feature_dependencies: load_feature_dependencies()?,
         })
+    }
+}
+
+/// Loads the canonical parser identity carried by the native MRR projection.
+pub fn load_parser_authority() -> Result<ParserAuthority, ParserAuthorityLoadError> {
+    let grammar = NativeGrammar::load().map_err(ParserAuthorityLoadError)?;
+    Ok(grammar.parser_authority)
+}
+
+#[derive(Debug)]
+pub struct ParserAuthorityLoadError(NativeGrammarError);
+
+impl std::fmt::Display for ParserAuthorityLoadError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(formatter, "parser authority AOT load failed: {}", self.0)
+    }
+}
+
+impl std::error::Error for ParserAuthorityLoadError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        Some(&self.0)
     }
 }
 
@@ -269,6 +299,7 @@ enum Table {
     ParameterReferences = 17,
     PredicateTests = 18,
     AggregateFunctions = 19,
+    ParserAuthority = 20,
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -291,6 +322,11 @@ pub(crate) enum NativeGrammarError {
     InvalidCodepoint(i32),
     InvalidPrecedence(i32),
     InvalidPriority(String),
+    InvalidAuthorityKey {
+        row: i64,
+        expected: &'static str,
+        actual: String,
+    },
 }
 
 impl std::fmt::Display for NativeGrammarError {
@@ -300,16 +336,6 @@ impl std::fmt::Display for NativeGrammarError {
 }
 
 impl std::error::Error for NativeGrammarError {}
-
-fn initialize() -> Result<(), NativeGrammarError> {
-    static STATUS: OnceLock<i32> = OnceLock::new();
-    let status = *STATUS.get_or_init(ffi::runtime_init);
-    if native_runtime_status_is_ready(status) {
-        Ok(())
-    } else {
-        Err(NativeGrammarError::RuntimeStatus(status))
-    }
-}
 
 fn count(table: Table, name: &'static str) -> Result<i64, NativeGrammarError> {
     let value = ffi::table_count(table as i32);
@@ -378,6 +404,54 @@ fn load_syntax_shapes() -> Result<Vec<SyntaxShape>, NativeGrammarError> {
         });
     }
     Ok(rows)
+}
+
+fn load_parser_authority_table() -> Result<ParserAuthority, NativeGrammarError> {
+    let expected_keys = [
+        "schema",
+        "language",
+        "version",
+        "contract",
+        "grammar-schema",
+        "grammar-id",
+    ];
+    let count = count(Table::ParserAuthority, "parser-authority")?;
+    if count != expected_keys.len() as i64 {
+        return Err(NativeGrammarError::InvalidCount {
+            table: "parser-authority",
+            value: count,
+        });
+    }
+    let mut values = Vec::with_capacity(expected_keys.len());
+    for (row, expected_key) in expected_keys.iter().enumerate() {
+        let key = text(Table::ParserAuthority, "parser-authority", row as i64, 0)?;
+        if key != *expected_key {
+            return Err(NativeGrammarError::InvalidAuthorityKey {
+                row: row as i64,
+                expected: expected_key,
+                actual: key,
+            });
+        }
+        values.push(text(
+            Table::ParserAuthority,
+            "parser-authority",
+            row as i64,
+            1,
+        )?);
+    }
+    let mut values = values.into_iter();
+    Ok(ParserAuthority {
+        schema: values.next().expect("validated parser authority schema"),
+        language: values.next().expect("validated parser authority language"),
+        version: values.next().expect("validated parser authority version"),
+        contract: values.next().expect("validated parser authority contract"),
+        grammar_schema: values
+            .next()
+            .expect("validated parser authority grammar schema"),
+        grammar_id: values
+            .next()
+            .expect("validated parser authority grammar id"),
+    })
 }
 
 fn load_keywords() -> Result<Vec<KeywordSpec>, NativeGrammarError> {

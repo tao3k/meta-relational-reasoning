@@ -15,7 +15,10 @@ use mrr_query::{
 };
 use mrr_relation::{RelationCardinality, RelationField, RelationSchema, ValueType};
 
-use super::{NativeGrammar, ffi, runtime::native_runtime_access};
+use super::{
+    NativeGrammar, ffi,
+    runtime::{NativeRuntimeError, with_native_runtime},
+};
 
 #[derive(Clone, Copy)]
 #[repr(i32)]
@@ -70,10 +73,18 @@ impl std::error::Error for ReasoningBundleLoadError {}
 
 /// Loads, validates, and canonically identifies the AOT-declared reasoning module.
 pub fn load_reasoning_bundle() -> Result<ReasoningBundle, ReasoningBundleLoadError> {
-    let runtime = native_runtime_access().map_err(|()| {
-        ReasoningBundleLoadError::NativeGrammar("native Gerbil runtime lock is poisoned".to_owned())
-    })?;
-    NativeGrammar::load_with_runtime(&runtime)
+    with_native_runtime(load_reasoning_bundle_on_owner).map_err(|error| match error {
+        NativeRuntimeError::Unavailable => ReasoningBundleLoadError::NativeGrammar(
+            "native Gerbil runtime owner is unavailable".to_owned(),
+        ),
+        NativeRuntimeError::Status(status) => ReasoningBundleLoadError::NativeGrammar(format!(
+            "native Gerbil runtime initialization failed with {status}"
+        )),
+    })?
+}
+
+fn load_reasoning_bundle_on_owner() -> Result<ReasoningBundle, ReasoningBundleLoadError> {
+    NativeGrammar::load_on_owner()
         .map_err(|error| ReasoningBundleLoadError::NativeGrammar(error.to_string()))?;
     let relations = load_relations()?;
     let relation_ids = relations

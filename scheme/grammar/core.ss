@@ -1,7 +1,8 @@
-;;; Gerbil macro and POO authority for GQL-family grammar declarations.
+;;; MRR projection over parser-owned GQL-family language grammars.
 
 (import :clan/poo/object
-        :poo-flow/src/core/object-syntax)
+        :poo-flow/src/core/object-syntax
+        ./parser-authority)
 (export defmrr-grammar
         mrr-grammar-prototype)
 
@@ -12,16 +13,17 @@
            (bridge-revision "a83fb649ddbbeaabdb538a6eaf0ded10838f7fad")))
    (supers)))
 
-;;; The clause order is intentional. syntax-case rejects missing, reordered, or
-;;; implementation-shaped declarations before a projection can be generated.
+;;; The clause order is intentional. syntax-case rejects a projection that is
+;;; not bound to a parser-owned language grammar before it can be generated.
 (defsyntax (defmrr-grammar stx)
   (syntax-case stx
-      (dialect extends syntax-kinds keywords non-reserved-words numeric-literals
+      (parser-authority dialect extends syntax-kinds keywords non-reserved-words numeric-literals
                character-string-literals parameter-references predicate-tests
                aggregate-functions
                prefix-operators binary-operators
                parser-entrypoints recoveries)
     ((_ binding
+        (parser-authority parser-language-grammar)
         (dialect declared-dialect-id declared-dialect-label declared-active?)
         (extends parent-id ...)
         (syntax-kinds (kind-name kind-category (field-name ...)) ...)
@@ -48,8 +50,14 @@
      (identifier? #'binding)
      #'(def binding
          (poo-core-role-object
-          (slots
-           ((kind 'mrr-grammar)
+           (slots
+            ((kind 'mrr-grammar)
+            (parser-schema (parser-authority-ref parser-language-grammar 'schema))
+            (parser-language (parser-authority-ref parser-language-grammar 'language))
+            (parser-version (parser-authority-ref parser-language-grammar 'version))
+            (parser-contract (parser-authority-ref parser-language-grammar 'contract))
+            (parser-grammar (parser-authority-ref parser-language-grammar 'grammar))
+            (parser-ir (parser-authority-ref parser-language-grammar 'ir))
             (dialect-id 'declared-dialect-id)
             (dialect-label declared-dialect-label)
             (active? declared-active?)
@@ -91,11 +99,11 @@
              (list (list 'entry-keyword
                          'entry-action
                          'entry-effect) ...))
-            (recoveries
-             (list (list 'recovery-site
-                         recovery-code
-                         'recovery-strategy) ...))))
-          (supers mrr-grammar-prototype))))
+             (recoveries
+              (list (list 'recovery-site
+                          recovery-code
+                          'recovery-strategy) ...))))
+           (supers mrr-grammar-prototype))))
     (_
      (raise-syntax-error
       #f

@@ -392,17 +392,12 @@ pub enum AggregateFunction {
     PercentileDiscrete,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 /// Set quantifier retained by canonical aggregate IR.
 pub enum SetQuantifier {
+    #[default]
     All,
     Distinct,
-}
-
-impl Default for SetQuantifier {
-    fn default() -> Self {
-        Self::All
-    }
 }
 
 /// Backend-neutral boolean algebra over canonical label names.

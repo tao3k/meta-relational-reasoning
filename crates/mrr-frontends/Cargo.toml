@@ -10,6 +10,8 @@ gql-ast.workspace = true
 gql-source.workspace = true
 gql-syntax.workspace = true
 mrr-query.workspace = true
+mrr-gerbil.workspace = true
+rowan.workspace = true
 
 [build-dependencies]
 mrr-asp-rust-project-policy.workspace = true

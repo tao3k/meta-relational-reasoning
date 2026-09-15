@@ -14,9 +14,15 @@ pub use cli::run_cli;
 pub use driver_cli::run_driver_cli;
 pub use native::{
     DriverError, DriverPhase, DriverResource, DriverStatus, DriverTransition,
-    FeatureDependencySpec, FeatureSpec, IsoProfile, IsoProfileLoadError, ModuleSpec,
+    EnhancedQueryOperandSpec, EnhancedQueryOperatorSpec, EnhancedQueryOperatorTableLoadError,
+    EnhancedQueryRecoverySpec, EnhancedTreeSitterQueryOperatorTable, FeatureDependencySpec,
+    FeatureSpec, IsoProfile, IsoProfileLoadError, ModuleSpec, PARSE_ARTIFACT_SCHEMA_V1,
+    PARSER_NATIVE_DESCRIPTOR_SCHEMA_V1, ParseArtifact, ParseArtifactLoadError, ParseArtifactStatus,
+    ParseEvent, ParserAuthority, ParserAuthorityLoadError, ParserCst, ParserCstError,
+    ParserKindCatalog, ParserKindCategory, ParserKindSpec, ParserSyntax, ParserSyntaxKind,
     ProfileModuleSpec, ProfileSpec, ProfileSupplementSpec, ReasoningBundleLoadError, ReleaseSpec,
-    driver_request, driver_transition, load_iso_profile, load_reasoning_bundle,
+    driver_request, driver_transition, load_enhanced_tree_sitter_query_operator_table,
+    load_iso_profile, load_parser_authority, load_reasoning_bundle, parse_gql_artifact,
 };
 pub use projection::{
     GrammarProjectionError, stamp_projection, validate_projection, workspace_input_fingerprint,

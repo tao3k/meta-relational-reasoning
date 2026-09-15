@@ -1,12 +1,14 @@
-;;; Single-source property-graph query declaration consumed by every POO
-;;; language profile and by the native AOT ABI owner.
+;;; MRR-owned Rowan/IR projection consumed by parser-bound language profiles
+;;; and by the native AOT ABI owner. Complete grammar semantics stay in
+;;; gerbil-parser; this declaration contains only the downstream projection.
 
 (export with-mrr-gql-declaration)
 
 (defsyntax (with-mrr-gql-declaration stx)
   (syntax-case stx ()
-    ((_ consumer grammar-binding dialect-id dialect-label)
+    ((_ consumer grammar-binding dialect-id dialect-label parser-authority-binding)
      #'(consumer grammar-binding
+         (parser-authority parser-authority-binding)
          (dialect dialect-id dialect-label #t)
          (extends)
          (syntax-kinds

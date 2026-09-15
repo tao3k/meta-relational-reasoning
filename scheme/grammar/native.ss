@@ -1,19 +1,23 @@
 ;;; Native AOT ABI projection of the single ISO GQL Scheme declaration.
 
 (import :std/foreign
+        (only-in :std/sugar with-catch)
         ./gql-declaration
         ./gql-profile)
 (export mrr-grammar-native-abi-version)
+(include "parser-authority-receipt-declaration.ss")
 (include "../reasoning/declaration.ss")
+(include "../search/enhanced-tree-sitter-query-declaration.ss")
 
 (defsyntax (defmrr-native-grammar stx)
   (syntax-case stx
-      (dialect extends syntax-kinds keywords non-reserved-words numeric-literals
+      (parser-authority dialect extends syntax-kinds keywords non-reserved-words numeric-literals
                character-string-literals parameter-references predicate-tests
                aggregate-functions
                prefix-operators binary-operators
                parser-entrypoints recoveries)
     ((_ grammar-binding
+        (parser-authority parser-language-grammar)
         (dialect dialect-id dialect-label active?)
         (extends parent-id ...)
         (syntax-kinds (kind-name kind-category (field-name ...)) ...)
@@ -64,7 +68,11 @@
             (recovery-site recovery-code recovery-strategy) ...))))))
 
 (with-mrr-gql-declaration
- defmrr-native-grammar mrr-native-grammar iso-gql "ISO GQL")
+ defmrr-native-grammar mrr-native-grammar iso-gql "ISO GQL"
+ mrr-gql-parser-authority-receipt)
+
+;;; Fixed-width provenance for the canonical grammar behind the MRR projection.
+(def mrr-native-parser-authority mrr-gql-parser-authority-receipt)
 
 (defsyntax (defmrr-native-profile stx)
   (syntax-case stx
@@ -191,6 +199,7 @@
     ((17) (grammar-table 'parameter-references))
     ((18) (grammar-table 'predicate-tests))
     ((19) (grammar-table 'aggregate-functions))
+    ((20) mrr-native-parser-authority)
     (else #f)))
 
 (def (reasoning-rows table)
@@ -279,6 +288,22 @@
      ((and (eq? status 'rejected) (>= (+ cycle 1) max-cycles)) -2)
      (else (reasoning-driver-phase-code (list-ref row 3))))))
 
+(def (enhanced-query-table key)
+  (cdr (assq key mrr-enhanced-tree-sitter-query-operator-table)))
+(def (enhanced-query-rows table)
+  (case table
+    ((0) (list (list (enhanced-query-table 'profile))))
+    ((1) (list (list (enhanced-query-table 'owner))))
+    ((2) (enhanced-query-table 'operators))
+    ((3) (enhanced-query-table 'recoveries))
+    (else #f)))
+(def (enhanced-query-operands entry)
+  (and entry (= (length entry) 7) (list-ref entry 6)))
+(def (enhanced-query-operand entry index)
+  (let ((operands (enhanced-query-operands entry)))
+    (and operands (>= index 0) (< index (length operands))
+         (list-ref operands index))))
+
 (begin-ffi
   (mrr-grammar-native-abi-version mrr-grammar-native-table-count
    mrr-grammar-native-row-text-length mrr-grammar-native-row-text-char
@@ -293,9 +318,15 @@
    mrr-reasoning-native-nested-text-length
    mrr-reasoning-native-nested-text-char
    mrr-reasoning-native-driver-request-resource
-   mrr-reasoning-native-driver-transition)
+   mrr-reasoning-native-driver-transition
+   mrr-enhanced-query-table-count
+   mrr-enhanced-query-row-text-length
+   mrr-enhanced-query-row-text-char
+   mrr-enhanced-query-operand-count
+   mrr-enhanced-query-operand-text-length
+   mrr-enhanced-query-operand-text-char)
   (c-define (mrr-grammar-native-abi-version)
-    () unsigned-int32 "mrr_grammar_native_abi_version" "extern" 2)
+    () unsigned-int32 "mrr_grammar_native_abi_version" "extern" 3)
   (c-define (mrr-grammar-native-table-count table)
     (int32) int64 "mrr_grammar_native_table_count" "extern"
     (let ((rows
@@ -457,6 +488,90 @@
             (and entry
                  (meta-relational-reasoning/scheme/grammar/native#reasoning-nested-value
                   entry nested-row column))))
+      (if value
+        (meta-relational-reasoning/scheme/grammar/native#grammar-text-char
+         value index) -1)))
+  (c-define (mrr-enhanced-query-table-count table)
+    (int32) int64 "mrr_enhanced_query_table_count" "extern"
+    (let ((rows
+           (meta-relational-reasoning/scheme/grammar/native#enhanced-query-rows
+            table)))
+      (if rows (length rows) -1)))
+  (c-define (mrr-enhanced-query-row-text-length table row column)
+    (int32 int64 int64) int64 "mrr_enhanced_query_row_text_length" "extern"
+    (let* ((rows
+            (meta-relational-reasoning/scheme/grammar/native#enhanced-query-rows
+             table))
+           (entry
+            (and rows
+                 (meta-relational-reasoning/scheme/grammar/native#grammar-row
+                  rows row))))
+      (if (and entry (>= column 0) (< column (length entry)))
+        (meta-relational-reasoning/scheme/grammar/native#grammar-text-length
+         (list-ref entry column)) -1)))
+  (c-define (mrr-enhanced-query-row-text-char table row column index)
+    (int32 int64 int64 int64) int32
+    "mrr_enhanced_query_row_text_char" "extern"
+    (let* ((rows
+            (meta-relational-reasoning/scheme/grammar/native#enhanced-query-rows
+             table))
+           (entry
+            (and rows
+                 (meta-relational-reasoning/scheme/grammar/native#grammar-row
+                  rows row))))
+      (if (and entry (>= column 0) (< column (length entry)))
+        (meta-relational-reasoning/scheme/grammar/native#grammar-text-char
+         (list-ref entry column) index) -1)))
+  (c-define (mrr-enhanced-query-operand-count table row)
+    (int32 int64) int64 "mrr_enhanced_query_operand_count" "extern"
+    (let* ((rows
+            (meta-relational-reasoning/scheme/grammar/native#enhanced-query-rows
+             table))
+           (entry
+            (and rows
+                 (meta-relational-reasoning/scheme/grammar/native#grammar-row
+                  rows row)))
+           (operands
+            (and entry
+                 (meta-relational-reasoning/scheme/grammar/native#enhanced-query-operands
+                  entry))))
+      (if operands (length operands) -1)))
+  (c-define (mrr-enhanced-query-operand-text-length table row operand column)
+    (int32 int64 int64 int64) int64
+    "mrr_enhanced_query_operand_text_length" "extern"
+    (let* ((rows
+            (meta-relational-reasoning/scheme/grammar/native#enhanced-query-rows
+             table))
+           (entry
+            (and rows
+                 (meta-relational-reasoning/scheme/grammar/native#grammar-row
+                  rows row)))
+           (operand-row
+            (and entry
+                 (meta-relational-reasoning/scheme/grammar/native#enhanced-query-operand
+                  entry operand)))
+           (value (and operand-row (>= column 0) (< column (length operand-row))
+                       (list-ref operand-row column))))
+      (if value
+        (meta-relational-reasoning/scheme/grammar/native#grammar-text-length
+         value)
+        -1)))
+  (c-define (mrr-enhanced-query-operand-text-char table row operand column index)
+    (int32 int64 int64 int64 int64) int32
+    "mrr_enhanced_query_operand_text_char" "extern"
+    (let* ((rows
+            (meta-relational-reasoning/scheme/grammar/native#enhanced-query-rows
+             table))
+           (entry
+            (and rows
+                 (meta-relational-reasoning/scheme/grammar/native#grammar-row
+                  rows row)))
+           (operand-row
+            (and entry
+                 (meta-relational-reasoning/scheme/grammar/native#enhanced-query-operand
+                  entry operand)))
+           (value (and operand-row (>= column 0) (< column (length operand-row))
+                       (list-ref operand-row column))))
       (if value
         (meta-relational-reasoning/scheme/grammar/native#grammar-text-char
          value index) -1))))

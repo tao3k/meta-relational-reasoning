@@ -4,7 +4,7 @@ use std::{error::Error, fmt};
 
 use super::{
     ffi,
-    runtime::{native_runtime_access, native_runtime_status_is_ready},
+    runtime::{NativeRuntimeError, with_native_runtime},
 };
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -92,13 +92,15 @@ impl fmt::Display for DriverError {
 
 impl Error for DriverError {}
 
-fn with_runtime<T>(operation: impl FnOnce() -> T) -> Result<T, DriverError> {
-    let _access = native_runtime_access().map_err(|()| DriverError::NativeRuntimePoisoned)?;
-    let init = ffi::runtime_init();
-    if !native_runtime_status_is_ready(init) {
-        return Err(DriverError::NativeRuntimeInitialization(init));
-    }
-    Ok(operation())
+fn with_runtime<T, F>(operation: F) -> Result<T, DriverError>
+where
+    T: Send + 'static,
+    F: FnOnce() -> T + Send + 'static,
+{
+    with_native_runtime(operation).map_err(|error| match error {
+        NativeRuntimeError::Unavailable => DriverError::NativeRuntimePoisoned,
+        NativeRuntimeError::Status(status) => DriverError::NativeRuntimeInitialization(status),
+    })
 }
 
 /// Ask the Scheme AOT scheduler which resource owns the next step.
@@ -106,7 +108,7 @@ pub fn driver_request(phase: DriverPhase) -> Result<Option<DriverResource>, Driv
     if phase == DriverPhase::Complete {
         return Ok(None);
     }
-    let code = with_runtime(|| ffi::reasoning_driver_request_resource(phase as i32))?;
+    let code = with_runtime(move || ffi::reasoning_driver_request_resource(phase as i32))?;
     match code {
         0 => Ok(Some(DriverResource::ModelProposal)),
         1 => Ok(Some(DriverResource::MrrClosure)),
@@ -118,7 +120,7 @@ pub fn driver_request(phase: DriverPhase) -> Result<Option<DriverResource>, Driv
 pub fn driver_transition(input: DriverTransition) -> Result<DriverPhase, DriverError> {
     let cycle = i64::try_from(input.cycle).map_err(|_| DriverError::CycleOverflow)?;
     let max_cycles = i64::try_from(input.max_cycles).map_err(|_| DriverError::CycleOverflow)?;
-    let code = with_runtime(|| {
+    let code = with_runtime(move || {
         ffi::reasoning_driver_transition(
             input.phase as i32,
             input.resource as i32,

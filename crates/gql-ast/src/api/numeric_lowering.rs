@@ -4,7 +4,8 @@ use gql_source::Span;
 
 use super::Expression;
 
-pub(super) fn lower_numeric_literal(value: &str, span: Span) -> Option<Expression> {
+/// Canonicalizes one ISO numeric token into its AST literal representation.
+pub fn lower_numeric_literal(value: &str, span: Span) -> Option<Expression> {
     if value.starts_with("0x") || value.starts_with("0o") || value.starts_with("0b") {
         return parse_integer_literal(value).map(|value| Expression::Integer(value, span));
     }

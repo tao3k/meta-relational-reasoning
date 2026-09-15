@@ -45,12 +45,12 @@ semantic authority, or replace an MRR receipt.
 ## Verification
 
 ```bash
-./.devenv/devenv-profile-exec env \
-  GERBIL_PATH="$PWD/.gerbil" gxi build.ss compile
-./.devenv/devenv-profile-exec cargo test --workspace
-./.devenv/devenv-profile-exec cargo test -p mrr-conformance --all-targets
+./.devenv/devenv-profile-exec mrr-gerbil build
+./.devenv/devenv-profile-exec mrr-gerbil test
+./.devenv/devenv-profile-exec mrr-cargo test --workspace
+./.devenv/devenv-profile-exec mrr-cargo test -p mrr-conformance --all-targets
 ./.devenv/devenv-profile-exec env GQL_HARNESS_VERIFY=1 \
-  cargo check --workspace --all-targets
+  mrr-cargo check --workspace --all-targets
 ./.devenv/devenv-profile-exec uv --project proofs/MRRProof run pytest -q \
   proofs/MRRProof/tests
 ./.devenv/devenv-profile-exec uv --project experiments/mrr-live run pytest -q \

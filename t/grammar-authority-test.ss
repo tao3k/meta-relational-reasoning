@@ -4,7 +4,8 @@
         :clan/poo/object
         :poo-flow/src/core/object-syntax
         :meta-relational-reasoning/scheme/grammar/gql
-        :meta-relational-reasoning/scheme/grammar/cypher)
+        :meta-relational-reasoning/scheme/grammar/cypher
+        :meta-relational-reasoning/scheme/grammar/parser-authority-receipt)
 (export grammar-authority-test)
 
 (def grammar-authority-test
@@ -13,11 +14,35 @@
       (check-equal? (.ref mrr-gql-grammar 'kind) 'mrr-grammar)
       (check-equal? (.ref mrr-gql-grammar 'active?) #t)
       (check-equal? (.ref mrr-gql-grammar 'extends) '())
-      (check-equal? (.ref mrr-gql-grammar 'dialect-id) 'iso-gql))
+      (check-equal? (.ref mrr-gql-grammar 'dialect-id) 'iso-gql)
+      (check-equal? (.ref mrr-gql-grammar 'parser-schema)
+                    "gerbil-parser.language-grammar.v1")
+      (check-equal? (.ref mrr-gql-grammar 'parser-language) "gql")
+      (check-equal? (.ref mrr-gql-grammar 'parser-version)
+                    "edition-1-2024-04")
+      (check-equal? (.ref mrr-gql-grammar 'parser-contract)
+                    "iso-iec-39075-2024.opengql-1.9.0-syntax.v1")
+      (check-equal? (cdr (assq 'schema (.ref mrr-gql-grammar 'parser-grammar)))
+                    "gerbil-parser.grammar-ir.v1")
+      (check-equal?
+       mrr-gql-parser-authority-receipt
+       (list
+        (list 'schema (.ref mrr-gql-grammar 'parser-schema))
+        (list 'language (.ref mrr-gql-grammar 'parser-language))
+        (list 'version (.ref mrr-gql-grammar 'parser-version))
+        (list 'contract (.ref mrr-gql-grammar 'parser-contract))
+        (list 'grammar-schema
+              (cdr (assq 'schema (.ref mrr-gql-grammar 'parser-grammar))))
+        (list 'grammar-id
+              (cdr (assq 'grammar (.ref mrr-gql-grammar 'parser-grammar)))))))
     (test-case "openCypher is an independent active profile"
       (check-equal? (.ref mrr-cypher-grammar 'active?) #t)
       (check-equal? (.ref mrr-cypher-grammar 'extends) '())
-      (check-equal? (.ref mrr-cypher-grammar 'dialect-id) 'open-cypher))
+      (check-equal? (.ref mrr-cypher-grammar 'dialect-id) 'open-cypher)
+      (check-equal? (.ref mrr-cypher-grammar 'parser-language) "opencypher")
+      (check-equal? (.ref mrr-cypher-grammar 'parser-version) "2024.1")
+      (check-equal? (cdr (assq 'schema (.ref mrr-cypher-grammar 'parser-grammar)))
+                    "gerbil-parser.grammar-ir.v1"))
     (test-case "both profiles are projections of one declaration"
       (check-equal? (.ref mrr-cypher-grammar 'syntax-kinds)
                     (.ref mrr-gql-grammar 'syntax-kinds))
