@@ -58,6 +58,8 @@ fn rust_commands_inherit_the_canonical_gxpkg_environment() {
     assert!(ci.contains("GERBIL_BUILD_VERBOSE: \"1\""));
     assert!(ci.contains("Install declared Gerbil dependencies"));
     assert!(ci.contains("Build declared Gerbil package"));
+    assert!(ci.contains("brew --prefix openssl@3"));
+    assert!(ci.contains("LIBRARY_PATH=$openssl_prefix/lib"));
     assert!(!ci.contains("gparse"));
     assert!(!ci.contains("audit-spec"));
 }
