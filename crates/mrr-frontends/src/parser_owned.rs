@@ -26,6 +26,11 @@ pub(crate) fn lower_parser_owned_ast(source: &str) -> Result<ParserOwnedAst, Fro
         .to_rowan_cst()
         .map_err(|error| FrontendError::ParserOwned(format!("ParserCst: {error:?}")))?;
     let root = cst.root();
+    if root.text() != source {
+        return Err(FrontendError::ParserOwned(
+            "ParserCst: source is not losslessly covered by the parser artifact".into(),
+        ));
+    }
     require_name(&cst, &root, "GqlProgram")?;
     reject_unlowered_semantics(&cst, &root)?;
 
@@ -34,14 +39,25 @@ pub(crate) fn lower_parser_owned_ast(source: &str) -> Result<ParserOwnedAst, Fro
         return unsupported("parser-owned parity requires exactly one SimpleMatchStatement");
     }
     let returns = descendants_named(&cst, &root, "ReturnStatement");
-    let finishes = descendants_named(&cst, &root, "FinishStatement");
+    let finishes = descendants_named(&cst, &root, "PrimitiveResultStatement")
+        .into_iter()
+        .filter(|statement| {
+            significant_tokens(&cst, statement)
+                .iter()
+                .any(|token| token.text().eq_ignore_ascii_case("FINISH"))
+        })
+        .collect::<Vec<_>>();
     if returns.len() + finishes.len() != 1 {
         return unsupported("parser-owned parity requires exactly one result statement");
     }
 
     let mut clauses = vec![QueryClause::Match(lower_match(&cst, &matches[0])?)];
-    if let Some(where_clause) = first_descendant(&cst, &matches[0], "GraphPatternWhereClause") {
-        let condition = first_descendant(&cst, &where_clause, "SearchCondition")
+    let where_clauses = descendants_named(&cst, &root, "GraphPatternWhereClause");
+    if where_clauses.len() > 1 {
+        return unsupported("multiple GraphPatternWhereClause nodes");
+    }
+    if let Some(where_clause) = where_clauses.first() {
+        let condition = first_descendant(&cst, where_clause, "SearchCondition")
             .ok_or_else(|| unsupported_error("WHERE condition"))?;
         clauses.push(QueryClause::Where(lower_expression(&cst, &condition)?));
     }
@@ -51,12 +67,22 @@ pub(crate) fn lower_parser_owned_ast(source: &str) -> Result<ParserOwnedAst, Fro
         clauses.push(QueryClause::Filter(lower_expression(&cst, &condition)?));
     }
     if let Some(result) = returns.first() {
+        let result_tokens = significant_tokens(&cst, result);
+        let all_bindings = first_descendant(&cst, result, "ReturnItemList").is_none()
+            && matches!(
+                result_tokens.as_slice(),
+                [return_token, wildcard]
+                    if return_token.text().eq_ignore_ascii_case("RETURN")
+                        && wildcard.text() == "*"
+            );
         clauses.push(QueryClause::Return {
             quantifier: lower_result_quantifier(&cst, result)?,
-            all_bindings: significant_tokens(&cst, result)
-                .iter()
-                .any(|token| token.text() == "*"),
-            projections: lower_return(&cst, result)?,
+            all_bindings,
+            projections: if all_bindings {
+                Vec::new()
+            } else {
+                lower_return(&cst, result)?
+            },
         });
     } else {
         clauses.push(QueryClause::Finish);
@@ -170,16 +196,16 @@ fn lower_dynamic_parameter(node: &Node) -> Result<DynamicParameterReference, Fro
 }
 
 fn reject_unlowered_semantics(cst: &ParserCst, root: &Node) -> Result<(), FrontendError> {
-    for kind in [
-        "OptionalMatchStatement",
-        "MatchMode",
-        "KeepClause",
-        "PathPatternPrefix",
-        "PathVariableDeclaration",
-        "GraphPatternQuantifier",
+    for (kind, semantic) in [
+        ("OptionalMatchStatement", "OPTIONAL MATCH"),
+        ("MatchMode", "graph match mode"),
+        ("KeepClause", "KEEP path prefix"),
+        ("PathPatternPrefix", "path search prefix"),
+        ("PathVariableDeclaration", "path variable declaration"),
+        ("GraphPatternQuantifier", "quantified path pattern"),
     ] {
         if first_descendant(cst, root, kind).is_some() {
-            return unsupported(kind);
+            return unsupported_exact(semantic);
         }
     }
     for predicate in descendants_named(cst, root, "ElementPatternPredicate") {
@@ -309,6 +335,9 @@ fn lower_return(cst: &ParserCst, node: &Node) -> Result<Vec<ReturnProjection>, F
 }
 
 fn lower_expression(cst: &ParserCst, node: &Node) -> Result<Expression, FrontendError> {
+    if first_descendant(cst, node, "ValueTypePredicate").is_some() {
+        return unsupported_exact("value-type predicate expression");
+    }
     if kind_name(cst, node) == Some("ValueExpression") {
         let mut levels = Vec::new();
         collect_unparenthesized_binary_levels(cst, node, &mut levels);
@@ -403,16 +432,26 @@ fn lower_expression(cst: &ParserCst, node: &Node) -> Result<Expression, Frontend
         let operator = node
             .children_with_tokens()
             .filter_map(rowan::NodeOrToken::into_token)
-            .find_map(|token| match token.text().to_ascii_uppercase().as_str() {
-                "+" => Some(BinaryOperator::Add),
-                "-" => Some(BinaryOperator::Subtract),
-                "*" => Some(BinaryOperator::Multiply),
-                "/" => Some(BinaryOperator::Divide),
-                "AND" => Some(BinaryOperator::And),
-                "OR" => Some(BinaryOperator::Or),
-                _ => None,
+            .find_map(|token| {
+                let text = token.text().to_ascii_uppercase();
+                matches!(
+                    text.as_str(),
+                    "+" | "-" | "*" | "/" | "AND" | "OR" | "XOR" | "||"
+                )
+                .then_some(text)
             })
             .ok_or_else(|| unsupported_error("binary value operator"))?;
+        let operator = match operator.as_str() {
+            "+" => BinaryOperator::Add,
+            "-" => BinaryOperator::Subtract,
+            "*" => BinaryOperator::Multiply,
+            "/" => BinaryOperator::Divide,
+            "AND" => BinaryOperator::And,
+            "OR" => BinaryOperator::Or,
+            "XOR" => return unsupported_exact("XOR expression"),
+            "||" => return unsupported_exact("concatenation expression"),
+            _ => return unsupported("binary value operator"),
+        };
         return Ok(Expression::Binary {
             operator,
             left: Box::new(lower_expression(cst, &direct_expression_children[0])?),
@@ -751,6 +790,10 @@ fn significant_tokens(cst: &ParserCst, node: &Node) -> Vec<rowan::SyntaxToken<Pa
 
 fn unsupported<T>(name: &str) -> Result<T, FrontendError> {
     Err(unsupported_error(name))
+}
+
+fn unsupported_exact<T>(name: &str) -> Result<T, FrontendError> {
+    Err(FrontendError::Unsupported(name.into()))
 }
 
 fn unsupported_error(name: &str) -> FrontendError {

@@ -1,3 +1,0 @@
-MATCH  (n:Person)  
-# comment
-RETURN   n

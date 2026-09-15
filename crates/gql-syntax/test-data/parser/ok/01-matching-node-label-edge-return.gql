@@ -1,1 +1,0 @@
-MATCH (n:Person)-[:CALLS]->(m:Server) RETURN n

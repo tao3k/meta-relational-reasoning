@@ -3,44 +3,7 @@ use std::fs;
 use std::path::Path;
 
 const FORBIDDEN_POLICY_RULE_FILE: &str = "rust-project-harness-rules.toml";
-pub(super) const LEGACY_ISO_LEDGER_FILE: &str = "iso-gql-feature-ledger.yaml";
 pub(super) const ISO_NORMATIVE_SOURCES_FILE: &str = "conformance/iso/normative-sources.yaml";
-const ISO_CORE_CRATES: &[&str] = &[
-    "gql-ast",
-    "gql-catalog",
-    "gql-compiler",
-    "gql-core",
-    "gql-ir",
-    "gql-sema",
-    "gql-source",
-    "gql-syntax",
-    "gql-types",
-];
-const FORBIDDEN_CORE_DEPENDENCIES: &[&str] = &[
-    "agent-semantic-protocols",
-    "ascent",
-    "duckdb",
-    "gql-ascent",
-    "gql-reasoning",
-    "graph-turbo",
-    "turso",
-    "wendao",
-];
-const FORBIDDEN_LEGACY_REASONING_SYMBOLS: &[&str] = &[
-    "ClosureStatus",
-    "DerivationError",
-    "DerivationId",
-    "DerivationLimits",
-    "DerivationRequest",
-    "DerivationResult",
-    "DerivationWitness",
-    "DerivedPredicateDescriptor",
-    "DerivedRelationProvider",
-    "DerivedTuple",
-    "FactId",
-    "RelationName",
-    "RuleId",
-];
 const MRR_DEPENDENCY_POLICY: &[(&str, &[&str])] = &[
     ("mrr-identity", &[]),
     ("mrr-intent", &["mrr-identity"]),
@@ -82,16 +45,7 @@ const MRR_DEPENDENCY_POLICY: &[(&str, &[&str])] = &[
             "mrr-relation",
         ],
     ),
-    (
-        "mrr-frontends",
-        &[
-            "gql-ast",
-            "gql-source",
-            "gql-syntax",
-            "mrr-gerbil",
-            "mrr-query",
-        ],
-    ),
+    ("mrr-frontends", &["mrr-gerbil", "mrr-query"]),
     (
         "meta-relational-reasoning",
         &[
@@ -262,47 +216,6 @@ fn uv_project_environment_is_generated_vendor_state_not_repository_source() {
     assert!(!is_generated_or_vendor_directory("src"));
 }
 
-#[test]
-fn iso_core_crates_reject_backend_dependencies_and_feature_activation() {
-    let workspace_root = workspace_root_from_manifest();
-
-    for crate_name in ISO_CORE_CRATES {
-        let manifest_path = workspace_root
-            .join("crates")
-            .join(crate_name)
-            .join("Cargo.toml");
-        let manifest = fs::read_to_string(&manifest_path).unwrap_or_else(|_| {
-            panic!(
-                "core manifest should be readable: {}",
-                manifest_path.display()
-            )
-        });
-        let mut section = "";
-
-        for line in manifest.lines() {
-            let trimmed = line.trim();
-            if trimmed.starts_with('[') && trimmed.ends_with(']') {
-                section = trimmed;
-                continue;
-            }
-
-            let is_dependency_section = section.ends_with("dependencies]");
-            let is_feature_section = section == "[features]";
-            if !is_dependency_section && !is_feature_section {
-                continue;
-            }
-
-            let normalized = trimmed.to_ascii_lowercase();
-            for forbidden in FORBIDDEN_CORE_DEPENDENCIES {
-                assert!(
-                    !normalized.contains(forbidden),
-                    "ISO core crate {crate_name} references forbidden backend dependency {forbidden} in {section}: {trimmed}"
-                );
-            }
-        }
-    }
-}
-
 fn assert_mrr_dependency_allowed(
     crate_name: &str,
     dependency: &str,
@@ -314,7 +227,6 @@ fn assert_mrr_dependency_allowed(
     }
     let is_architecture_dependency = dependency == "ascent"
         || dependency == "meta-relational-reasoning"
-        || dependency.starts_with("gql-")
         || dependency.starts_with("mrr-");
     if !is_architecture_dependency {
         return;
@@ -364,7 +276,6 @@ fn mrr_dependency_direction_is_fail_closed() {
             assert!(
                 !(trimmed.contains("package")
                     && (trimmed.contains("\"mrr-")
-                        || trimmed.contains("\"gql-")
                         || trimmed.contains("\"meta-relational-reasoning\"")
                         || trimmed.contains("\"ascent\""))),
                 "MRR crate {crate_name} must not rename architecture dependencies in {section}: {trimmed}"
@@ -380,128 +291,6 @@ fn mrr_dependency_direction_is_fail_closed() {
             assert_mrr_dependency_allowed(crate_name, dependency, section, allowed_dependencies);
         }
     }
-}
-
-#[test]
-fn legacy_gql_reasoning_authorities_are_absent() {
-    let workspace_root = workspace_root_from_manifest();
-    let catalog_source = workspace_root.join("crates/gql-catalog/src");
-    assert!(
-        !workspace_root.join("crates/gql-reasoning").exists(),
-        "legacy gql-reasoning authority must not exist"
-    );
-    assert!(
-        !workspace_root.join("crates/gql-ascent").exists(),
-        "legacy gql-ascent authority must not exist"
-    );
-
-    for symbol in FORBIDDEN_LEGACY_REASONING_SYMBOLS {
-        for entry in fs::read_dir(&catalog_source).expect("catalog source directory exists") {
-            let path = entry.expect("catalog source entry").path();
-            if path.extension().and_then(|extension| extension.to_str()) != Some("rs") {
-                continue;
-            }
-            let source = fs::read_to_string(&path).unwrap_or_else(|_| {
-                panic!("catalog source should be readable: {}", path.display())
-            });
-            assert!(
-                !source.contains(symbol),
-                "gql-catalog must not revive legacy reasoning contract {symbol}: {}",
-                path.display()
-            );
-        }
-    }
-}
-
-#[test]
-fn gql_frontend_statement_surface_is_evidence_owned_without_fabricated_ast_sentinels() {
-    let workspace_root = workspace_root_from_manifest();
-    let types = fs::read_to_string(workspace_root.join("crates/gql-ast/src/api/types.rs"))
-        .expect("GQL AST types are readable");
-    for forbidden in ["DataStatement", "Data(DataStatement)"] {
-        assert!(
-            !types.contains(forbidden),
-            "unimplemented future AST surface must not exist: {forbidden}"
-        );
-    }
-
-    for (relative, required) in [
-        (
-            "scheme/grammar/gql-declaration.ss",
-            &[
-                "CreateGraphStatement",
-                "DropGraphStatement",
-                "CreateGraphTypeStatement",
-                "DropGraphTypeStatement",
-                "GraphTypeSource",
-                "SessionSetStatement",
-            ][..],
-        ),
-        (
-            "crates/gql-catalog/src/api.rs",
-            &["GraphType", "graph_types", "with_graph_types"][..],
-        ),
-        (
-            "crates/gql-ast/src/api/data_management_lowering.rs",
-            &[
-                "CreateGraph",
-                "DropGraph",
-                "CreateGraphType",
-                "DropGraphType",
-                "GraphTypeSource",
-                "SessionCommand",
-            ][..],
-        ),
-        (
-            "crates/gql-sema/src/data_management.rs",
-            &[
-                "CreateGraph",
-                "DropGraph",
-                "CreateGraphType",
-                "DropGraphType",
-                "IrGraphTypeSource",
-                "IrSessionCommand",
-            ][..],
-        ),
-        (
-            "crates/gql-ir/src/api.rs",
-            &[
-                "CreateGraph",
-                "DropGraph",
-                "CreateGraphType",
-                "DropGraphType",
-                "GraphTypeSource",
-                "SessionCommand",
-            ][..],
-        ),
-        (
-            "crates/gql/tests/unit/data_management_contract.rs",
-            &[
-                "CreateGraph",
-                "DropGraph",
-                "CreateGraphType",
-                "DropGraphType",
-                "GraphTypeSource",
-                "SessionCommand",
-            ][..],
-        ),
-    ] {
-        let source = fs::read_to_string(workspace_root.join(relative))
-            .unwrap_or_else(|_| panic!("frontend statement owner is readable: {relative}"));
-        for symbol in required {
-            assert!(
-                source.contains(symbol),
-                "frontend statement surface {symbol} must have executable owner evidence in {relative}"
-            );
-        }
-    }
-
-    let lowering = fs::read_to_string(workspace_root.join("crates/gql-ast/src/api/lowering.rs"))
-        .expect("GQL AST lowering is readable");
-    assert!(
-        !lowering.contains("text: String::new()"),
-        "failed lowering must not fabricate an empty identifier"
-    );
 }
 
 #[test]
@@ -628,87 +417,4 @@ fn shared_build_support_is_the_only_workspace_policy_build_gate() {
     );
     assert!(!shared_build_gate.contains("AspRustDownstreamPolicy"));
     assert!(!support_root.join("src/build_gate.rs").exists());
-}
-
-#[test]
-fn gql_ast_hot_path_has_an_asp_rust_scenario_and_real_benchmark() {
-    let workspace_root = workspace_root_from_manifest();
-    let scenario = fs::read_to_string(
-        workspace_root.join("crates/gql-ast/tests/unit/ast_performance_scenario.rs"),
-    )
-    .expect("GQL AST performance Scenario owner is readable");
-    for required in [
-        "asp_rust_scenario!",
-        "asp_rust_scenario_package!",
-        "lossless-cst-to-ast-hot-path-v1",
-        "warmup_iterations",
-        "measure_iterations",
-        "diagnostic_count",
-        "fallback_count",
-    ] {
-        assert!(
-            scenario.contains(required),
-            "GQL AST performance Scenario must own {required}"
-        );
-    }
-
-    let contract = fs::read_to_string(
-        workspace_root.join("crates/gql-ast/tests/unit/performance_contract.rs"),
-    )
-    .expect("GQL AST performance contract is readable");
-    for required in [
-        "measure_asp_rust_scenario",
-        "gql_syntax::parse",
-        "lower_from_syntax",
-        "parse",
-        "ast_lowering",
-        "total_p95",
-    ] {
-        assert!(
-            contract.contains(required),
-            "GQL AST performance contract must execute {required}"
-        );
-    }
-
-    let benchmark = fs::read_to_string(workspace_root.join("crates/gql-ast/benches/ast_perf.rs"))
-        .expect("GQL AST Criterion benchmark is readable");
-    for required in [
-        "gql_syntax::parse",
-        "lower_from_syntax",
-        "Throughput::Bytes",
-        "black_box",
-    ] {
-        assert!(
-            benchmark.contains(required),
-            "GQL AST Criterion benchmark must execute {required}"
-        );
-    }
-    assert!(
-        !benchmark.contains("ast_smoke"),
-        "arithmetic smoke work is not an AST benchmark"
-    );
-
-    for relative in [
-        "crates/gql-ast/tests/unit/scenarios/lossless-cst-to-ast-hot-path-v1/scenario.toml",
-        "crates/gql-ast/tests/unit/scenarios/lossless-cst-to-ast-hot-path-v1/benchmark.toml",
-        "crates/gql-ast/tests/unit/scenarios/lossless-cst-to-ast-hot-path-v1/inputs/query.gql",
-        "crates/gql-ast/tests/unit/scenarios/lossless-cst-to-ast-hot-path-v1/inputs/catalog.gql",
-        "crates/gql-ast/tests/unit/scenarios/lossless-cst-to-ast-hot-path-v1/inputs/mutation.gql",
-    ] {
-        assert!(
-            workspace_root.join(relative).is_file(),
-            "missing GQL AST Scenario evidence: {relative}"
-        );
-    }
-
-    let scenario_root =
-        workspace_root.join("crates/gql-ast/tests/unit/scenarios/lossless-cst-to-ast-hot-path-v1");
-    let receipt = asp_rust::validate_rust_scenario_benchmark(&scenario_root)
-        .expect("validate the GQL AST Scenario with the ASP Rust contract owner");
-    assert_eq!(
-        receipt.status,
-        asp_rust::RustScenarioBenchmarkStatus::Pass,
-        "{receipt:?}"
-    );
-    assert!(receipt.violations.is_empty(), "{:?}", receipt.violations);
 }

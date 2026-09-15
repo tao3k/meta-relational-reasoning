@@ -1,1 +1,0 @@
-MATCH (a)-[:CALLS:Person->(b) RETURN a

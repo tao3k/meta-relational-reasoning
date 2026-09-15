@@ -1,1 +1,0 @@
-MATCH (source_node)-[:CALLS]->(target_node) RETURN source_node

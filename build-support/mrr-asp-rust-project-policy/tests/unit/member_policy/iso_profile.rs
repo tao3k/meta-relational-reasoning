@@ -1,21 +1,14 @@
 use std::fs;
 
-use super::contracts::{
-    ISO_NORMATIVE_SOURCES_FILE, LEGACY_ISO_LEDGER_FILE, workspace_root_from_manifest,
-};
+use super::contracts::{ISO_NORMATIVE_SOURCES_FILE, workspace_root_from_manifest};
 use super::normative_sources;
 
 const ISO_PROFILE_SCHEME_FILE: &str = "scheme/grammar/gql-profile.ss";
 const ISO_PROFILE_ORG_FILE: &str = "docs/architecture/0024-iso-gql-language-profile.org";
 
 #[test]
-fn iso_profile_is_gerbil_owned_and_has_no_yaml_ledger() {
+fn iso_profile_is_gerbil_owned() {
     let workspace_root = workspace_root_from_manifest();
-    assert!(
-        !workspace_root.join(LEGACY_ISO_LEDGER_FILE).exists(),
-        "the legacy YAML feature ledger must not remain a second ISO profile authority"
-    );
-
     let scheme = fs::read_to_string(workspace_root.join(ISO_PROFILE_SCHEME_FILE))
         .expect("Gerbil ISO profile declaration is readable");
     assert!(scheme.contains("(defsyntax (with-mrr-iso-gql-profile"));

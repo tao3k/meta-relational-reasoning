@@ -51,73 +51,73 @@
           ;; id priority module clause syntax ast sema ir catalog evidence-owner
           (gql-lexical-identifiers 10 language-foundation pending-licensed-clause
            partial partial partial partial not-applicable
-           "crates/gql/tests/unit/identifier_contract.rs")
+           "crates/mrr-frontends/tests/unit/contracts.rs")
           (gql-lexical-literals 20 language-foundation pending-licensed-clause
            partial partial partial partial not-applicable
-           "crates/gql/tests/unit/literal_contract.rs")
+           "crates/mrr-frontends/tests/unit/contracts.rs")
           (gql-trivia-and-comments 30 language-foundation pending-licensed-clause
            partial not-applicable not-applicable not-applicable not-applicable
-           "crates/gql/tests/unit/trivia_contract.rs")
+           "crates/mrr-frontends/tests/unit/contracts.rs")
           (gql-values-and-types 40 language-foundation pending-licensed-clause
-           partial partial partial partial partial
-           "crates/gql/tests/unit/values_contract.rs")
+           partial partial partial partial not-applicable
+           "crates/mrr-frontends/tests/unit/contracts.rs")
           (gql-property-graph-model 50 graph-model pending-licensed-clause
-           partial partial partial partial partial
-           "crates/gql/tests/unit/graph_model_contract.rs")
+           partial partial partial partial not-applicable
+           "crates/mrr-frontends/tests/unit/contracts.rs")
           (gql-catalog-and-schema-model 60 graph-model pending-licensed-clause
-           partial partial partial partial partial
-           "crates/gql/tests/unit/catalog_schema_contract.rs")
+           partial not-implemented not-implemented not-implemented not-implemented
+           "crates/mrr-frontends/tests/unit/contracts.rs")
           (gql-node-patterns 70 graph-model pending-licensed-clause
            partial partial partial partial partial
-           "crates/gql/tests/unit/node_pattern_contract.rs")
+           "crates/mrr-frontends/tests/unit/contracts.rs")
           (gql-edge-patterns 80 graph-model pending-licensed-clause
            partial partial partial partial partial
-           "crates/gql/tests/unit/edge_pattern_contract.rs")
+           "crates/mrr-frontends/tests/unit/contracts.rs")
           (gql-path-patterns 90 path-patterns pending-licensed-clause
            partial partial partial partial not-applicable
-           "crates/gql/tests/unit/path_pattern_contract.rs")
+           "crates/mrr-frontends/tests/unit/contracts.rs")
           (gql-quantified-paths 100 path-patterns pending-licensed-clause
-           partial partial partial partial not-applicable
-           "crates/gql/tests/unit/quantified_path_contract.rs")
+           partial not-implemented not-implemented not-implemented not-applicable
+           "crates/mrr-frontends/tests/unit/contracts.rs")
           (gql-expression-language 110 query-core pending-licensed-clause
            partial partial partial partial not-applicable
-           "crates/gql/tests/unit/expression_language_contract.rs")
+           "crates/mrr-frontends/tests/unit/contracts.rs")
           (gql-property-and-label-expressions 120 query-core pending-licensed-clause
-           partial partial partial partial partial
-           "crates/gql/tests/unit/property_label_expression_contract.rs")
+           partial not-implemented not-implemented not-implemented not-applicable
+           "crates/mrr-frontends/tests/unit/contracts.rs")
           (gql-match 130 query-core pending-licensed-clause
            partial partial partial partial partial
-           "crates/gql/tests/unit/match_contract.rs")
+           "crates/mrr-frontends/tests/unit/contracts.rs")
           (gql-optional-match 140 query-core pending-licensed-clause
-           partial partial partial partial partial
-           "crates/gql/tests/unit/optional_match_contract.rs")
+           partial not-implemented not-implemented not-implemented not-applicable
+           "crates/mrr-frontends/tests/unit/contracts.rs")
           (gql-where 150 query-core pending-licensed-clause
            partial partial partial partial partial
-           "crates/gql/tests/unit/where_contract.rs")
+           "crates/mrr-frontends/tests/unit/contracts.rs")
           (gql-let 160 query-core pending-licensed-clause
-           partial partial partial partial not-applicable
-           "crates/gql/tests/unit/query_pipeline_contract.rs")
+           partial not-implemented not-implemented not-implemented not-applicable
+           "crates/mrr-frontends/tests/unit/contracts.rs")
           (gql-return 170 query-core pending-licensed-clause
            partial partial partial partial not-applicable
-           "crates/gql/tests/unit/query_pipeline_contract.rs")
+           "crates/mrr-frontends/tests/unit/contracts.rs")
           (gql-query-composition 180 query-core pending-licensed-clause
-           partial partial partial partial not-applicable
-           "crates/gql/tests/unit/query_pipeline_contract.rs")
+           partial not-implemented not-implemented not-implemented not-applicable
+           "crates/mrr-frontends/tests/unit/contracts.rs")
           (gql-grouping-aggregation-ordering 190 query-advanced
            pending-licensed-clause partial partial partial partial not-applicable
-           "crates/gql/tests/unit/query_pipeline_contract.rs")
+           "crates/mrr-frontends/tests/unit/contracts.rs")
           (gql-graph-modification 200 data-management pending-licensed-clause
-           partial partial partial partial
-           not-applicable "crates/gql/tests/unit/data_management_contract.rs")
+           partial not-implemented not-implemented not-implemented
+           not-applicable "crates/mrr-frontends/tests/unit/contracts.rs")
           (gql-catalog-management 210 data-management pending-licensed-clause
-           partial partial partial partial partial
-           "crates/gql/tests/unit/data_management_contract.rs")
+           partial not-implemented not-implemented not-implemented not-implemented
+           "crates/mrr-frontends/tests/unit/contracts.rs")
           (gql-procedures-and-call 220 data-management pending-licensed-clause
-           partial partial partial partial partial
-           "crates/gql/tests/unit/data_management_contract.rs")
+           partial not-implemented not-implemented not-implemented not-implemented
+           "crates/mrr-frontends/tests/unit/contracts.rs")
           (gql-session-and-control 230 data-management pending-licensed-clause
-           partial partial partial partial
-           not-applicable "crates/gql/tests/unit/data_management_contract.rs"))
+           partial not-implemented not-implemented not-implemented
+           not-applicable "crates/mrr-frontends/tests/unit/contracts.rs"))
          (feature-dependencies
           (gql-values-and-types gql-lexical-literals)
           (gql-property-graph-model gql-lexical-identifiers)

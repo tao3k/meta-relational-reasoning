@@ -34,7 +34,8 @@ references rather than dependencies or semantic authorities.
 - `mrr-gerbil` consumes the Scheme AOT projection and exposes its typed native
   boundary.
 - `mrr-conformance` exercises the public facade across multiple domains.
-- `gql-core` and `gql` implement the ISO GQL frontend adapter.
+- `mrr-frontends` lowers parser-owned ISO GQL artifacts directly into
+  `MetaQueryIr` without a second Rust parser or public GQL AST stack.
 - `experiments/mrr-live` evaluates real model proposals while keeping Scheme
   scheduling and MRR receipts authoritative.
 

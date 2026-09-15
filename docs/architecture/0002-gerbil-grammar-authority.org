@@ -85,14 +85,8 @@ flowchart LR
     owner --> events[typed native C ABI ParseArtifact payload]
     events --> fullcst[parser-owned 581-kind Rowan CST]
     fullcst --> bridge[fail-closed parser-owned lowering]
-    bridge --> ast
-    native --> generator[mrr-grammar-generate]
-    generator --> projection[generated.rs with input/body fingerprints]
-    projection --> lexer[gql-syntax lexer]
-    projection --> parser[gql-syntax precedence and recovery]
-    parser --> cst[lossless Rowan CST]
-    cst --> ast[gql-ast]
-    ast --> ir[language-neutral MetaQueryIR]
+    bridge --> projection[private parser-owned semantic projection]
+    projection --> ir[language-neutral MetaQueryIR]
 #+end_src
 
 * Semantic ownership
@@ -113,13 +107,11 @@ compares every receipt field with the live linked parser descriptor. The native
 module includes the receipt declaration directly; it never links or initializes
 the parser machine in Rust.
 
-The native generator derives Rust enums, keyword recognition, Pratt binding
-powers, syntax-shape receipts, and recovery-code lookup from that one macro
-declaration through typed integer and Unicode-scalar FFI calls. There is no
-JSON, S-expression text parser, or =syn= rewriting on this scalar projection
-path. Rust does not keep a second keyword or precedence table. GQL and
+The native boundary publishes parser-owned catalog and event identities through
+typed FFI. There is no JSON or S-expression parser generator on the Rust side,
+and Rust does not keep a second keyword, precedence, or recovery table. GQL and
 openCypher are selected explicitly by the frontend and lower into the same
-MetaQueryIR.
+=MetaQueryIR=.
 
 * Runtime boundary
 
@@ -153,18 +145,14 @@ balanced node and field frames, continuous UTF-8 byte offsets, known catalog
 kinds, one root, and exact token text before a green tree is published.
 Rejected or structurally inconsistent artifacts produce no partial Rowan CST.
 
-The full parser CST does not convert through the smaller generated
-=gql-syntax::SyntaxKind= enum. During migration, =mrr-frontends= owns an
-explicit =compile_parser_owned= entrypoint for the admitted ISO
-=MATCH/WHERE/RETURN= Graph-Relational slice. It selects semantic structure by
-parser-published kind identity, produces the existing =gql-ast= model, and then
-uses the single =MetaQueryIR= lowering. Any accepted grammar shape that this
-adapter has not implemented--including match modes, path prefixes, quantifiers,
-non-property element predicates, or mixed operator precedence not represented
-by explicit CST grouping--fails closed; it never
-falls back to the legacy Rust parser and never silently erases syntax. The
-Cypher frontend remains on its explicit existing path until its own parser
-authority is connected.
+The full parser CST is the only syntax input. =mrr-frontends= owns a private
+=compile_parser_owned= projection for the admitted ISO
+=MATCH/WHERE/RETURN= Graph-Relational slice and lowers that projection directly
+into =MetaQueryIR=. It does not publish or preserve a second public GQL AST.
+Any accepted grammar shape that this adapter has not implemented--including
+match modes, path prefixes, quantifiers, and unowned operators--fails closed;
+it never falls back to a Rust parser and never silently erases syntax. The
+Cypher frontend remains explicit until its parser-owned projection is connected.
 
 =compile_parser_owned_with_receipt= keeps provenance outside the
 language-neutral IR, as required by RFC 0006. Its exact V1 receipt binds the
@@ -174,11 +162,9 @@ the submitted UTF-8 bytes before publishing either a CST or compilation
 receipt; a mismatched response therefore cannot be admitted as another
 request's result.
 
-The projection header binds a framed SHA-256 of =gerbil.pkg=, the grammar
-declaration and owners, and the native ABI source to a SHA-256 of the emitted
-Rust body and the admitted PR 16 revision. Missing canonical AOT, malformed macro
-forms, input drift, body drift, ABI-version drift, and PR revision drift fail
-closed.
+The parser-authority receipt binds the dependency declaration, grammar digest,
+language version, source digest, and resulting query identity. Missing canonical
+AOT, malformed native payloads, schema drift, or digest drift fail closed.
 
 * Mathematical publication view
 
@@ -228,15 +214,18 @@ $s -> "native ABI payload" -> "ParseArtifactV1" -> "typed events" -> "CST" ->
 projection.
 #+end_src
 
-* Reference pins and executable corpus
+* Reference pins and executable evidence
 
 =THIRD_PARTY_NOTICES.md= pins openCypher and SeleneDB by full commit digest as
 reference material only. Neither repository participates in dependency
 resolution, generation, linking, or execution.
 
-The tracked =m5-positive.tsv= and =m5-negative.tsv= files contain exactly 100
-unique queries each. Executable Gerbil tests classify the bounded
-=MATCH ... RETURN= slice from the declaration-owned active profiles. Rust parses
-the same rows through the generated grammar projection, requires the same
-accept/reject result, and verifies exact source and Rowan-text preservation.
-Corpus cardinality and row uniqueness are assertions, not review conventions.
+Executable =gerbil-parser= scenarios own syntax acceptance, rejection,
+round-trip, recovery, ambiguity, and conformance evidence. This workspace does
+not copy those corpora or maintain a second Rust parser oracle.
+
+=mrr-gerbil= validates the source-bound native artifact, exact event replay,
+kind catalog, and Rowan projection. =mrr-frontends= then validates the admitted
+semantic slice, typed fail-closed gaps, exact source coverage, and lowering into
+=MetaQueryIr=. These are ownership-bound contracts, not duplicated sample
+counts.

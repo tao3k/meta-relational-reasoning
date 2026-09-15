@@ -634,7 +634,7 @@ dependencies = [
 [[package]]
 name = "gerbil-scheme-native-build"
 version = "0.1.0"
-source = "git+https://github.com/tao3k/gerbil-scheme-rust.git?rev=eea727c283b5827abcd8f9d35fce6762836afe76#eea727c283b5827abcd8f9d35fce6762836afe76"
+source = "git+https://github.com/tao3k/gerbil-scheme-rust.git?rev=57e46ec24e0dc53c37a2415dcc6deed4f7713069#57e46ec24e0dc53c37a2415dcc6deed4f7713069"
 dependencies = [
  "cbindgen",
  "cc",
@@ -647,7 +647,7 @@ dependencies = [
 [[package]]
 name = "gerbil-scheme-rust-project-harness"
 version = "0.1.2"
-source = "git+https://github.com/tao3k/gerbil-scheme-rust.git?rev=eea727c283b5827abcd8f9d35fce6762836afe76#eea727c283b5827abcd8f9d35fce6762836afe76"
+source = "git+https://github.com/tao3k/gerbil-scheme-rust.git?rev=57e46ec24e0dc53c37a2415dcc6deed4f7713069#57e46ec24e0dc53c37a2415dcc6deed4f7713069"
 dependencies = [
  "cargo-lock",
  "cargo_toml",
@@ -665,7 +665,7 @@ dependencies = [
 [[package]]
 name = "gerbil-scheme-rust-project-harness-policy"
 version = "0.1.0"
-source = "git+https://github.com/tao3k/gerbil-scheme-rust.git?rev=eea727c283b5827abcd8f9d35fce6762836afe76#eea727c283b5827abcd8f9d35fce6762836afe76"
+source = "git+https://github.com/tao3k/gerbil-scheme-rust.git?rev=57e46ec24e0dc53c37a2415dcc6deed4f7713069#57e46ec24e0dc53c37a2415dcc6deed4f7713069"
 dependencies = [
  "gerbil-scheme-rust-project-harness",
 ]
@@ -673,7 +673,7 @@ dependencies = [
 [[package]]
 name = "gerbil-scheme-sys"
 version = "0.1.0"
-source = "git+https://github.com/tao3k/gerbil-scheme-rust.git?rev=eea727c283b5827abcd8f9d35fce6762836afe76#eea727c283b5827abcd8f9d35fce6762836afe76"
+source = "git+https://github.com/tao3k/gerbil-scheme-rust.git?rev=57e46ec24e0dc53c37a2415dcc6deed4f7713069#57e46ec24e0dc53c37a2415dcc6deed4f7713069"
 dependencies = [
  "gerbil-scheme-native-build",
  "gerbil-scheme-rust-project-harness-policy",
@@ -701,115 +701,6 @@ dependencies = [
  "log",
  "regex-automata",
  "regex-syntax",
-]
-
-[[package]]
-name = "gql"
-version = "0.1.0"
-dependencies = [
- "criterion",
- "gql-core",
- "mrr-asp-rust-project-policy",
-]
-
-[[package]]
-name = "gql-ast"
-version = "0.1.0"
-dependencies = [
- "asp-rust-build-support",
- "criterion",
- "gql-source",
- "gql-syntax",
- "mrr-asp-rust-project-policy",
-]
-
-[[package]]
-name = "gql-catalog"
-version = "0.1.0"
-dependencies = [
- "criterion",
- "gql-types",
- "mrr-asp-rust-project-policy",
-]
-
-[[package]]
-name = "gql-compiler"
-version = "0.1.0"
-dependencies = [
- "criterion",
- "gql-ast",
- "gql-catalog",
- "gql-ir",
- "gql-sema",
- "gql-source",
- "gql-syntax",
- "gql-types",
- "mrr-asp-rust-project-policy",
-]
-
-[[package]]
-name = "gql-core"
-version = "0.1.0"
-dependencies = [
- "criterion",
- "gql-ast",
- "gql-catalog",
- "gql-compiler",
- "gql-ir",
- "gql-sema",
- "gql-source",
- "gql-syntax",
- "gql-types",
- "mrr-asp-rust-project-policy",
-]
-
-[[package]]
-name = "gql-ir"
-version = "0.1.0"
-dependencies = [
- "criterion",
- "gql-types",
- "mrr-asp-rust-project-policy",
-]
-
-[[package]]
-name = "gql-sema"
-version = "0.1.0"
-dependencies = [
- "criterion",
- "gql-ast",
- "gql-catalog",
- "gql-ir",
- "gql-source",
- "gql-types",
- "mrr-asp-rust-project-policy",
-]
-
-[[package]]
-name = "gql-source"
-version = "0.1.0"
-dependencies = [
- "criterion",
- "mrr-asp-rust-project-policy",
-]
-
-[[package]]
-name = "gql-syntax"
-version = "0.1.0"
-dependencies = [
- "criterion",
- "gql-source",
- "icu_properties",
- "mrr-asp-rust-project-policy",
- "rowan",
-]
-
-[[package]]
-name = "gql-types"
-version = "0.1.0"
-dependencies = [
- "criterion",
- "mrr-asp-rust-project-policy",
 ]
 
 [[package]]

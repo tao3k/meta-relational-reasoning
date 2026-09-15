@@ -1,2 +1,0 @@
-LET a = 1
-MATCH (a)-[:CALLS]->(b) RETURN b

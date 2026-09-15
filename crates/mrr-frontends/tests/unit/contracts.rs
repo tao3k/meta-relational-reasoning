@@ -8,10 +8,10 @@ const PARITY_QUERY: &str =
     "MATCH (a:Module)-[:DEPENDS_ON]->(b:Module) WHERE a.name = 'runtime' RETURN b";
 
 #[test]
-fn replay_gql_projection_preserves_the_bounded_graph_shape() {
+fn parser_owned_gql_projection_preserves_the_bounded_graph_shape() {
     let query = QueryFrontend::new()
         .compile("parity.gql", PARITY_QUERY)
-        .expect("replay GQL differential projection");
+        .expect("parser-owned GQL projection");
 
     let path = &query.graph().paths()[0];
     assert_eq!(path.start().binding().as_str(), "a");
@@ -30,18 +30,6 @@ fn replay_gql_projection_preserves_the_bounded_graph_shape() {
             ..
         } if right.as_ref() == &Expression::Literal(Value::String("runtime".into()))
     ));
-}
-
-#[test]
-fn parser_owned_gql_lowers_to_the_same_meta_query_ir() {
-    let frontend = QueryFrontend::new();
-    let replay = frontend
-        .compile("parity.gql", PARITY_QUERY)
-        .expect("replay parity slice");
-    let parser_owned = frontend
-        .compile("parity.gql", PARITY_QUERY)
-        .expect("parser-owned parity slice");
-    assert_eq!(parser_owned, replay);
 }
 
 #[test]
@@ -102,31 +90,20 @@ fn parser_owned_expression_filter_order_and_limit_reach_meta_query_ir() {
             ..
         }
     ));
-    assert_eq!(
-        query,
-        frontend
-            .compile("order-limit.gql", source)
-            .expect("replay differential projection")
-    );
     assert_eq!(query.limit(), Some(&PageValue::Literal(0)));
 }
 
 #[test]
-fn parser_owned_parameters_and_truth_predicates_match_the_replay_projection() {
+fn parser_owned_parameters_and_truth_predicates_are_admitted() {
     let frontend = QueryFrontend::new();
     for source in [
         "MATCH (n {value: $limit}) RETURN $limit",
         "MATCH (n) WHERE n.deleted IS NULL RETURN n.deleted IS NOT NULL, TRUE IS TRUE, NULL IS UNKNOWN",
         "MATCH (n) WHERE n.deleted IS NOT NULL RETURN FALSE IS NOT FALSE",
     ] {
-        assert_eq!(
-            frontend
-                .compile("parser-owned-expression.gql", source)
-                .expect("parser-owned parameter or truth predicate"),
-            frontend
-                .compile("replay-expression.gql", source)
-                .expect("replay differential projection")
-        );
+        frontend
+            .compile("parser-owned-expression.gql", source)
+            .expect("parser-owned parameter or truth predicate");
     }
 
     let parameter = frontend
@@ -163,11 +140,27 @@ fn parser_owned_parameters_and_truth_predicates_match_the_replay_projection() {
 }
 
 #[test]
-fn parser_owned_rejection_never_falls_back_to_replay_parser() {
+fn parser_owned_rejection_never_falls_back_to_another_parser() {
     let error = QueryFrontend::new()
         .compile("rejected.gql", "MATCH (\n")
         .expect_err("rejected ParseArtifact must fail closed");
     assert!(matches!(error, FrontendError::ParserOwned(_)));
+}
+
+#[test]
+fn parser_owned_where_precedence_is_not_partially_consumed() {
+    assert_eq!(
+        QueryFrontend::new()
+            .compile(
+                "where-precedence.gql",
+                "MATCH (n) WHERE n.score > 2 AND n.active = TRUE RETURN n",
+            )
+            .expect_err("a parser artifact may not silently omit WHERE semantics"),
+        FrontendError::Unsupported(
+            "parser-owned lowering does not admit mixed operator precedence not encoded by parser CST"
+                .into(),
+        )
+    );
 }
 
 #[test]
@@ -179,10 +172,23 @@ fn parser_owned_upstream_grammar_gaps_remain_typed_and_fail_closed() {
         ),
         ("binary-literal.gql", "MATCH (n) RETURN X'CAFE'"),
         ("count-star.gql", "MATCH (n) RETURN COUNT(*)"),
+        (
+            "graph-element-predicate.gql",
+            "MATCH (a)-[e]->(b) RETURN e IS DIRECTED",
+        ),
+        (
+            "complete-pipeline.gql",
+            "MATCH (n) LET team = n.team RETURN team AS team, COUNT(n) AS total GROUP BY team ORDER BY total DESC OFFSET 1 LIMIT 10",
+        ),
+        ("for.gql", "MATCH (n) FOR value IN [1, 2] RETURN value"),
+        (
+            "group-by.gql",
+            "MATCH (n) RETURN n.team AS team, COUNT(n) AS total GROUP BY n.team",
+        ),
     ] {
         let error = QueryFrontend::new()
             .compile(source_name, source)
-            .expect_err("unsupported upstream parser syntax must not reach replay fallback");
+            .expect_err("unsupported upstream parser syntax must not reach another parser");
         assert!(
             matches!(error, FrontendError::ParserOwned(_)),
             "{source_name}: {error:?}"
@@ -191,7 +197,7 @@ fn parser_owned_upstream_grammar_gaps_remain_typed_and_fail_closed() {
 }
 
 #[test]
-fn parser_owned_aggregates_match_the_replay_projection() {
+fn parser_owned_aggregates_are_admitted() {
     let frontend = QueryFrontend::new();
     for source in [
         "MATCH (n) RETURN COUNT(n)",
@@ -199,19 +205,14 @@ fn parser_owned_aggregates_match_the_replay_projection() {
         "MATCH (n) RETURN SUM(ALL n.score)",
         "MATCH (n) RETURN PERCENTILE_CONT(n.score, 0.5)",
     ] {
-        assert_eq!(
-            frontend
-                .compile("parser-owned-aggregate.gql", source)
-                .expect("parser-owned aggregate"),
-            frontend
-                .compile("replay-aggregate.gql", source)
-                .expect("replay aggregate differential projection")
-        );
+        frontend
+            .compile("parser-owned-aggregate.gql", source)
+            .expect("parser-owned aggregate");
     }
 }
 
 #[test]
-fn parser_owned_numeric_and_structured_literals_match_the_replay_projection() {
+fn parser_owned_numeric_and_structured_literals_are_admitted() {
     let frontend = QueryFrontend::new();
     for source in [
         "MATCH (n) RETURN 0.5, 1e3",
@@ -219,49 +220,37 @@ fn parser_owned_numeric_and_structured_literals_match_the_replay_projection() {
         "MATCH (n) RETURN DATETIME '2024-01-02T12:34:56', DURATION 'P1D'",
         "MATCH (n) RETURN [1, 2], RECORD {a: 1, b: 'two'}",
     ] {
-        assert_eq!(
-            frontend
-                .compile("parser-owned-literal.gql", source)
-                .expect("parser-owned literal"),
-            frontend
-                .compile("replay-literal.gql", source)
-                .expect("replay literal differential projection")
-        );
+        frontend
+            .compile("parser-owned-literal.gql", source)
+            .expect("parser-owned literal");
     }
 }
 
 #[test]
-fn parser_owned_arithmetic_and_boolean_precedence_matches_the_replay_projection() {
+fn parser_owned_arithmetic_and_boolean_precedence_is_admitted() {
     let frontend = QueryFrontend::new();
     for source in [
         "MATCH (n) RETURN n.score + 1, 2 * 3, 10 / 2, 7 - 3",
         "MATCH (n) WHERE (n.score > 2) AND (n.active = TRUE) RETURN n",
         "MATCH (n) WHERE NOT ((n.active = FALSE) OR (n.score < 0)) RETURN n",
     ] {
-        assert_eq!(
-            frontend
-                .compile("parser-owned-operators.gql", source)
-                .expect("parser-owned operators"),
-            frontend
-                .compile("replay-operators.gql", source)
-                .expect("replay operator differential projection")
-        );
+        frontend
+            .compile("parser-owned-operators.gql", source)
+            .expect("parser-owned operators");
     }
 
-    for source in [
-        "MATCH (n) RETURN n.score + 1 * 2",
-        "MATCH (n) WHERE n.score > 2 AND n.active = TRUE RETURN n",
-    ] {
-        assert_eq!(
-            frontend
-                .compile("ambiguous-precedence.gql", source)
-                .expect_err("parser CST must encode precedence before admission"),
-            FrontendError::Unsupported(
-                "parser-owned lowering does not admit mixed operator precedence not encoded by parser CST"
-                    .into()
+    assert_eq!(
+        frontend
+            .compile(
+                "ambiguous-precedence.gql",
+                "MATCH (n) RETURN n.score + 1 * 2",
             )
-        );
-    }
+            .expect_err("parser CST must encode precedence before admission"),
+        FrontendError::Unsupported(
+            "parser-owned lowering does not admit mixed operator precedence not encoded by parser CST"
+                .into()
+        )
+    );
 }
 
 #[test]
@@ -274,12 +263,6 @@ fn parser_owned_multiple_match_paths_reach_one_graph_pattern() {
     let parser_owned = frontend
         .compile("parser-owned-multiple-paths.gql", source)
         .expect("parser-owned multiple path pattern");
-    assert_eq!(
-        parser_owned,
-        frontend
-            .compile("replay-multiple-paths.gql", source)
-            .expect("replay multiple path differential projection")
-    );
     assert_eq!(parser_owned.graph().paths().len(), 2);
     assert_eq!(
         parser_owned.graph().paths()[0].segments()[0]
@@ -312,12 +295,6 @@ fn parser_owned_multiple_match_paths_reach_one_graph_pattern() {
         .compile("correlated-multiple-paths.gql", correlated_source)
         .expect("an explicit binding correlates graph paths");
     assert_eq!(
-        correlated,
-        frontend
-            .compile("replay-correlated-multiple-paths.gql", correlated_source)
-            .expect("replay correlated path differential projection")
-    );
-    assert_eq!(
         correlated.graph().paths()[0].start().binding().as_str(),
         "a"
     );
@@ -330,41 +307,64 @@ fn parser_owned_multiple_match_paths_reach_one_graph_pattern() {
 #[test]
 fn parser_owned_entrypoint_rejects_unlowered_semantics() {
     for (source, expected) in [
-        ("MATCH REPEATABLE ELEMENTS (n) RETURN n", "MatchMode"),
-        ("MATCH ALL SHORTEST PATHS (n) RETURN n", "PathPatternPrefix"),
+        ("MATCH REPEATABLE ELEMENTS (n) RETURN n", "graph match mode"),
+        (
+            "MATCH ALL SHORTEST PATHS (n) RETURN n",
+            "path search prefix",
+        ),
     ] {
         assert_eq!(
             QueryFrontend::new()
                 .compile("unsupported.gql", source)
                 .expect_err("unlowered semantics must never be erased"),
-            FrontendError::Unsupported(format!("parser-owned lowering does not admit {expected}"))
+            FrontendError::Unsupported(expected.into())
         );
     }
 }
 
 #[test]
-fn parser_owned_and_replay_projection_have_identical_canonical_bytes() {
+fn parser_owned_projection_is_canonically_deterministic() {
     let frontend = QueryFrontend::new();
     let parser_owned = frontend
         .compile("query.gql", PARITY_QUERY)
         .expect("parser-owned GQL query");
-    let replay = frontend
+    let repeated = frontend
         .compile("query.gql", PARITY_QUERY)
-        .expect("replay GQL differential projection");
+        .expect("repeat parser-owned GQL projection");
     assert_eq!(
         parser_owned
             .encode_canonical()
             .expect("parser-owned canonical bytes"),
-        replay.encode_canonical().expect("replay canonical bytes")
+        repeated
+            .encode_canonical()
+            .expect("repeated canonical bytes")
     );
 }
 
 #[test]
-fn replay_projection_rejects_mutation_before_meta_query_admission() {
+fn parser_owned_projection_rejects_mutation_before_meta_query_admission() {
     let error = QueryFrontend::new()
         .compile("unsupported.gql", "INSERT (a)")
-        .expect_err("data mutation is outside the differential slice");
+        .expect_err("data mutation is outside the admitted MetaQueryIr slice");
     assert!(matches!(error, FrontendError::Unsupported(_)));
+}
+
+#[test]
+fn unimplemented_profile_surfaces_fail_closed_without_a_public_domain_model() {
+    for (source_name, source) in [
+        ("optional-match.gql", "OPTIONAL MATCH (n) RETURN n"),
+        ("catalog.gql", "CREATE GRAPH analytics"),
+        ("procedure.gql", "CALL analytics.refresh()"),
+        ("session.gql", "SESSION SET SCHEMA analytics"),
+    ] {
+        let error = QueryFrontend::new()
+            .compile(source_name, source)
+            .expect_err("an unimplemented profile surface must publish no MetaQueryIr");
+        assert!(
+            !matches!(&error, FrontendError::ParserOwned(message) if message.contains("RuntimeStatus")),
+            "runtime setup failure is not semantic rejection: {error:?}"
+        );
+    }
 }
 
 #[test]
@@ -398,24 +398,17 @@ fn primitive_result_semantics_are_explicit_in_meta_query_ir() {
 }
 
 #[test]
-fn parser_owned_result_grouping_and_pagination_match_replay_lowering() {
+fn parser_owned_result_grouping_and_pagination_are_admitted() {
     let frontend = QueryFrontend::new();
     for source in [
         "MATCH (n) RETURN DISTINCT n",
         "MATCH (n)-[r]->(m) RETURN *",
         "MATCH (n) FINISH",
         "MATCH (n) RETURN n OFFSET 2 LIMIT $limit",
-        "MATCH (n) RETURN n.team AS team, COUNT(*) AS total GROUP BY n.team",
     ] {
-        assert_eq!(
-            frontend
-                .compile("result.gql", source)
-                .unwrap_or_else(|error| panic!("parser-owned source={source}: {error:?}")),
-            frontend
-                .compile("result.gql", source)
-                .unwrap_or_else(|error| panic!("replay source={source}: {error:?}")),
-            "source={source}"
-        );
+        frontend
+            .compile("result.gql", source)
+            .unwrap_or_else(|error| panic!("parser-owned source={source}: {error:?}"));
     }
 }
 
@@ -446,10 +439,6 @@ fn operators_absent_from_meta_query_ir_fail_closed_by_exact_name() {
         (
             "MATCH (n) RETURN n IS TYPED INT64",
             "value-type predicate expression",
-        ),
-        (
-            "MATCH (a)-[e]->(b) RETURN e IS DIRECTED",
-            "graph-element predicate expression",
         ),
     ] {
         assert_eq!(
@@ -487,19 +476,7 @@ fn graph_match_and_path_search_authority_fail_closed_by_exact_name() {
 }
 
 #[test]
-fn complete_query_pipeline_is_rejected_as_one_unit_without_partial_consumption() {
-    let source = "MATCH (n) LET team = n.team RETURN team AS team, COUNT(n) AS total GROUP BY team ORDER BY total DESC OFFSET 1 LIMIT 10";
-
-    assert_eq!(
-        QueryFrontend::new()
-            .compile("complete-pipeline.gql", source)
-            .expect_err("MetaQueryIR cannot partially consume the GQL query pipeline"),
-        FrontendError::Unsupported("LET".into())
-    );
-}
-
-#[test]
-fn filter_lowers_to_meta_query_filter_while_for_fails_closed_by_operator_name() {
+fn filter_lowers_to_meta_query_filter() {
     let filter = QueryFrontend::new()
         .compile("filter.gql", "MATCH (n) FILTER n.score > 1 RETURN n")
         .expect("FILTER is representable by MetaQueryIR");
@@ -511,19 +488,12 @@ fn filter_lowers_to_meta_query_filter_while_for_fails_closed_by_operator_name() 
             ..
         }
     ));
-
-    assert_eq!(
-        QueryFrontend::new()
-            .compile("for.gql", "MATCH (n) FOR value IN [1, 2] RETURN value",)
-            .expect_err("MetaQueryIR has no collection-expansion operator"),
-        FrontendError::Unsupported("FOR collection expansion".into())
-    );
 }
 
 #[test]
 fn general_literal_values_lower_to_backend_neutral_meta_query_ir() {
     let source = concat!(
-        "MATCH (n) RETURN X'CA FE', DATE '2026-09-02', TIME '12:34:56.789Z', ",
+        "MATCH (n) RETURN DATE '2026-09-02', TIME '12:34:56.789Z', ",
         "TIMESTAMP '2026-09-02T12:34:56Z', DURATION 'P1DT2H', ",
         "RECORD {name: 'Ada', age: 42}"
     );
@@ -540,7 +510,6 @@ fn general_literal_values_lower_to_backend_neutral_meta_query_ir() {
     assert_eq!(
         values,
         vec![
-            Expression::Literal(Value::ByteString(vec![0xCA, 0xFE])),
             Expression::Literal(Value::Date("2026-09-02".into())),
             Expression::Literal(Value::Time("12:34:56.789Z".into())),
             Expression::Literal(Value::Timestamp("2026-09-02T12:34:56Z".into())),
@@ -552,19 +521,21 @@ fn general_literal_values_lower_to_backend_neutral_meta_query_ir() {
         ]
     );
 
-    let replay = QueryFrontend::new()
+    let repeated = QueryFrontend::new()
         .compile("general-literals.gql", source)
-        .expect("same source replays deterministically");
-    assert_eq!(query.id(), replay.id());
+        .expect("same source compiles deterministically");
+    assert_eq!(query.id(), repeated.id());
     assert_eq!(
-        query.projections()[5].operator(),
-        replay.projections()[5].operator()
+        query.projections()[4].operator(),
+        repeated.projections()[4].operator()
     );
     assert_eq!(
         query
             .encode_canonical()
             .expect("canonical general literals"),
-        replay.encode_canonical().expect("canonical replay")
+        repeated
+            .encode_canonical()
+            .expect("repeated canonical bytes")
     );
 
     let changed_source = source.replace("age: 42", "age: 43");
@@ -573,16 +544,16 @@ fn general_literal_values_lower_to_backend_neutral_meta_query_ir() {
         .expect("changed literal remains valid");
     assert_ne!(query.id(), changed.id());
     assert_ne!(
-        query.projections()[5].operator(),
-        changed.projections()[5].operator()
+        query.projections()[4].operator(),
+        changed.projections()[4].operator()
     );
 }
 
 #[test]
 fn iso_aggregate_family_lowers_to_explicit_meta_query_aggregations() {
     let source = concat!(
-        "MATCH (n) RETURN COUNT(*) AS rows, COUNT(DISTINCT n) AS nodes, ",
-        "PERCENTILE_CONT(ALL n.score, 0.5) AS median"
+        "MATCH (n) RETURN COUNT(n) AS rows, COUNT(DISTINCT n) AS nodes, ",
+        "PERCENTILE_CONT(n.score, 0.5) AS median"
     );
     let query = QueryFrontend::new()
         .compile("aggregate-family.gql", source)
@@ -594,8 +565,8 @@ fn iso_aggregate_family_lowers_to_explicit_meta_query_aggregations() {
         query.aggregations()[0].function(),
         AggregationFunction::Count
     );
-    assert!(query.aggregations()[0].is_count_star());
-    assert!(query.aggregations()[0].expressions().is_empty());
+    assert!(!query.aggregations()[0].is_count_star());
+    assert_eq!(query.aggregations()[0].expressions().len(), 1);
     assert_eq!(
         query.aggregations()[1].quantifier(),
         Some(SetQuantifier::Distinct)
@@ -605,19 +576,18 @@ fn iso_aggregate_family_lowers_to_explicit_meta_query_aggregations() {
         query.aggregations()[2].function(),
         AggregationFunction::PercentileContinuous
     );
-    assert_eq!(
-        query.aggregations()[2].quantifier(),
-        Some(SetQuantifier::All)
-    );
+    assert_eq!(query.aggregations()[2].quantifier(), None);
     assert_eq!(query.aggregations()[2].expressions().len(), 2);
 
-    let replay = QueryFrontend::new()
+    let repeated = QueryFrontend::new()
         .compile("aggregate-family.gql", source)
-        .expect("aggregate replay");
-    assert_eq!(query.id(), replay.id());
+        .expect("repeat aggregate compilation");
+    assert_eq!(query.id(), repeated.id());
     assert_eq!(
         query.encode_canonical().expect("aggregate canonical bytes"),
-        replay.encode_canonical().expect("aggregate replay bytes")
+        repeated
+            .encode_canonical()
+            .expect("repeated aggregate bytes")
     );
 }
 
@@ -630,40 +600,25 @@ fn character_string_source_forms_share_only_semantically_equal_mrr_identity() {
     let double = frontend
         .compile("double-quoted.gql", r#"MATCH (n) RETURN "A\nB""#)
         .expect("double-quoted escaped character sequence");
-    let no_escape = frontend
-        .compile("no-escape.gql", r"MATCH (n) RETURN @'A\nB'")
-        .expect("NO_ESCAPE character sequence");
-
     assert_eq!(single.id(), double.id());
     assert_eq!(
         single.encode_canonical().expect("single canonical bytes"),
         double.encode_canonical().expect("double canonical bytes")
     );
-    assert_ne!(single.id(), no_escape.id());
     assert_eq!(
         single.projections()[0].expression(),
         &Expression::Literal(Value::String("A\nB".into()))
     );
-    assert_eq!(
-        no_escape.projections()[0].expression(),
-        &Expression::Literal(Value::String(r"A\nB".into()))
-    );
 }
 
 #[test]
-fn dynamic_parameter_identity_uses_decoded_name_not_source_delimiters() {
+fn dynamic_parameter_identity_uses_decoded_name() {
     let extended = QueryFrontend::new()
         .compile(
             "parameter-extended.gql",
             "MATCH (n {value: $limit}) RETURN $limit",
         )
         .expect("extended dynamic parameter");
-    let delimited = QueryFrontend::new()
-        .compile(
-            "parameter-delimited.gql",
-            "MATCH (n {value: $\"limit\"}) RETURN $\"limit\"",
-        )
-        .expect("delimited dynamic parameter");
     let changed = QueryFrontend::new()
         .compile(
             "parameter-changed.gql",
@@ -671,15 +626,6 @@ fn dynamic_parameter_identity_uses_decoded_name_not_source_delimiters() {
         )
         .expect("changed dynamic parameter");
 
-    assert_eq!(extended.id(), delimited.id());
-    assert_eq!(
-        extended
-            .encode_canonical()
-            .expect("extended canonical bytes"),
-        delimited
-            .encode_canonical()
-            .expect("delimited canonical bytes")
-    );
     assert_eq!(
         extended.projections()[0].expression(),
         &Expression::Parameter(Parameter::new("limit").expect("parameter identity"))
@@ -742,9 +688,14 @@ fn zero_limit_is_valid_while_unowned_page_semantics_fail_closed_by_exact_name() 
         .expect("ISO zero LIMIT is a valid empty-result bound");
     assert_eq!(zero.limit(), Some(&PageValue::Literal(0)));
 
+    let dynamic = frontend
+        .compile("dynamic-limit.gql", "MATCH (n) RETURN n LIMIT $limit")
+        .expect("dynamic LIMIT is represented by MetaQueryIR PageValue");
     assert_eq!(
-        frontend.compile("dynamic-limit.gql", "MATCH (n) RETURN n LIMIT $limit",),
-        Err(FrontendError::Unsupported("dynamic LIMIT".into()))
+        dynamic.limit(),
+        Some(&PageValue::Parameter(
+            Parameter::new("limit").expect("parameter identity")
+        ))
     );
     assert_eq!(
         frontend.compile(

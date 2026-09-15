@@ -12,8 +12,8 @@ Accepted MVP slice.
 =mrr-frontends= is a peripheral adapter crate.  Callers select =Gql= or
 =Cypher= explicitly; both adapters consume the Gerbil-projected Rowan syntax
 surface, lower the supported AST slice directly, and admit only shared
-=MetaQueryIr=.  They do not route through =gql-ir= or =gql-sema= and do not
-expose either contract.
+=MetaQueryIr=. They do not route through a second public GQL syntax, AST,
+semantic, or IR stack.
 
 The parity slice is deliberately bounded to one =MATCH= clause containing one
 or more graph path patterns, node/relationship type labels, direction,
@@ -37,7 +37,7 @@ flowchart LR
   R --> A[Frontend AST evidence]
   A --> L[Direct language-neutral lowering]
   L --> M[Normalized MetaQueryIR]
-  O[gql-ir reference implementation] -. differential oracle only .-> L
+  O[external implementation samples] -. differential evidence only .-> L
 #+end_src
 
 * Executable equality

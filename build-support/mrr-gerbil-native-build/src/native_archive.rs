@@ -20,6 +20,16 @@ const REQUIRED_MODULES: &[&str] = &[
     "gerbil-parser/src/ffi/parse-artifact-v1",
 ];
 
+const FORBIDDEN_RUNTIME_MODULES: &[&str] = &[
+    "asp-gerbil-scheme/src/build-api/package-build",
+    "asp-gerbil-scheme/src/build-api/native-import-closure",
+    "asp-gerbil-scheme/src/support/time",
+    "poo-flow/src/module-system/observability/interface",
+    "poo-flow/src/module-system/observability/source-admission",
+    "poo-flow/src/module-system/observability/build-projection",
+    "poo-flow/src/module-system/observability/config",
+];
+
 struct CargoObserver;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -152,6 +162,7 @@ impl NativeBuild {
             },
             ProgramArchiveContract {
                 required_modules: REQUIRED_MODULES,
+                forbidden_modules: FORBIDDEN_RUNTIME_MODULES,
                 linker_main_symbol: "mrr_grammar_gambit_main",
                 additional_objects: &[],
             },

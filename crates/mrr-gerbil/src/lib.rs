@@ -4,13 +4,10 @@
 //! It consumes a Gerbil AOT artifact produced by `build.ss`; no Scheme runtime
 //! is started from a query hot path.
 
-mod cli;
 mod driver_cli;
 mod native;
 mod projection;
-mod projection_renderer;
 
-pub use cli::run_cli;
 pub use driver_cli::run_driver_cli;
 pub use native::{
     DriverError, DriverPhase, DriverResource, DriverStatus, DriverTransition,
