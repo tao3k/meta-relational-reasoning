@@ -1,9 +1,6 @@
-//! Parser-owned GQL compilation and test-only legacy differential lowering.
+//! Parser-owned GQL semantic projection into MetaQueryIR.
 
-#[cfg(test)]
-use gql_ast::Statement;
 use gql_ast::{self as ast, PatternElement, QueryClause};
-use gql_source::Diagnostic;
 use mrr_query::{
     Aggregation, AggregationFunction, BinaryOperator, Binding, Direction, Expression, Filter,
     GraphPattern, Grouping, MetaQueryIr, NodePattern, Ordering, Parameter, PathPattern,
@@ -24,8 +21,6 @@ pub struct QueryFrontend;
 #[derive(Clone, Debug, Eq, PartialEq)]
 /// Fail-closed frontend diagnostics, unsupported syntax, or IR rejection.
 pub enum FrontendError {
-    /// Parser or AST lowering diagnostics prevented semantic admission.
-    Diagnostics(Vec<Diagnostic>),
     /// The source requested a feature outside the bounded parity slice.
     Unsupported(String),
     /// The shared query owner rejected the lowered semantic contract.
@@ -63,30 +58,11 @@ impl QueryFrontend {
         Self
     }
 
-    #[cfg(test)]
-    pub(crate) fn compile_legacy_oracle(
-        &self,
-        name: &str,
-        source: &str,
-    ) -> Result<MetaQueryIr, FrontendError> {
-        let parse = gql_syntax::parse(name, source);
-        let lowered = gql_ast::lower_from_syntax(&parse);
-        if !lowered.diagnostics.is_empty() {
-            return Err(FrontendError::Diagnostics(lowered.diagnostics));
-        }
-        let Some(Statement::Query(query)) = lowered.statement else {
-            return Err(FrontendError::Unsupported(
-                "only query statements lower to MetaQueryIR".into(),
-            ));
-        };
-        lower_query(&query)
-    }
-
     /// Compiles the admitted ISO parity slice through the parser-owned AOT CST.
     ///
     /// This is an explicit migration boundary: it does not fall back to the
-    /// smaller legacy Rust parser when the complete grammar accepts a shape
-    /// whose semantic lowering is not yet owned here.
+    /// parser-owned grammar accepts a shape whose semantic lowering is not yet
+    /// owned here.
     pub fn compile(&self, name: &str, source: &str) -> Result<MetaQueryIr, FrontendError> {
         self.compile_with_receipt(name, source)
             .map(|compilation| compilation.query)

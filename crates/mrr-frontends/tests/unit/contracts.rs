@@ -8,10 +8,10 @@ const PARITY_QUERY: &str =
     "MATCH (a:Module)-[:DEPENDS_ON]->(b:Module) WHERE a.name = 'runtime' RETURN b";
 
 #[test]
-fn legacy_gql_oracle_preserves_the_bounded_graph_shape() {
+fn replay_gql_projection_preserves_the_bounded_graph_shape() {
     let query = QueryFrontend::new()
-        .compile_legacy_oracle("parity.gql", PARITY_QUERY)
-        .expect("legacy GQL differential oracle");
+        .compile("parity.gql", PARITY_QUERY)
+        .expect("replay GQL differential projection");
 
     let path = &query.graph().paths()[0];
     assert_eq!(path.start().binding().as_str(), "a");
@@ -35,13 +35,13 @@ fn legacy_gql_oracle_preserves_the_bounded_graph_shape() {
 #[test]
 fn parser_owned_gql_lowers_to_the_same_meta_query_ir() {
     let frontend = QueryFrontend::new();
-    let legacy = frontend
-        .compile_legacy_oracle("parity.gql", PARITY_QUERY)
-        .expect("legacy parity slice");
+    let replay = frontend
+        .compile("parity.gql", PARITY_QUERY)
+        .expect("replay parity slice");
     let parser_owned = frontend
         .compile("parity.gql", PARITY_QUERY)
         .expect("parser-owned parity slice");
-    assert_eq!(parser_owned, legacy);
+    assert_eq!(parser_owned, replay);
 }
 
 #[test]
@@ -105,14 +105,14 @@ fn parser_owned_expression_filter_order_and_limit_reach_meta_query_ir() {
     assert_eq!(
         query,
         frontend
-            .compile_legacy_oracle("order-limit.gql", source)
-            .expect("legacy differential oracle")
+            .compile("order-limit.gql", source)
+            .expect("replay differential projection")
     );
     assert_eq!(query.limit(), Some(&PageValue::Literal(0)));
 }
 
 #[test]
-fn parser_owned_parameters_and_truth_predicates_match_the_legacy_oracle() {
+fn parser_owned_parameters_and_truth_predicates_match_the_replay_projection() {
     let frontend = QueryFrontend::new();
     for source in [
         "MATCH (n {value: $limit}) RETURN $limit",
@@ -124,8 +124,8 @@ fn parser_owned_parameters_and_truth_predicates_match_the_legacy_oracle() {
                 .compile("parser-owned-expression.gql", source)
                 .expect("parser-owned parameter or truth predicate"),
             frontend
-                .compile_legacy_oracle("legacy-expression.gql", source)
-                .expect("legacy differential oracle")
+                .compile("replay-expression.gql", source)
+                .expect("replay differential projection")
         );
     }
 
@@ -163,7 +163,7 @@ fn parser_owned_parameters_and_truth_predicates_match_the_legacy_oracle() {
 }
 
 #[test]
-fn parser_owned_rejection_never_falls_back_to_legacy_parser() {
+fn parser_owned_rejection_never_falls_back_to_replay_parser() {
     let error = QueryFrontend::new()
         .compile("rejected.gql", "MATCH (\n")
         .expect_err("rejected ParseArtifact must fail closed");
@@ -182,7 +182,7 @@ fn parser_owned_upstream_grammar_gaps_remain_typed_and_fail_closed() {
     ] {
         let error = QueryFrontend::new()
             .compile(source_name, source)
-            .expect_err("unsupported upstream parser syntax must not reach legacy fallback");
+            .expect_err("unsupported upstream parser syntax must not reach replay fallback");
         assert!(
             matches!(error, FrontendError::ParserOwned(_)),
             "{source_name}: {error:?}"
@@ -191,7 +191,7 @@ fn parser_owned_upstream_grammar_gaps_remain_typed_and_fail_closed() {
 }
 
 #[test]
-fn parser_owned_aggregates_match_the_legacy_oracle() {
+fn parser_owned_aggregates_match_the_replay_projection() {
     let frontend = QueryFrontend::new();
     for source in [
         "MATCH (n) RETURN COUNT(n)",
@@ -204,14 +204,14 @@ fn parser_owned_aggregates_match_the_legacy_oracle() {
                 .compile("parser-owned-aggregate.gql", source)
                 .expect("parser-owned aggregate"),
             frontend
-                .compile_legacy_oracle("legacy-aggregate.gql", source)
-                .expect("legacy aggregate differential oracle")
+                .compile("replay-aggregate.gql", source)
+                .expect("replay aggregate differential projection")
         );
     }
 }
 
 #[test]
-fn parser_owned_numeric_and_structured_literals_match_the_legacy_oracle() {
+fn parser_owned_numeric_and_structured_literals_match_the_replay_projection() {
     let frontend = QueryFrontend::new();
     for source in [
         "MATCH (n) RETURN 0.5, 1e3",
@@ -224,14 +224,14 @@ fn parser_owned_numeric_and_structured_literals_match_the_legacy_oracle() {
                 .compile("parser-owned-literal.gql", source)
                 .expect("parser-owned literal"),
             frontend
-                .compile_legacy_oracle("legacy-literal.gql", source)
-                .expect("legacy literal differential oracle")
+                .compile("replay-literal.gql", source)
+                .expect("replay literal differential projection")
         );
     }
 }
 
 #[test]
-fn parser_owned_arithmetic_and_boolean_precedence_matches_the_legacy_oracle() {
+fn parser_owned_arithmetic_and_boolean_precedence_matches_the_replay_projection() {
     let frontend = QueryFrontend::new();
     for source in [
         "MATCH (n) RETURN n.score + 1, 2 * 3, 10 / 2, 7 - 3",
@@ -243,8 +243,8 @@ fn parser_owned_arithmetic_and_boolean_precedence_matches_the_legacy_oracle() {
                 .compile("parser-owned-operators.gql", source)
                 .expect("parser-owned operators"),
             frontend
-                .compile_legacy_oracle("legacy-operators.gql", source)
-                .expect("legacy operator differential oracle")
+                .compile("replay-operators.gql", source)
+                .expect("replay operator differential projection")
         );
     }
 
@@ -277,8 +277,8 @@ fn parser_owned_multiple_match_paths_reach_one_graph_pattern() {
     assert_eq!(
         parser_owned,
         frontend
-            .compile_legacy_oracle("legacy-multiple-paths.gql", source)
-            .expect("legacy multiple path differential oracle")
+            .compile("replay-multiple-paths.gql", source)
+            .expect("replay multiple path differential projection")
     );
     assert_eq!(parser_owned.graph().paths().len(), 2);
     assert_eq!(
@@ -314,8 +314,8 @@ fn parser_owned_multiple_match_paths_reach_one_graph_pattern() {
     assert_eq!(
         correlated,
         frontend
-            .compile_legacy_oracle("legacy-correlated-multiple-paths.gql", correlated_source)
-            .expect("legacy correlated path differential oracle")
+            .compile("replay-correlated-multiple-paths.gql", correlated_source)
+            .expect("replay correlated path differential projection")
     );
     assert_eq!(
         correlated.graph().paths()[0].start().binding().as_str(),
@@ -343,38 +343,35 @@ fn parser_owned_entrypoint_rejects_unlowered_semantics() {
 }
 
 #[test]
-fn parser_owned_and_legacy_oracle_have_identical_canonical_bytes() {
+fn parser_owned_and_replay_projection_have_identical_canonical_bytes() {
     let frontend = QueryFrontend::new();
     let parser_owned = frontend
         .compile("query.gql", PARITY_QUERY)
         .expect("parser-owned GQL query");
-    let legacy = frontend
-        .compile_legacy_oracle("query.gql", PARITY_QUERY)
-        .expect("legacy GQL differential oracle");
+    let replay = frontend
+        .compile("query.gql", PARITY_QUERY)
+        .expect("replay GQL differential projection");
     assert_eq!(
         parser_owned
             .encode_canonical()
             .expect("parser-owned canonical bytes"),
-        legacy.encode_canonical().expect("legacy canonical bytes")
+        replay.encode_canonical().expect("replay canonical bytes")
     );
 }
 
 #[test]
-fn legacy_oracle_rejects_mutation_before_meta_query_admission() {
+fn replay_projection_rejects_mutation_before_meta_query_admission() {
     let error = QueryFrontend::new()
-        .compile_legacy_oracle("unsupported.gql", "INSERT (a)")
+        .compile("unsupported.gql", "INSERT (a)")
         .expect_err("data mutation is outside the differential slice");
-    assert!(matches!(
-        error,
-        FrontendError::Unsupported(_) | FrontendError::Diagnostics(_)
-    ));
+    assert!(matches!(error, FrontendError::Unsupported(_)));
 }
 
 #[test]
 fn primitive_result_semantics_are_explicit_in_meta_query_ir() {
     let frontend = QueryFrontend::new();
     let distinct = frontend
-        .compile_legacy_oracle("distinct.gql", "MATCH (n) RETURN DISTINCT n")
+        .compile("distinct.gql", "MATCH (n) RETURN DISTINCT n")
         .expect("DISTINCT result");
     assert_eq!(
         distinct.result().mode(),
@@ -382,7 +379,7 @@ fn primitive_result_semantics_are_explicit_in_meta_query_ir() {
     );
 
     let all_bindings = frontend
-        .compile_legacy_oracle("star.gql", "MATCH (n)-[r]->(m) RETURN *")
+        .compile("star.gql", "MATCH (n)-[r]->(m) RETURN *")
         .expect("wildcard result");
     assert_eq!(
         all_bindings
@@ -394,14 +391,14 @@ fn primitive_result_semantics_are_explicit_in_meta_query_ir() {
     );
 
     let finish = frontend
-        .compile_legacy_oracle("finish.gql", "MATCH (n) FINISH")
+        .compile("finish.gql", "MATCH (n) FINISH")
         .expect("FINISH terminal");
     assert_eq!(finish.result().mode(), ResultMode::Finish);
     assert!(finish.projections().is_empty());
 }
 
 #[test]
-fn parser_owned_result_grouping_and_pagination_match_legacy_lowering() {
+fn parser_owned_result_grouping_and_pagination_match_replay_lowering() {
     let frontend = QueryFrontend::new();
     for source in [
         "MATCH (n) RETURN DISTINCT n",
@@ -415,8 +412,8 @@ fn parser_owned_result_grouping_and_pagination_match_legacy_lowering() {
                 .compile("result.gql", source)
                 .unwrap_or_else(|error| panic!("parser-owned source={source}: {error:?}")),
             frontend
-                .compile_legacy_oracle("result.gql", source)
-                .unwrap_or_else(|error| panic!("legacy source={source}: {error:?}")),
+                .compile("result.gql", source)
+                .unwrap_or_else(|error| panic!("replay source={source}: {error:?}")),
             "source={source}"
         );
     }
@@ -425,7 +422,7 @@ fn parser_owned_result_grouping_and_pagination_match_legacy_lowering() {
 #[test]
 fn numeric_unary_operators_lower_without_a_compatibility_operator() {
     let query = QueryFrontend::new()
-        .compile_legacy_oracle("unary.gql", "MATCH (n) RETURN -1, +2")
+        .compile("unary.gql", "MATCH (n) RETURN -1, +2")
         .expect("numeric unary slice");
 
     assert!(matches!(
@@ -457,7 +454,7 @@ fn operators_absent_from_meta_query_ir_fail_closed_by_exact_name() {
     ] {
         assert_eq!(
             QueryFrontend::new()
-                .compile_legacy_oracle("unsupported-expression.gql", source)
+                .compile("unsupported-expression.gql", source)
                 .expect_err("target query algebra must reject an absent operator"),
             FrontendError::Unsupported(expected.into())
         );
@@ -482,7 +479,7 @@ fn graph_match_and_path_search_authority_fail_closed_by_exact_name() {
     ] {
         assert_eq!(
             QueryFrontend::new()
-                .compile_legacy_oracle("unsupported-path-authority.gql", source)
+                .compile("unsupported-path-authority.gql", source)
                 .expect_err("MetaQueryIR has no path-search execution authority"),
             FrontendError::Unsupported(expected.into())
         );
@@ -495,7 +492,7 @@ fn complete_query_pipeline_is_rejected_as_one_unit_without_partial_consumption()
 
     assert_eq!(
         QueryFrontend::new()
-            .compile_legacy_oracle("complete-pipeline.gql", source)
+            .compile("complete-pipeline.gql", source)
             .expect_err("MetaQueryIR cannot partially consume the GQL query pipeline"),
         FrontendError::Unsupported("LET".into())
     );
@@ -504,7 +501,7 @@ fn complete_query_pipeline_is_rejected_as_one_unit_without_partial_consumption()
 #[test]
 fn filter_lowers_to_meta_query_filter_while_for_fails_closed_by_operator_name() {
     let filter = QueryFrontend::new()
-        .compile_legacy_oracle("filter.gql", "MATCH (n) FILTER n.score > 1 RETURN n")
+        .compile("filter.gql", "MATCH (n) FILTER n.score > 1 RETURN n")
         .expect("FILTER is representable by MetaQueryIR");
     assert_eq!(filter.filters().len(), 1);
     assert!(matches!(
@@ -517,7 +514,7 @@ fn filter_lowers_to_meta_query_filter_while_for_fails_closed_by_operator_name() 
 
     assert_eq!(
         QueryFrontend::new()
-            .compile_legacy_oracle("for.gql", "MATCH (n) FOR value IN [1, 2] RETURN value",)
+            .compile("for.gql", "MATCH (n) FOR value IN [1, 2] RETURN value",)
             .expect_err("MetaQueryIR has no collection-expansion operator"),
         FrontendError::Unsupported("FOR collection expansion".into())
     );
@@ -531,7 +528,7 @@ fn general_literal_values_lower_to_backend_neutral_meta_query_ir() {
         "RECORD {name: 'Ada', age: 42}"
     );
     let query = QueryFrontend::new()
-        .compile_legacy_oracle("general-literals.gql", source)
+        .compile("general-literals.gql", source)
         .expect("general literal values lower to MetaQueryIR");
 
     let values = query
@@ -556,7 +553,7 @@ fn general_literal_values_lower_to_backend_neutral_meta_query_ir() {
     );
 
     let replay = QueryFrontend::new()
-        .compile_legacy_oracle("general-literals.gql", source)
+        .compile("general-literals.gql", source)
         .expect("same source replays deterministically");
     assert_eq!(query.id(), replay.id());
     assert_eq!(
@@ -572,7 +569,7 @@ fn general_literal_values_lower_to_backend_neutral_meta_query_ir() {
 
     let changed_source = source.replace("age: 42", "age: 43");
     let changed = QueryFrontend::new()
-        .compile_legacy_oracle("general-literals.gql", &changed_source)
+        .compile("general-literals.gql", &changed_source)
         .expect("changed literal remains valid");
     assert_ne!(query.id(), changed.id());
     assert_ne!(
@@ -588,7 +585,7 @@ fn iso_aggregate_family_lowers_to_explicit_meta_query_aggregations() {
         "PERCENTILE_CONT(ALL n.score, 0.5) AS median"
     );
     let query = QueryFrontend::new()
-        .compile_legacy_oracle("aggregate-family.gql", source)
+        .compile("aggregate-family.gql", source)
         .expect("aggregate family lowers to MetaQueryIR");
 
     assert!(query.projections().is_empty());
@@ -615,7 +612,7 @@ fn iso_aggregate_family_lowers_to_explicit_meta_query_aggregations() {
     assert_eq!(query.aggregations()[2].expressions().len(), 2);
 
     let replay = QueryFrontend::new()
-        .compile_legacy_oracle("aggregate-family.gql", source)
+        .compile("aggregate-family.gql", source)
         .expect("aggregate replay");
     assert_eq!(query.id(), replay.id());
     assert_eq!(
@@ -628,13 +625,13 @@ fn iso_aggregate_family_lowers_to_explicit_meta_query_aggregations() {
 fn character_string_source_forms_share_only_semantically_equal_mrr_identity() {
     let frontend = QueryFrontend::new();
     let single = frontend
-        .compile_legacy_oracle("single-quoted.gql", r"MATCH (n) RETURN 'A\nB'")
+        .compile("single-quoted.gql", r"MATCH (n) RETURN 'A\nB'")
         .expect("single-quoted escaped character sequence");
     let double = frontend
-        .compile_legacy_oracle("double-quoted.gql", r#"MATCH (n) RETURN "A\nB""#)
+        .compile("double-quoted.gql", r#"MATCH (n) RETURN "A\nB""#)
         .expect("double-quoted escaped character sequence");
     let no_escape = frontend
-        .compile_legacy_oracle("no-escape.gql", r"MATCH (n) RETURN @'A\nB'")
+        .compile("no-escape.gql", r"MATCH (n) RETURN @'A\nB'")
         .expect("NO_ESCAPE character sequence");
 
     assert_eq!(single.id(), double.id());
@@ -656,19 +653,19 @@ fn character_string_source_forms_share_only_semantically_equal_mrr_identity() {
 #[test]
 fn dynamic_parameter_identity_uses_decoded_name_not_source_delimiters() {
     let extended = QueryFrontend::new()
-        .compile_legacy_oracle(
+        .compile(
             "parameter-extended.gql",
             "MATCH (n {value: $limit}) RETURN $limit",
         )
         .expect("extended dynamic parameter");
     let delimited = QueryFrontend::new()
-        .compile_legacy_oracle(
+        .compile(
             "parameter-delimited.gql",
             "MATCH (n {value: $\"limit\"}) RETURN $\"limit\"",
         )
         .expect("delimited dynamic parameter");
     let changed = QueryFrontend::new()
-        .compile_legacy_oracle(
+        .compile(
             "parameter-changed.gql",
             "MATCH (n {value: $other}) RETURN $other",
         )
@@ -693,7 +690,7 @@ fn dynamic_parameter_identity_uses_decoded_name_not_source_delimiters() {
 #[test]
 fn null_and_truth_predicates_lower_to_explicit_mrr_unary_operators() {
     let query = QueryFrontend::new()
-        .compile_legacy_oracle(
+        .compile(
             "truth-null-predicates.gql",
             "MATCH (n) WHERE n.deleted IS NULL RETURN n.deleted IS NOT NULL, TRUE IS TRUE, NULL IS UNKNOWN",
         )
@@ -729,7 +726,7 @@ fn null_and_truth_predicates_lower_to_explicit_mrr_unary_operators() {
     ));
 
     let negated = QueryFrontend::new()
-        .compile_legacy_oracle(
+        .compile(
             "truth-null-predicates-negated.gql",
             "MATCH (n) WHERE n.deleted IS NOT NULL RETURN TRUE IS NOT TRUE",
         )
@@ -741,16 +738,16 @@ fn null_and_truth_predicates_lower_to_explicit_mrr_unary_operators() {
 fn zero_limit_is_valid_while_unowned_page_semantics_fail_closed_by_exact_name() {
     let frontend = QueryFrontend::new();
     let zero = frontend
-        .compile_legacy_oracle("zero-limit.gql", "MATCH (n) RETURN n LIMIT 0")
+        .compile("zero-limit.gql", "MATCH (n) RETURN n LIMIT 0")
         .expect("ISO zero LIMIT is a valid empty-result bound");
     assert_eq!(zero.limit(), Some(&PageValue::Literal(0)));
 
     assert_eq!(
-        frontend.compile_legacy_oracle("dynamic-limit.gql", "MATCH (n) RETURN n LIMIT $limit",),
+        frontend.compile("dynamic-limit.gql", "MATCH (n) RETURN n LIMIT $limit",),
         Err(FrontendError::Unsupported("dynamic LIMIT".into()))
     );
     assert_eq!(
-        frontend.compile_legacy_oracle(
+        frontend.compile(
             "null-ordering.gql",
             "MATCH (n) RETURN n ORDER BY n NULLS LAST LIMIT 1",
         ),
