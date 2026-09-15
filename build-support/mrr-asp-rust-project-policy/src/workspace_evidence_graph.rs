@@ -153,7 +153,7 @@ pub fn build_mrr_workspace_evidence_graph_receipt(
     client_db_evidence_graph: &MrrAspRustEvidenceGraphInput,
 ) -> MrrAspRustWorkspaceEvidenceGraphReceipt {
     build_workspace_evidence_graph_receipt(MrrAspRustWorkspaceEvidenceGraphRequest {
-        workspace_label: "gql-rust".to_string(),
+        workspace_label: "meta-relational-reasoning".to_string(),
         workspace_root,
         member_crate_names: mrr_workspace_member_policies()
             .iter()

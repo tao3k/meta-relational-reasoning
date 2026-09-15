@@ -203,7 +203,10 @@ fn central_policy_registry_contains_migrated_member_crates() {
             if !entry.join("Cargo.toml").exists() {
                 return None;
             }
-            entry.file_name()?.to_str().map(|name| name.to_string())
+            entry.file_name()?.to_str().and_then(|name| {
+                (name == "meta-relational-reasoning" || name.starts_with("mrr-"))
+                    .then(|| name.to_string())
+            })
         })
         .collect();
     declared_in_crates_dir.sort_unstable();

@@ -17,16 +17,6 @@ macro_rules! workspace_member_policy {
 }
 
 const MRR_WORKSPACE_MEMBER_POLICIES: &[MrrAspRustMemberPolicy] = &[
-    workspace_member_policy!("gql-core", "crates/gql-core"),
-    workspace_member_policy!("gql-ast", "crates/gql-ast"),
-    workspace_member_policy!("gql-source", "crates/gql-source"),
-    workspace_member_policy!("gql-types", "crates/gql-types"),
-    workspace_member_policy!("gql-ir", "crates/gql-ir"),
-    workspace_member_policy!("gql-sema", "crates/gql-sema"),
-    workspace_member_policy!("gql-syntax", "crates/gql-syntax"),
-    workspace_member_policy!("gql-catalog", "crates/gql-catalog"),
-    workspace_member_policy!("gql-compiler", "crates/gql-compiler"),
-    workspace_member_policy!("gql", "crates/gql"),
     workspace_member_policy!("mrr-identity", "crates/mrr-identity"),
     workspace_member_policy!("mrr-intent", "crates/mrr-intent"),
     workspace_member_policy!("mrr-relation", "crates/mrr-relation"),
