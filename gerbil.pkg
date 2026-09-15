@@ -1,4 +1,4 @@
 (package:
  meta-relational-reasoning
  depend:
- ("github.com/tao3k/gerbil-parser@77cda410c92a40b0ada5900c35296b16ed281735"))
+ ("github.com/tao3k/gerbil-parser@aafb72e5b13c36d033ac16b5927958d5d9613f90"))
