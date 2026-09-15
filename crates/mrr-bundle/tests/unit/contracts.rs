@@ -58,14 +58,14 @@ fn query(query_id: QueryId, relation: RelationId) -> MetaQueryIr {
         query_id,
         graph,
         Vec::new(),
-        vec![Projection::new(
-            QueryOperatorId::from_canonical_bytes(b"bundle:projection-operator").expect("operator"),
-            Expression::Binding(Binding::new("right").expect("binding")),
-            Binding::new("result").expect("binding"),
-        )],
-        Vec::new(),
-        Vec::new(),
-        None,
+        mrr_query::QueryResult::returning(mrr_query::SetQuantifier::All).with_projections(vec![
+            Projection::new(
+                QueryOperatorId::from_canonical_bytes(b"bundle:projection-operator")
+                    .expect("operator"),
+                Expression::Binding(Binding::new("right").expect("binding")),
+                Binding::new("result").expect("binding"),
+            ),
+        ]),
     )
     .expect("query")
 }

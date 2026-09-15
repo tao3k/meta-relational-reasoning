@@ -1,7 +1,8 @@
 use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
 use mrr_query::{
     Binding, Direction, Expression, GraphPattern, MetaQueryIr, NodePattern, PathPattern,
-    PathSegment, Projection, QueryId, QueryOperatorId, RelationId, RelationPattern,
+    PathSegment, Projection, QueryId, QueryOperatorId, QueryResult, RelationId, RelationPattern,
+    SetQuantifier,
 };
 
 const SCALES: &[usize] = &[1_000, 10_000, 100_000];
@@ -32,15 +33,12 @@ fn query(size: usize) -> MetaQueryIr {
         QueryId::from_canonical_bytes(b"query:normalization").expect("query identity"),
         graph,
         vec![],
-        vec![Projection::new(
+        QueryResult::returning(SetQuantifier::All).with_projections(vec![Projection::new(
             QueryOperatorId::from_canonical_bytes(b"query:projection")
                 .expect("projection identity"),
             Expression::Binding(right.clone()),
             right,
-        )],
-        vec![],
-        vec![],
-        None,
+        )]),
     )
     .expect("query IR")
 }

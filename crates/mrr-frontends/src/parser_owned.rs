@@ -21,11 +21,6 @@ pub(crate) struct ParserOwnedAst {
     pub source_digest: String,
 }
 
-/// Lowers the currently admitted ISO query slice without reparsing parser tokens.
-pub fn lower_parser_owned_query(source: &str) -> Result<Query, FrontendError> {
-    lower_parser_owned_ast(source).map(|lowered| lowered.query)
-}
-
 pub(crate) fn lower_parser_owned_ast(source: &str) -> Result<ParserOwnedAst, FrontendError> {
     let artifact = parse_gql_artifact(source)
         .map_err(|error| FrontendError::ParserOwned(format!("ParseArtifact: {error:?}")))?;
@@ -41,8 +36,9 @@ pub(crate) fn lower_parser_owned_ast(source: &str) -> Result<ParserOwnedAst, Fro
         return unsupported("parser-owned parity requires exactly one SimpleMatchStatement");
     }
     let returns = descendants_named(&cst, &root, "ReturnStatement");
-    if returns.len() != 1 {
-        return unsupported("parser-owned parity requires exactly one ReturnStatement");
+    let finishes = descendants_named(&cst, &root, "FinishStatement");
+    if returns.len() + finishes.len() != 1 {
+        return unsupported("parser-owned parity requires exactly one result statement");
     }
 
     let mut clauses = vec![QueryClause::Match(lower_match(&cst, &matches[0])?)];
@@ -62,16 +58,36 @@ pub(crate) fn lower_parser_owned_ast(source: &str) -> Result<ParserOwnedAst, Fro
             span: span(&filter),
         });
     }
-    clauses.push(QueryClause::Return {
-        quantifier: None,
-        all_bindings: false,
-        projections: lower_return(&cst, &returns[0])?,
-        span: span(&returns[0]),
-    });
+    if let Some(result) = returns.first() {
+        clauses.push(QueryClause::Return {
+            quantifier: lower_result_quantifier(&cst, result)?,
+            all_bindings: significant_tokens(&cst, result)
+                .iter()
+                .any(|token| token.text() == "*"),
+            projections: lower_return(&cst, result)?,
+            span: span(result),
+        });
+    } else {
+        clauses.push(QueryClause::Finish {
+            span: span(&finishes[0]),
+        });
+    }
+    if let Some(group_by) = first_descendant(&cst, &root, "GroupByClause") {
+        clauses.push(QueryClause::GroupBy {
+            keys: lower_group_by(&cst, &group_by)?,
+            span: span(&group_by),
+        });
+    }
     if let Some(order_by) = first_descendant(&cst, &root, "OrderByClause") {
         clauses.push(QueryClause::OrderBy {
             keys: lower_order_by(&cst, &order_by)?,
             span: span(&order_by),
+        });
+    }
+    if let Some(offset) = first_descendant(&cst, &root, "OffsetClause") {
+        clauses.push(QueryClause::Offset {
+            value: lower_limit(&cst, &offset)?,
+            span: span(&offset),
         });
     }
     if let Some(limit) = first_descendant(&cst, &root, "LimitClause") {
@@ -88,6 +104,34 @@ pub(crate) fn lower_parser_owned_ast(source: &str) -> Result<ParserOwnedAst, Fro
         grammar_digest: artifact.grammar_digest,
         source_digest: artifact.source_digest,
     })
+}
+
+fn lower_result_quantifier(
+    cst: &ParserCst,
+    node: &Node,
+) -> Result<Option<SetQuantifier>, FrontendError> {
+    first_descendant(cst, node, "SetQuantifier")
+        .map(|quantifier| match quantifier.text().to_string().trim() {
+            "ALL" => Ok(SetQuantifier::All),
+            "DISTINCT" => Ok(SetQuantifier::Distinct),
+            _ => unsupported("result set quantifier"),
+        })
+        .transpose()
+}
+
+fn lower_group_by(cst: &ParserCst, node: &Node) -> Result<Vec<Expression>, FrontendError> {
+    let keys = descendants_named(cst, node, "GroupingElement");
+    if keys.is_empty() {
+        return unsupported("GROUP BY key");
+    }
+    keys.iter()
+        .map(|key| {
+            let expression = first_descendant(cst, key, "AggregatingValueExpression")
+                .or_else(|| first_descendant(cst, key, "ValueExpression"))
+                .ok_or_else(|| unsupported_error("GROUP BY expression"))?;
+            lower_expression(cst, &expression)
+        })
+        .collect()
 }
 
 fn lower_order_by(cst: &ParserCst, node: &Node) -> Result<Vec<SortKey>, FrontendError> {
@@ -125,14 +169,35 @@ fn lower_limit(
     cst: &ParserCst,
     node: &Node,
 ) -> Result<NonNegativeIntegerSpecification, FrontendError> {
-    let value = first_descendant(cst, node, "UnsignedInteger")
-        .and_then(|integer| significant_tokens(cst, &integer).into_iter().next())
-        .ok_or_else(|| unsupported_error("dynamic LIMIT"))?;
-    let value = value
-        .text()
-        .parse::<u64>()
-        .map_err(|_| unsupported_error("LIMIT integer"))?;
-    Ok(NonNegativeIntegerSpecification::Literal(value))
+    if let Some(integer) = first_descendant(cst, node, "UnsignedInteger") {
+        let value = significant_tokens(cst, &integer)
+            .into_iter()
+            .next()
+            .ok_or_else(|| unsupported_error("pagination integer"))?
+            .text()
+            .parse::<u64>()
+            .map_err(|_| unsupported_error("pagination integer"))?;
+        return Ok(NonNegativeIntegerSpecification::Literal(value));
+    }
+    let parameter = first_descendant(cst, node, "DynamicParameterSpecification")
+        .ok_or_else(|| unsupported_error("pagination value"))?;
+    Ok(NonNegativeIntegerSpecification::Parameter(
+        lower_dynamic_parameter(&parameter)?,
+    ))
+}
+
+fn lower_dynamic_parameter(node: &Node) -> Result<DynamicParameterReference, FrontendError> {
+    let text = node.text().to_string();
+    let decoded = gql_syntax::decode_parameter_reference(text.trim())
+        .ok_or_else(|| unsupported_error("dynamic parameter"))?;
+    Ok(DynamicParameterReference {
+        name: decoded.name.into_owned(),
+        form: match decoded.form {
+            gql_syntax::ParameterNameForm::Extended => ParameterNameForm::Extended,
+            gql_syntax::ParameterNameForm::Delimited => ParameterNameForm::Delimited,
+        },
+        span: span(node),
+    })
 }
 
 fn reject_unlowered_semantics(cst: &ParserCst, root: &Node) -> Result<(), FrontendError> {
@@ -143,7 +208,6 @@ fn reject_unlowered_semantics(cst: &ParserCst, root: &Node) -> Result<(), Fronte
         "PathPatternPrefix",
         "PathVariableDeclaration",
         "GraphPatternQuantifier",
-        "OffsetClause",
     ] {
         if first_descendant(cst, root, kind).is_some() {
             return unsupported(kind);
@@ -154,20 +218,17 @@ fn reject_unlowered_semantics(cst: &ParserCst, root: &Node) -> Result<(), Fronte
             return unsupported("non-property ElementPatternPredicate");
         }
     }
-    for statement in descendants_named(cst, root, "ReturnStatement") {
-        if first_descendant(cst, &statement, "ReturnItem").is_none()
-            && significant_tokens(cst, &statement)
-                .iter()
-                .any(|token| token.text() == "*")
-        {
-            return unsupported("RETURN *");
-        }
-    }
     if descendants_named(cst, root, "OrderByClause").len() > 1 {
         return unsupported("multiple OrderByClause nodes");
     }
     if descendants_named(cst, root, "LimitClause").len() > 1 {
         return unsupported("multiple LimitClause nodes");
+    }
+    if descendants_named(cst, root, "OffsetClause").len() > 1 {
+        return unsupported("multiple OffsetClause nodes");
+    }
+    if descendants_named(cst, root, "GroupByClause").len() > 1 {
+        return unsupported("multiple GroupByClause nodes");
     }
     Ok(())
 }
@@ -422,17 +483,7 @@ fn lower_expression(cst: &ParserCst, node: &Node) -> Result<Expression, Frontend
         return Ok(Expression::Name(lower_identifier(cst, node)?));
     }
     if kind_name(cst, node) == Some("DynamicParameterSpecification") {
-        let text = node.text().to_string();
-        let decoded = gql_syntax::decode_parameter_reference(text.trim())
-            .ok_or_else(|| unsupported_error("dynamic parameter"))?;
-        return Ok(Expression::Parameter(DynamicParameterReference {
-            name: decoded.name.into_owned(),
-            form: match decoded.form {
-                gql_syntax::ParameterNameForm::Extended => ParameterNameForm::Extended,
-                gql_syntax::ParameterNameForm::Delimited => ParameterNameForm::Delimited,
-            },
-            span: span(node),
-        }));
+        return Ok(Expression::Parameter(lower_dynamic_parameter(node)?));
     }
     if kind_name(cst, node) == Some("GeneralLiteral") {
         for child_kind in [

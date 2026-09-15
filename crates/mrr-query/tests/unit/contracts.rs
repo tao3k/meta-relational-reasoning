@@ -1,8 +1,8 @@
 use crate::{
     Aggregation, AggregationFunction, Atom, BinaryOperator, Binding, Direction, Expression, Filter,
-    GraphPattern, MetaQueryIr, NodePattern, PathPattern, PathSegment, Projection, PropertyKey,
-    QueryId, QueryIrError, QueryOperatorId, RelationId, RelationPattern, RelationalGoal,
-    RelationalGoalError, SetQuantifier, Term, Value, Variable,
+    GraphPattern, MetaQueryIr, NodePattern, PageValue, PathPattern, PathSegment, Projection,
+    PropertyKey, QueryId, QueryIrError, QueryOperatorId, QueryResult, RelationId, RelationPattern,
+    RelationalGoal, RelationalGoalError, ResultMode, SetQuantifier, Term, Value, Variable,
 };
 use mrr_identity::EntityId;
 
@@ -61,10 +61,9 @@ fn fixture_query_with_limit(limit: Option<u64>) -> MetaQueryIr {
         query_id("depends-on"),
         graph,
         vec![filter],
-        vec![projection],
-        Vec::new(),
-        Vec::new(),
-        limit,
+        QueryResult::returning(SetQuantifier::All)
+            .with_projections(vec![projection])
+            .with_limit(limit.map(crate::PageValue::Literal)),
     )
     .expect("meta query")
 }
@@ -106,7 +105,7 @@ fn meta_query_normalizes_encodes_and_decodes_canonically() {
 #[test]
 fn zero_limit_round_trips_as_a_canonical_empty_result_bound() {
     let query = fixture_query_with_limit(Some(0)).normalized();
-    assert_eq!(query.limit(), Some(0));
+    assert_eq!(query.limit(), Some(&crate::PageValue::Literal(0)));
     let encoded = query.encode_canonical().expect("zero-limit encoding");
     assert_eq!(
         MetaQueryIr::decode_canonical(&encoded).expect("zero-limit decoding"),
@@ -146,18 +145,76 @@ fn malformed_query_contracts_fail_closed() {
             query_id("invalid-count-star-quantifier"),
             fixture.graph().clone(),
             fixture.filters().to_vec(),
-            fixture.projections().to_vec(),
-            vec![Aggregation::new(
-                operator_id("invalid-count-star-quantifier"),
-                AggregationFunction::Count,
-                Some(SetQuantifier::Distinct),
-                Vec::new(),
-                true,
-                binding("rows"),
-            )],
-            Vec::new(),
-            None,
+            QueryResult::returning(SetQuantifier::All)
+                .with_projections(fixture.projections().to_vec())
+                .with_aggregations(vec![Aggregation::new(
+                    operator_id("invalid-count-star-quantifier"),
+                    AggregationFunction::Count,
+                    Some(SetQuantifier::Distinct),
+                    Vec::new(),
+                    true,
+                    binding("rows"),
+                )]),
         ),
         Err(QueryIrError::AggregationRequiresExpression)
+    );
+}
+
+#[test]
+fn result_mode_and_dynamic_pagination_are_canonical_semantics() {
+    let fixture = fixture_query();
+    let returning = MetaQueryIr::new(
+        query_id("dynamic-page"),
+        fixture.graph().clone(),
+        fixture.filters().to_vec(),
+        QueryResult::returning(SetQuantifier::Distinct)
+            .with_projections(fixture.projections().to_vec())
+            .with_offset(Some(PageValue::Parameter(
+                crate::Parameter::new("offset").expect("offset parameter"),
+            )))
+            .with_limit(Some(PageValue::Literal(50))),
+    )
+    .expect("dynamic pagination query")
+    .normalized();
+    assert_eq!(
+        returning.result().mode(),
+        ResultMode::Return(SetQuantifier::Distinct)
+    );
+    assert_eq!(
+        returning.offset(),
+        Some(&PageValue::Parameter(
+            crate::Parameter::new("offset").expect("offset parameter")
+        ))
+    );
+    assert_eq!(returning.limit(), Some(&PageValue::Literal(50)));
+    let encoded = returning.encode_canonical().expect("result encoding");
+    assert_eq!(
+        MetaQueryIr::decode_canonical(&encoded).expect("result decoding"),
+        returning
+    );
+
+    let finish = MetaQueryIr::new(
+        query_id("finish"),
+        fixture.graph().clone(),
+        fixture.filters().to_vec(),
+        QueryResult::finish(),
+    )
+    .expect("finish query");
+    assert_eq!(finish.result().mode(), ResultMode::Finish);
+    assert_ne!(finish.encode_canonical().unwrap(), encoded);
+}
+
+#[test]
+fn finish_rejects_row_result_modifiers() {
+    let fixture = fixture_query();
+    let invalid = QueryResult::finish().with_limit(Some(PageValue::Literal(1)));
+    assert_eq!(
+        MetaQueryIr::new(
+            query_id("invalid-finish"),
+            fixture.graph().clone(),
+            fixture.filters().to_vec(),
+            invalid,
+        ),
+        Err(QueryIrError::FinishHasResultModifiers)
     );
 }

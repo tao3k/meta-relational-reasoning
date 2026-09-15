@@ -1,34 +1,25 @@
-//! Explicit GQL/Cypher adapters that lower the shared syntax slice directly
-//! into `MetaQueryIr` without routing through the existing `gql-ir` contract.
+//! Parser-owned GQL compilation and test-only legacy differential lowering.
 
-use gql_ast::{self as ast, PatternElement, QueryClause, Statement};
+#[cfg(test)]
+use gql_ast::Statement;
+use gql_ast::{self as ast, PatternElement, QueryClause};
 use gql_source::Diagnostic;
 use mrr_query::{
     Aggregation, AggregationFunction, BinaryOperator, Binding, Direction, Expression, Filter,
-    GraphPattern, MetaQueryIr, NodePattern, Ordering, Parameter, PathPattern, PathSegment,
-    Projection, PropertyKey, QueryId, QueryIrError, QueryOperatorId, RelationId, RelationPattern,
-    SetQuantifier, SortDirection, UnaryOperator, Value,
+    GraphPattern, Grouping, MetaQueryIr, NodePattern, Ordering, Parameter, PathPattern,
+    PathSegment, Projection, PropertyKey, QueryId, QueryIrError, QueryOperatorId, QueryResult,
+    RelationId, RelationPattern, SetQuantifier, SortDirection, UnaryOperator, Value,
 };
 
 /// Stable V1 schema for source-bound parser-owned compilation evidence.
 pub const PARSER_OWNED_COMPILATION_SCHEMA_V1: &str = "mrr.parser-owned-compilation.v1";
 
+use crate::result_lowering::{lower_page_value, visible_bindings};
 use crate::value_type_identity::{append, append_value_type};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-/// Surface language selected by the caller at the frontend boundary.
-pub enum QueryLanguage {
-    /// ISO GQL surface interpretation.
-    Gql,
-    /// openCypher language-surface interpretation.
-    Cypher,
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-/// Stateless compiler for one explicit query-language surface.
-pub struct QueryFrontend {
-    language: QueryLanguage,
-}
+/// Stateless parser-owned ISO GQL compiler.
+pub struct QueryFrontend;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 /// Fail-closed frontend diagnostics, unsupported syntax, or IR rejection.
@@ -68,16 +59,16 @@ impl From<QueryIrError> for FrontendError {
 
 impl QueryFrontend {
     #[must_use]
-    pub const fn new(language: QueryLanguage) -> Self {
-        Self { language }
+    pub const fn new() -> Self {
+        Self
     }
 
-    #[must_use]
-    pub const fn language(&self) -> QueryLanguage {
-        self.language
-    }
-
-    pub fn compile(&self, name: &str, source: &str) -> Result<MetaQueryIr, FrontendError> {
+    #[cfg(test)]
+    pub(crate) fn compile_legacy_oracle(
+        &self,
+        name: &str,
+        source: &str,
+    ) -> Result<MetaQueryIr, FrontendError> {
         let parse = gql_syntax::parse(name, source);
         let lowered = gql_ast::lower_from_syntax(&parse);
         if !lowered.diagnostics.is_empty() {
@@ -96,24 +87,17 @@ impl QueryFrontend {
     /// This is an explicit migration boundary: it does not fall back to the
     /// smaller legacy Rust parser when the complete grammar accepts a shape
     /// whose semantic lowering is not yet owned here.
-    pub fn compile_parser_owned(
-        &self,
-        name: &str,
-        source: &str,
-    ) -> Result<MetaQueryIr, FrontendError> {
-        self.compile_parser_owned_with_receipt(name, source)
+    pub fn compile(&self, name: &str, source: &str) -> Result<MetaQueryIr, FrontendError> {
+        self.compile_with_receipt(name, source)
             .map(|compilation| compilation.query)
     }
 
     /// Compiles through the parser-owned path and retains source authority.
-    pub fn compile_parser_owned_with_receipt(
+    pub fn compile_with_receipt(
         &self,
         name: &str,
         source: &str,
     ) -> Result<ParserOwnedCompilation, FrontendError> {
-        if self.language != QueryLanguage::Gql {
-            return unsupported("parser-owned lowering is only authoritative for ISO GQL");
-        }
         let lowered = crate::parser_owned::lower_parser_owned_ast(source)?;
         let query = lower_query(&lowered.query)?;
         let receipt = ParserOwnedCompilationReceipt {
@@ -127,13 +111,24 @@ impl QueryFrontend {
     }
 }
 
+impl Default for QueryFrontend {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 fn lower_query(query: &ast::Query) -> Result<MetaQueryIr, FrontendError> {
     let query_id = QueryId::from_canonical_bytes(semantic_key(query))
         .map_err(|error| FrontendError::Unsupported(error.to_string()))?;
     let mut match_clause = None;
     let mut predicates = Vec::new();
     let mut return_projections = None;
+    let mut return_quantifier = SetQuantifier::All;
+    let mut return_all_bindings = false;
+    let mut finish = false;
     let mut order_keys = Vec::new();
+    let mut group_keys = Vec::new();
+    let mut offset = None;
     let mut limit = None;
 
     for clause in &query.clauses {
@@ -145,30 +140,29 @@ fn lower_query(query: &ast::Query) -> Result<MetaQueryIr, FrontendError> {
                 predicates.push(lower_expression(expression)?)
             }
             QueryClause::Return {
-                quantifier: Some(ast::SetQuantifier::Distinct),
+                quantifier,
+                all_bindings,
+                projections,
                 ..
-            } => return unsupported("RETURN DISTINCT"),
-            QueryClause::Return {
-                all_bindings: true, ..
-            } => return unsupported("RETURN *"),
-            QueryClause::Return { projections, .. } if return_projections.is_none() => {
+            } if return_projections.is_none() && !finish => {
                 return_projections = Some(projections.as_slice());
+                return_quantifier = match quantifier {
+                    Some(ast::SetQuantifier::Distinct) => SetQuantifier::Distinct,
+                    Some(ast::SetQuantifier::All) | None => SetQuantifier::All,
+                };
+                return_all_bindings = *all_bindings;
             }
             QueryClause::Return { .. } => return unsupported("multiple RETURN clauses"),
-            QueryClause::Finish { .. } => return unsupported("FINISH result statement"),
-            QueryClause::Limit { value, .. } => match value {
-                ast::NonNegativeIntegerSpecification::Literal(value) => limit = Some(*value),
-                ast::NonNegativeIntegerSpecification::Parameter(_) => {
-                    return unsupported("dynamic LIMIT");
-                }
-            },
+            QueryClause::Finish { .. } if return_projections.is_none() && !finish => finish = true,
+            QueryClause::Finish { .. } => return unsupported("multiple result statements"),
+            QueryClause::Limit { value, .. } => limit = Some(lower_page_value(value)?),
             QueryClause::OrderBy { keys, .. } => order_keys.extend(keys),
             QueryClause::OptionalMatch(_) => return unsupported("OPTIONAL MATCH"),
             QueryClause::Let { .. } => return unsupported("LET"),
             QueryClause::For { .. } => return unsupported("FOR collection expansion"),
             QueryClause::Union { .. } => return unsupported("UNION"),
-            QueryClause::Offset { .. } => return unsupported("OFFSET"),
-            QueryClause::GroupBy { .. } => return unsupported("GROUP BY"),
+            QueryClause::Offset { value, .. } => offset = Some(lower_page_value(value)?),
+            QueryClause::GroupBy { keys, .. } => group_keys.extend(keys),
             QueryClause::Insert { .. } => return unsupported("INSERT"),
             QueryClause::Set { .. } => return unsupported("SET"),
             QueryClause::Remove { .. } => return unsupported("REMOVE"),
@@ -203,15 +197,25 @@ fn lower_query(query: &ast::Query) -> Result<MetaQueryIr, FrontendError> {
         .enumerate()
         .map(|(index, predicate)| Filter::new(operator_id(query_id, "filter", index), predicate))
         .collect();
-    let return_projections =
-        return_projections.ok_or_else(|| FrontendError::Unsupported("RETURN projection".into()))?;
     let mut projections = Vec::new();
     let mut aggregations = Vec::new();
-    for (index, projection) in return_projections.iter().enumerate() {
-        let alias = projection
-            .alias
-            .as_ref()
-            .map_or_else(|| format!("result_{index}"), |alias| alias.text.clone());
+    if return_all_bindings {
+        projections.extend(visible_bindings(&graph).into_iter().enumerate().map(
+            |(index, binding)| {
+                Projection::new(
+                    operator_id(query_id, "projection", index),
+                    Expression::Binding(binding.clone()),
+                    binding,
+                )
+            },
+        ));
+    }
+    for (index, projection) in return_projections.unwrap_or_default().iter().enumerate() {
+        let operator_index = projections.len() + index;
+        let alias = projection.alias.as_ref().map_or_else(
+            || format!("result_{operator_index}"),
+            |alias| alias.text.clone(),
+        );
         if let ast::Expression::AggregateCall {
             function,
             quantifier,
@@ -221,7 +225,7 @@ fn lower_query(query: &ast::Query) -> Result<MetaQueryIr, FrontendError> {
         } = &projection.expression
         {
             aggregations.push(Aggregation::new(
-                operator_id(query_id, "aggregation", index),
+                operator_id(query_id, "aggregation", operator_index),
                 lower_aggregation_function(*function),
                 quantifier.map(|quantifier| match quantifier {
                     ast::SetQuantifier::All => SetQuantifier::All,
@@ -236,7 +240,7 @@ fn lower_query(query: &ast::Query) -> Result<MetaQueryIr, FrontendError> {
             ));
         } else {
             projections.push(Projection::new(
-                operator_id(query_id, "projection", index),
+                operator_id(query_id, "projection", operator_index),
                 lower_expression(&projection.expression)?,
                 Binding::new(alias)?,
             ));
@@ -260,17 +264,32 @@ fn lower_query(query: &ast::Query) -> Result<MetaQueryIr, FrontendError> {
         })
         .collect::<Result<Vec<_>, FrontendError>>()?;
 
-    MetaQueryIr::new(
-        query_id,
-        graph,
-        filters,
-        projections,
-        aggregations,
-        ordering,
-        limit,
-    )
-    .map(MetaQueryIr::normalized)
-    .map_err(FrontendError::InvalidQuery)
+    let grouping = group_keys
+        .into_iter()
+        .enumerate()
+        .map(|(index, expression)| {
+            Ok(Grouping::new(
+                operator_id(query_id, "grouping", index),
+                lower_expression(expression)?,
+            ))
+        })
+        .collect::<Result<Vec<_>, FrontendError>>()?;
+
+    let result = if finish {
+        QueryResult::finish()
+    } else {
+        QueryResult::returning(return_quantifier)
+            .with_projections(projections)
+            .with_aggregations(aggregations)
+            .with_grouping(grouping)
+            .with_ordering(ordering)
+            .with_offset(offset)
+            .with_limit(limit)
+    };
+
+    MetaQueryIr::new(query_id, graph, filters, result)
+        .map(MetaQueryIr::normalized)
+        .map_err(FrontendError::InvalidQuery)
 }
 
 fn lower_graph(

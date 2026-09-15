@@ -7,6 +7,8 @@ pub use mrr_identity::{EntityId, QueryId, QueryOperatorId, RelationId};
 pub use mrr_relation::Value;
 use serde::{Deserialize, Serialize};
 
+use crate::result::{Grouping, PageValue, QueryResult, ResultMode};
+
 pub const META_QUERY_SCHEMA: &str = "mrr.meta-query.v1";
 const META_QUERY_PREFIX: &[u8] = b"mrr.meta-query.v1\0";
 
@@ -557,10 +559,7 @@ pub struct MetaQueryIr {
     id: QueryId,
     graph: GraphPattern,
     filters: Vec<Filter>,
-    projections: Vec<Projection>,
-    aggregations: Vec<Aggregation>,
-    ordering: Vec<Ordering>,
-    limit: Option<u64>,
+    result: QueryResult,
 }
 
 impl MetaQueryIr {
@@ -568,19 +567,13 @@ impl MetaQueryIr {
         id: QueryId,
         graph: GraphPattern,
         filters: Vec<Filter>,
-        projections: Vec<Projection>,
-        aggregations: Vec<Aggregation>,
-        ordering: Vec<Ordering>,
-        limit: Option<u64>,
+        result: QueryResult,
     ) -> Result<Self, QueryIrError> {
         let query = Self {
             id,
             graph,
             filters,
-            projections,
-            aggregations,
-            ordering,
-            limit,
+            result,
         };
         query.validate()?;
         Ok(query)
@@ -603,22 +596,37 @@ impl MetaQueryIr {
 
     #[must_use]
     pub fn projections(&self) -> &[Projection] {
-        &self.projections
+        &self.result.projections
     }
 
     #[must_use]
     pub fn aggregations(&self) -> &[Aggregation] {
-        &self.aggregations
+        &self.result.aggregations
     }
 
     #[must_use]
     pub fn ordering(&self) -> &[Ordering] {
-        &self.ordering
+        &self.result.ordering
     }
 
     #[must_use]
-    pub const fn limit(&self) -> Option<u64> {
-        self.limit
+    pub const fn result(&self) -> &QueryResult {
+        &self.result
+    }
+
+    #[must_use]
+    pub fn grouping(&self) -> &[Grouping] {
+        &self.result.grouping
+    }
+
+    #[must_use]
+    pub const fn offset(&self) -> Option<&PageValue> {
+        self.result.offset.as_ref()
+    }
+
+    #[must_use]
+    pub const fn limit(&self) -> Option<&PageValue> {
+        self.result.limit.as_ref()
     }
 
     /// Returns the distinct relation identities referenced by graph patterns.
@@ -670,8 +678,23 @@ impl MetaQueryIr {
         if self.graph.paths.is_empty() {
             return Err(QueryIrError::EmptyGraphPattern);
         }
-        if self.projections.is_empty() && self.aggregations.is_empty() {
-            return Err(QueryIrError::EmptyOutput);
+        match self.result.mode {
+            ResultMode::Return(_) => {
+                if self.result.projections.is_empty() && self.result.aggregations.is_empty() {
+                    return Err(QueryIrError::EmptyOutput);
+                }
+            }
+            ResultMode::Finish => {
+                if !self.result.projections.is_empty()
+                    || !self.result.aggregations.is_empty()
+                    || !self.result.grouping.is_empty()
+                    || !self.result.ordering.is_empty()
+                    || self.result.offset.is_some()
+                    || self.result.limit.is_some()
+                {
+                    return Err(QueryIrError::FinishHasResultModifiers);
+                }
+            }
         }
         for path in &self.graph.paths {
             validate_binding(&path.start.binding)?;
@@ -683,11 +706,11 @@ impl MetaQueryIr {
         for filter in &self.filters {
             filter.predicate.validate()?;
         }
-        for projection in &self.projections {
+        for projection in &self.result.projections {
             projection.expression.validate()?;
             validate_binding(&projection.alias)?;
         }
-        for aggregation in &self.aggregations {
+        for aggregation in &self.result.aggregations {
             let expected_arity = if matches!(
                 aggregation.function,
                 AggregationFunction::PercentileContinuous | AggregationFunction::PercentileDiscrete
@@ -709,8 +732,19 @@ impl MetaQueryIr {
             }
             validate_binding(&aggregation.alias)?;
         }
-        for ordering in &self.ordering {
+        for grouping in &self.result.grouping {
+            grouping.expression().validate()?;
+        }
+        for ordering in &self.result.ordering {
             ordering.expression.validate()?;
+        }
+        for page in [&self.result.offset, &self.result.limit]
+            .into_iter()
+            .flatten()
+        {
+            if let PageValue::Parameter(parameter) = page {
+                validate_name(parameter.as_str())?;
+            }
         }
         Ok(())
     }
@@ -721,6 +755,7 @@ pub enum QueryIrError {
     InvalidName(String),
     EmptyGraphPattern,
     EmptyOutput,
+    FinishHasResultModifiers,
     InvalidHopRange { min: u32, max: Option<u32> },
     AggregationRequiresExpression,
     SchemaMismatch,

@@ -42,9 +42,10 @@ pub use mrr_logic::{
 };
 pub use mrr_query::{
     Aggregation, AggregationFunction, Atom, BinaryOperator, Binding, Direction, Expression, Filter,
-    GraphPattern, MetaQueryIr, NodePattern, Ordering, PathPattern, PathSegment, Projection,
-    PropertyKey, QueryIrError, RelationPattern, RelationalGoal, RelationalGoalError, SortDirection,
-    Term, UnaryOperator, Variable,
+    GraphPattern, Grouping, MetaQueryIr, NodePattern, Ordering, PageValue, PathPattern,
+    PathSegment, Projection, PropertyKey, QueryIrError, QueryResult, RelationPattern,
+    RelationalGoal, RelationalGoalError, ResultMode, SetQuantifier, SortDirection, Term,
+    UnaryOperator, Variable,
 };
 pub use mrr_relation::{
     EvidenceCompleteness, Fact, FactProvenance, FactValidity, RelationAuthority,

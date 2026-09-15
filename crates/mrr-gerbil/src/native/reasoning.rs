@@ -318,14 +318,13 @@ fn query_ir(id: QueryId, relation: RelationId) -> Result<MetaQueryIr, String> {
         id,
         graph,
         Vec::new(),
-        vec![Projection::new(
-            operator_id("projection"),
-            Expression::Binding(right),
-            binding("result")?,
-        )],
-        Vec::new(),
-        Vec::new(),
-        None,
+        mrr_query::QueryResult::returning(mrr_query::SetQuantifier::All).with_projections(vec![
+            Projection::new(
+                operator_id("projection"),
+                Expression::Binding(right),
+                binding("result")?,
+            ),
+        ]),
     )
     .map_err(|error| format!("{error:?}"))
 }

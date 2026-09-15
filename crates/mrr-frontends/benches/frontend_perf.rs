@@ -1,10 +1,10 @@
 use criterion::{Criterion, criterion_group, criterion_main};
-use mrr_frontends::{QueryFrontend, QueryLanguage};
+use mrr_frontends::QueryFrontend;
 
 const QUERY: &str = "MATCH (a:Module)-[:DEPENDS_ON]->(b:Module) WHERE a.name = 'runtime' RETURN b";
 
 fn bench_frontend(c: &mut Criterion) {
-    let frontend = QueryFrontend::new(QueryLanguage::Gql);
+    let frontend = QueryFrontend::new();
     c.bench_function("mrr_frontend_gql_to_meta_query", |bencher| {
         bencher.iter(|| {
             frontend

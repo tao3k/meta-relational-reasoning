@@ -7,11 +7,12 @@ use meta_relational_reasoning::{
     GraphPattern, GroundAtom, InitialState, IntentBindingStatus, IntentBundleBinding,
     IntentSemanticModel, Invariant, LineageEdge, LineageEdgeId, LineageEdgeKind, LineageGraph,
     LineageNode, LineageNodeId, LineageNodeKind, MetaQueryIr, MrrEngine, NodePattern, PathPattern,
-    PathSegment, Precondition, Projection, QueryId, QueryOperatorId, QueryTemplate,
+    PathSegment, Precondition, Projection, QueryId, QueryOperatorId, QueryResult, QueryTemplate,
     ReasoningBundle, ReasoningBundleDeclaration, RelationAuthority, RelationCardinality,
     RelationContext, RelationField, RelationId, RelationPattern, RelationSchema, RevisionBinding,
-    Rule, RuleId, RulePack, RulePackId, SafetyLimits, SafetyStatus, StatePredicate, StateSchema,
-    StateSnapshot, Term, TransitionSystem, Value, ValueType, Variable, WhyNotLimits, WhyNotStatus,
+    Rule, RuleId, RulePack, RulePackId, SafetyLimits, SafetyStatus, SetQuantifier, StatePredicate,
+    StateSchema, StateSnapshot, Term, TransitionSystem, Value, ValueType, Variable, WhyNotLimits,
+    WhyNotStatus,
 };
 
 macro_rules! id {
@@ -112,14 +113,11 @@ fn query(domain: &str, relation: RelationId) -> MetaQueryIr {
         id!(QueryId, domain, "query"),
         graph,
         vec![],
-        vec![Projection::new(
+        QueryResult::returning(SetQuantifier::All).with_projections(vec![Projection::new(
             id!(QueryOperatorId, domain, "projection"),
             Expression::Binding(right.clone()),
             right,
-        )],
-        vec![],
-        vec![],
-        None,
+        )]),
     )
     .unwrap()
 }

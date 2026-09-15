@@ -2,6 +2,7 @@
 #![forbid(unsafe_code)]
 
 mod api;
+mod result;
 pub use api::{
     Aggregation, AggregationFunction, Atom, BinaryOperator, Binding, Direction, Expression, Filter,
     GraphPattern, META_QUERY_SCHEMA, MetaQueryIr, NodePattern, Ordering, Parameter, PathPattern,
@@ -10,6 +11,7 @@ pub use api::{
 };
 pub use mrr_identity::{EntityId, QueryId, QueryOperatorId, RelationId};
 pub use mrr_relation::Value;
+pub use result::{Grouping, PageValue, QueryResult, ResultMode};
 
 #[cfg(test)]
 #[path = "../tests/unit/mod.rs"]
