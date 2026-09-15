@@ -1132,7 +1132,7 @@ dependencies = [
  "criterion",
  "gql-ast",
  "gql-source",
- "gql-syntax",
+ "icu_properties",
  "mrr-asp-rust-project-policy",
  "mrr-gerbil",
  "mrr-query",

@@ -1,6 +1,7 @@
 //! Parser-owned ISO GQL compilation into the shared `MetaQueryIr` contract.
 #![forbid(unsafe_code)]
 
+mod lexical;
 mod lowering;
 mod parser_owned;
 mod result_lowering;

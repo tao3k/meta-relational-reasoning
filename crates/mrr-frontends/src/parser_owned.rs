@@ -188,13 +188,13 @@ fn lower_limit(
 
 fn lower_dynamic_parameter(node: &Node) -> Result<DynamicParameterReference, FrontendError> {
     let text = node.text().to_string();
-    let decoded = gql_syntax::decode_parameter_reference(text.trim())
+    let decoded = crate::lexical::decode_parameter_reference(text.trim())
         .ok_or_else(|| unsupported_error("dynamic parameter"))?;
     Ok(DynamicParameterReference {
         name: decoded.name.into_owned(),
         form: match decoded.form {
-            gql_syntax::ParameterNameForm::Extended => ParameterNameForm::Extended,
-            gql_syntax::ParameterNameForm::Delimited => ParameterNameForm::Delimited,
+            crate::lexical::ParameterNameForm::Extended => ParameterNameForm::Extended,
+            crate::lexical::ParameterNameForm::Delimited => ParameterNameForm::Delimited,
         },
         span: span(node),
     })
@@ -507,7 +507,7 @@ fn lower_expression(cst: &ParserCst, node: &Node) -> Result<Expression, Frontend
             .into_iter()
             .next()
             .and_then(|token| {
-                gql_syntax::decode_character_string(token.text())
+                crate::lexical::decode_character_string(token.text())
                     .map(|decoded| decoded.value.into_owned())
             })
             .ok_or_else(|| unsupported_error("temporal character sequence"))?;
@@ -563,12 +563,12 @@ fn lower_expression(cst: &ParserCst, node: &Node) -> Result<Expression, Frontend
             "NULL" => return Ok(Expression::Null(token_span(&token))),
             _ => {}
         }
-        let value = gql_syntax::decode_character_string(&text)
+        let value = crate::lexical::decode_character_string(&text)
             .ok_or_else(|| unsupported_error("character string literal"))?;
         let form = match value.form {
-            gql_syntax::CharacterStringForm::SingleQuoted => CharacterStringForm::SingleQuoted,
-            gql_syntax::CharacterStringForm::DoubleQuoted => CharacterStringForm::DoubleQuoted,
-            gql_syntax::CharacterStringForm::GraveQuoted => {
+            crate::lexical::CharacterStringForm::Single => CharacterStringForm::SingleQuoted,
+            crate::lexical::CharacterStringForm::Double => CharacterStringForm::DoubleQuoted,
+            crate::lexical::CharacterStringForm::Grave => {
                 return unsupported("grave-quoted character string");
             }
         };

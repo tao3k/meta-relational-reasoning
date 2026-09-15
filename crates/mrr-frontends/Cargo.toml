@@ -8,7 +8,7 @@ rust-version.workspace = true
 [dependencies]
 gql-ast = { path = "../gql-ast", version = "0.1.0", default-features = false }
 gql-source.workspace = true
-gql-syntax = { path = "../gql-syntax", version = "0.1.0", default-features = false }
+icu_properties.workspace = true
 mrr-query.workspace = true
 mrr-gerbil.workspace = true
 rowan.workspace = true
