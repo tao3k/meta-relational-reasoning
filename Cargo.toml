@@ -4,6 +4,24 @@ members = [
   "build-support/mrr-gerbil-native-build",
   "crates/*",
 ]
+default-members = [
+  "build-support/mrr-asp-rust-project-policy",
+  "build-support/mrr-gerbil-native-build",
+  "crates/meta-relational-reasoning",
+  "crates/mrr-ascent",
+  "crates/mrr-bundle",
+  "crates/mrr-conformance",
+  "crates/mrr-frontends",
+  "crates/mrr-gerbil",
+  "crates/mrr-identity",
+  "crates/mrr-intent",
+  "crates/mrr-lineage",
+  "crates/mrr-logic",
+  "crates/mrr-query",
+  "crates/mrr-relation",
+  "crates/mrr-revision",
+  "crates/mrr-transition",
+]
 resolver = "2"
 
 [workspace.package]

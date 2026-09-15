@@ -112,10 +112,10 @@ jobs:
         run: gerbil test
 
       - name: Test Rust workspace in the Gerbil package environment
-        run: gerbil env cargo test --workspace --locked
+        run: gerbil env cargo test --locked
 
       - name: Lint Rust workspace
-        run: gerbil env cargo clippy --workspace --all-targets --locked -- -D warnings
+        run: gerbil env cargo clippy --all-targets --locked -- -D warnings
 
       - name: Check lightweight GQL support profiles
         run: |
