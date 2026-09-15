@@ -1,13 +1,11 @@
 //! Parser-owned Rowan CST lowering for the admitted Graph-Relational slice.
 
-use gql_ast::{
-    AggregateFunction, BinaryOperator, CharacterStringForm, CharacterStringLiteral,
-    DynamicParameterReference, EdgeDirection, EdgePattern, Expression, Identifier, IdentifierForm,
-    MatchClause, NodePattern, NonNegativeIntegerSpecification, NullOrdering, ParameterNameForm,
-    PathPattern, PatternElement, PropertyConstraint, Query, QueryClause, RecordField,
+use crate::projection::{
+    AggregateFunction, BinaryOperator, DynamicParameterReference, EdgeDirection, EdgePattern,
+    Expression, Identifier, MatchClause, NodePattern, NonNegativeIntegerSpecification,
+    NullOrdering, PathPattern, PatternElement, PropertyConstraint, Query, QueryClause, RecordField,
     ReturnProjection, SetQuantifier, SortDirection, SortKey, TruthValue, UnaryOperator,
 };
-use gql_source::Span;
 use mrr_gerbil::{ParserCst, ParserSyntax, parse_gql_artifact};
 use rowan::SyntaxNode;
 
@@ -45,18 +43,12 @@ pub(crate) fn lower_parser_owned_ast(source: &str) -> Result<ParserOwnedAst, Fro
     if let Some(where_clause) = first_descendant(&cst, &matches[0], "GraphPatternWhereClause") {
         let condition = first_descendant(&cst, &where_clause, "SearchCondition")
             .ok_or_else(|| unsupported_error("WHERE condition"))?;
-        clauses.push(QueryClause::Where {
-            expression: lower_expression(&cst, &condition)?,
-            span: span(&where_clause),
-        });
+        clauses.push(QueryClause::Where(lower_expression(&cst, &condition)?));
     }
     for filter in descendants_named(&cst, &root, "FilterStatement") {
         let condition = first_descendant(&cst, &filter, "SearchCondition")
             .ok_or_else(|| unsupported_error("FILTER condition"))?;
-        clauses.push(QueryClause::Filter {
-            expression: lower_expression(&cst, &condition)?,
-            span: span(&filter),
-        });
+        clauses.push(QueryClause::Filter(lower_expression(&cst, &condition)?));
     }
     if let Some(result) = returns.first() {
         clauses.push(QueryClause::Return {
@@ -65,42 +57,24 @@ pub(crate) fn lower_parser_owned_ast(source: &str) -> Result<ParserOwnedAst, Fro
                 .iter()
                 .any(|token| token.text() == "*"),
             projections: lower_return(&cst, result)?,
-            span: span(result),
         });
     } else {
-        clauses.push(QueryClause::Finish {
-            span: span(&finishes[0]),
-        });
+        clauses.push(QueryClause::Finish);
     }
     if let Some(group_by) = first_descendant(&cst, &root, "GroupByClause") {
-        clauses.push(QueryClause::GroupBy {
-            keys: lower_group_by(&cst, &group_by)?,
-            span: span(&group_by),
-        });
+        clauses.push(QueryClause::GroupBy(lower_group_by(&cst, &group_by)?));
     }
     if let Some(order_by) = first_descendant(&cst, &root, "OrderByClause") {
-        clauses.push(QueryClause::OrderBy {
-            keys: lower_order_by(&cst, &order_by)?,
-            span: span(&order_by),
-        });
+        clauses.push(QueryClause::OrderBy(lower_order_by(&cst, &order_by)?));
     }
     if let Some(offset) = first_descendant(&cst, &root, "OffsetClause") {
-        clauses.push(QueryClause::Offset {
-            value: lower_limit(&cst, &offset)?,
-            span: span(&offset),
-        });
+        clauses.push(QueryClause::Offset(lower_limit(&cst, &offset)?));
     }
     if let Some(limit) = first_descendant(&cst, &root, "LimitClause") {
-        clauses.push(QueryClause::Limit {
-            value: lower_limit(&cst, &limit)?,
-            span: span(&limit),
-        });
+        clauses.push(QueryClause::Limit(lower_limit(&cst, &limit)?));
     }
     Ok(ParserOwnedAst {
-        query: Query {
-            clauses,
-            span: span(&root),
-        },
+        query: Query { clauses },
         grammar_digest: artifact.grammar_digest,
         source_digest: artifact.source_digest,
     })
@@ -192,11 +166,6 @@ fn lower_dynamic_parameter(node: &Node) -> Result<DynamicParameterReference, Fro
         .ok_or_else(|| unsupported_error("dynamic parameter"))?;
     Ok(DynamicParameterReference {
         name: decoded.name.into_owned(),
-        form: match decoded.form {
-            crate::lexical::ParameterNameForm::Extended => ParameterNameForm::Extended,
-            crate::lexical::ParameterNameForm::Delimited => ParameterNameForm::Delimited,
-        },
-        span: span(node),
     })
 }
 
@@ -245,12 +214,7 @@ fn lower_match(cst: &ParserCst, node: &Node) -> Result<MatchClause, FrontendErro
     if patterns.is_empty() {
         return unsupported("empty graph pattern");
     }
-    Ok(MatchClause {
-        mode: None,
-        patterns,
-        keep: None,
-        span: span(node),
-    })
+    Ok(MatchClause { patterns })
 }
 
 fn lower_path(cst: &ParserCst, node: &Node) -> Result<PathPattern, FrontendError> {
@@ -266,12 +230,7 @@ fn lower_path(cst: &ParserCst, node: &Node) -> Result<PathPattern, FrontendError
             return unsupported("PathFactor outside node-edge parity slice");
         }
     }
-    Ok(PathPattern {
-        binding: None,
-        prefix: None,
-        elements,
-        span: span(node),
-    })
+    Ok(PathPattern { elements })
 }
 
 fn lower_node(cst: &ParserCst, node: &Node) -> Result<NodePattern, FrontendError> {
@@ -279,8 +238,6 @@ fn lower_node(cst: &ParserCst, node: &Node) -> Result<NodePattern, FrontendError
         binding: lower_binding(cst, node)?,
         labels: lower_labels(cst, node)?,
         properties: lower_properties(cst, node)?,
-        predicate: None,
-        span: span(node),
     })
 }
 
@@ -296,10 +253,7 @@ fn lower_edge(cst: &ParserCst, node: &Node) -> Result<EdgePattern, FrontendError
         binding: lower_binding(cst, node)?,
         labels: lower_labels(cst, node)?,
         properties: lower_properties(cst, node)?,
-        predicate: None,
         direction,
-        quantifier: None,
-        span: span(node),
     })
 }
 
@@ -330,7 +284,6 @@ fn lower_properties(
             Ok(PropertyConstraint {
                 key: lower_identifier(cst, &name)?,
                 value: lower_expression(cst, &value)?,
-                span: span(pair),
             })
         })
         .collect()
@@ -379,7 +332,6 @@ fn lower_expression(cst: &ParserCst, node: &Node) -> Result<Expression, Frontend
         return Ok(Expression::NullPredicate {
             operand: Box::new(lower_expression(cst, &operand)?),
             negated,
-            span: span(node),
         });
     }
     if let Some(truth) = direct_child_named(cst, node, "TruthValue") {
@@ -407,7 +359,6 @@ fn lower_expression(cst: &ParserCst, node: &Node) -> Result<Expression, Frontend
             operand: Box::new(lower_expression(cst, &operands[0])?),
             value,
             negated,
-            span: span(node),
         });
     }
     let direct_expression_children = direct_children_named(cst, node, "ValueExpression");
@@ -512,10 +463,10 @@ fn lower_expression(cst: &ParserCst, node: &Node) -> Result<Expression, Frontend
             })
             .ok_or_else(|| unsupported_error("temporal character sequence"))?;
         return Ok(match kind_name(cst, node) {
-            Some("DateLiteral") => Expression::Date(value, span(node)),
-            Some("TimeLiteral") => Expression::Time(value, span(node)),
-            Some("DatetimeLiteral") => Expression::Timestamp(value, span(node)),
-            Some("DurationLiteral") => Expression::Duration(value, span(node)),
+            Some("DateLiteral") => Expression::Date(value),
+            Some("TimeLiteral") => Expression::Time(value),
+            Some("DatetimeLiteral") => Expression::Timestamp(value),
+            Some("DurationLiteral") => Expression::Duration(value),
             _ => unreachable!("temporal kind restricted above"),
         });
     }
@@ -530,7 +481,7 @@ fn lower_expression(cst: &ParserCst, node: &Node) -> Result<Expression, Frontend
                 lower_expression(cst, &value)
             })
             .collect::<Result<Vec<_>, _>>()?;
-        return Ok(Expression::List(values, span(node)));
+        return Ok(Expression::List(values));
     }
     if kind_name(cst, node) == Some("RecordLiteral") {
         let list = first_descendant(cst, node, "FieldList")
@@ -545,11 +496,10 @@ fn lower_expression(cst: &ParserCst, node: &Node) -> Result<Expression, Frontend
                 Ok(RecordField {
                     name: lower_identifier(cst, &name)?,
                     value: lower_expression(cst, &value)?,
-                    span: span(field),
                 })
             })
             .collect::<Result<Vec<_>, FrontendError>>()?;
-        return Ok(Expression::Record(fields, span(node)));
+        return Ok(Expression::Record(fields));
     }
     if kind_name(cst, node) == Some("GeneralLiteral") {
         let token = significant_tokens(cst, node)
@@ -558,26 +508,21 @@ fn lower_expression(cst: &ParserCst, node: &Node) -> Result<Expression, Frontend
             .ok_or_else(|| unsupported_error("general literal token"))?;
         let text = token.text().to_string();
         match text.to_ascii_uppercase().as_str() {
-            "TRUE" => return Ok(Expression::Boolean(true, token_span(&token))),
-            "FALSE" => return Ok(Expression::Boolean(false, token_span(&token))),
-            "NULL" => return Ok(Expression::Null(token_span(&token))),
+            "TRUE" => return Ok(Expression::Boolean(true)),
+            "FALSE" => return Ok(Expression::Boolean(false)),
+            "NULL" => return Ok(Expression::Null),
             _ => {}
         }
         let value = crate::lexical::decode_character_string(&text)
             .ok_or_else(|| unsupported_error("character string literal"))?;
-        let form = match value.form {
-            crate::lexical::CharacterStringForm::Single => CharacterStringForm::SingleQuoted,
-            crate::lexical::CharacterStringForm::Double => CharacterStringForm::DoubleQuoted,
+        match value.form {
+            crate::lexical::CharacterStringForm::Single
+            | crate::lexical::CharacterStringForm::Double => {}
             crate::lexical::CharacterStringForm::Grave => {
                 return unsupported("grave-quoted character string");
             }
-        };
-        return Ok(Expression::String(CharacterStringLiteral {
-            value: value.value.into_owned(),
-            form,
-            no_escape: value.no_escape,
-            span: token_span(&token),
-        }));
+        }
+        return Ok(Expression::String(value.value.into_owned()));
     }
     if kind_name(cst, node) == Some("ExactNumericLiteral") {
         let token = significant_tokens(cst, node)
@@ -585,8 +530,14 @@ fn lower_expression(cst: &ParserCst, node: &Node) -> Result<Expression, Frontend
             .next()
             .ok_or_else(|| unsupported_error("exact numeric literal"))?;
         let text = token.text().to_string();
-        return gql_ast::lower_numeric_literal(&text, token_span(&token))
-            .ok_or_else(|| unsupported_error("numeric literal"));
+        return match crate::lexical::decode_numeric_literal(&text) {
+            Some(crate::lexical::NumericLiteral::Integer(value)) => Ok(Expression::Integer(value)),
+            Some(crate::lexical::NumericLiteral::Decimal(value)) => Ok(Expression::Decimal(value)),
+            Some(crate::lexical::NumericLiteral::Approximate(value)) => {
+                Ok(Expression::ApproximateNumeric(value))
+            }
+            None => Err(unsupported_error("numeric literal")),
+        };
     }
 
     let children = node
@@ -647,8 +598,6 @@ fn lower_identifier(cst: &ParserCst, node: &Node) -> Result<Identifier, Frontend
         .ok_or_else(|| unsupported_error("identifier token"))?;
     Ok(Identifier {
         text: token.text().to_string(),
-        span: token_span(&token),
-        form: IdentifierForm::Undelimited,
     })
 }
 
@@ -751,7 +700,6 @@ fn lower_aggregate(cst: &ParserCst, node: &Node) -> Result<Expression, FrontendE
             .map(|argument| lower_expression(cst, argument))
             .collect::<Result<Vec<_>, _>>()?,
         count_star: false,
-        span: span(node),
     })
 }
 
@@ -799,20 +747,6 @@ fn significant_tokens(cst: &ParserCst, node: &Node) -> Vec<rowan::SyntaxToken<Pa
             )
         })
         .collect()
-}
-
-fn span(node: &Node) -> Span {
-    Span::new(
-        u32::from(node.text_range().start()),
-        u32::from(node.text_range().end()),
-    )
-}
-
-fn token_span(token: &rowan::SyntaxToken<ParserSyntax>) -> Span {
-    Span::new(
-        u32::from(token.text_range().start()),
-        u32::from(token.text_range().end()),
-    )
 }
 
 fn unsupported<T>(name: &str) -> Result<T, FrontendError> {

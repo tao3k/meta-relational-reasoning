@@ -2,10 +2,10 @@
 
 use std::collections::HashSet;
 
-use gql_ast as ast;
 use mrr_query::{Binding, GraphPattern, PageValue, Parameter};
 
 use crate::FrontendError;
+use crate::projection as ast;
 
 pub(crate) fn lower_page_value(
     value: &ast::NonNegativeIntegerSpecification,

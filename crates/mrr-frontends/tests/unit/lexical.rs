@@ -1,6 +1,4 @@
-use crate::lexical::{
-    ParameterNameForm, decode_character_string, decode_parameter_reference,
-};
+use crate::lexical::{ParameterNameForm, decode_character_string, decode_parameter_reference};
 
 #[test]
 fn character_decoder_preserves_iso_escape_and_no_escape_semantics() {

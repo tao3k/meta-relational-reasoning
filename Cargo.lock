@@ -1130,8 +1130,6 @@ name = "mrr-frontends"
 version = "0.1.0"
 dependencies = [
  "criterion",
- "gql-ast",
- "gql-source",
  "icu_properties",
  "mrr-asp-rust-project-policy",
  "mrr-gerbil",

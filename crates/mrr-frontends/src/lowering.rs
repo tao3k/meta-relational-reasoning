@@ -1,6 +1,5 @@
 //! Parser-owned GQL semantic projection into MetaQueryIR.
 
-use gql_ast::{self as ast, PatternElement, QueryClause};
 use mrr_query::{
     Aggregation, AggregationFunction, BinaryOperator, Binding, Direction, Expression, Filter,
     GraphPattern, Grouping, MetaQueryIr, NodePattern, Ordering, Parameter, PathPattern,
@@ -11,8 +10,9 @@ use mrr_query::{
 /// Stable V1 schema for source-bound parser-owned compilation evidence.
 pub const PARSER_OWNED_COMPILATION_SCHEMA_V1: &str = "mrr.parser-owned-compilation.v1";
 
+use crate::projection as ast;
+use crate::projection::{PatternElement, QueryClause};
 use crate::result_lowering::{lower_page_value, visible_bindings};
-use crate::value_type_identity::{append, append_value_type};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 /// Stateless parser-owned ISO GQL compiler.
@@ -111,9 +111,8 @@ fn lower_query(query: &ast::Query) -> Result<MetaQueryIr, FrontendError> {
         match clause {
             QueryClause::Match(found) if match_clause.is_none() => match_clause = Some(found),
             QueryClause::Match(_) => return unsupported("multiple MATCH clauses"),
-            QueryClause::Where { expression, .. } => predicates.push(lower_expression(expression)?),
-            QueryClause::Filter { expression, .. } => {
-                predicates.push(lower_expression(expression)?)
+            QueryClause::Where(expression) | QueryClause::Filter(expression) => {
+                predicates.push(lower_expression(expression)?);
             }
             QueryClause::Return {
                 quantifier,
@@ -129,41 +128,20 @@ fn lower_query(query: &ast::Query) -> Result<MetaQueryIr, FrontendError> {
                 return_all_bindings = *all_bindings;
             }
             QueryClause::Return { .. } => return unsupported("multiple RETURN clauses"),
-            QueryClause::Finish { .. } if return_projections.is_none() && !finish => finish = true,
-            QueryClause::Finish { .. } => return unsupported("multiple result statements"),
-            QueryClause::Limit { value, .. } => limit = Some(lower_page_value(value)?),
-            QueryClause::OrderBy { keys, .. } => order_keys.extend(keys),
-            QueryClause::OptionalMatch(_) => return unsupported("OPTIONAL MATCH"),
-            QueryClause::Let { .. } => return unsupported("LET"),
-            QueryClause::For { .. } => return unsupported("FOR collection expansion"),
-            QueryClause::Union { .. } => return unsupported("UNION"),
-            QueryClause::Offset { value, .. } => offset = Some(lower_page_value(value)?),
-            QueryClause::GroupBy { keys, .. } => group_keys.extend(keys),
-            QueryClause::Insert { .. } => return unsupported("INSERT"),
-            QueryClause::Set { .. } => return unsupported("SET"),
-            QueryClause::Remove { .. } => return unsupported("REMOVE"),
-            QueryClause::Delete { .. } => return unsupported("DELETE"),
+            QueryClause::Finish if return_projections.is_none() && !finish => finish = true,
+            QueryClause::Finish => return unsupported("multiple result statements"),
+            QueryClause::Limit(value) => limit = Some(lower_page_value(value)?),
+            QueryClause::OrderBy(keys) => order_keys.extend(keys),
+            QueryClause::Offset(value) => offset = Some(lower_page_value(value)?),
+            QueryClause::GroupBy(keys) => group_keys.extend(keys),
         }
     }
 
     let matched = match_clause.ok_or_else(|| {
         FrontendError::Unsupported("the parity slice requires one MATCH clause".into())
     })?;
-    if matched.mode.is_some() {
-        return unsupported("graph match mode");
-    }
-    if matched.keep.is_some() {
-        return unsupported("KEEP path prefix");
-    }
     if matched.patterns.is_empty() {
         return unsupported("empty MATCH pattern list");
-    }
-    if matched
-        .patterns
-        .iter()
-        .any(|pattern| pattern.prefix.is_some())
-    {
-        return unsupported("path search prefix");
     }
     let (graph, property_predicates) = lower_graph(query_id, &matched.patterns)?;
     predicates.splice(0..0, property_predicates);
@@ -369,11 +347,7 @@ fn lower_relation(edge: &ast::EdgePattern) -> Result<RelationPattern, FrontendEr
         ast::EdgeDirection::In => Direction::Incoming,
         ast::EdgeDirection::Undirected => Direction::Undirected,
     };
-    let (min, max) = edge
-        .quantifier
-        .as_ref()
-        .map_or((1, Some(1)), |quantifier| (quantifier.min, quantifier.max));
-    Ok(RelationPattern::new(binding, types, direction, min, max)?)
+    Ok(RelationPattern::new(binding, types, direction, 1, Some(1))?)
 }
 
 fn lower_properties(
@@ -409,32 +383,25 @@ fn lower_expression(expression: &ast::Expression) -> Result<Expression, Frontend
         ast::Expression::Parameter(parameter) => {
             Expression::Parameter(Parameter::new(parameter.name.clone())?)
         }
-        ast::Expression::Boolean(value, _) => Expression::Literal(Value::Boolean(*value)),
-        ast::Expression::Null(_) => Expression::Literal(Value::Null),
-        ast::Expression::String(literal) => {
-            Expression::Literal(Value::String(literal.value.clone()))
-        }
-        ast::Expression::ByteString(value, _) => {
-            Expression::Literal(Value::ByteString(value.clone()))
-        }
-        ast::Expression::Date(value, _) => Expression::Literal(Value::Date(value.clone())),
-        ast::Expression::Time(value, _) => Expression::Literal(Value::Time(value.clone())),
-        ast::Expression::Timestamp(value, _) => {
-            Expression::Literal(Value::Timestamp(value.clone()))
-        }
-        ast::Expression::Duration(value, _) => Expression::Literal(Value::Duration(value.clone())),
-        ast::Expression::Integer(value, _) => Expression::Literal(Value::Integer(*value)),
-        ast::Expression::Decimal(value, _) => Expression::Literal(Value::Decimal(value.clone())),
-        ast::Expression::ApproximateNumeric(value, _) => {
+        ast::Expression::Boolean(value) => Expression::Literal(Value::Boolean(*value)),
+        ast::Expression::Null => Expression::Literal(Value::Null),
+        ast::Expression::String(value) => Expression::Literal(Value::String(value.clone())),
+        ast::Expression::Date(value) => Expression::Literal(Value::Date(value.clone())),
+        ast::Expression::Time(value) => Expression::Literal(Value::Time(value.clone())),
+        ast::Expression::Timestamp(value) => Expression::Literal(Value::Timestamp(value.clone())),
+        ast::Expression::Duration(value) => Expression::Literal(Value::Duration(value.clone())),
+        ast::Expression::Integer(value) => Expression::Literal(Value::Integer(*value)),
+        ast::Expression::Decimal(value) => Expression::Literal(Value::Decimal(value.clone())),
+        ast::Expression::ApproximateNumeric(value) => {
             Expression::Literal(Value::Float(value.clone()))
         }
-        ast::Expression::List(values, _) => Expression::Literal(Value::List(
+        ast::Expression::List(values) => Expression::Literal(Value::List(
             values
                 .iter()
                 .map(lower_literal)
                 .collect::<Result<Vec<_>, _>>()?,
         )),
-        ast::Expression::Record(fields, _) => Expression::Literal(Value::Record(
+        ast::Expression::Record(fields) => Expression::Literal(Value::Record(
             fields
                 .iter()
                 .map(|field| Ok((field.name.canonical_text(), lower_literal(&field.value)?)))
@@ -486,15 +453,6 @@ fn lower_expression(expression: &ast::Expression) -> Result<Expression, Frontend
             },
             operand: Box::new(lower_expression(operand)?),
         },
-        ast::Expression::ValueTypePredicate { .. } => {
-            return unsupported("value-type predicate expression");
-        }
-        ast::Expression::DirectedPredicate { .. }
-        | ast::Expression::EndpointPredicate { .. }
-        | ast::Expression::ElementIdentityPredicate { .. }
-        | ast::Expression::PropertyExistsPredicate { .. } => {
-            return unsupported("graph-element predicate expression");
-        }
         ast::Expression::Binary {
             operator,
             left,
@@ -504,12 +462,6 @@ fn lower_expression(expression: &ast::Expression) -> Result<Expression, Frontend
             operator: lower_binary_operator(*operator)?,
             right: Box::new(lower_expression(right)?),
         },
-        ast::Expression::IsLabeled { .. } => {
-            return unsupported("label predicate expression");
-        }
-        ast::Expression::Subscript { .. } => return unsupported("subscript expression"),
-        ast::Expression::Case { .. } => return unsupported("CASE expression"),
-        ast::Expression::FunctionCall { .. } => return unsupported("function call expression"),
         ast::Expression::AggregateCall { .. } => return unsupported("nested aggregate expression"),
     })
 }
@@ -554,10 +506,6 @@ fn lower_binary_operator(operator: ast::BinaryOperator) -> Result<BinaryOperator
         ast::BinaryOperator::GreaterThanOrEqual => BinaryOperator::GreaterOrEqual,
         ast::BinaryOperator::And => BinaryOperator::And,
         ast::BinaryOperator::Or => BinaryOperator::Or,
-        ast::BinaryOperator::Modulo => return unsupported("modulo expression"),
-        ast::BinaryOperator::In => return unsupported("IN expression"),
-        ast::BinaryOperator::Concatenate => return unsupported("concatenation expression"),
-        ast::BinaryOperator::Xor => return unsupported("XOR expression"),
     })
 }
 
@@ -583,42 +531,13 @@ fn append_clause(key: &mut Vec<u8>, clause: &QueryClause) {
                 append_pattern(key, &pattern.elements);
             }
         }
-        QueryClause::OptionalMatch(found) => {
-            append(key, "optional-match");
-            for pattern in &found.patterns {
-                append(key, "pattern");
-                append_pattern(key, &pattern.elements);
-            }
-        }
-        QueryClause::Where { expression, .. } => {
+        QueryClause::Where(expression) => {
             append(key, "where");
             append_expression(key, expression);
         }
-        QueryClause::Filter { expression, .. } => {
+        QueryClause::Filter(expression) => {
             append(key, "filter");
             append_expression(key, expression);
-        }
-        QueryClause::For { item, .. } => {
-            append(key, "for");
-            append(key, &item.binding.text);
-            append_expression(key, &item.source);
-            if let Some(position) = &item.ordinality {
-                append(
-                    key,
-                    match position.kind {
-                        ast::ForOrdinalityKind::Ordinality => "ordinality",
-                        ast::ForOrdinalityKind::Offset => "offset",
-                    },
-                );
-                append(key, &position.binding.text);
-            }
-        }
-        QueryClause::Let { bindings, .. } => {
-            append(key, "let");
-            for binding in bindings {
-                append(key, &binding.binding.text);
-                append_expression(key, &binding.value);
-            }
         }
         QueryClause::Return {
             quantifier,
@@ -640,13 +559,12 @@ fn append_clause(key: &mut Vec<u8>, clause: &QueryClause) {
                 );
             }
         }
-        QueryClause::Finish { .. } => append(key, "finish"),
-        QueryClause::Union { .. } => append(key, "union"),
-        QueryClause::Limit { value, .. } => {
+        QueryClause::Finish => append(key, "finish"),
+        QueryClause::Limit(value) => {
             append(key, "limit");
             append_non_negative_integer_specification(key, value);
         }
-        QueryClause::OrderBy { keys, .. } => {
+        QueryClause::OrderBy(keys) => {
             append(key, "order");
             for sort_key in keys {
                 append_expression(key, &sort_key.expression);
@@ -654,41 +572,14 @@ fn append_clause(key: &mut Vec<u8>, clause: &QueryClause) {
                 append(key, &format!("{:?}", sort_key.null_ordering));
             }
         }
-        QueryClause::Offset { value, .. } => {
+        QueryClause::Offset(value) => {
             append(key, "offset");
             append_non_negative_integer_specification(key, value);
         }
-        QueryClause::GroupBy { keys, .. } => {
+        QueryClause::GroupBy(keys) => {
             append(key, "group");
             for expression in keys {
                 append_expression(key, expression);
-            }
-        }
-        QueryClause::Insert { patterns, .. } => {
-            append(key, "insert");
-            for pattern in patterns {
-                append_pattern(key, &pattern.elements);
-            }
-        }
-        QueryClause::Set { items, .. } => {
-            append(key, "set");
-            for item in items {
-                append_expression(key, &item.target);
-                append_expression(key, &item.value);
-            }
-        }
-        QueryClause::Remove { targets, .. } => {
-            append(key, "remove");
-            for target in targets {
-                append_expression(key, target);
-            }
-        }
-        QueryClause::Delete {
-            targets, detach, ..
-        } => {
-            append(key, if *detach { "detach-delete" } else { "delete" });
-            for target in targets {
-                append_expression(key, target);
             }
         }
     }
@@ -731,19 +622,6 @@ fn append_pattern(key: &mut Vec<u8>, elements: &[PatternElement]) {
                 for label in &edge.labels {
                     append(key, &label.text);
                 }
-                if let Some(quantifier) = &edge.quantifier {
-                    append(key, &quantifier.min.to_string());
-                    append(
-                        key,
-                        &quantifier
-                            .max
-                            .map_or_else(String::new, |value| value.to_string()),
-                    );
-                }
-            }
-            PatternElement::Path(path) => {
-                append(key, "path");
-                append_pattern(key, &path.elements);
             }
         }
     }
@@ -753,41 +631,30 @@ fn append_expression(key: &mut Vec<u8>, expression: &ast::Expression) {
     match expression {
         ast::Expression::Name(value) => append(key, &format!("name:{}", value.text)),
         ast::Expression::Parameter(value) => append(key, &format!("parameter:{}", value.name)),
-        ast::Expression::Boolean(value, _) => append(key, &format!("bool:{value}")),
-        ast::Expression::Null(_) => append(key, "null"),
-        ast::Expression::String(literal) => append(key, &format!("string:{}", literal.value)),
-        ast::Expression::ByteString(value, _) => {
-            append(key, "bytes");
-            for byte in value {
-                append(key, &format!("{byte:02X}"));
-            }
-        }
-        ast::Expression::Date(value, _) => append(key, &format!("date:{value}")),
-        ast::Expression::Time(value, _) => append(key, &format!("time:{value}")),
-        ast::Expression::Timestamp(value, _) => append(key, &format!("timestamp:{value}")),
-        ast::Expression::Duration(value, _) => append(key, &format!("duration:{value}")),
-        ast::Expression::Integer(value, _) => append(key, &format!("integer:{value}")),
-        ast::Expression::Decimal(value, _) => append(key, &format!("decimal:{value}")),
-        ast::Expression::ApproximateNumeric(value, _) => {
+        ast::Expression::Boolean(value) => append(key, &format!("bool:{value}")),
+        ast::Expression::Null => append(key, "null"),
+        ast::Expression::String(value) => append(key, &format!("string:{value}")),
+        ast::Expression::Date(value) => append(key, &format!("date:{value}")),
+        ast::Expression::Time(value) => append(key, &format!("time:{value}")),
+        ast::Expression::Timestamp(value) => append(key, &format!("timestamp:{value}")),
+        ast::Expression::Duration(value) => append(key, &format!("duration:{value}")),
+        ast::Expression::Integer(value) => append(key, &format!("integer:{value}")),
+        ast::Expression::Decimal(value) => append(key, &format!("decimal:{value}")),
+        ast::Expression::ApproximateNumeric(value) => {
             append(key, &format!("float:{value}"));
         }
-        ast::Expression::List(values, _) => {
+        ast::Expression::List(values) => {
             append(key, "list");
             for value in values {
                 append_expression(key, value);
             }
         }
-        ast::Expression::Record(fields, _) => {
+        ast::Expression::Record(fields) => {
             append(key, "record");
             for field in fields {
                 append(key, &field.name.canonical_text());
                 append_expression(key, &field.value);
             }
-        }
-        ast::Expression::Subscript { base, index } => {
-            append(key, "subscript");
-            append_expression(key, base);
-            append_expression(key, index);
         }
         ast::Expression::PropertyAccess { base, property } => {
             append(key, "property");
@@ -832,85 +699,6 @@ fn append_expression(key: &mut Vec<u8>, expression: &ast::Expression) {
             );
             append_expression(key, operand);
         }
-        ast::Expression::ValueTypePredicate {
-            operand,
-            value_type,
-            negated,
-            ..
-        } => {
-            append(
-                key,
-                if *negated {
-                    "is-not-value-type"
-                } else {
-                    "is-value-type"
-                },
-            );
-            append_expression(key, operand);
-            append_value_type(key, value_type);
-        }
-        ast::Expression::DirectedPredicate { edge, negated, .. } => {
-            append(
-                key,
-                if *negated {
-                    "is-not-directed"
-                } else {
-                    "is-directed"
-                },
-            );
-            append_expression(key, edge);
-        }
-        ast::Expression::EndpointPredicate {
-            node,
-            edge,
-            endpoint,
-            negated,
-            ..
-        } => {
-            append(key, &format!("endpoint:{endpoint:?}:negated:{negated}"));
-            append_expression(key, node);
-            append_expression(key, edge);
-        }
-        ast::Expression::ElementIdentityPredicate { kind, elements, .. } => {
-            append(key, &format!("element-identity:{kind:?}"));
-            for element in elements {
-                append_expression(key, element);
-            }
-        }
-        ast::Expression::PropertyExistsPredicate {
-            element, property, ..
-        } => {
-            append(key, "property-exists");
-            append_expression(key, element);
-            append(key, &property.canonical_text());
-        }
-        ast::Expression::IsLabeled {
-            operand,
-            label,
-            negated,
-            ..
-        } => {
-            append(
-                key,
-                if *negated {
-                    "is-not-labeled"
-                } else {
-                    "is-labeled"
-                },
-            );
-            append_expression(key, operand);
-            append_label_expression(key, label);
-        }
-        ast::Expression::Case { .. } => append(key, "case"),
-        ast::Expression::FunctionCall {
-            name, arguments, ..
-        } => {
-            append(key, "function");
-            append(key, &name.text);
-            for argument in arguments {
-                append_expression(key, argument);
-            }
-        }
         ast::Expression::AggregateCall {
             function,
             quantifier,
@@ -928,28 +716,11 @@ fn append_expression(key: &mut Vec<u8>, expression: &ast::Expression) {
     }
 }
 
-fn append_label_expression(key: &mut Vec<u8>, label: &ast::LabelExpression) {
-    match label {
-        ast::LabelExpression::Name(identifier) => {
-            append(key, "label-name");
-            append(key, &identifier.text);
-        }
-        ast::LabelExpression::Wildcard => append(key, "label-wildcard"),
-        ast::LabelExpression::Not(operand) => {
-            append(key, "label-not");
-            append_label_expression(key, operand);
-        }
-        ast::LabelExpression::And(left, right) => {
-            append(key, "label-and");
-            append_label_expression(key, left);
-            append_label_expression(key, right);
-        }
-        ast::LabelExpression::Or(left, right) => {
-            append(key, "label-or");
-            append_label_expression(key, left);
-            append_label_expression(key, right);
-        }
-    }
+fn append(key: &mut Vec<u8>, value: &str) {
+    key.extend_from_slice(value.len().to_string().as_bytes());
+    key.push(b':');
+    key.extend_from_slice(value.as_bytes());
+    key.push(0);
 }
 
 fn unsupported<T>(feature: &str) -> Result<T, FrontendError> {
