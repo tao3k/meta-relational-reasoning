@@ -3,21 +3,23 @@
 
 use std::borrow::Cow;
 
-use crate::character_string::{
-    CharacterStringForm, decode_character_string, scan_character_string,
-};
+#[cfg(feature = "parser")]
+use crate::character_string::scan_character_string;
+use crate::character_string::{CharacterStringForm, decode_character_string};
 use icu_properties::CodePointSetData;
 use icu_properties::props::IdContinue;
 
 const PARAMETER_NAME_CONTINUE: icu_properties::CodePointSetDataBorrowed<'static> =
     CodePointSetData::new::<IdContinue>();
 
+#[cfg(feature = "parser")]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum ParameterReferenceKind {
     Dynamic,
     Substituted,
 }
 
+#[cfg(feature = "parser")]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) struct ParameterScan {
     pub(crate) end: usize,
@@ -45,6 +47,7 @@ pub struct DecodedParameterReference<'a> {
     pub substituted: bool,
 }
 
+#[cfg(feature = "parser")]
 pub(crate) fn scan_parameter_reference(
     text: &str,
     start: usize,

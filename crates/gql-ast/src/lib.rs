@@ -3,6 +3,8 @@
 
 mod api;
 
+#[cfg(feature = "syntax-lowering")]
+pub use api::lower_from_syntax;
 pub use api::{
     AggregateFunction, BinaryOperator, CaseBranch, CatalogCreatePolicy, CatalogDropPolicy,
     CatalogObjectName, CatalogStatement, CharacterStringForm, CharacterStringLiteral,
@@ -16,8 +18,7 @@ pub use api::{
     PropertyConstraint, PropertyType, PropertyValueType, PropertyValueTypeForm, Query, QueryClause,
     RecordField, ReferenceValueTypeKind, ReturnProjection, SessionCommand, SetItem, SetQuantifier,
     SortDirection, SortKey, Statement, SyntaxParseOutput, TransactionAccessMode,
-    TransactionCommand, TruthValue, TypeParameter, UnaryOperator, lower_from_syntax,
-    lower_numeric_literal,
+    TransactionCommand, TruthValue, TypeParameter, UnaryOperator, lower_numeric_literal,
 };
 
 #[cfg(test)]

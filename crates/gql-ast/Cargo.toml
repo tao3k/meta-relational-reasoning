@@ -7,9 +7,13 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 
+[features]
+default = ["syntax-lowering"]
+syntax-lowering = ["dep:gql-syntax"]
+
 [dependencies]
 gql-source.workspace = true
-gql-syntax.workspace = true
+gql-syntax = { workspace = true, optional = true }
 
 [dev-dependencies]
 asp-rust-build-support.workspace = true

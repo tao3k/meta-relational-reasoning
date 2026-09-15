@@ -6,15 +6,21 @@
 #![forbid(unsafe_code)]
 
 mod character_string;
+#[cfg(feature = "parser")]
 mod generated;
+#[cfg(feature = "parser")]
 mod lexer;
 mod parameter;
+#[cfg(feature = "parser")]
 mod parser;
+#[cfg(feature = "parser")]
 mod syntax;
 
 pub use character_string::{CharacterStringForm, DecodedCharacterString, decode_character_string};
 pub use parameter::{DecodedParameterReference, ParameterNameForm, decode_parameter_reference};
+#[cfg(feature = "parser")]
 pub use parser::parse;
+#[cfg(feature = "parser")]
 pub use syntax::{
     GqlSyntax, GrammarProjectionReceipt, ISO_GQL_AGGREGATE_FUNCTION_FORMS,
     ISO_GQL_CHARACTER_STRING_FORMS, ISO_GQL_NON_RESERVED_WORDS, ISO_GQL_NUMERIC_LITERAL_FORMS,
@@ -23,6 +29,7 @@ pub use syntax::{
     grammar_projection_receipt, is_non_reserved_word,
 };
 
+#[cfg(feature = "parser")]
 pub use syntax::{RowanSyntaxNode, RowanSyntaxToken};
 
 #[cfg(test)]

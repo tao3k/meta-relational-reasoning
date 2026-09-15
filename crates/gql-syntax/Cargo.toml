@@ -7,10 +7,14 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 
+[features]
+default = ["parser"]
+parser = ["dep:gql-source", "dep:rowan"]
+
 [dependencies]
-gql-source.workspace = true
+gql-source = { workspace = true, optional = true }
 icu_properties.workspace = true
-rowan.workspace = true
+rowan = { workspace = true, optional = true }
 [dev-dependencies]
 criterion.workspace = true
 [build-dependencies]
