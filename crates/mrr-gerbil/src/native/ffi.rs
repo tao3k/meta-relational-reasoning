@@ -73,8 +73,15 @@ unsafe extern "C" {
     fn gerbil_parser_result_v1_init(result: *mut GerbilParserResultV1);
     fn gerbil_parser_result_v1_release(result: *mut GerbilParserResultV1);
     fn gerbil_parser_native_abi_version() -> u32;
-    fn gerbil_parser_native_descriptor(result: *mut GerbilParserResultV1) -> i32;
-    fn gerbil_parser_native_parse(source: *const c_char, result: *mut GerbilParserResultV1) -> i32;
+    fn gerbil_parser_native_descriptor(
+        language: *const c_char,
+        result: *mut GerbilParserResultV1,
+    ) -> i32;
+    fn gerbil_parser_native_parse(
+        language: *const c_char,
+        source: *const c_char,
+        result: *mut GerbilParserResultV1,
+    ) -> i32;
 }
 
 pub(super) fn runtime_init() -> i32 {
@@ -179,12 +186,18 @@ pub(super) fn parser_native_abi_version() -> u32 {
     unsafe { gerbil_parser_native_abi_version() }
 }
 
-pub(super) fn parser_native_descriptor() -> ParserNativeResult {
-    unsafe { parser_native_result(|result| gerbil_parser_native_descriptor(result)) }
+pub(super) fn parser_native_descriptor(language: &CStr) -> ParserNativeResult {
+    unsafe {
+        parser_native_result(|result| gerbil_parser_native_descriptor(language.as_ptr(), result))
+    }
 }
 
-pub(super) fn parser_native_parse(source: &CStr) -> ParserNativeResult {
-    unsafe { parser_native_result(|result| gerbil_parser_native_parse(source.as_ptr(), result)) }
+pub(super) fn parser_native_parse(language: &CStr, source: &CStr) -> ParserNativeResult {
+    unsafe {
+        parser_native_result(|result| {
+            gerbil_parser_native_parse(language.as_ptr(), source.as_ptr(), result)
+        })
+    }
 }
 
 unsafe fn parser_native_result(

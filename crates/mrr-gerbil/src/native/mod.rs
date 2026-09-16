@@ -30,7 +30,7 @@ pub use model::{
 pub use parse_artifact::{
     PARSE_ARTIFACT_SCHEMA_V1, PARSER_NATIVE_DESCRIPTOR_SCHEMA_V1, ParseArtifact,
     ParseArtifactLoadError, ParseArtifactStatus, ParseEvent, ParserKindCatalog, ParserKindCategory,
-    ParserKindSpec, parse_gql_artifact,
+    ParserKindSpec, ParserLanguage, parse_cypher_artifact, parse_gql_artifact,
 };
 pub use parser_cst::{ParserCst, ParserCstError, ParserSyntax, ParserSyntaxKind};
 pub use reasoning::{ReasoningBundleLoadError, load_reasoning_bundle};

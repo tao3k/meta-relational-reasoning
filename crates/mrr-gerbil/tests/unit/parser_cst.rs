@@ -1,4 +1,25 @@
 #[test]
+fn parser_owned_cypher_uses_its_exact_native_grammar() {
+    let source = "MATCH (p:Person)-[r:KNOWS]->(f:Person) WHERE p.age > 18 RETURN f.name\n";
+    let artifact = crate::parse_cypher_artifact(source).expect("parser-owned Cypher artifact");
+    assert_eq!(artifact.language, crate::ParserLanguage::Cypher);
+    assert_eq!(
+        artifact.kind_catalog.language(),
+        crate::ParserLanguage::Cypher
+    );
+    assert_eq!(artifact.status, crate::ParseArtifactStatus::Accepted);
+    assert_eq!(artifact.kind_catalog.kind_id("program"), Some(0));
+    assert!(matches!(
+        artifact.events.first(),
+        Some(crate::ParseEvent::StartNode { kind, start: 0, .. }) if kind == "program"
+    ));
+    let cst = artifact
+        .to_rowan_cst()
+        .expect("accepted Cypher artifact must sink into Rowan");
+    assert_eq!(cst.root().text().to_string(), source);
+}
+
+#[test]
 fn rowan_sink_rejects_malformed_parser_event_structure() {
     let source = "MATCH (n) RETURN n\n";
     let artifact = crate::parse_gql_artifact(source).expect("valid parser artifact");

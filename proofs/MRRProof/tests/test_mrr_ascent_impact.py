@@ -35,5 +35,7 @@ def test_parser_owned_frontend_changes_select_fail_closed_obligations() -> None:
 
     assert seeds == {"mrr-frontends"}
     assert "mrr-frontends" in impacted
+    assert "frontend_common_surface_normalizes_across_languages" in obligations
+    assert "frontend_receipt_retains_selected_language" in obligations
     assert "graph_element_predicate_rejection_emits_no_ir" in obligations
     assert "primitive_result_admission_is_typed" in obligations

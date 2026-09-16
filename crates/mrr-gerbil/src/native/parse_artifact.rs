@@ -17,6 +17,26 @@ pub const PARSE_ARTIFACT_SCHEMA_V1: &str = "gerbil-parser.parse-artifact.v1";
 /// Canonical parser-owned native descriptor schema.
 pub const PARSER_NATIVE_DESCRIPTOR_SCHEMA_V1: &str = "gerbil-parser.native-descriptor.v1";
 
+/// Parser language selected explicitly at the native ABI boundary.
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+pub enum ParserLanguage {
+    /// ISO/IEC 39075:2024 GQL language pack.
+    Gql,
+    /// Pinned openCypher 2024.1 language pack.
+    Cypher,
+}
+
+impl ParserLanguage {
+    /// Returns the stable native ABI selector.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Gql => "gql",
+            Self::Cypher => "cypher",
+        }
+    }
+}
+
 /// Parser-owned category for one stable syntax kind.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ParserKindCategory {
@@ -52,6 +72,7 @@ impl ParserKindSpec {
 /// Stable parser-owned catalog used to assign Rowan-compatible numeric kinds.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ParserKindCatalog {
+    language: ParserLanguage,
     grammar_digest: String,
     kinds: Vec<ParserKindSpec>,
     by_name: BTreeMap<String, u16>,
@@ -61,6 +82,12 @@ pub struct ParserKindCatalog {
 }
 
 impl ParserKindCatalog {
+    /// Returns the language that owns this kind catalog.
+    #[must_use]
+    pub const fn language(&self) -> ParserLanguage {
+        self.language
+    }
+
     #[must_use]
     pub fn grammar_digest(&self) -> &str {
         &self.grammar_digest
@@ -134,6 +161,7 @@ pub enum ParseEvent {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ParseArtifact {
     pub schema: String,
+    pub language: ParserLanguage,
     pub kind_catalog: Arc<ParserKindCatalog>,
     pub status: ParseArtifactStatus,
     pub grammar_digest: String,
@@ -168,11 +196,26 @@ pub enum ParseArtifactLoadError {
     },
 }
 
-static PARSER_KIND_CATALOG: OnceLock<Result<Arc<ParserKindCatalog>, ParseArtifactLoadError>> =
+static GQL_KIND_CATALOG: OnceLock<Result<Arc<ParserKindCatalog>, ParseArtifactLoadError>> =
+    OnceLock::new();
+static CYPHER_KIND_CATALOG: OnceLock<Result<Arc<ParserKindCatalog>, ParseArtifactLoadError>> =
     OnceLock::new();
 
+/// Parses source with the linked ISO GQL language pack.
 pub fn parse_gql_artifact(source: &str) -> Result<ParseArtifact, ParseArtifactLoadError> {
-    let (payload, kind_catalog) = request_parse_artifact(source)?;
+    parse_artifact(ParserLanguage::Gql, source)
+}
+
+/// Parses source with the linked openCypher language pack.
+pub fn parse_cypher_artifact(source: &str) -> Result<ParseArtifact, ParseArtifactLoadError> {
+    parse_artifact(ParserLanguage::Cypher, source)
+}
+
+fn parse_artifact(
+    language: ParserLanguage,
+    source: &str,
+) -> Result<ParseArtifact, ParseArtifactLoadError> {
+    let (payload, kind_catalog) = request_parse_artifact(language, source)?;
     let artifact = decode_parse_artifact(&payload, source, kind_catalog)?;
     validate_source_digest(&artifact, source)?;
     Ok(artifact)
@@ -235,6 +278,7 @@ pub(crate) fn decode_parse_artifact(
     }
     Ok(ParseArtifact {
         schema: PARSE_ARTIFACT_SCHEMA_V1.to_owned(),
+        language: kind_catalog.language,
         kind_catalog,
         status,
         grammar_digest,
@@ -244,13 +288,18 @@ pub(crate) fn decode_parse_artifact(
 }
 
 fn request_parse_artifact(
+    language: ParserLanguage,
     source: &str,
 ) -> Result<(Vec<u8>, Arc<ParserKindCatalog>), ParseArtifactLoadError> {
-    let kind_catalog = PARSER_KIND_CATALOG
-        .get_or_init(load_native_kind_catalog)
-        .clone()?;
+    let kind_catalog = match language {
+        ParserLanguage::Gql => &GQL_KIND_CATALOG,
+        ParserLanguage::Cypher => &CYPHER_KIND_CATALOG,
+    }
+    .get_or_init(|| load_native_kind_catalog(language))
+    .clone()?;
+    let language = CString::new(language.as_str()).expect("static parser language has no NUL");
     let source = CString::new(source).map_err(|_| ParseArtifactLoadError::InteriorNul)?;
-    let native = with_native_runtime(move || ffi::parser_native_parse(&source))
+    let native = with_native_runtime(move || ffi::parser_native_parse(&language, &source))
         .map_err(parse_runtime_error)?;
     let payload = native_payload(native, |call_status, result_status, diagnostic| {
         ParseArtifactLoadError::ParserFailed {
@@ -355,11 +404,14 @@ fn load_binary_event(
     }
 }
 
-fn load_native_kind_catalog() -> Result<Arc<ParserKindCatalog>, ParseArtifactLoadError> {
-    let (abi, native) = with_native_runtime(|| {
+fn load_native_kind_catalog(
+    language: ParserLanguage,
+) -> Result<Arc<ParserKindCatalog>, ParseArtifactLoadError> {
+    let language_name = CString::new(language.as_str()).expect("static parser language has no NUL");
+    let (abi, native) = with_native_runtime(move || {
         (
             ffi::parser_native_abi_version(),
-            ffi::parser_native_descriptor(),
+            ffi::parser_native_descriptor(&language_name),
         )
     })
     .map_err(parse_runtime_error)?;
@@ -375,7 +427,7 @@ fn load_native_kind_catalog() -> Result<Arc<ParserKindCatalog>, ParseArtifactLoa
     })?;
     let descriptor = serde_json::from_slice(&payload)
         .map_err(|_| ParseArtifactLoadError::InvalidHostDescriptor)?;
-    load_kind_catalog(&descriptor).map(Arc::new)
+    load_kind_catalog(&descriptor, language).map(Arc::new)
 }
 
 fn parse_runtime_error(error: NativeRuntimeError) -> ParseArtifactLoadError {
@@ -408,8 +460,12 @@ fn native_payload(
 
 pub(crate) fn load_kind_catalog(
     payload: &Value,
+    language: ParserLanguage,
 ) -> Result<ParserKindCatalog, ParseArtifactLoadError> {
     if string_field(payload, "schema")? != PARSER_NATIVE_DESCRIPTOR_SCHEMA_V1 {
+        return Err(ParseArtifactLoadError::InvalidHostDescriptor);
+    }
+    if string_field(payload, "language")? != language.as_str() {
         return Err(ParseArtifactLoadError::InvalidHostDescriptor);
     }
     let grammar_digest = string_field(payload, "grammarDigest")?.to_owned();
@@ -497,6 +553,7 @@ pub(crate) fn load_kind_catalog(
         terminal_names.push(terminal);
     }
     Ok(ParserKindCatalog {
+        language,
         grammar_digest,
         kinds,
         by_name,

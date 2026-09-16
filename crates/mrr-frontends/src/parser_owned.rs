@@ -6,7 +6,10 @@ use crate::projection::{
     NullOrdering, PathPattern, PatternElement, PropertyConstraint, Query, QueryClause, RecordField,
     ReturnProjection, SetQuantifier, SortDirection, SortKey, TruthValue, UnaryOperator,
 };
-use mrr_gerbil::{ParserCst, ParserSyntax, parse_gql_artifact};
+use mrr_gerbil::{
+    ParseArtifact, ParserCst, ParserLanguage, ParserSyntax, parse_cypher_artifact,
+    parse_gql_artifact,
+};
 use rowan::SyntaxNode;
 
 use crate::FrontendError;
@@ -15,12 +18,16 @@ type Node = SyntaxNode<ParserSyntax>;
 
 pub(crate) struct ParserOwnedAst {
     pub query: Query,
+    pub language: ParserLanguage,
     pub grammar_digest: String,
     pub source_digest: String,
 }
 
-pub(crate) fn lower_parser_owned_ast(source: &str) -> Result<ParserOwnedAst, FrontendError> {
-    let artifact = parse_gql_artifact(source)
+pub(crate) fn lower_parser_owned_ast(
+    language: ParserLanguage,
+    source: &str,
+) -> Result<ParserOwnedAst, FrontendError> {
+    let artifact = parse_artifact(language, source)
         .map_err(|error| FrontendError::ParserOwned(format!("ParseArtifact: {error:?}")))?;
     let cst = artifact
         .to_rowan_cst()
@@ -31,7 +38,14 @@ pub(crate) fn lower_parser_owned_ast(source: &str) -> Result<ParserOwnedAst, Fro
             "ParserCst: source is not losslessly covered by the parser artifact".into(),
         ));
     }
-    require_name(&cst, &root, "GqlProgram")?;
+    require_name(
+        &cst,
+        &root,
+        match language {
+            ParserLanguage::Gql => "GqlProgram",
+            ParserLanguage::Cypher => "program",
+        },
+    )?;
     reject_unlowered_semantics(&cst, &root)?;
 
     let matches = descendants_named(&cst, &root, "SimpleMatchStatement");
@@ -101,9 +115,20 @@ pub(crate) fn lower_parser_owned_ast(source: &str) -> Result<ParserOwnedAst, Fro
     }
     Ok(ParserOwnedAst {
         query: Query { clauses },
+        language,
         grammar_digest: artifact.grammar_digest,
         source_digest: artifact.source_digest,
     })
+}
+
+fn parse_artifact(
+    language: ParserLanguage,
+    source: &str,
+) -> Result<ParseArtifact, mrr_gerbil::ParseArtifactLoadError> {
+    match language {
+        ParserLanguage::Gql => parse_gql_artifact(source),
+        ParserLanguage::Cypher => parse_cypher_artifact(source),
+    }
 }
 
 fn lower_result_quantifier(
@@ -198,6 +223,12 @@ fn lower_dynamic_parameter(node: &Node) -> Result<DynamicParameterReference, Fro
 fn reject_unlowered_semantics(cst: &ParserCst, root: &Node) -> Result<(), FrontendError> {
     for (kind, semantic) in [
         ("OptionalMatchStatement", "OPTIONAL MATCH"),
+        ("UnwindStatement", "UNWIND"),
+        ("WithStatement", "WITH"),
+        ("PrimitiveDataUpdateStatement", "data update statement"),
+        ("CallProcedureStatement", "procedure call"),
+        ("LetStatement", "LET"),
+        ("ForStatement", "FOR"),
         ("MatchMode", "graph match mode"),
         ("KeepClause", "KEEP path prefix"),
         ("PathPatternPrefix", "path search prefix"),
@@ -247,10 +278,12 @@ fn lower_path(cst: &ParserCst, node: &Node) -> Result<PathPattern, FrontendError
     let term =
         first_descendant(cst, node, "PathTerm").ok_or_else(|| unsupported_error("PathTerm"))?;
     let mut elements = Vec::new();
-    for factor in direct_children_named(cst, &term, "PathFactor") {
+    for factor in descendants_named(cst, &term, "PathFactor") {
         if let Some(found) = first_descendant(cst, &factor, "NodePattern") {
             elements.push(PatternElement::Node(lower_node(cst, &found)?));
-        } else if let Some(found) = first_descendant(cst, &factor, "EdgePattern") {
+        } else if let Some(found) = first_descendant(cst, &factor, "EdgePattern")
+            .or_else(|| first_descendant(cst, &factor, "RelationshipPattern"))
+        {
             elements.push(PatternElement::Edge(lower_edge(cst, &found)?));
         } else {
             return unsupported("PathFactor outside node-edge parity slice");
@@ -268,9 +301,15 @@ fn lower_node(cst: &ParserCst, node: &Node) -> Result<NodePattern, FrontendError
 }
 
 fn lower_edge(cst: &ParserCst, node: &Node) -> Result<EdgePattern, FrontendError> {
-    let direction = if first_descendant(cst, node, "FullEdgePointingRight").is_some() {
+    let direction = if first_descendant(cst, node, "FullEdgePointingRight")
+        .or_else(|| first_descendant(cst, node, "FullRelationshipPointingRight"))
+        .is_some()
+    {
         EdgeDirection::Out
-    } else if first_descendant(cst, node, "FullEdgePointingLeft").is_some() {
+    } else if first_descendant(cst, node, "FullEdgePointingLeft")
+        .or_else(|| first_descendant(cst, node, "FullRelationshipPointingLeft"))
+        .is_some()
+    {
         EdgeDirection::In
     } else {
         EdgeDirection::Undirected
@@ -285,6 +324,7 @@ fn lower_edge(cst: &ParserCst, node: &Node) -> Result<EdgePattern, FrontendError
 
 fn lower_binding(cst: &ParserCst, node: &Node) -> Result<Option<Identifier>, FrontendError> {
     first_descendant(cst, node, "ElementVariableDeclaration")
+        .or_else(|| first_descendant(cst, node, "BindingVariable"))
         .map(|declaration| lower_identifier(cst, &declaration))
         .transpose()
 }
@@ -322,6 +362,7 @@ fn lower_return(cst: &ParserCst, node: &Node) -> Result<Vec<ReturnProjection>, F
         .iter()
         .map(|item| {
             let expression = direct_child_named(cst, item, "AggregatingValueExpression")
+                .or_else(|| direct_child_named(cst, item, "ValueExpression"))
                 .ok_or_else(|| unsupported_error("return expression"))?;
             let alias = direct_child_named(cst, item, "ReturnItemAlias")
                 .map(|node| lower_identifier(cst, &node))
@@ -338,7 +379,7 @@ fn lower_expression(cst: &ParserCst, node: &Node) -> Result<Expression, Frontend
     if first_descendant(cst, node, "ValueTypePredicate").is_some() {
         return unsupported_exact("value-type predicate expression");
     }
-    if kind_name(cst, node) == Some("ValueExpression") {
+    if kind_is(cst, node, "ValueExpression") {
         let mut levels = Vec::new();
         collect_unparenthesized_binary_levels(cst, node, &mut levels);
         levels.sort_unstable();
@@ -347,10 +388,10 @@ fn lower_expression(cst: &ParserCst, node: &Node) -> Result<Expression, Frontend
             return unsupported("mixed operator precedence not encoded by parser CST");
         }
     }
-    if kind_name(cst, node) == Some("AggregateFunction") {
+    if kind_is(cst, node, "AggregateFunction") {
         return lower_aggregate(cst, node);
     }
-    if kind_name(cst, node) == Some("NullPredicate") {
+    if kind_is(cst, node, "NullPredicate") {
         let operand = direct_child_named(cst, node, "ValueExpressionPrimary")
             .ok_or_else(|| unsupported_error("NULL predicate operand"))?;
         let suffix = direct_child_named(cst, node, "NullPredicatePart2")
@@ -428,6 +469,19 @@ fn lower_expression(cst: &ParserCst, node: &Node) -> Result<Expression, Frontend
             right: Box::new(lower_expression(cst, &operands[1])?),
         });
     }
+    if kind_is(cst, node, "ComparisonPredicate")
+        && let Some(operator) = first_descendant(cst, node, "SimpleCompOp")
+    {
+        let operands = descendants_named(cst, node, "SimpleComparisonPredicand");
+        if operands.len() != 2 {
+            return unsupported("comparison without exactly two predicands");
+        }
+        return Ok(Expression::Binary {
+            operator: comparison_operator(operator.text().to_string().trim())?,
+            left: Box::new(lower_expression(cst, &operands[0])?),
+            right: Box::new(lower_expression(cst, &operands[1])?),
+        });
+    }
     if direct_expression_children.len() == 2 {
         let operator = node
             .children_with_tokens()
@@ -458,7 +512,7 @@ fn lower_expression(cst: &ParserCst, node: &Node) -> Result<Expression, Frontend
             right: Box::new(lower_expression(cst, &direct_expression_children[1])?),
         });
     }
-    if kind_name(cst, node) == Some("ValueExpressionPrimary")
+    if kind_is(cst, node, "ValueExpressionPrimary")
         && let (Some(base), Some(property)) = (
             direct_child_named(cst, node, "ValueExpressionPrimary"),
             direct_child_named(cst, node, "PropertyName"),
@@ -469,13 +523,24 @@ fn lower_expression(cst: &ParserCst, node: &Node) -> Result<Expression, Frontend
             property: lower_identifier(cst, &property)?,
         });
     }
-    if kind_name(cst, node) == Some("BindingVariableReference") {
+    if kind_is(cst, node, "PostfixExpression")
+        && let (Some(base), Some(property)) = (
+            direct_child_named(cst, node, "PostfixExpression"),
+            first_descendant(cst, node, "PropertyName"),
+        )
+    {
+        return Ok(Expression::PropertyAccess {
+            base: Box::new(lower_expression(cst, &base)?),
+            property: lower_identifier(cst, &property)?,
+        });
+    }
+    if kind_is(cst, node, "BindingVariableReference") {
         return Ok(Expression::Name(lower_identifier(cst, node)?));
     }
-    if kind_name(cst, node) == Some("DynamicParameterSpecification") {
+    if kind_is(cst, node, "DynamicParameterSpecification") {
         return Ok(Expression::Parameter(lower_dynamic_parameter(node)?));
     }
-    if kind_name(cst, node) == Some("GeneralLiteral") {
+    if kind_is(cst, node, "GeneralLiteral") {
         for child_kind in [
             "TemporalLiteral",
             "DurationLiteral",
@@ -487,10 +552,15 @@ fn lower_expression(cst: &ParserCst, node: &Node) -> Result<Expression, Frontend
             }
         }
     }
-    if matches!(
-        kind_name(cst, node),
-        Some("DateLiteral" | "TimeLiteral" | "DatetimeLiteral" | "DurationLiteral")
-    ) {
+    if [
+        "DateLiteral",
+        "TimeLiteral",
+        "DatetimeLiteral",
+        "DurationLiteral",
+    ]
+    .into_iter()
+    .any(|kind| kind_is(cst, node, kind))
+    {
         let value = first_descendant(cst, node, "CharacterStringLiteral")
             .ok_or_else(|| unsupported_error("temporal character string"))?;
         let value = significant_tokens(cst, &value)
@@ -501,15 +571,15 @@ fn lower_expression(cst: &ParserCst, node: &Node) -> Result<Expression, Frontend
                     .map(|decoded| decoded.value.into_owned())
             })
             .ok_or_else(|| unsupported_error("temporal character sequence"))?;
-        return Ok(match kind_name(cst, node) {
-            Some("DateLiteral") => Expression::Date(value),
-            Some("TimeLiteral") => Expression::Time(value),
-            Some("DatetimeLiteral") => Expression::Timestamp(value),
-            Some("DurationLiteral") => Expression::Duration(value),
+        return Ok(match () {
+            () if kind_is(cst, node, "DateLiteral") => Expression::Date(value),
+            () if kind_is(cst, node, "TimeLiteral") => Expression::Time(value),
+            () if kind_is(cst, node, "DatetimeLiteral") => Expression::Timestamp(value),
+            () if kind_is(cst, node, "DurationLiteral") => Expression::Duration(value),
             _ => unreachable!("temporal kind restricted above"),
         });
     }
-    if kind_name(cst, node) == Some("ListLiteral") {
+    if kind_is(cst, node, "ListLiteral") {
         let list = first_descendant(cst, node, "ListElementList")
             .ok_or_else(|| unsupported_error("list element list"))?;
         let values = direct_children_named(cst, &list, "ListElement")
@@ -522,7 +592,7 @@ fn lower_expression(cst: &ParserCst, node: &Node) -> Result<Expression, Frontend
             .collect::<Result<Vec<_>, _>>()?;
         return Ok(Expression::List(values));
     }
-    if kind_name(cst, node) == Some("RecordLiteral") {
+    if kind_is(cst, node, "RecordLiteral") {
         let list = first_descendant(cst, node, "FieldList")
             .ok_or_else(|| unsupported_error("record field list"))?;
         let fields = direct_children_named(cst, &list, "Field")
@@ -540,7 +610,7 @@ fn lower_expression(cst: &ParserCst, node: &Node) -> Result<Expression, Frontend
             .collect::<Result<Vec<_>, FrontendError>>()?;
         return Ok(Expression::Record(fields));
     }
-    if kind_name(cst, node) == Some("GeneralLiteral") {
+    if kind_is(cst, node, "GeneralLiteral") {
         let token = significant_tokens(cst, node)
             .into_iter()
             .next()
@@ -563,7 +633,7 @@ fn lower_expression(cst: &ParserCst, node: &Node) -> Result<Expression, Frontend
         }
         return Ok(Expression::String(value.value.into_owned()));
     }
-    if kind_name(cst, node) == Some("ExactNumericLiteral") {
+    if kind_is(cst, node, "ExactNumericLiteral") || kind_is(cst, node, "SignedNumericLiteral") {
         let token = significant_tokens(cst, node)
             .into_iter()
             .next()
@@ -593,10 +663,10 @@ fn lower_expression(cst: &ParserCst, node: &Node) -> Result<Expression, Frontend
 }
 
 fn collect_unparenthesized_binary_levels(cst: &ParserCst, node: &Node, levels: &mut Vec<u8>) {
-    if kind_name(cst, node) == Some("ParenthesizedValueExpression") {
+    if kind_is(cst, node, "ParenthesizedValueExpression") {
         return;
     }
-    if kind_name(cst, node) == Some("ValueExpression")
+    if kind_is(cst, node, "ValueExpression")
         && let Some(level) = direct_binary_level(cst, node)
     {
         levels.push(level);
@@ -625,13 +695,15 @@ fn direct_binary_level(cst: &ParserCst, node: &Node) -> Option<u8> {
 }
 
 fn lower_identifier(cst: &ParserCst, node: &Node) -> Result<Identifier, FrontendError> {
-    let regular = if kind_name(cst, node) == Some("RegularIdentifier") {
+    let identifier = if kind_is(cst, node, "RegularIdentifier") || kind_is(cst, node, "Identifier")
+    {
         node.clone()
     } else {
-        first_descendant(cst, node, "RegularIdentifier")
-            .ok_or_else(|| unsupported_error("regular identifier"))?
+        first_descendant(cst, node, "Identifier")
+            .or_else(|| first_descendant(cst, node, "RegularIdentifier"))
+            .ok_or_else(|| unsupported_error("identifier"))?
     };
-    let token = significant_tokens(cst, &regular)
+    let token = significant_tokens(cst, &identifier)
         .into_iter()
         .next()
         .ok_or_else(|| unsupported_error("identifier token"))?;
@@ -653,38 +725,56 @@ fn comparison_operator(text: &str) -> Result<BinaryOperator, FrontendError> {
 }
 
 fn is_expression_wrapper(name: Option<&str>) -> bool {
-    matches!(
-        name,
-        Some(
-            "SearchCondition"
-                | "BooleanValueExpression"
-                | "ValueExpression"
-                | "AggregatingValueExpression"
-                | "ValueExpressionPrimary"
-                | "ParenthesizedValueExpression"
-                | "UnsignedValueSpecification"
-                | "GeneralValueSpecification"
-                | "UnsignedLiteral"
-                | "UnsignedNumericLiteral"
-                | "BindingVariableReference"
-                | "DynamicParameterSpecification"
-                | "AggregateFunction"
-                | "DependentValueExpression"
-                | "IndependentValueExpression"
-                | "NumericValueExpression"
-                | "TemporalLiteral"
-                | "DateLiteral"
-                | "TimeLiteral"
-                | "DatetimeLiteral"
-                | "DurationLiteral"
-                | "ListLiteral"
-                | "RecordLiteral"
-                | "Predicate"
-                | "NullPredicate"
-                | "GeneralLiteral"
-                | "ExactNumericLiteral"
-        )
-    )
+    let Some(name) = name else {
+        return false;
+    };
+    [
+        "SearchCondition",
+        "BooleanValueExpression",
+        "BooleanTermXor",
+        "BooleanTerm",
+        "BooleanFactor",
+        "BooleanPrimary",
+        "ValueExpression",
+        "AggregatingValueExpression",
+        "ValueExpressionPrimary",
+        "NonParenthesizedValueExpressionPrimary",
+        "ParenthesizedValueExpression",
+        "UnsignedValueSpecification",
+        "GeneralValueSpecification",
+        "ValueSpecification",
+        "Literal",
+        "UnsignedLiteral",
+        "UnsignedNumericLiteral",
+        "SignedNumericLiteral",
+        "BindingVariableReference",
+        "DynamicParameterSpecification",
+        "AggregateFunction",
+        "DependentValueExpression",
+        "IndependentValueExpression",
+        "NumericValueExpression",
+        "ArithmeticValueExpression",
+        "ArithmeticTerm",
+        "ArithmeticFactor",
+        "ArithmeticUnary",
+        "PostfixExpression",
+        "SimpleComparisonPredicand",
+        "AdvancedComparisonPredicand",
+        "TemporalLiteral",
+        "DateLiteral",
+        "TimeLiteral",
+        "DatetimeLiteral",
+        "DurationLiteral",
+        "ListLiteral",
+        "RecordLiteral",
+        "Predicate",
+        "ComparisonPredicate",
+        "NullPredicate",
+        "GeneralLiteral",
+        "ExactNumericLiteral",
+    ]
+    .into_iter()
+    .any(|expected| kind_names_equal(name, expected))
 }
 
 fn lower_aggregate(cst: &ParserCst, node: &Node) -> Result<Expression, FrontendError> {
@@ -743,7 +833,7 @@ fn lower_aggregate(cst: &ParserCst, node: &Node) -> Result<Expression, FrontendE
 }
 
 fn require_name(cst: &ParserCst, node: &Node, expected: &str) -> Result<(), FrontendError> {
-    if kind_name(cst, node) == Some(expected) {
+    if kind_is(cst, node, expected) {
         Ok(())
     } else {
         unsupported(expected)
@@ -754,25 +844,39 @@ fn kind_name<'a>(cst: &'a ParserCst, node: &Node) -> Option<&'a str> {
     cst.kind_name(node.kind())
 }
 
+fn kind_is(cst: &ParserCst, node: &Node, expected: &str) -> bool {
+    kind_name(cst, node).is_some_and(|actual| kind_names_equal(actual, expected))
+}
+
+fn kind_names_equal(actual: &str, expected: &str) -> bool {
+    actual
+        .bytes()
+        .filter(|byte| byte.is_ascii_alphanumeric())
+        .map(|byte| byte.to_ascii_lowercase())
+        .eq(expected
+            .bytes()
+            .filter(|byte| byte.is_ascii_alphanumeric())
+            .map(|byte| byte.to_ascii_lowercase()))
+}
+
 fn direct_child_named(cst: &ParserCst, node: &Node, expected: &str) -> Option<Node> {
-    node.children()
-        .find(|child| kind_name(cst, child) == Some(expected))
+    node.children().find(|child| kind_is(cst, child, expected))
 }
 
 fn direct_children_named(cst: &ParserCst, node: &Node, expected: &str) -> Vec<Node> {
     node.children()
-        .filter(|child| kind_name(cst, child) == Some(expected))
+        .filter(|child| kind_is(cst, child, expected))
         .collect()
 }
 
 fn first_descendant(cst: &ParserCst, node: &Node, expected: &str) -> Option<Node> {
     node.descendants()
-        .find(|child| kind_name(cst, child) == Some(expected))
+        .find(|child| kind_is(cst, child, expected))
 }
 
 fn descendants_named(cst: &ParserCst, node: &Node, expected: &str) -> Vec<Node> {
     node.descendants()
-        .filter(|child| kind_name(cst, child) == Some(expected))
+        .filter(|child| kind_is(cst, child, expected))
         .collect()
 }
 

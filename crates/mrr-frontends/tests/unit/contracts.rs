@@ -9,7 +9,7 @@ const PARITY_QUERY: &str =
 
 #[test]
 fn parser_owned_gql_projection_preserves_the_bounded_graph_shape() {
-    let query = QueryFrontend::new()
+    let query = QueryFrontend::new(mrr_gerbil::ParserLanguage::Gql)
         .compile("parity.gql", PARITY_QUERY)
         .expect("parser-owned GQL projection");
 
@@ -34,12 +34,13 @@ fn parser_owned_gql_projection_preserves_the_bounded_graph_shape() {
 
 #[test]
 fn parser_owned_compilation_receipt_binds_source_grammar_and_query() {
-    let compilation = QueryFrontend::new()
+    let compilation = QueryFrontend::new(mrr_gerbil::ParserLanguage::Gql)
         .compile_with_receipt("parity.gql", PARITY_QUERY)
         .expect("source-bound parser-owned compilation");
     let receipt = &compilation.receipt;
 
     assert_eq!(receipt.schema, PARSER_OWNED_COMPILATION_SCHEMA_V1);
+    assert_eq!(receipt.language, mrr_gerbil::ParserLanguage::Gql);
     assert_eq!(receipt.source_name, "parity.gql");
     assert_eq!(
         receipt.source_digest,
@@ -50,9 +51,42 @@ fn parser_owned_compilation_receipt_binds_source_grammar_and_query() {
 }
 
 #[test]
+fn gql_and_cypher_frontends_admit_identical_normalized_ir() {
+    let gql = QueryFrontend::new(mrr_gerbil::ParserLanguage::Gql)
+        .compile_with_receipt("parity.gql", PARITY_QUERY)
+        .expect("GQL parity compilation");
+    let cypher = QueryFrontend::new(mrr_gerbil::ParserLanguage::Cypher)
+        .compile_with_receipt("parity.cypher", PARITY_QUERY)
+        .expect("Cypher parity compilation");
+
+    assert_eq!(gql.receipt.language, mrr_gerbil::ParserLanguage::Gql);
+    assert_eq!(cypher.receipt.language, mrr_gerbil::ParserLanguage::Cypher);
+    assert_ne!(gql.receipt.grammar_digest, cypher.receipt.grammar_digest);
+    assert_eq!(gql.query, cypher.query);
+    assert_eq!(
+        gql.query.encode_canonical().expect("GQL canonical IR"),
+        cypher
+            .query
+            .encode_canonical()
+            .expect("Cypher canonical IR")
+    );
+}
+
+#[test]
+fn cypher_unlowered_update_never_publishes_partial_query_ir() {
+    let error = QueryFrontend::new(mrr_gerbil::ParserLanguage::Cypher)
+        .compile("update.cypher", "MATCH (n:Person) DELETE n RETURN n")
+        .expect_err("Cypher update semantics must not be erased");
+    assert_eq!(
+        error,
+        FrontendError::Unsupported("data update statement".into())
+    );
+}
+
+#[test]
 fn parser_owned_properties_and_unicode_are_lossless() {
     let source = "MATCH (n:Person {name: '\u{827e}\u{8fbe}', age: 42}) RETURN n";
-    let query = QueryFrontend::new()
+    let query = QueryFrontend::new(mrr_gerbil::ParserLanguage::Gql)
         .compile("unicode.gql", source)
         .expect("parser-owned Unicode property query");
 
@@ -63,7 +97,7 @@ fn parser_owned_properties_and_unicode_are_lossless() {
 
 #[test]
 fn parser_owned_expression_filter_order_and_limit_reach_meta_query_ir() {
-    let frontend = QueryFrontend::new();
+    let frontend = QueryFrontend::new(mrr_gerbil::ParserLanguage::Gql);
     let unary = frontend
         .compile("unary.gql", "MATCH (n) RETURN -1, +2")
         .expect("parser-owned unary expressions");
@@ -95,7 +129,7 @@ fn parser_owned_expression_filter_order_and_limit_reach_meta_query_ir() {
 
 #[test]
 fn parser_owned_parameters_and_truth_predicates_are_admitted() {
-    let frontend = QueryFrontend::new();
+    let frontend = QueryFrontend::new(mrr_gerbil::ParserLanguage::Gql);
     for source in [
         "MATCH (n {value: $limit}) RETURN $limit",
         "MATCH (n) WHERE n.deleted IS NULL RETURN n.deleted IS NOT NULL, TRUE IS TRUE, NULL IS UNKNOWN",
@@ -141,7 +175,7 @@ fn parser_owned_parameters_and_truth_predicates_are_admitted() {
 
 #[test]
 fn parser_owned_rejection_never_falls_back_to_another_parser() {
-    let error = QueryFrontend::new()
+    let error = QueryFrontend::new(mrr_gerbil::ParserLanguage::Gql)
         .compile("rejected.gql", "MATCH (\n")
         .expect_err("rejected ParseArtifact must fail closed");
     assert!(matches!(error, FrontendError::ParserOwned(_)));
@@ -150,7 +184,7 @@ fn parser_owned_rejection_never_falls_back_to_another_parser() {
 #[test]
 fn parser_owned_where_precedence_is_not_partially_consumed() {
     assert_eq!(
-        QueryFrontend::new()
+        QueryFrontend::new(mrr_gerbil::ParserLanguage::Gql)
             .compile(
                 "where-precedence.gql",
                 "MATCH (n) WHERE n.score > 2 AND n.active = TRUE RETURN n",
@@ -186,7 +220,7 @@ fn parser_owned_upstream_grammar_gaps_remain_typed_and_fail_closed() {
             "MATCH (n) RETURN n.team AS team, COUNT(n) AS total GROUP BY n.team",
         ),
     ] {
-        let error = QueryFrontend::new()
+        let error = QueryFrontend::new(mrr_gerbil::ParserLanguage::Gql)
             .compile(source_name, source)
             .expect_err("unsupported upstream parser syntax must not reach another parser");
         assert!(
@@ -198,7 +232,7 @@ fn parser_owned_upstream_grammar_gaps_remain_typed_and_fail_closed() {
 
 #[test]
 fn parser_owned_aggregates_are_admitted() {
-    let frontend = QueryFrontend::new();
+    let frontend = QueryFrontend::new(mrr_gerbil::ParserLanguage::Gql);
     for source in [
         "MATCH (n) RETURN COUNT(n)",
         "MATCH (n) RETURN AVG(DISTINCT n.score)",
@@ -213,7 +247,7 @@ fn parser_owned_aggregates_are_admitted() {
 
 #[test]
 fn parser_owned_numeric_and_structured_literals_are_admitted() {
-    let frontend = QueryFrontend::new();
+    let frontend = QueryFrontend::new(mrr_gerbil::ParserLanguage::Gql);
     for source in [
         "MATCH (n) RETURN 0.5, 1e3",
         "MATCH (n) RETURN DATE '2024-01-02', TIME '12:34:56'",
@@ -228,7 +262,7 @@ fn parser_owned_numeric_and_structured_literals_are_admitted() {
 
 #[test]
 fn parser_owned_arithmetic_and_boolean_precedence_is_admitted() {
-    let frontend = QueryFrontend::new();
+    let frontend = QueryFrontend::new(mrr_gerbil::ParserLanguage::Gql);
     for source in [
         "MATCH (n) RETURN n.score + 1, 2 * 3, 10 / 2, 7 - 3",
         "MATCH (n) WHERE (n.score > 2) AND (n.active = TRUE) RETURN n",
@@ -255,7 +289,7 @@ fn parser_owned_arithmetic_and_boolean_precedence_is_admitted() {
 
 #[test]
 fn parser_owned_multiple_match_paths_reach_one_graph_pattern() {
-    let frontend = QueryFrontend::new();
+    let frontend = QueryFrontend::new(mrr_gerbil::ParserLanguage::Gql);
     let source = concat!(
         "MATCH (a:Person {name: 'Ada'})-[e:KNOWS]->(b), ",
         "(c)<-[f:LIKES {weight: 1}]-(d) RETURN a, b, c, d"
@@ -314,7 +348,7 @@ fn parser_owned_entrypoint_rejects_unlowered_semantics() {
         ),
     ] {
         assert_eq!(
-            QueryFrontend::new()
+            QueryFrontend::new(mrr_gerbil::ParserLanguage::Gql)
                 .compile("unsupported.gql", source)
                 .expect_err("unlowered semantics must never be erased"),
             FrontendError::Unsupported(expected.into())
@@ -324,7 +358,7 @@ fn parser_owned_entrypoint_rejects_unlowered_semantics() {
 
 #[test]
 fn parser_owned_projection_is_canonically_deterministic() {
-    let frontend = QueryFrontend::new();
+    let frontend = QueryFrontend::new(mrr_gerbil::ParserLanguage::Gql);
     let parser_owned = frontend
         .compile("query.gql", PARITY_QUERY)
         .expect("parser-owned GQL query");
@@ -343,7 +377,7 @@ fn parser_owned_projection_is_canonically_deterministic() {
 
 #[test]
 fn parser_owned_projection_rejects_mutation_before_meta_query_admission() {
-    let error = QueryFrontend::new()
+    let error = QueryFrontend::new(mrr_gerbil::ParserLanguage::Gql)
         .compile("unsupported.gql", "INSERT (a)")
         .expect_err("data mutation is outside the admitted MetaQueryIr slice");
     assert!(matches!(error, FrontendError::Unsupported(_)));
@@ -357,7 +391,7 @@ fn unimplemented_profile_surfaces_fail_closed_without_a_public_domain_model() {
         ("procedure.gql", "CALL analytics.refresh()"),
         ("session.gql", "SESSION SET SCHEMA analytics"),
     ] {
-        let error = QueryFrontend::new()
+        let error = QueryFrontend::new(mrr_gerbil::ParserLanguage::Gql)
             .compile(source_name, source)
             .expect_err("an unimplemented profile surface must publish no MetaQueryIr");
         assert!(
@@ -369,7 +403,7 @@ fn unimplemented_profile_surfaces_fail_closed_without_a_public_domain_model() {
 
 #[test]
 fn primitive_result_semantics_are_explicit_in_meta_query_ir() {
-    let frontend = QueryFrontend::new();
+    let frontend = QueryFrontend::new(mrr_gerbil::ParserLanguage::Gql);
     let distinct = frontend
         .compile("distinct.gql", "MATCH (n) RETURN DISTINCT n")
         .expect("DISTINCT result");
@@ -399,7 +433,7 @@ fn primitive_result_semantics_are_explicit_in_meta_query_ir() {
 
 #[test]
 fn parser_owned_result_grouping_and_pagination_are_admitted() {
-    let frontend = QueryFrontend::new();
+    let frontend = QueryFrontend::new(mrr_gerbil::ParserLanguage::Gql);
     for source in [
         "MATCH (n) RETURN DISTINCT n",
         "MATCH (n)-[r]->(m) RETURN *",
@@ -414,7 +448,7 @@ fn parser_owned_result_grouping_and_pagination_are_admitted() {
 
 #[test]
 fn numeric_unary_operators_lower_without_a_compatibility_operator() {
-    let query = QueryFrontend::new()
+    let query = QueryFrontend::new(mrr_gerbil::ParserLanguage::Gql)
         .compile("unary.gql", "MATCH (n) RETURN -1, +2")
         .expect("numeric unary slice");
 
@@ -442,7 +476,7 @@ fn operators_absent_from_meta_query_ir_fail_closed_by_exact_name() {
         ),
     ] {
         assert_eq!(
-            QueryFrontend::new()
+            QueryFrontend::new(mrr_gerbil::ParserLanguage::Gql)
                 .compile("unsupported-expression.gql", source)
                 .expect_err("target query algebra must reject an absent operator"),
             FrontendError::Unsupported(expected.into())
@@ -467,7 +501,7 @@ fn graph_match_and_path_search_authority_fail_closed_by_exact_name() {
         ),
     ] {
         assert_eq!(
-            QueryFrontend::new()
+            QueryFrontend::new(mrr_gerbil::ParserLanguage::Gql)
                 .compile("unsupported-path-authority.gql", source)
                 .expect_err("MetaQueryIR has no path-search execution authority"),
             FrontendError::Unsupported(expected.into())
@@ -477,7 +511,7 @@ fn graph_match_and_path_search_authority_fail_closed_by_exact_name() {
 
 #[test]
 fn filter_lowers_to_meta_query_filter() {
-    let filter = QueryFrontend::new()
+    let filter = QueryFrontend::new(mrr_gerbil::ParserLanguage::Gql)
         .compile("filter.gql", "MATCH (n) FILTER n.score > 1 RETURN n")
         .expect("FILTER is representable by MetaQueryIR");
     assert_eq!(filter.filters().len(), 1);
@@ -497,7 +531,7 @@ fn general_literal_values_lower_to_backend_neutral_meta_query_ir() {
         "TIMESTAMP '2026-09-02T12:34:56Z', DURATION 'P1DT2H', ",
         "RECORD {name: 'Ada', age: 42}"
     );
-    let query = QueryFrontend::new()
+    let query = QueryFrontend::new(mrr_gerbil::ParserLanguage::Gql)
         .compile("general-literals.gql", source)
         .expect("general literal values lower to MetaQueryIR");
 
@@ -521,7 +555,7 @@ fn general_literal_values_lower_to_backend_neutral_meta_query_ir() {
         ]
     );
 
-    let repeated = QueryFrontend::new()
+    let repeated = QueryFrontend::new(mrr_gerbil::ParserLanguage::Gql)
         .compile("general-literals.gql", source)
         .expect("same source compiles deterministically");
     assert_eq!(query.id(), repeated.id());
@@ -539,7 +573,7 @@ fn general_literal_values_lower_to_backend_neutral_meta_query_ir() {
     );
 
     let changed_source = source.replace("age: 42", "age: 43");
-    let changed = QueryFrontend::new()
+    let changed = QueryFrontend::new(mrr_gerbil::ParserLanguage::Gql)
         .compile("general-literals.gql", &changed_source)
         .expect("changed literal remains valid");
     assert_ne!(query.id(), changed.id());
@@ -555,7 +589,7 @@ fn iso_aggregate_family_lowers_to_explicit_meta_query_aggregations() {
         "MATCH (n) RETURN COUNT(n) AS rows, COUNT(DISTINCT n) AS nodes, ",
         "PERCENTILE_CONT(n.score, 0.5) AS median"
     );
-    let query = QueryFrontend::new()
+    let query = QueryFrontend::new(mrr_gerbil::ParserLanguage::Gql)
         .compile("aggregate-family.gql", source)
         .expect("aggregate family lowers to MetaQueryIR");
 
@@ -579,7 +613,7 @@ fn iso_aggregate_family_lowers_to_explicit_meta_query_aggregations() {
     assert_eq!(query.aggregations()[2].quantifier(), None);
     assert_eq!(query.aggregations()[2].expressions().len(), 2);
 
-    let repeated = QueryFrontend::new()
+    let repeated = QueryFrontend::new(mrr_gerbil::ParserLanguage::Gql)
         .compile("aggregate-family.gql", source)
         .expect("repeat aggregate compilation");
     assert_eq!(query.id(), repeated.id());
@@ -593,7 +627,7 @@ fn iso_aggregate_family_lowers_to_explicit_meta_query_aggregations() {
 
 #[test]
 fn character_string_source_forms_share_only_semantically_equal_mrr_identity() {
-    let frontend = QueryFrontend::new();
+    let frontend = QueryFrontend::new(mrr_gerbil::ParserLanguage::Gql);
     let single = frontend
         .compile("single-quoted.gql", r"MATCH (n) RETURN 'A\nB'")
         .expect("single-quoted escaped character sequence");
@@ -613,13 +647,13 @@ fn character_string_source_forms_share_only_semantically_equal_mrr_identity() {
 
 #[test]
 fn dynamic_parameter_identity_uses_decoded_name() {
-    let extended = QueryFrontend::new()
+    let extended = QueryFrontend::new(mrr_gerbil::ParserLanguage::Gql)
         .compile(
             "parameter-extended.gql",
             "MATCH (n {value: $limit}) RETURN $limit",
         )
         .expect("extended dynamic parameter");
-    let changed = QueryFrontend::new()
+    let changed = QueryFrontend::new(mrr_gerbil::ParserLanguage::Gql)
         .compile(
             "parameter-changed.gql",
             "MATCH (n {value: $other}) RETURN $other",
@@ -635,7 +669,7 @@ fn dynamic_parameter_identity_uses_decoded_name() {
 
 #[test]
 fn null_and_truth_predicates_lower_to_explicit_mrr_unary_operators() {
-    let query = QueryFrontend::new()
+    let query = QueryFrontend::new(mrr_gerbil::ParserLanguage::Gql)
         .compile(
             "truth-null-predicates.gql",
             "MATCH (n) WHERE n.deleted IS NULL RETURN n.deleted IS NOT NULL, TRUE IS TRUE, NULL IS UNKNOWN",
@@ -671,7 +705,7 @@ fn null_and_truth_predicates_lower_to_explicit_mrr_unary_operators() {
         }
     ));
 
-    let negated = QueryFrontend::new()
+    let negated = QueryFrontend::new(mrr_gerbil::ParserLanguage::Gql)
         .compile(
             "truth-null-predicates-negated.gql",
             "MATCH (n) WHERE n.deleted IS NOT NULL RETURN TRUE IS NOT TRUE",
@@ -682,7 +716,7 @@ fn null_and_truth_predicates_lower_to_explicit_mrr_unary_operators() {
 
 #[test]
 fn zero_limit_is_valid_while_unowned_page_semantics_fail_closed_by_exact_name() {
-    let frontend = QueryFrontend::new();
+    let frontend = QueryFrontend::new(mrr_gerbil::ParserLanguage::Gql);
     let zero = frontend
         .compile("zero-limit.gql", "MATCH (n) RETURN n LIMIT 0")
         .expect("ISO zero LIMIT is a valid empty-result bound");

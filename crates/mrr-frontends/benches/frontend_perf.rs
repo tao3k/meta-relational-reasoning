@@ -10,7 +10,7 @@ fn bench_frontend(c: &mut Criterion) {
     // process lifecycle concern and must not be folded into parser throughput.
     parse_gql_artifact(QUERY).expect("benchmark parser warm-up");
 
-    let frontend = QueryFrontend::new();
+    let frontend = QueryFrontend::new(mrr_gerbil::ParserLanguage::Gql);
     let mut group = c.benchmark_group("mrr_gql_runtime");
     group.throughput(Throughput::Bytes(QUERY.len() as u64));
     group.bench_function("parser_owned_parse_artifact", |bencher| {

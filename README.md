@@ -181,8 +181,9 @@ model. GraphQL is a separate API language.
   generation deltas.
 - `mrr-revision` binds a generation to an unambiguous set of provider-neutral
   source revisions.
-- `mrr-frontends` lowers parser-owned ISO GQL artifacts into `MetaQueryIr`
-  without a second Rust parser or public GQL AST stack.
+- `mrr-frontends` explicitly selects parser-owned ISO GQL or openCypher AOT
+  artifacts and lowers both into the same `MetaQueryIr`, without a second Rust
+  parser or public language-specific AST stack.
 - `mrr-gerbil` consumes the Gerbil AOT projection through a fixed-width native
   ABI and preserves typed upstream runtime failures.
 - `meta-relational-reasoning` is the stable Rust consumer facade; it owns no

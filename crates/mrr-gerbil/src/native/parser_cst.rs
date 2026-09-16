@@ -19,7 +19,7 @@ impl ParserSyntaxKind {
     }
 }
 
-/// Rowan language marker for the complete parser-owned GQL catalog.
+/// Rowan language marker for a parser-owned language-selected catalog.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum ParserSyntax {}
 

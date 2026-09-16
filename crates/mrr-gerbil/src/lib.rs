@@ -17,10 +17,10 @@ pub use native::{
     PARSE_ARTIFACT_SCHEMA_V1, PARSER_NATIVE_DESCRIPTOR_SCHEMA_V1, ParseArtifact,
     ParseArtifactLoadError, ParseArtifactStatus, ParseEvent, ParserAuthority,
     ParserAuthorityLoadError, ParserCst, ParserCstError, ParserKindCatalog, ParserKindCategory,
-    ParserKindSpec, ParserSyntax, ParserSyntaxKind, ProfileModuleSpec, ProfileSpec,
+    ParserKindSpec, ParserLanguage, ParserSyntax, ParserSyntaxKind, ProfileModuleSpec, ProfileSpec,
     ProfileSupplementSpec, ReasoningBundleLoadError, ReleaseSpec, driver_request,
     driver_transition, load_enhanced_tree_sitter_query_operator_table, load_iso_profile,
-    load_parser_authority, load_reasoning_bundle, parse_gql_artifact,
+    load_parser_authority, load_reasoning_bundle, parse_cypher_artifact, parse_gql_artifact,
 };
 pub use projection::{
     GrammarProjectionError, stamp_projection, validate_projection, workspace_input_fingerprint,

@@ -199,6 +199,8 @@ $ A => B $
                 "closure_admission_rejects_any_failed_owner",
                 "filter_for_admission_is_typed",
                 "filter_for_rejection_emits_no_ir",
+                "frontend_common_surface_normalizes_across_languages",
+                "frontend_receipt_retains_selected_language",
                 "graph_element_predicate_admission_is_typed",
                 "graph_element_predicate_rejection_emits_no_ir",
                 "graph_match_path_prefix_admission_is_typed",

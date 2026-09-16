@@ -48,7 +48,7 @@ fn stale_scheme_input_fails_closed() {
 fn gerbil_package_owns_only_the_linked_parser_edge() {
     let package = include_str!("../../../../gerbil.pkg");
     assert!(
-        package.contains("github.com/tao3k/gerbil-parser@338ea9d84a2cef7eb47366393f9cdd08a6b3f919")
+        package.contains("github.com/tao3k/gerbil-parser@956c18b1f0e833ba775f8077eafabbfecd543599")
     );
     assert_eq!(package.matches("github.com/tao3k/").count(), 1);
     assert!(!package.contains("github.com/tao3k/poo-flow@"));
@@ -139,6 +139,8 @@ fn parser_owned_parse_artifact_crosses_the_native_boundary_losslessly() {
     let source = "MATCH (n {name: '\u{827e}\u{8fbe}'}) RETURN n\n";
     let artifact = crate::parse_gql_artifact(source).expect("parser-owned ParseArtifact v1");
     assert_eq!(artifact.schema, crate::PARSE_ARTIFACT_SCHEMA_V1);
+    assert_eq!(artifact.language, crate::ParserLanguage::Gql);
+    assert_eq!(artifact.kind_catalog.language(), crate::ParserLanguage::Gql);
     assert_eq!(artifact.kind_catalog.kinds().len(), 581);
     assert_eq!(artifact.kind_catalog.kind_id("GqlProgram"), Some(0));
     assert_eq!(
@@ -236,6 +238,7 @@ fn parse_artifact_payload(source: &str) -> Vec<u8> {
 fn parser_kind_descriptor() -> serde_json::Value {
     serde_json::json!({
         "schema": crate::PARSER_NATIVE_DESCRIPTOR_SCHEMA_V1,
+        "language": "gql",
         "grammarDigest": TEST_GRAMMAR_DIGEST,
         "fields": ["text", "operator", "sign"],
         "syntaxKinds": [
@@ -248,14 +251,17 @@ fn parser_kind_descriptor() -> serde_json::Value {
 
 fn test_parser_kind_catalog() -> std::sync::Arc<crate::ParserKindCatalog> {
     std::sync::Arc::new(
-        crate::native::parse_artifact::load_kind_catalog(&parser_kind_descriptor())
-            .expect("test parser kind catalog"),
+        crate::native::parse_artifact::load_kind_catalog(
+            &parser_kind_descriptor(),
+            crate::ParserLanguage::Gql,
+        )
+        .expect("test parser kind catalog"),
     )
 }
 
 fn assert_invalid_kind_catalog(descriptor: serde_json::Value) {
     assert_eq!(
-        crate::native::parse_artifact::load_kind_catalog(&descriptor),
+        crate::native::parse_artifact::load_kind_catalog(&descriptor, crate::ParserLanguage::Gql,),
         Err(crate::ParseArtifactLoadError::InvalidHostDescriptor)
     );
 }
@@ -269,6 +275,10 @@ fn parser_kind_catalog_rejects_stale_descriptor_authority() {
     let mut malformed_grammar_digest = parser_kind_descriptor();
     malformed_grammar_digest["grammarDigest"] = serde_json::json!("sha256:not-a-digest");
     assert_invalid_kind_catalog(malformed_grammar_digest);
+
+    let mut wrong_language = parser_kind_descriptor();
+    wrong_language["language"] = serde_json::json!("cypher");
+    assert_invalid_kind_catalog(wrong_language);
 }
 
 #[test]

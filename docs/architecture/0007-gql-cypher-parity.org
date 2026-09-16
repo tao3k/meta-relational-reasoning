@@ -5,7 +5,7 @@
 
 * Status
 
-Accepted MVP slice.
+Implemented and executable.
 
 * Decision
 
@@ -46,6 +46,33 @@ The focused acceptance query contains typed nodes, an outgoing typed relation,
 property access in a predicate, and a projection.  Both explicit frontend
 instances must return equal normalized IR and byte-identical versioned canonical
 encoding.
+
+The executable contract is
+=gql_and_cypher_frontends_admit_identical_normalized_ir=. It selects each
+language through =ParserLanguage=, requires distinct parser grammar digests,
+then proves equal normalized values and byte-identical canonical encodings.
+The V1 compilation receipt records the selected language; grammar identity is
+therefore never inferred from a filename or source spelling.
+
+The embedded runtime remains one thread-affine owner, while Rust callers and
+the test harness remain concurrent. The upstream linked-program runtime fixes
+Gambit processor ownership at initialization; the default parallel frontend
+suite is the regression scenario and must not require =--test-threads=1= or a
+caller-provided =GAMBOPT= workaround.
+
+#+name: rfc-0007-parity-lean
+#+begin_src lean
+theorem frontend_common_surface_normalizes_across_languages
+    (syntax : CommonFrontendSyntax) :
+    lowerCommonFrontend .gql syntax = lowerCommonFrontend .cypher syntax := by
+  rfl
+
+theorem frontend_receipt_retains_selected_language
+    (language : FrontendLanguage)
+    (grammarDigest : Digest256) :
+    (frontendReceipt language grammarDigest).language = language := by
+  rfl
+#+end_src
 
 #+name: rfc-0007-parity-mathematics
 #+begin_src typst

@@ -137,27 +137,30 @@ the project-local =GERBIL_PATH= and validated by schema and digest. Development,
 tests, and applications therefore enter the declared profile and then
 =gxpkg env=; MRR does not invoke a =gparse= executable at runtime.
 
-At process startup the embedded parser publishes one V1 descriptor containing the 581
-parser-owned syntax kinds and the terminal-to-token-kind mapping in Grammar IR
-declaration order. Rust assigns Rowan's numeric kinds from that order; it does
-not maintain another name table. Each accepted event stream is checked for
+At first use the embedded parser publishes the selected language's V1
+descriptor containing its parser-owned syntax kinds and terminal-to-token-kind
+mapping in Grammar IR declaration order. Rust caches one catalog per explicit
+=Gql= or =Cypher= selector and assigns Rowan's numeric kinds from that order; it
+does not maintain another name table. Each accepted event stream is checked for
 balanced node and field frames, continuous UTF-8 byte offsets, known catalog
 kinds, one root, and exact token text before a green tree is published.
 Rejected or structurally inconsistent artifacts produce no partial Rowan CST.
 
 The full parser CST is the only syntax input. =mrr-frontends= owns a private
-=compile_parser_owned= projection for the admitted ISO
+parser-owned projection for the admitted
 =MATCH/WHERE/RETURN= Graph-Relational slice and lowers that projection directly
-into =MetaQueryIR=. It does not publish or preserve a second public GQL AST.
+into =MetaQueryIR=. It does not publish or preserve a second public GQL or
+Cypher AST.
 Any accepted grammar shape that this adapter has not implemented--including
 match modes, path prefixes, quantifiers, and unowned operators--fails closed;
-it never falls back to a Rust parser and never silently erases syntax. The
-Cypher frontend remains explicit until its parser-owned projection is connected.
+it never falls back to a Rust parser and never silently erases syntax. GQL and
+Cypher receipts retain distinct grammar identities while their admitted common
+surface normalizes to equal, byte-identical canonical =MetaQueryIR=.
 
-=compile_parser_owned_with_receipt= keeps provenance outside the
+=compile_with_receipt= keeps provenance outside the
 language-neutral IR, as required by RFC 0006. Its exact V1 receipt binds the
-caller-visible source name, independently verified source SHA-256, parser
-grammar digest, and resulting =QueryId=. Rust verifies the source digest against
+explicit language, caller-visible source name, independently verified source
+SHA-256, parser grammar digest, and resulting =QueryId=. Rust verifies the source digest against
 the submitted UTF-8 bytes before publishing either a CST or compilation
 receipt; a mismatched response therefore cannot be admitted as another
 request's result.

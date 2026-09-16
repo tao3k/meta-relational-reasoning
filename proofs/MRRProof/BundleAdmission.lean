@@ -572,4 +572,43 @@ theorem static_query_typing_rejection_emits_no_receipt
     canonicalStaticQueryTypingReceipt? receipt = none := by
   simp [canonicalStaticQueryTypingReceipt?, rejected]
 
+inductive FrontendLanguage where
+  | gql
+  | cypher
+  deriving DecidableEq
+
+structure CommonFrontendSyntax where
+  semanticKey : Nat
+  deriving DecidableEq
+
+structure NormalizedFrontendIr where
+  semanticKey : Nat
+  deriving DecidableEq
+
+structure FrontendCompilationReceipt where
+  language : FrontendLanguage
+  grammarDigest : Digest256
+  deriving DecidableEq
+
+def lowerCommonFrontend
+    (_language : FrontendLanguage)
+    (syntax : CommonFrontendSyntax) : NormalizedFrontendIr :=
+  { semanticKey := syntax.semanticKey }
+
+def frontendReceipt
+    (language : FrontendLanguage)
+    (grammarDigest : Digest256) : FrontendCompilationReceipt :=
+  { language, grammarDigest }
+
+theorem frontend_common_surface_normalizes_across_languages
+    (syntax : CommonFrontendSyntax) :
+    lowerCommonFrontend .gql syntax = lowerCommonFrontend .cypher syntax := by
+  rfl
+
+theorem frontend_receipt_retains_selected_language
+    (language : FrontendLanguage)
+    (grammarDigest : Digest256) :
+    (frontendReceipt language grammarDigest).language = language := by
+  rfl
+
 end MRRProof

@@ -1,5 +1,6 @@
-//! Parser-owned GQL semantic projection into MetaQueryIR.
+//! Parser-owned GQL and Cypher semantic projection into MetaQueryIR.
 
+use mrr_gerbil::ParserLanguage;
 use mrr_query::{
     Aggregation, AggregationFunction, BinaryOperator, Binding, Direction, Expression, Filter,
     GraphPattern, Grouping, MetaQueryIr, NodePattern, Ordering, Parameter, PathPattern,
@@ -15,8 +16,10 @@ use crate::projection::{PatternElement, QueryClause};
 use crate::result_lowering::{lower_page_value, visible_bindings};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-/// Stateless parser-owned ISO GQL compiler.
-pub struct QueryFrontend;
+/// Stateless parser-owned compiler with an explicit AOT language selection.
+pub struct QueryFrontend {
+    language: ParserLanguage,
+}
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 /// Fail-closed frontend diagnostics, unsupported syntax, or IR rejection.
@@ -32,10 +35,17 @@ pub enum FrontendError {
 /// Authority and source binding retained outside language-neutral MetaQueryIR.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ParserOwnedCompilationReceipt {
+    /// Stable V1 receipt schema.
     pub schema: &'static str,
+    /// Explicit parser-owned AOT language selected for this compilation.
+    pub language: ParserLanguage,
+    /// Caller-owned source identity.
     pub source_name: String,
+    /// Digest of the exact UTF-8 source.
     pub source_digest: String,
+    /// Digest of the selected immutable parser grammar.
     pub grammar_digest: String,
+    /// Language-neutral identity of the admitted query.
     pub query_id: QueryId,
 }
 
@@ -54,11 +64,12 @@ impl From<QueryIrError> for FrontendError {
 
 impl QueryFrontend {
     #[must_use]
-    pub const fn new() -> Self {
-        Self
+    /// Creates a frontend that consumes one explicit parser-owned AOT language.
+    pub const fn new(language: ParserLanguage) -> Self {
+        Self { language }
     }
 
-    /// Compiles the admitted ISO parity slice through the parser-owned AOT CST.
+    /// Compiles the admitted GQL/Cypher parity slice through the selected AOT CST.
     ///
     /// This is an explicit migration boundary: it does not fall back to the
     /// parser-owned grammar accepts a shape whose semantic lowering is not yet
@@ -74,22 +85,17 @@ impl QueryFrontend {
         name: &str,
         source: &str,
     ) -> Result<ParserOwnedCompilation, FrontendError> {
-        let lowered = crate::parser_owned::lower_parser_owned_ast(source)?;
+        let lowered = crate::parser_owned::lower_parser_owned_ast(self.language, source)?;
         let query = lower_query(&lowered.query)?;
         let receipt = ParserOwnedCompilationReceipt {
             schema: PARSER_OWNED_COMPILATION_SCHEMA_V1,
+            language: lowered.language,
             source_name: name.into(),
             source_digest: lowered.source_digest,
             grammar_digest: lowered.grammar_digest,
             query_id: query.id(),
         };
         Ok(ParserOwnedCompilation { query, receipt })
-    }
-}
-
-impl Default for QueryFrontend {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
