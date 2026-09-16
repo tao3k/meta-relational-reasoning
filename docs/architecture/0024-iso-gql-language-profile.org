@@ -28,6 +28,88 @@ that have parser syntax but no MRR lowering fail closed by exact parser-owned
 kind. No rejected shape publishes partial IR and there is no legacy parser
 fallback.
 
+* Terminology and implementation landscape
+
+This RFC uses =GQL= only for ISO/IEC 39075.  Similar names occupy different
+layers and must not be treated as aliases.
+
+| Name | Kind | Contract |
+|-
+| Property Graph | data model | nodes/vertices and directed edges/relationships with labels and properties; no query language or Agent authority follows from the model alone |
+| ISO GQL | standalone database language | ISO/IEC 39075:2024 defines structures and operations for property graphs and graph collections; this RFC profiles that language |
+| Cypher | product-originated database-language family | Neo4j's declarative property-graph language; current Neo4j documentation declares substantial but incomplete mandatory GQL support |
+| openCypher | open language specification and TCK | the open specification of Cypher and an incremental migration path toward GQL; implementation dialects can still differ |
+| PGQL | database language | an SQL-like Property Graph Query Language associated with Oracle; it queries the Property Graph model but is not the model itself |
+| SQL/PGQ | SQL standard part | ISO/IEC 9075-16 adds property-graph querying to SQL; it is not the standalone GQL standard |
+| GraphQL | API query language/runtime | selects typed fields through API resolvers and is storage-independent; it is unrelated to ISO GQL despite the spelling |
+| Content Graph | semantic architecture role | canonical source-bound identities, versions, provenance, and admitted derivations |
+| Context Graph | Agent architecture role | task-local, permission- and budget-scoped projection anchored to Content |
+
+Separation of layers does not mean that a query language is independent of its
+data model.  ISO GQL syntax and semantics are defined for Property Graphs;
+Cypher/openCypher and PGQL likewise expose their respective Property Graph
+models.  SQL/PGQ binds graph patterns to Property Graph views inside SQL.
+GraphQL instead binds field selections to an API type schema and resolver
+contract.  A frontend must never lower these languages into a generic
+model-free "graph query" string.
+
+Primary references are the
+[[https://www.iso.org/standard/76120.html][ISO GQL record]],
+[[https://opencypher.org/][openCypher project]],
+[[https://neo4j.com/docs/cypher-manual/5/appendix/gql-conformance/][Neo4j GQL conformance declaration]],
+[[https://pgql-lang.org/spec/1.5/][PGQL specification]],
+[[https://www.iso.org/standard/79473.html][SQL/PGQ record]], and
+[[https://graphql.org/][GraphQL Foundation overview]].
+
+** Representative property-graph engines
+
+The ecosystem demonstrates why model, language, implementation, and semantic
+role must remain independent:
+
+| Engine | Declared surface | Boundary consequence |
+|-
+| Neo4j | Property Graph plus Cypher, moving toward GQL conformance | Cypher acceptance is not evidence that every ISO GQL feature is accepted |
+| Memgraph | openCypher-based Cypher dialect with extensions | dialect behavior needs differential evidence rather than assumed Neo4j parity |
+| Kuzu | embedded structured Property Graph and openCypher-based Cypher | its storage/schema choices are implementation facts, not MRR semantics |
+| FalkorDB | Property Graph, openCypher plus proprietary extensions, and GraphRAG tooling | retrieval and generated graph edges remain proposals until admitted |
+| Apache AGE | PostgreSQL graph extension with openCypher grammar and SQL/Cypher composition | one physical engine can expose relational and graph views without merging their authorities |
+| Oracle Property Graph | PGQL and SQL/PGQ integration | a Property Graph implementation need not use Cypher or standalone GQL |
+
+These engines can materialize a canonical Content Graph, a derived Context
+Graph, or both in separate generations.  None is intrinsically a "Context Graph
+database."  The role is determined by source identity, versioning, provenance,
+projection, and admission contracts.  In particular, GraphRAG or text-to-Cypher
+features make a database useful for Context construction; they do not promote
+retrieved or model-generated relationships into canonical Content.
+
+MRR therefore treats GQL and Cypher as frontend adapters.  A parser acceptance
+receipt proves a source was parsed under a named grammar artifact.  It does not
+prove database-dialect portability, query-result truth, Content authority, or
+Context freshness.  Those require separate conformance, source, lineage, and
+admission evidence.
+
+For ISO GQL, the proposed downstream schema-bound query path is:
+
+1. the parser artifact establishes the language grammar and lossless CST;
+2. MRR lowering produces a storage-neutral =MetaQueryIr= whose node, relation,
+   property, direction, and path constructs remain Property-Graph-specific;
+3. the separate downstream =mrr-data= repository would establish an exact
+   Property Graph catalog, Arrow representation, GraphAr storage snapshot, and
+   semantic generation;
+4. =mrr-data= would resolve the IR against that catalog and wrap it in a bound
+   query receipt carrying catalog/snapshot digests, without inserting Arrow or
+   GraphAr types into =MetaQueryIr=;
+5. execution and result admission must reject a stale or mismatched data
+   generation.
+
+The proposed cross-repository contract is described in
+[[file:0026-mrr-data-graphar.org][RFC 0026]].  The absence of an
+=mrr-data= crate here is intentional dependency purity: =mrr-data= would depend
+on MRR in the proposal, while MRR must not depend on its future Arrow/GraphAr
+consumer.  Neither repository currently provides that binding.  This
+repository does not claim it is implemented merely because parsing and
+storage-neutral lowering pass.
+
 #+name: rfc-0024-profile-admission
 #+begin_src mermaid
 flowchart LR

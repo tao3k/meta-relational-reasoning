@@ -248,6 +248,15 @@ canonical anchor, POO Flow engineers task-local Context, MRR admits semantic
 derivations, and the runtime owns effects.  The separation prevents a useful
 Agent context from accidentally becoming a competing source of truth.
 
+Neo4j and other Property Graph databases sit at a different layer.  They store
+and query nodes, relationships, labels, and properties through languages such
+as Cypher, openCypher, GQL, or PGQL.  A deployment may use one of them to
+materialize Content, Context, or both, but the engine is not intrinsically a
+Context Graph.  Palantir's Ontology likewise describes a shared operational
+world integrating data, logic, actions, and security; it is closer to canonical
+Content plus an operational model than to a disposable Context projection.
+AIP or another Agent workflow can derive scoped Context from that world.
+
 The official references are Palantir's
 [[https://www.palantir.com/docs/foundry/architecture-center/ontology-system][Ontology system]],
 [[https://www.palantir.com/docs/foundry/aip][AIP overview]], and

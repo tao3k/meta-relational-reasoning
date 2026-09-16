@@ -189,6 +189,65 @@ profile remains evidence-driven and non-certifying. Rowan is only a lossless
 CST sink. SeleneDB, Grafeo, and froGQL remain research references rather than
 dependencies or semantic authorities.
 
+## GraphQL, GQL, Cypher, and graph roles are different layers
+
+The word "graph" appears in several unrelated interfaces. This repository uses
+the following terms precisely:
+
+| Term | Layer | Meaning here |
+| --- | --- | --- |
+| Property Graph | Data model | Vertices/nodes and directed edges/relationships carrying labels and properties. It is a model, not a query language and not automatically a Content or Context Graph. |
+| [ISO GQL](https://www.iso.org/standard/76120.html) | Database language | ISO/IEC 39075:2024 language for defining, querying, and modifying property graphs and graph collections. This is the parser-owned standard targeted by the GQL profile. |
+| [Cypher / openCypher](https://opencypher.org/) | Database-language family | Neo4j-originated pattern language and its open specification. openCypher now evolves toward ISO GQL, but a Cypher dialect is not automatically full GQL conformance. |
+| [PGQL](https://pgql-lang.org/spec/1.5/) | Database language | Oracle-led SQL-like Property Graph Query Language. PGQL queries property graphs; "Property Graph" and "PGQL" are not synonyms. |
+| [SQL/PGQ](https://www.iso.org/standard/79473.html) | SQL extension | ISO/IEC 9075-16 property-graph queries integrated into SQL, including graph pattern matching over graphs exposed from relational data. It is distinct from standalone ISO GQL. |
+| [GraphQL](https://graphql.org/) | API language and runtime | A typed API field-selection language independent of any database or storage engine. It is not ISO GQL, Cypher, PGQL, or a graph database language. |
+| Content Graph | Architecture role | Canonical source-bound semantic standard with identity, versions, provenance, and admitted derivations. |
+| Context Graph | Architecture role | Bounded task projection anchored to an exact Content generation, policy, capability scope, and expiry. |
+
+These layers are separately owned, but they are not semantically arbitrary. A
+query language is defined against a data model:
+
+- GQL, Cypher/openCypher, and PGQL express patterns over variants of the
+  Property Graph model;
+- SQL/PGQ exposes Property Graph patterns inside SQL's relational environment;
+- GraphQL selects fields from an API schema and resolver graph, not from a
+  Property Graph unless an application explicitly maps it to one.
+
+MRR therefore cannot admit a query merely because its text parsed. A query must
+also type-check against the exact graph catalog, property types, direction and
+path rules, source snapshot, and semantic generation that will execute it.
+
+Representative graph engines occupy the storage/query layer, not the MRR
+admission layer:
+
+| Engine | Published model/language surface | Possible role in this architecture |
+| --- | --- | --- |
+| [Neo4j](https://neo4j.com/docs/cypher-manual/current/introduction/cypher-overview/) | Property graph database queried with Cypher; current releases document substantial, but not complete, mandatory GQL support | May store canonical Content or derived Context; MRR contracts decide which, not the database brand |
+| [Memgraph](https://memgraph.com/blog/cypher-differences-between-neo4j-and-memgraph) | Property graph database with an openCypher-based dialect and extensions | Candidate real-time materialization/query backend, with dialect differences kept outside semantic authority |
+| [Kuzu](https://kuzudb.github.io/docs/) | Embedded structured-property-graph database with an openCypher-based Cypher implementation | Candidate embedded analytical store; its schema and query engine do not replace source identity or admission |
+| [FalkorDB](https://docs.falkordb.com/) | Property graph database supporting openCypher plus proprietary extensions and GraphRAG facilities | Can implement retrieval or a Context projection, but generated/retrieved edges remain non-authoritative until admitted |
+| [Apache AGE](https://age.apache.org/overview/) | PostgreSQL extension implementing openCypher grammar and hybrid SQL/Cypher queries | Can expose relational and graph data together; source ownership remains explicit across both views |
+| [Oracle Property Graph](https://pgql-lang.org/) | Property graphs queried through PGQL and, in current Oracle Database, SQL/PGQ integration | Another property-graph query family; it is neither GraphQL nor the ISO GQL profile parsed here |
+| [Apache GraphAr](https://github.com/apache/incubator-graphar) | System-independent, chunked Property Graph file format with metadata, column groups, and CSR/CSC/COO-oriented edge layouts | Proposed persistent graph-layout dependency for the separate [`mrr-data`](https://github.com/tao3k/mrr-data) design; no integration is implemented yet |
+
+The same engine may physically hold both graphs, but the identities must not be
+collapsed. A Content node is admitted and durable. A Context node is selected,
+ranked, possibly summarized, permission-scoped, and replaceable. Database
+storage, indexes, traversal algorithms, and query syntax cannot establish that
+semantic distinction on their own.
+
+The proposed downstream data-plane boundary is specified in
+[MRR Data, Arrow, and GraphAr Binding](docs/architecture/0026-mrr-data-graphar.org).
+[`mrr-data`](https://github.com/tao3k/mrr-data) is a separate repository: it
+currently contains only an initial repository skeleton, not an implemented data
+plane. This RFC records the proposal for `mrr-data` to depend on MRR's
+storage-neutral contracts and combine the Arrow columnar format with GraphAr
+persistence. MRR must not depend
+back on `mrr-data`, Arrow, or GraphAr. Concrete catalog/snapshot binding would
+belong in a downstream `mrr-data` query receipt wrapped around `MetaQueryIr`;
+parser and frontend evidence alone is not end-to-end database-query admission.
+
 ## Comparison by responsibility
 
 This is a boundary comparison, not a performance ranking.

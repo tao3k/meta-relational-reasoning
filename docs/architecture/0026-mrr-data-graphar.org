@@ -1,0 +1,190 @@
+#+title: RFC 0026: Downstream mrr-data Arrow and GraphAr Binding
+#+status: proposed
+#+options: toc:2
+#+property: header-args :eval never-export :exports code
+
+* Problem
+
+A query language is meaningful only relative to a data model and an exact data
+generation.  Parser acceptance alone cannot establish that a node label, edge
+type, property, direction, path expression, or value operation exists in the
+graph that will execute the query.
+
+MRR owns typed relation and storage-neutral query contracts.  =mrr-data= is a
+separate repository whose proposed design would depend on those contracts and
+combine Apache Arrow with GraphAr.  The current =mrr-data= checkout is only an
+initial repository skeleton; it contains no implementation or dependency
+metadata for this design.  Its absence from this workspace is intentional;
+adding it as an MRR crate or making MRR depend on it would invert the proposed
+dependency boundary.
+
+* Proposed decision
+
+The separate [[https://github.com/tao3k/mrr-data][mrr-data repository]] would
+own the Property Graph data-plane binding between canonical Content and
+concrete query execution.  It would consume MRR semantic identity, relation,
+query, generation, provenance, and admission contracts; MRR would never import
+=mrr-data=.
+
+=mrr-data= would use [[https://arrow.apache.org/][Apache Arrow's]]
+language-independent columnar format for typed in-memory interchange and
+vectorized processing, and
+[[https://github.com/apache/incubator-graphar][Apache GraphAr]] for persistent,
+system-independent Property Graph layout.  Arrow and GraphAr complement one
+another; neither replaces MRR semantics.
+
+GraphAr is a storage format and library family, not a query language or truth
+authority.  It provides a system-independent Property Graph representation:
+metadata describes the graph; vertex and edge data is chunked; properties are
+split into column groups; and edge topology can use source/destination ordered
+or unordered layouts corresponding to CSR, CSC, and COO-style access.  Those
+choices enable interoperable storage and selective IO without defining MRR
+facts or Agent Context.
+
+#+begin_src mermaid
+flowchart LR
+  M[MRR<br/>identity + relation + MetaQueryIr + admission]
+  D[proposed external mrr-data<br/>catalog + bound query + snapshot receipt]
+  W[Arrow<br/>columnar memory and interchange]
+  G[GraphAr<br/>persistent property graph layout]
+  E[Concrete graph query engine]
+  A[MRR admission API]
+
+  M -->|downstream dependency| D
+  D -->|typed batches| W
+  D -->|metadata + chunk manifests| G
+  D -->|bound MetaQueryIr + exact snapshot| E
+  E -->|candidate result + execution receipt| D
+  D -->|MRR-native evidence| A
+  A -->|admitted or rejected| D
+#+end_src
+
+* Model and language binding
+
+For graph catalog $S_g$, data snapshot $D_g$, and query $q$, execution is
+defined only when the query's language semantics target the snapshot's data
+model and every referenced graph element type-checks against the exact catalog.
+
+#+begin_src typst
+#set page(width: 150mm, height: auto, margin: 12mm)
+#set text(size: 10pt)
+
+= Schema-bound graph query admission
+
+Let $S_g$ be the Property Graph catalog and $D_g$ its data snapshot at
+generation $g$.  Let $L$ be a language whose semantics are defined for data
+model $M_L$.
+
+$
+  "well-typed"(q, S_g)
+  := forall r in "refs"(q): "resolve"(r, S_g) = "unique"
+$
+
+$
+  "executable"(q, D_g)
+  := M_L = "model"(D_g)
+  and "well-typed"(q, S_g)
+  and "catalog-digest"(q) = "digest"(S_g)
+  and "generation"(q) = g
+$
+
+$
+  "execute"(q, D_g) =
+  cases(
+    ("candidate-result", &"if" "executable"(q, D_g)),
+    ("typed-rejection", &"otherwise"),
+  )
+$
+
+A candidate result becomes Content only after source, lineage, completeness,
+and transition owners admit it at the same generation.
+#+end_src
+
+GQL, Cypher/openCypher, and PGQL all target Property Graph families, but their
+catalog and path semantics are not assumed identical.  Each frontend profile
+must declare its language revision, supported data-model features, and dialect
+extensions.  GraphQL is excluded from this boundary because it targets an API
+type/resolver model rather than the Property Graph database model.
+
+MRR's =MetaQueryIr= remains storage-neutral but not model-free: its node,
+relation, property, direction, path, filter, and result operators express the
+Property Graph query model.  The proposal assigns =mrr-data= a downstream
+=BoundDataQuery= concept pairing the IR with the exact catalog digest, Arrow
+schema, GraphAr manifest, semantic generation, and engine/dialect capabilities.
+Such a wrapper would preserve MRR dependency purity while ensuring that query
+semantics match the data model that executes them.
+
+* Identity boundary
+
+GraphAr's internal vertex identifiers, row positions, chunks, column groups,
+and adjacency offsets are physical storage identities.  They may change after
+compaction, repartitioning, export, or import and therefore cannot be used as
+=EntityId=, =FactId=, =RelationId=, or =GenerationId=.
+
+An admitted snapshot receipt must bind at least:
+
+1. the canonical Content graph identity and semantic generation;
+2. the GraphAr graph metadata/schema digest;
+3. the immutable file/chunk manifest digest;
+4. the mapping version from canonical MRR identities to physical GraphAr
+   vertex/edge positions;
+5. property types, vertex labels, edge triplets, nullability, and supported
+   path/query capabilities;
+6. source provenance and authorization scope.
+
+Repartitioning may produce a new physical manifest without changing canonical
+Content.  A schema, source, or semantic change produces a new semantic
+generation.  The receipt must distinguish those cases.
+
+* Query admission boundary
+
+The proposed downstream binder in =mrr-data= would resolve MRR query identities
+against its catalog rather than treating unknown labels as executable data
+identities.  It would reject:
+
+- unknown or ambiguous node labels, edge types, and properties;
+- property operations incompatible with their declared types;
+- directions or path modes unavailable in the selected graph/dialect;
+- catalog digest or data generation drift between lowering and execution;
+- query results whose execution receipt does not identify the exact snapshot.
+
+The query engine may be Neo4j, Memgraph, Kuzu, FalkorDB, Apache AGE, Oracle
+Graph, or another implementation admitted by an adapter.  Engine-specific
+indexes, query plans, dialect extensions, and physical identifiers remain
+behind that adapter.  No engine is the semantic authority merely because it
+stores the files or executes the query.
+
+* Content and Context materialization
+
+One GraphAr-compatible store may contain both canonical Content materialization
+and derived Context materialization, but they require different graph
+identities and receipts:
+
+- Content snapshots are durable, source-bound, versioned, and eligible to
+  anchor future Context projections;
+- Context snapshots bind a projection policy, actor/task/capability scope,
+  Content generation, expiry, and selection lineage;
+- Context data cannot be copied into Content by storage-level import or graph
+  merge; it must re-enter through source and MRR admission.
+
+* Cross-repository delivery gates
+
+This RFC becomes implemented only when all of the following exist:
+
+1. an external =mrr-data= package with typed catalog and snapshot receipts that
+   depends on MRR without a reverse dependency;
+2. deterministic Arrow schema and GraphAr metadata/manifest adapters with no
+   physical-ID leak;
+3. a downstream bound-query receipt pairing =MetaQueryIr= with catalog digest,
+   Arrow schema, GraphAr manifest, and data generation;
+4. schema-bound GQL lowering with positive and negative fixtures;
+5. stale-snapshot, dialect-mismatch, and unknown-property rejection tests;
+6. differential scenarios against at least one GraphAr reader and one
+   Property Graph query engine;
+7. performance evidence for selective property/adjacency reads without
+   reducing the declared corpus.
+
+Until these gates close in the external repository, Arrow/GraphAr integration
+is an =mrr-data= design claim, not an implemented MRR capability.  MRR's
+responsibility is to keep the semantic contracts stable and consumable without
+acquiring a reverse storage dependency.
