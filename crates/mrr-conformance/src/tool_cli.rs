@@ -11,8 +11,10 @@ pub fn run_closure_tool_cli(values: &[String]) -> Result<String, String> {
         source: values[0].clone(),
         target: values[1].clone(),
         edges: values[2..]
-            .chunks_exact(2)
-            .map(|edge| (edge[0].clone(), edge[1].clone()))
+            .as_chunks::<2>()
+            .0
+            .iter()
+            .map(|[from, to]| (from.clone(), to.clone()))
             .collect(),
     };
     let receipt = run_closure_tool(&input).map_err(|error| error.to_string())?;

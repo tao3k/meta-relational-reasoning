@@ -108,8 +108,10 @@ fn decode_digest(encoded: &str) -> Result<[u8; DIGEST_BYTES], IdentityError> {
         return Err(IdentityError::InvalidDigest);
     }
     let mut digest = [0_u8; DIGEST_BYTES];
-    for (index, chunk) in encoded.as_bytes().chunks_exact(2).enumerate() {
-        digest[index] = (decode_nibble(chunk[0])? << 4) | decode_nibble(chunk[1])?;
+    let (chunks, remainder) = encoded.as_bytes().as_chunks::<2>();
+    debug_assert!(remainder.is_empty(), "digest width is checked above");
+    for (index, [high, low]) in chunks.iter().enumerate() {
+        digest[index] = (decode_nibble(*high)? << 4) | decode_nibble(*low)?;
     }
     Ok(digest)
 }
