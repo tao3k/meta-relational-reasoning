@@ -58,3 +58,51 @@ kernel-checked owner for stated admission theorems.  They answer different
 questions: property tests search generated examples, Lean checks formal
 theorems, and TLC differentially checks executable finite transition models.
 Keeping all three prevents one mechanism from becoming its own oracle.
+
+** Why this matters for agents
+
+An agent is not only a model invocation.  Once it discovers capabilities,
+delegates work, calls tools, retries after failure, resumes from checkpoints, or
+crosses MCP/A2A-style boundaries, it participates in a concurrent stateful
+protocol.  The model output may remain probabilistic, but the surrounding
+control-plane obligations must be deterministic and temporal:
+
+- consent or authorization must precede the effect it permits;
+- delegated authority must not silently widen across a chain;
+- cancellation, revocation, and generation changes must invalidate stale work;
+- retries must not duplicate an effect that is defined as single-commit;
+- every admitted effect must retain complete evidence and accountability;
+- properties preserved by each component must also survive their composition.
+
+These properties concern sequences of states and actions, so example-based
+tests of isolated calls are insufficient.  TLA+ makes the state variables,
+environment actions, adversary actions, and invariants explicit.  TLC then
+searches interleavings and returns a concrete counterexample trace that can be
+projected into a regression scenario.
+
+The 2026
+[[https://arxiv.org/abs/2603.23801][AgentRFC: Security Design Principles and Conformance Testing for Agent Protocols]]
+provides direct evidence for this use.  It defines an Agent Protocol Stack,
+formalizes eleven agent-protocol security and completeness principles as TLA+
+invariants, lowers normative clauses through a typed Protocol IR with explicit
+Protocol/Environment/Adversary action separation, and replays model-checker
+counterexamples against live SDK implementations.  Its Composition Safety
+principle is especially relevant to MRR: properties that hold for individual
+protocols can fail when a bridge or shared service composes them.
+
+The architectural mapping is:
+
+| Agent assurance stage | MRR owner |
+|-
+| source requirement and assumption | versioned declaration and evidence context |
+| typed state/action model | =mrr-transition= |
+| invariant result and bounded exploration | =SafetyCheckReceipt= |
+| concrete failing execution | =CounterexampleIr= |
+| causal explanation and affected results | =mrr-lineage= |
+| implementation-level replay | conformance and differential scenarios |
+
+This mapping is a design direction, not an AgentRFC conformance claim.  The
+current repository proves parity only for the committed finite transition
+fixtures.  Adopting AgentRFC properties requires source-linked invariants,
+Protocol/Environment/Adversary action ownership, composition fixtures, and live
+counterexample replay as separately admitted contracts.

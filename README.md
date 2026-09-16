@@ -71,7 +71,7 @@ Detailed design rationale lives with the component that owns each decision:
 
 - [why Ascent is the bounded proposal engine](docs/architecture/0003-mrr-ascent-evaluation.org);
 - [why semantic lineage is an admission contract](docs/architecture/0009-unified-lineage-v1.org);
-- [why TLA+ and TLC are independent test oracles](docs/architecture/0021-mrr-differential-oracles.org).
+- [why TLA+ and TLC matter for agent protocol and composition safety](docs/architecture/0021-mrr-differential-oracles.org).
 
 ### Evidence basis
 
