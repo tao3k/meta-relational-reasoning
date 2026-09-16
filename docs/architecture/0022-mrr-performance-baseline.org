@@ -54,6 +54,30 @@ The executable Criterion owners are:
 Every owner contains the 1K, 10K, and 100K scales. Workspace all-targets checks
 compile every benchmark; an explicit Criterion run refreshes measurements.
 
+* Parser-owned frontend evidence snapshot
+
+The repository retains one Criterion evidence snapshot under
+=crates/mrr-frontends/target/criterion/mrr_gql_runtime/=.  This nested =target=
+directory is an intentional evidence artifact, not a checked-in Cargo build
+tree.  It contains raw samples, estimates, base/new comparisons, and generated
+HTML/SVG reports for the 76-byte parser-owned GQL fixture in
+=crates/mrr-frontends/benches/frontend_perf.rs=.
+
+The snapshot was produced on arm64 macOS 26.6.1 with Cargo 1.95.0 and Criterion
+0.8.2.  The =new= median point estimates are:
+
+| Operation | Median |
+|-
+| parser artifact | 468.19 us |
+| parser artifact to Rowan CST | 495.12 us |
+| complete frontend MetaQueryIR | 528.84 us |
+
+The generated change estimates have 95 percent confidence intervals that cross
+zero for all three operations.  This snapshot therefore proves that the
+benchmark executed and preserves its measurement evidence; it does not prove a
+statistically significant improvement or regression.  The browsable aggregate
+is [[file:../../crates/mrr-frontends/target/criterion/mrr_gql_runtime/report/index.html][mrr_gql_runtime Criterion report]].
+
 * Proof-validation collection boundary
 
 The repository root =pytest.ini= is the executable owner of Python proof-test
