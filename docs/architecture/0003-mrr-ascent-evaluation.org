@@ -63,6 +63,24 @@ receipts, cannot meet the measured scale envelope, or prevents a required
 deployment target.  Such a replacement may change the proposal engine; it must
 not weaken or bypass admission.
 
+** BYODS as a representation optimization seam
+
+[[https://doi.org/10.1145/3622840][Bring Your Own Data Structures to Datalog
+(BYODS)]] shows that a Datalog program can retain declarative rule semantics
+while compiled joins operate over a user-provided relation representation.  It
+targets cases where generic B-trees or hash maps impose algorithmic overhead
+that a domain structure such as union-find or a lattice can avoid.  The work is
+in the same Rust-embedded Datalog research line as Ascent and is relevant to
+large Content Graph closures.
+
+MRR does not currently implement BYODS.  If profiling identifies
+representation-imposed cost, a future evaluator may adopt a specialized
+relation only after an A/B scenario proves semantic parity, deterministic
+receipt parity, and material scale improvement.  The optimization may change
+candidate computation; it may not change source identities, rule meaning,
+generation binding, witness requirements, or the all-or-nothing admission
+boundary.
+
 * Bounds and deterministic evidence
 
 #+begin_src typst

@@ -25,10 +25,52 @@ MRR closes this gap between *a component produced an answer* and *the system may
 admit that answer as authoritative state*. Unknown and incomplete remain typed
 outcomes; they are never silently converted to false or success.
 
+## Content is not context
+
+The **Content Graph** is the system's single canonical semantic standard: the
+source-bound representation of what the system knows. It gives documents,
+facts, entities, relations, revisions, and
+provenance stable identities so that humans and agents can navigate the same
+evidence. "Canonical" does not require one physical database: many source
+systems may participate, but each admitted fact has one declared authority,
+version, and derivation path.
+
+The **Context Graph** is a task-local projection of that Content Graph. It
+selects and orders only the evidence, instructions, tools, memory, policy, and
+capabilities needed by one Agent for one bounded decision. It is disposable and
+may be compacted; it is never a second source of truth.
+
+| | Content Graph | Context Graph |
+| --- | --- | --- |
+| Scope | durable, shared, versioned | Agent-, task-, turn-, and capability-scoped |
+| Purpose | human cognition, shared sensemaking, reuse, audit | focus the next decision within a finite attention budget |
+| Authority | source identity, revision, provenance, admitted derivation | a projection receipt anchored to exact Content generations |
+| Change | source-owned revision or admitted semantic transition | select, rank, redact, compact, expire, or rebuild |
+| Failure rule | conflicts and unknowns remain explicit | stale, unauthorized, or unanchored nodes fail closed |
+
+This distinction is the foundation for Context Engineering. Every Context node
+must resolve to an exact Content identity and generation; every derived edge
+must retain its query/rule and MRR admission receipt. A source revision,
+permission change, or expired observation invalidates the affected projection.
+Agent output returns as a proposal and cannot write itself into the Content
+Graph without the owning source and MRR admission path.
+
+Graph structure helps with global sensemaking, but it does not make generated
+claims true. Microsoft's
+[GraphRAG research](https://www.microsoft.com/en-us/research/publication/from-local-to-global-a-graph-rag-approach-to-query-focused-summarization/)
+reports better comprehensiveness and diversity for corpus-wide questions;
+[W3C PROV](https://www.w3.org/TR/prov-primer/) supplies the stricter provenance
+lesson that revisions, derivations, activities, and responsible agents need
+distinct identities. MRR is the assurance boundary between those useful graph
+projections and authoritative semantic state.
+
 ## Where MRR fits
 
 ```mermaid
 flowchart TD
+  S[Source systems and source artifacts]
+  C[Content Graph<br/>canonical identities + versions + provenance]
+  X[Context Graph<br/>bounded task projection]
   U[Agent intent and environment]
   P[POO Flow<br/>strategy + policy + session + loop]
   B[MRR<br/>typed semantic state + admission]
@@ -36,12 +78,17 @@ flowchart TD
   V[TLA+/TLC and Lean<br/>model checks + contract proofs]
   R[Rust / Marlin runtime<br/>persistence + concurrency + effects]
 
-  U --> P
-  P -->|declare and schedule reasoning| B
+  S -->|source-owned revisions| C
+  C -->|typed facts and exact generation| B
   B --> A
   A -->|closure receipt| B
-  B -->|admitted semantic receipt| P
+  B -->|admitted relations + lineage| C
+  U --> P
+  P -->|projection policy and budget| X
+  C -->|anchored selection| X
+  X -->|bounded executable context| P
   P -->|authorized handoff| R
+  R -->|observations remain proposals| B
   V -. checks .-> P
   V -. checks .-> B
 ```
@@ -85,6 +132,7 @@ incompleteness projection is owned by
 | --- | --- | --- |
 | POO Flow and Gerbil POO | Express extensible Agent strategies, policies, resource plans, and proof-facing handoff values | MRR fact truth or durable runtime effects |
 | Ascent | Reuse a maintained Rust-native Datalog-style fixed-point engine instead of implementing another closure/join engine | Identity, lineage admission, transitions, publication |
+| BYODS research direction | Let Datalog joins use relation-specific Rust data structures when their semantics and performance evidence justify it | A second rule language, a bypass around MRR admission, or an unmeasured optimization claim |
 | TLA+ and TLC | Explore finite protocol interleavings and produce counterexamples for transition and composition safety | Runtime execution or an unbounded correctness proof |
 | Lean | Kernel-check stated identity, admission, and composition theorems | Runtime conformance or state-space exploration |
 | Rust and Marlin | Own concurrency, persistence, checkpoints, subprocesses, and external effects | POO Flow policy facts or MRR semantic receipts |
@@ -103,6 +151,17 @@ Detailed decisions live with their owners:
 - [why semantic lineage is an admission contract](docs/architecture/0009-unified-lineage-v1.org)
 - [why TLA+ and TLC matter for Agent composition](docs/architecture/0021-mrr-differential-oracles.org)
 - [the recorded performance baseline](docs/architecture/0022-mrr-performance-baseline.org)
+
+Ascent and
+[Bring Your Own Data Structures to Datalog (BYODS)](https://doi.org/10.1145/3622840)
+matter for different reasons. Ascent provides the maintained declarative
+fixed-point engine used today. BYODS shows how a Datalog engine can preserve
+declarative rules while replacing representation-imposed joins with proven
+domain data structures such as equivalence relations or lattices. That is the
+right future optimization seam for large Content Graph workloads: optimize the
+candidate engine and representation, then require the same deterministic MRR
+receipt and admission contract. BYODS is research guidance here, not a claimed
+current backend.
 
 ## What is implemented
 
@@ -136,10 +195,18 @@ This is a boundary comparison, not a performance ranking.
 
 | System | Design center | Relationship to MRR |
 | --- | --- | --- |
-| [Parlant](https://www.parlant.io/docs/quickstart/motivation/) | Select conversational guidelines, journeys, tools, and context before response generation | Can govern the interaction boundary; MRR separately admits derived semantic state |
+| [Palantir Foundry, Ontology, and AIP](https://www.palantir.com/docs/foundry/architecture-center/overview) | Integrate enterprise data, logic, actions, security, workflows, and AI agents around an operational Ontology | The comparable unit is POO Flow + MRR + Runtime, not MRR alone; MRR covers only typed semantic reasoning and admission |
 | [Open Policy Agent](https://www.openpolicyagent.org/docs) | Evaluate policy over structured input and data | Can supply policy decisions; it does not replace MRR derivation lineage and generation admission |
 | [Ascent](https://s-arash.github.io/ascent/cc22main-p95-seamless-deductive-inference-via-macros.pdf) and [Souffle](https://github.com/souffle-lang/souffle) | Compute Datalog-style logical results | Ascent is MRR's current candidate engine; MRR adds identity, receipts, lineage, and atomic admission |
 | [TLA+ and TLC](https://lamport.azurewebsites.net/pubs/yuanyu-model-checking.pdf) | Specify and check finite state models | Supplies independent transition evidence; it does not publish runtime state |
+
+Palantir also makes the lineage distinction important. Foundry
+[Data Lineage](https://www.palantir.com/docs/foundry/data-lineage/overview)
+tracks how datasets move through pipelines. MRR lineage instead records why an
+admitted result follows from facts, rules, queries, and transitions. POO Flow
+and the runtime retain the separate lifecycle, handoff, and effect lineage. A
+complete Agent system needs all three; collapsing them into one generic
+"provenance" graph would erase their different admission authorities.
 
 ## Build and verify
 
