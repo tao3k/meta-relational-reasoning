@@ -1,8 +1,8 @@
 use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
 use mrr_relation::{
     EntityId, EvidenceCompleteness, Fact, FactId, FactProvenance, FactValidity, GenerationId,
-    RelationAuthority, RelationCardinality, RelationContext, RelationField, RelationId,
-    RelationSchema, Value, ValueType,
+    RelationAuthority, RelationContext, RelationField, RelationId, RelationSchema, Value,
+    ValueSchema,
 };
 
 const SCALES: &[usize] = &[1_000, 10_000, 100_000];
@@ -12,8 +12,8 @@ fn fixture(size: usize) -> (RelationSchema, Vec<Fact>) {
     let schema = RelationSchema::new(
         relation,
         "observed",
-        vec![RelationField::new("value", ValueType::String).expect("field")],
-        RelationCardinality::ManyToMany,
+        vec![RelationField::new("value", ValueSchema::String, false).expect("field")],
+        Vec::new(),
     )
     .expect("schema");
     let generation =
@@ -33,7 +33,8 @@ fn fixture(size: usize) -> (RelationSchema, Vec<Fact>) {
                     FactProvenance::Source(authority),
                     EvidenceCompleteness::Complete,
                     FactValidity::Valid,
-                ),
+                )
+                .expect("source context"),
             )
         })
         .collect();

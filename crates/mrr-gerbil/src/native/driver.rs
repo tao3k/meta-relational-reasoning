@@ -3,7 +3,7 @@
 use std::{error::Error, fmt};
 
 use super::{
-    ffi,
+    NativeRuntimeStatus, ffi,
     runtime::{NativeRuntimeError, with_native_runtime},
 };
 
@@ -47,7 +47,7 @@ pub enum DriverError {
     /// The process-global Gambit lock was poisoned.
     NativeRuntimePoisoned,
     /// Gambit initialization failed with the returned code.
-    NativeRuntimeInitialization(i32),
+    NativeRuntimeInitialization(NativeRuntimeStatus),
     /// No declared resource transition matches the supplied receipt.
     InvalidTransition,
     /// A rejection consumed the final allowed cycle.

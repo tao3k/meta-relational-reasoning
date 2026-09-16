@@ -51,7 +51,8 @@ fn fixture(size: usize) -> (Atom, GenerationId, Rule, Vec<Fact>) {
                     FactProvenance::Source(authority),
                     EvidenceCompleteness::Complete,
                     FactValidity::Valid,
-                ),
+                )
+                .expect("source context"),
             )
         })
         .collect();

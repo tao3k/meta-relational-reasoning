@@ -167,13 +167,17 @@ current backend.
 
 - `meta-relational-reasoning` is the stable Rust consumer facade.
 - `mrr-identity`, `mrr-relation`, `mrr-query`, and `mrr-logic` own typed
-  semantic contracts.
+  semantic contracts. `mrr-relation` validates recursive parameterized value
+  schemas, nullability, relation constraints, and coherent fact context.
 - `mrr-bundle` admits complete reasoning bundles.
 - `mrr-ascent` evaluates bounded fixed-point candidates.
 - `mrr-lineage` and `mrr-transition` validate causal evidence and immutable
   generation deltas.
+- `mrr-revision` admits canonical semantic snapshots that bind one generation
+  to an unambiguous set of provider-neutral source revisions.
 - `mrr-gerbil` consumes the Gerbil AOT projection through a fixed-width native
-  ABI; Scheme is not in the Rust/Ascent query hot path.
+  ABI and preserves the upstream typed Gerbil runtime status at failures;
+  Scheme is not in the Rust/Ascent query hot path.
 - `mrr-frontends` lowers parser-owned ISO GQL artifacts into `MetaQueryIr`
   without a second Rust parser or public GQL AST stack.
 - `mrr-conformance` exercises the public facade across multiple domains.

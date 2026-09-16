@@ -36,11 +36,72 @@ fn one_transition_cannot_insert_and_retract_the_same_fact() {
             FactProvenance::Source(authority),
             EvidenceCompleteness::Complete,
             FactValidity::Valid,
-        ),
+        )
+        .expect("source context"),
     );
     assert_eq!(
         Transition::new(from, to, vec![fact], vec![fact_id]),
         Err(TransitionError::ConflictingFact(fact_id))
+    );
+}
+
+#[test]
+fn transition_insertions_belong_to_the_target_generation() {
+    let fact_id = id!(FactId, "wrong-generation");
+    let from = id!(GenerationId, "before");
+    let to = id!(GenerationId, "after");
+    let authority = id!(EntityId, "generation-authority");
+    let fact = Fact::new(
+        fact_id,
+        id!(RelationId, "generation-relation"),
+        vec![Value::Boolean(true)],
+        RelationContext::new(
+            from,
+            RelationAuthority::Entity(authority),
+            FactProvenance::Source(authority),
+            EvidenceCompleteness::Complete,
+            FactValidity::Valid,
+        )
+        .expect("source context"),
+    );
+
+    assert_eq!(
+        Transition::new(from, to, vec![fact], Vec::new()),
+        Err(TransitionError::InsertionGenerationMismatch {
+            fact: fact_id,
+            expected: to,
+            actual: from,
+        })
+    );
+}
+
+#[test]
+fn transition_rejects_duplicate_operations() {
+    let fact_id = id!(FactId, "duplicate");
+    let from = id!(GenerationId, "duplicate-before");
+    let to = id!(GenerationId, "duplicate-after");
+    let authority = id!(EntityId, "duplicate-authority");
+    let fact = Fact::new(
+        fact_id,
+        id!(RelationId, "duplicate-relation"),
+        vec![Value::Boolean(true)],
+        RelationContext::new(
+            to,
+            RelationAuthority::Entity(authority),
+            FactProvenance::Source(authority),
+            EvidenceCompleteness::Complete,
+            FactValidity::Valid,
+        )
+        .expect("source context"),
+    );
+
+    assert_eq!(
+        Transition::new(from, to, vec![fact.clone(), fact], Vec::new()),
+        Err(TransitionError::DuplicateInsertion(fact_id))
+    );
+    assert_eq!(
+        Transition::new(from, to, Vec::new(), vec![fact_id, fact_id]),
+        Err(TransitionError::DuplicateRetraction(fact_id))
     );
 }
 

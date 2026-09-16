@@ -13,7 +13,7 @@ use mrr_query::{
     Binding, Direction, Expression, GraphPattern, MetaQueryIr, NodePattern, PathPattern,
     PathSegment, Projection, RelationPattern, Variable,
 };
-use mrr_relation::{RelationCardinality, RelationField, RelationSchema, ValueType};
+use mrr_relation::{FloatWidth, RelationField, RelationSchema, ValueSchema};
 
 use super::{
     NativeGrammar, ffi,
@@ -49,8 +49,8 @@ pub enum ReasoningBundleLoadError {
     InvalidCodepoint(i32),
     UnknownRelation(String),
     UnknownQuery(String),
-    UnknownValueType(String),
-    UnknownCardinality(String),
+    UnknownValueSchema(String),
+    UnknownConstraintProfile(String),
     UnknownLineagePolicy(String),
     InvalidBoolean(String),
     InvalidInteger(String),
@@ -110,13 +110,10 @@ fn load_relations() -> Result<Vec<RelationSchema>, ReasoningBundleLoadError> {
     (0..count(Table::Relations, "relation-schemas")?)
         .map(|row| {
             let name = text(Table::Relations, "relation-schemas", row, 0)?;
-            let cardinality = match text(Table::Relations, "relation-schemas", row, 1)?.as_str() {
-                "one-to-one" => RelationCardinality::OneToOne,
-                "one-to-many" => RelationCardinality::OneToMany,
-                "many-to-one" => RelationCardinality::ManyToOne,
-                "many-to-many" => RelationCardinality::ManyToMany,
+            let constraints = match text(Table::Relations, "relation-schemas", row, 1)?.as_str() {
+                "none" => Vec::new(),
                 value => {
-                    return Err(ReasoningBundleLoadError::UnknownCardinality(
+                    return Err(ReasoningBundleLoadError::UnknownConstraintProfile(
                         value.to_owned(),
                     ));
                 }
@@ -127,27 +124,30 @@ fn load_relations() -> Result<Vec<RelationSchema>, ReasoningBundleLoadError> {
                         nested_text(Table::Relations, "relation-schemas", row, field, 0)?;
                     let field_type =
                         nested_text(Table::Relations, "relation-schemas", row, field, 1)?;
-                    let value_type = match field_type.as_str() {
-                        "entity" => ValueType::Entity,
-                        "null" => ValueType::Null,
-                        "boolean" => ValueType::Boolean,
-                        "integer" => ValueType::Integer,
-                        "decimal" => ValueType::Decimal,
-                        "float" => ValueType::Float,
-                        "string" => ValueType::String,
-                        "list" => ValueType::List,
+                    let value_schema = match field_type.as_str() {
+                        "entity" => ValueSchema::Entity,
+                        "boolean" => ValueSchema::Boolean,
+                        "integer" => ValueSchema::Integer,
+                        "decimal-38-9" => ValueSchema::Decimal {
+                            precision: 38,
+                            scale: 9,
+                        },
+                        "float64" => ValueSchema::Float {
+                            width: FloatWidth::Binary64,
+                        },
+                        "string" => ValueSchema::String,
                         value => {
-                            return Err(ReasoningBundleLoadError::UnknownValueType(
+                            return Err(ReasoningBundleLoadError::UnknownValueSchema(
                                 value.to_owned(),
                             ));
                         }
                     };
-                    RelationField::new(field_name, value_type).map_err(|error| {
+                    RelationField::new(field_name, value_schema, false).map_err(|error| {
                         ReasoningBundleLoadError::Bundle(BundleError::InvalidRelationSchema(error))
                     })
                 })
                 .collect::<Result<Vec<_>, _>>()?;
-            RelationSchema::new(relation_id(&name), name, fields, cardinality).map_err(|error| {
+            RelationSchema::new(relation_id(&name), name, fields, constraints).map_err(|error| {
                 ReasoningBundleLoadError::Bundle(BundleError::InvalidRelationSchema(error))
             })
         })

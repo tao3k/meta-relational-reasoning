@@ -305,7 +305,7 @@ enum Table {
 #[derive(Debug, Eq, PartialEq)]
 pub(crate) enum NativeGrammarError {
     RuntimeLockPoisoned,
-    RuntimeStatus(i32),
+    RuntimeStatus(super::NativeRuntimeStatus),
     AbiMismatch {
         expected: u32,
         actual: u32,

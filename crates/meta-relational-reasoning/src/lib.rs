@@ -48,11 +48,14 @@ pub use mrr_query::{
     UnaryOperator, Variable,
 };
 pub use mrr_relation::{
-    EvidenceCompleteness, Fact, FactProvenance, FactValidity, RelationAuthority,
-    RelationCardinality, RelationContext, RelationError, RelationField, RelationSchema, Value,
-    ValueType,
+    EvidenceCompleteness, Fact, FactProvenance, FactValidity, FloatWidth, RelationAuthority,
+    RelationConstraint, RelationContext, RelationContextError, RelationError, RelationField,
+    RelationSchema, TemporalUnit, TimezonePolicy, Value, ValueKind, ValueSchema,
 };
-pub use mrr_revision::{ExternalRevisionIdentity, RevisionBinding, RevisionBindingError};
+pub use mrr_revision::{
+    ExternalRevisionIdentity, RevisionBinding, RevisionBindingError, SemanticSnapshot,
+    SemanticSnapshotError,
+};
 pub use mrr_transition::{
     Action, CounterexampleIr, Effect, InitialState, Invariant, Precondition, SafetyCheckReceipt,
     SafetyLimits, SafetyStatus, StatePredicate, StateSchema, StateSnapshot,

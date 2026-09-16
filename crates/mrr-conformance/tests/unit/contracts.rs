@@ -8,10 +8,10 @@ use meta_relational_reasoning::{
     IntentSemanticModel, Invariant, LineageEdge, LineageEdgeId, LineageEdgeKind, LineageGraph,
     LineageNode, LineageNodeId, LineageNodeKind, MetaQueryIr, MrrEngine, NodePattern, PathPattern,
     PathSegment, Precondition, Projection, QueryId, QueryOperatorId, QueryResult, QueryTemplate,
-    ReasoningBundle, ReasoningBundleDeclaration, RelationAuthority, RelationCardinality,
-    RelationContext, RelationField, RelationId, RelationPattern, RelationSchema, RevisionBinding,
-    Rule, RuleId, RulePack, RulePackId, SafetyLimits, SafetyStatus, SetQuantifier, StatePredicate,
-    StateSchema, StateSnapshot, Term, TransitionSystem, Value, ValueType, Variable, WhyNotLimits,
+    ReasoningBundle, ReasoningBundleDeclaration, RelationAuthority, RelationContext, RelationField,
+    RelationId, RelationPattern, RelationSchema, RevisionBinding, Rule, RuleId, RulePack,
+    RulePackId, SafetyLimits, SafetyStatus, SetQuantifier, StatePredicate, StateSchema,
+    StateSnapshot, Term, TransitionSystem, Value, ValueSchema, Variable, WhyNotLimits,
     WhyNotStatus,
 };
 
@@ -62,9 +62,11 @@ fn schema(relation: RelationId, name: &str, arity: usize) -> RelationSchema {
         relation,
         name,
         (0..arity)
-            .map(|index| RelationField::new(format!("field_{index}"), ValueType::String).unwrap())
+            .map(|index| {
+                RelationField::new(format!("field_{index}"), ValueSchema::String, false).unwrap()
+            })
             .collect(),
-        RelationCardinality::ManyToMany,
+        Vec::new(),
     )
     .unwrap()
 }
@@ -90,7 +92,8 @@ fn fact(
             FactProvenance::Source(authority),
             EvidenceCompleteness::Complete,
             FactValidity::Valid,
-        ),
+        )
+        .expect("source context"),
     )
 }
 

@@ -1,6 +1,7 @@
 //! Language-neutral typed relation schemas and context-bearing facts.
 #![forbid(unsafe_code)]
 
+use crate::validation::{validate_constraints, validate_field_value, validate_fields};
 pub use mrr_identity::{
     DerivationId, EntityId, FactId, GenerationId, RelationId, RuleId, RulePackId,
 };
@@ -25,7 +26,7 @@ pub enum Value {
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
-pub enum ValueType {
+pub enum ValueKind {
     Entity,
     Null,
     Boolean,
@@ -44,39 +45,131 @@ pub enum ValueType {
 
 impl Value {
     #[must_use]
-    pub const fn value_type(&self) -> ValueType {
+    pub const fn kind(&self) -> ValueKind {
         match self {
-            Self::Entity(_) => ValueType::Entity,
-            Self::Null => ValueType::Null,
-            Self::Boolean(_) => ValueType::Boolean,
-            Self::Integer(_) => ValueType::Integer,
-            Self::Decimal(_) => ValueType::Decimal,
-            Self::Float(_) => ValueType::Float,
-            Self::String(_) => ValueType::String,
-            Self::ByteString(_) => ValueType::ByteString,
-            Self::Date(_) => ValueType::Date,
-            Self::Time(_) => ValueType::Time,
-            Self::Timestamp(_) => ValueType::Timestamp,
-            Self::Duration(_) => ValueType::Duration,
-            Self::List(_) => ValueType::List,
-            Self::Record(_) => ValueType::Record,
+            Self::Entity(_) => ValueKind::Entity,
+            Self::Null => ValueKind::Null,
+            Self::Boolean(_) => ValueKind::Boolean,
+            Self::Integer(_) => ValueKind::Integer,
+            Self::Decimal(_) => ValueKind::Decimal,
+            Self::Float(_) => ValueKind::Float,
+            Self::String(_) => ValueKind::String,
+            Self::ByteString(_) => ValueKind::ByteString,
+            Self::Date(_) => ValueKind::Date,
+            Self::Time(_) => ValueKind::Time,
+            Self::Timestamp(_) => ValueKind::Timestamp,
+            Self::Duration(_) => ValueKind::Duration,
+            Self::List(_) => ValueKind::List,
+            Self::Record(_) => ValueKind::Record,
         }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
+pub enum FloatWidth {
+    Binary32,
+    Binary64,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
+pub enum TemporalUnit {
+    Second,
+    Millisecond,
+    Microsecond,
+    Nanosecond,
+}
+
+impl TemporalUnit {
+    pub(crate) const fn fractional_digits(self) -> usize {
+        match self {
+            Self::Second => 0,
+            Self::Millisecond => 3,
+            Self::Microsecond => 6,
+            Self::Nanosecond => 9,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
+pub enum TimezonePolicy {
+    Naive,
+    Utc,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
+pub enum ValueSchema {
+    Entity,
+    Boolean,
+    Integer,
+    Decimal {
+        precision: u8,
+        scale: u8,
+    },
+    Float {
+        width: FloatWidth,
+    },
+    String,
+    ByteString,
+    Date,
+    Time {
+        unit: TemporalUnit,
+        timezone: TimezonePolicy,
+    },
+    Timestamp {
+        unit: TemporalUnit,
+        timezone: TimezonePolicy,
+    },
+    Duration,
+    List {
+        element: Box<ValueSchema>,
+        element_nullable: bool,
+    },
+    Record {
+        fields: Vec<RelationField>,
+    },
+}
+
+impl ValueSchema {
+    pub fn validate(&self) -> Result<(), RelationError> {
+        match self {
+            Self::Decimal { precision, scale }
+                if *precision == 0 || *precision > 76 || *scale > *precision =>
+            {
+                return Err(RelationError::InvalidValueSchema(
+                    "decimal requires 1 <= precision <= 76 and scale <= precision",
+                ));
+            }
+            Self::List { element, .. } => element.validate()?,
+            Self::Record { fields } => validate_fields(fields)?,
+            _ => {}
+        }
+        Ok(())
     }
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct RelationField {
     name: String,
-    value_type: ValueType,
+    schema: ValueSchema,
+    nullable: bool,
 }
 
 impl RelationField {
-    pub fn new(name: impl Into<String>, value_type: ValueType) -> Result<Self, RelationError> {
+    pub fn new(
+        name: impl Into<String>,
+        schema: ValueSchema,
+        nullable: bool,
+    ) -> Result<Self, RelationError> {
         let name = name.into();
         if name.is_empty() || name.trim() != name {
             return Err(RelationError::EmptyFieldName);
         }
-        Ok(Self { name, value_type })
+        schema.validate()?;
+        Ok(Self {
+            name,
+            schema,
+            nullable,
+        })
     }
 
     #[must_use]
@@ -85,17 +178,24 @@ impl RelationField {
     }
 
     #[must_use]
-    pub const fn value_type(&self) -> ValueType {
-        self.value_type
+    pub const fn schema(&self) -> &ValueSchema {
+        &self.schema
+    }
+
+    #[must_use]
+    pub const fn nullable(&self) -> bool {
+        self.nullable
     }
 }
 
-#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
-pub enum RelationCardinality {
-    OneToOne,
-    OneToMany,
-    ManyToOne,
-    ManyToMany,
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
+pub enum RelationConstraint {
+    Key(Vec<String>),
+    Unique(Vec<String>),
+    FunctionalDependency {
+        determinant: Vec<String>,
+        dependent: Vec<String>,
+    },
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -103,7 +203,7 @@ pub struct RelationSchema {
     id: RelationId,
     predicate: String,
     fields: Vec<RelationField>,
-    cardinality: RelationCardinality,
+    constraints: Vec<RelationConstraint>,
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
@@ -141,21 +241,46 @@ pub struct RelationContext {
     validity: FactValidity,
 }
 
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
+pub enum RelationContextError {
+    AuthorityProvenanceMismatch,
+}
+
 impl RelationContext {
-    #[must_use]
-    pub const fn new(
+    pub fn new(
         generation: GenerationId,
         authority: RelationAuthority,
         provenance: FactProvenance,
         completeness: EvidenceCompleteness,
         validity: FactValidity,
-    ) -> Self {
-        Self {
+    ) -> Result<Self, RelationContextError> {
+        let context = Self {
             generation,
             authority,
             provenance,
             completeness,
             validity,
+        };
+        context.validate()?;
+        Ok(context)
+    }
+
+    pub fn validate(&self) -> Result<(), RelationContextError> {
+        let coherent = matches!(
+            (self.authority, self.provenance),
+            (RelationAuthority::Entity(authority), FactProvenance::Source(source))
+                if authority == source
+        ) || matches!(
+            (self.authority, self.provenance),
+            (
+                RelationAuthority::Rule(_) | RelationAuthority::RulePack(_),
+                FactProvenance::Derivation(_)
+            )
+        );
+        if coherent {
+            Ok(())
+        } else {
+            Err(RelationContextError::AuthorityProvenanceMismatch)
         }
     }
 
@@ -236,15 +361,24 @@ pub enum RelationError {
     EmptyFields,
     EmptyFieldName,
     DuplicateFieldName(String),
+    InvalidValueSchema(&'static str),
+    InvalidConstraint(String),
     ArityMismatch {
         expected: usize,
         actual: usize,
     },
     TypeMismatch {
         field: String,
-        expected: ValueType,
-        actual: ValueType,
+        expected: ValueSchema,
+        actual: ValueKind,
     },
+    NullNotAllowed(String),
+    InvalidValue {
+        field: String,
+        reason: &'static str,
+    },
+    InvalidContext(RelationContextError),
+    SelfInvalidation(FactId),
     WrongRelation,
 }
 
@@ -253,27 +387,28 @@ impl RelationSchema {
         id: RelationId,
         predicate: impl Into<String>,
         fields: Vec<RelationField>,
-        cardinality: RelationCardinality,
+        constraints: Vec<RelationConstraint>,
     ) -> Result<Self, RelationError> {
-        let predicate = predicate.into();
-        if predicate.is_empty() || predicate.trim() != predicate {
+        let schema = Self {
+            id,
+            predicate: predicate.into(),
+            fields,
+            constraints,
+        };
+        schema.validate()?;
+        Ok(schema)
+    }
+
+    /// Revalidates a schema after decoding it from an external representation.
+    ///
+    /// Constructors enforce these invariants for native callers, while bundle
+    /// admission calls this method to ensure serde cannot bypass them.
+    pub fn validate(&self) -> Result<(), RelationError> {
+        if self.predicate.is_empty() || self.predicate.trim() != self.predicate {
             return Err(RelationError::EmptyPredicate);
         }
-        if fields.is_empty() {
-            return Err(RelationError::EmptyFields);
-        }
-        let mut names = std::collections::BTreeSet::new();
-        for field in &fields {
-            if !names.insert(field.name.clone()) {
-                return Err(RelationError::DuplicateFieldName(field.name.clone()));
-            }
-        }
-        Ok(Self {
-            id,
-            predicate,
-            fields,
-            cardinality,
-        })
+        validate_fields(&self.fields)?;
+        validate_constraints(&self.fields, &self.constraints)
     }
 
     pub fn validate_fact(&self, fact: &Fact) -> Result<(), RelationError> {
@@ -286,15 +421,14 @@ impl RelationSchema {
                 actual: fact.values.len(),
             });
         }
+        fact.context
+            .validate()
+            .map_err(RelationError::InvalidContext)?;
+        if fact.context.validity == FactValidity::InvalidatedBy(fact.id) {
+            return Err(RelationError::SelfInvalidation(fact.id));
+        }
         for (field, value) in self.fields.iter().zip(&fact.values) {
-            let actual = value.value_type();
-            if actual != field.value_type {
-                return Err(RelationError::TypeMismatch {
-                    field: field.name.clone(),
-                    expected: field.value_type,
-                    actual,
-                });
-            }
+            validate_field_value(field, value, &field.name)?;
         }
         Ok(())
     }
@@ -315,7 +449,7 @@ impl RelationSchema {
     }
 
     #[must_use]
-    pub const fn cardinality(&self) -> RelationCardinality {
-        self.cardinality
+    pub fn constraints(&self) -> &[RelationConstraint] {
+        &self.constraints
     }
 }

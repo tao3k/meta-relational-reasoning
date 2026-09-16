@@ -43,7 +43,8 @@ fn fact(relation: RelationId, value: &str, generation: GenerationId) -> Fact {
             FactProvenance::Source(authority),
             EvidenceCompleteness::Complete,
             FactValidity::Valid,
-        ),
+        )
+        .expect("source context"),
     )
 }
 

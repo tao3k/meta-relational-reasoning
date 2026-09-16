@@ -4,9 +4,9 @@ use crate::{
     CandidateIdentities, ClosureAdmissionError, ClosureReceipt, DeductionError, DeductionLimits,
     DeductionPlan, DerivationId, EntityId, EvidenceCompleteness, Fact, FactId, FactProvenance,
     FactValidity, GenerationId, GenerationTransitionError, MrrEngine, ReasoningBundle,
-    ReasoningBundleDeclaration, RelationAuthority, RelationCardinality, RelationContext,
-    RelationField, RelationId, RelationSchema, Rule, RuleId, RulePack, RulePackId, Term, Value,
-    ValueType, Variable, admit_closure_candidates,
+    ReasoningBundleDeclaration, RelationAuthority, RelationContext, RelationField, RelationId,
+    RelationSchema, Rule, RuleId, RulePack, RulePackId, Term, Value, ValueSchema, Variable,
+    admit_closure_candidates,
 };
 use mrr_lineage::LineageError;
 use mrr_query::Atom;
@@ -37,10 +37,10 @@ fn binary_schema(relation: RelationId, predicate: &str) -> RelationSchema {
         relation,
         predicate,
         vec![
-            RelationField::new("from", ValueType::String).expect("from field"),
-            RelationField::new("to", ValueType::String).expect("to field"),
+            RelationField::new("from", ValueSchema::String, false).expect("from field"),
+            RelationField::new("to", ValueSchema::String, false).expect("to field"),
         ],
-        RelationCardinality::ManyToMany,
+        Vec::new(),
     )
     .expect("binary schema")
 }
@@ -57,7 +57,8 @@ fn source_fact(identity: u128, relation: RelationId, from: &str, to: &str) -> Fa
             FactProvenance::Source(authority),
             EvidenceCompleteness::Complete,
             FactValidity::Valid,
-        ),
+        )
+        .expect("source context"),
     )
 }
 

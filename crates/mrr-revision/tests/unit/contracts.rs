@@ -1,5 +1,6 @@
 use crate::{
-    ExternalRevisionIdentity, GenerationId, RevisionBinding, RevisionBindingError, StateId,
+    ExternalRevisionIdentity, GenerationId, RevisionBinding, RevisionBindingError,
+    SemanticSnapshot, SemanticSnapshotError, StateId,
 };
 
 #[test]
@@ -40,5 +41,59 @@ fn malformed_external_coordinates_fail_closed() {
     assert_eq!(
         ExternalRevisionIdentity::new("", "change", "content"),
         Err(RevisionBindingError::InvalidExternalField("provider"))
+    );
+}
+
+fn binding(
+    generation: GenerationId,
+    provider: &str,
+    logical_change: &str,
+    content_revision: &str,
+) -> RevisionBinding {
+    RevisionBinding::admit(
+        ExternalRevisionIdentity::new(provider, logical_change, content_revision)
+            .expect("external revision"),
+        generation,
+    )
+    .expect("revision binding")
+}
+
+#[test]
+fn semantic_snapshot_is_order_independent_and_generation_bound() {
+    let generation = GenerationId::from_canonical_bytes(b"snapshot-generation").unwrap();
+    let first = binding(generation, "git", "repository-a", "commit-a");
+    let second = binding(generation, "git", "repository-b", "commit-b");
+    let left = SemanticSnapshot::admit(generation, vec![first.clone(), second.clone()]).unwrap();
+    let right = SemanticSnapshot::admit(generation, vec![second, first]).unwrap();
+    assert_eq!(left, right);
+
+    let other = GenerationId::from_canonical_bytes(b"other-generation").unwrap();
+    let wrong = binding(other, "git", "repository-c", "commit-c");
+    assert!(matches!(
+        SemanticSnapshot::admit(generation, vec![wrong]),
+        Err(SemanticSnapshotError::GenerationMismatch {
+            expected,
+            actual,
+            ..
+        }) if expected == generation && actual == other
+    ));
+}
+
+#[test]
+fn semantic_snapshot_rejects_duplicate_and_ambiguous_sources() {
+    let generation = GenerationId::from_canonical_bytes(b"snapshot-duplicates").unwrap();
+    let first = binding(generation, "git", "repository", "commit-a");
+    assert_eq!(
+        SemanticSnapshot::admit(generation, vec![first.clone(), first.clone()]),
+        Err(SemanticSnapshotError::DuplicateRevision(first.revision()))
+    );
+
+    let next = binding(generation, "git", "repository", "commit-b");
+    assert_eq!(
+        SemanticSnapshot::admit(generation, vec![first, next]),
+        Err(SemanticSnapshotError::ConflictingLogicalChange {
+            provider: "git".into(),
+            logical_change: "repository".into(),
+        })
     );
 }

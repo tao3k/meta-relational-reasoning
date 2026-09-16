@@ -1126,6 +1126,7 @@ dependencies = [
  "criterion",
  "mrr-asp-rust-project-policy",
  "mrr-identity",
+ "sha2 0.10.9",
 ]
 
 [[package]]

@@ -11,8 +11,8 @@ use mrr_query::{
     PathSegment, Projection, RelationPattern,
 };
 use mrr_relation::{
-    EvidenceCompleteness, FactProvenance, FactValidity, RelationAuthority, RelationCardinality,
-    RelationContext, RelationField, Value, ValueType,
+    EvidenceCompleteness, FactProvenance, FactValidity, RelationAuthority, RelationContext,
+    RelationField, Value, ValueSchema,
 };
 
 fn relation(label: &str) -> RelationId {
@@ -25,10 +25,11 @@ fn schema(relation: RelationId, name: &str, arity: usize) -> RelationSchema {
         name,
         (0..arity)
             .map(|index| {
-                RelationField::new(format!("value-{index}"), ValueType::Integer).expect("field")
+                RelationField::new(format!("value-{index}"), ValueSchema::Integer, false)
+                    .expect("field")
             })
             .collect(),
-        RelationCardinality::ManyToMany,
+        Vec::new(),
     )
     .expect("schema")
 }
@@ -42,6 +43,7 @@ fn source_context(generation: GenerationId, label: &[u8]) -> RelationContext {
         EvidenceCompleteness::Complete,
         FactValidity::Valid,
     )
+    .expect("source context")
 }
 
 fn query(query_id: QueryId, relation: RelationId) -> MetaQueryIr {

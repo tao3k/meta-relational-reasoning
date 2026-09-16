@@ -22,7 +22,7 @@ MRR owns:
 
 - =EntityId=, =RelationId=, =FactId=, =GenerationId=, and =RevisionId=;
 - =RelationSchema=, =Fact=, =RelationContext=, and canonical value semantics;
-- =ExternalRevisionIdentity= and =RevisionBinding=;
+- =ExternalRevisionIdentity=, =RevisionBinding=, and =SemanticSnapshot=;
 - =MetaQueryIr=, lineage, transitions, receipts, and semantic admission.
 
 The downstream =mrr-data= repository may consume those contracts and own:
@@ -75,15 +75,18 @@ Consequently:
    are physical identifiers and cannot replace MRR IDs.
 4. CID identifies exact encoded bytes.  It is not =GenerationId=, semantic
    equality, authority, or admission.
-5. Source revisions use MRR's provider-neutral =RevisionBinding=.  Jujutsu
+5. Source revisions use MRR's provider-neutral =RevisionBinding= and an
+   admitted =SemanticSnapshot= binds the complete source set to one generation.  Jujutsu
    ChangeId/CommitId values are one possible provider payload, not fields that
    MRR hard-codes for all sources.
 
-MRR's current =ValueType= does not yet express decimal precision, temporal
-units, list element types, record shape, or nullability.  A downstream Arrow
-adapter must not guess those semantics.  If a lossless mapping needs richer
-semantic schema, it must propose that narrowly at the MRR boundary or reject
-the schema with a typed error.
+MRR's =ValueSchema= now expresses decimal precision and scale, float width,
+temporal units and timezone policy, recursive list element shape, ordered
+record shape, and nullability.  Generic key, uniqueness, and functional
+dependency constraints no longer encode graph cardinality into the core.
+A downstream Arrow adapter must map this structure losslessly or reject the
+schema with a typed error; it still may not infer physical Arrow or GraphAr
+semantics from a coarse runtime value tag.
 
 * Query binding boundary
 
@@ -99,6 +102,10 @@ A future downstream =BoundDataQuery= may pair =MetaQueryIr= with:
 - a physical snapshot root CID;
 - an optional GraphAr projection profile and manifest CID;
 - language/dialect and engine capability declarations.
+
+The generation must resolve to an admitted upstream =SemanticSnapshot=.
+Physical snapshot roots remain downstream identities and cannot replace its
+source-revision digest.
 
 For catalog $S_g$, snapshot $D_g$, and query $q$, execution is defined only
 when every query reference resolves uniquely and all identities name the same
@@ -149,8 +156,8 @@ layout, database engine, object store, or transport.
 MRR should change only when a concrete downstream proof exposes a missing
 semantic contract.  The first expected decisions are:
 
-1. whether =RelationSchema= needs explicit nullability and parameterized
-   Decimal, temporal, List, and Record types for a lossless Arrow mapping;
+1. prove the complete =ValueSchema= to Arrow mapping, including canonical
+   decimal, temporal, nested nullability, and record-field ordering;
 2. the canonical byte representation for MRR IDs at foreign-data boundaries;
 3. whether query binding needs an upstream storage-neutral catalog identity or
    remains entirely downstream;

@@ -8,8 +8,8 @@ use mrr_identity::{EntityId, FactId, GenerationId, RelationId, RuleId, RulePackI
 use mrr_logic::Rule;
 use mrr_query::{Atom, Term, Variable};
 use mrr_relation::{
-    EvidenceCompleteness, Fact, FactProvenance, FactValidity, RelationAuthority,
-    RelationCardinality, RelationContext, RelationField, RelationSchema, Value, ValueType,
+    EvidenceCompleteness, Fact, FactProvenance, FactValidity, RelationAuthority, RelationContext,
+    RelationField, RelationSchema, Value, ValueSchema,
 };
 
 macro_rules! id {
@@ -38,10 +38,10 @@ fn binary_schema(relation: RelationId, predicate: &str) -> RelationSchema {
         relation,
         predicate,
         vec![
-            RelationField::new("from", ValueType::String).expect("from field"),
-            RelationField::new("to", ValueType::String).expect("to field"),
+            RelationField::new("from", ValueSchema::String, false).expect("from field"),
+            RelationField::new("to", ValueSchema::String, false).expect("to field"),
         ],
-        RelationCardinality::ManyToMany,
+        Vec::new(),
     )
     .expect("binary relation schema")
 }
@@ -58,7 +58,8 @@ fn source_fact(identity: u128, relation: RelationId, from: &str, to: &str) -> Fa
             FactProvenance::Source(authority),
             EvidenceCompleteness::Complete,
             FactValidity::Valid,
-        ),
+        )
+        .expect("source context"),
     )
 }
 

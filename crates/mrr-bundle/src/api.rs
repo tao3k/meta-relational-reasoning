@@ -409,6 +409,9 @@ fn validate(declaration: &ReasoningBundleDeclaration) -> Result<(), BundleError>
 
     let mut schemas = BTreeMap::new();
     for schema in &declaration.relations {
+        schema
+            .validate()
+            .map_err(BundleError::InvalidRelationSchema)?;
         if schemas.insert(schema.id(), schema).is_some() {
             return Err(BundleError::DuplicateRelation);
         }

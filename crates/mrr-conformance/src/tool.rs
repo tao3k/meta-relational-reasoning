@@ -7,8 +7,8 @@ use meta_relational_reasoning::{
     Atom, CandidateIdentities, ClosureStatus, DeductionLimits, DeductionPlan, DerivationId,
     EntityId, EvidenceCompleteness, Fact, FactId, FactProvenance, FactValidity, GenerationId,
     MaterializedClosure, MrrEngine, ReasoningBundle, ReasoningBundleDeclaration, RelationAuthority,
-    RelationCardinality, RelationContext, RelationField, RelationId, RelationSchema, Rule, RuleId,
-    RulePack, RulePackId, Term, Value, ValueType, Variable,
+    RelationContext, RelationField, RelationId, RelationSchema, Rule, RuleId, RulePack, RulePackId,
+    Term, Value, ValueSchema, Variable,
 };
 
 /// Provider-normalized graph closure request.
@@ -70,10 +70,10 @@ fn schema(relation: RelationId, name: &str) -> Result<RelationSchema, ClosureToo
         name,
         ["from", "to"]
             .into_iter()
-            .map(|field| RelationField::new(field, ValueType::String))
+            .map(|field| RelationField::new(field, ValueSchema::String, false))
             .collect::<Result<Vec<_>, _>>()
             .map_err(|error| ClosureToolError(format!("invalid relation field: {error:?}")))?,
-        RelationCardinality::ManyToMany,
+        Vec::new(),
     )
     .map_err(|error| ClosureToolError(format!("invalid relation schema: {error:?}")))
 }
@@ -104,7 +104,10 @@ fn execute_closure_tool(input: &ClosureToolInput) -> Result<ClosureToolReceipt, 
                     FactProvenance::Source(authority),
                     EvidenceCompleteness::Complete,
                     FactValidity::Valid,
-                ),
+                )
+                .map_err(|error| {
+                    ClosureToolError(format!("invalid relation context: {error:?}"))
+                })?,
             ))
         })
         .collect::<Result<Vec<_>, ClosureToolError>>()?;

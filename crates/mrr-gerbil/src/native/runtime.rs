@@ -3,6 +3,8 @@
 use std::sync::{OnceLock, mpsc};
 use std::thread;
 
+use gerbil_scheme_sys::GerbilStatus;
+
 use super::ffi;
 
 type NativeJob = Box<dyn FnOnce() + Send + 'static>;
@@ -13,7 +15,43 @@ static NATIVE_RUNTIME: OnceLock<Result<mpsc::Sender<NativeJob>, NativeRuntimeErr
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) enum NativeRuntimeError {
     Unavailable,
-    Status(i32),
+    Status(NativeRuntimeStatus),
+}
+
+/// A checked Gerbil/Gambit status that preserves future unknown ABI codes.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct NativeRuntimeStatus {
+    code: i32,
+    known: Option<GerbilStatus>,
+}
+
+impl NativeRuntimeStatus {
+    #[must_use]
+    pub const fn from_code(code: i32) -> Self {
+        Self {
+            code,
+            known: GerbilStatus::from_code(code),
+        }
+    }
+
+    #[must_use]
+    pub const fn code(self) -> i32 {
+        self.code
+    }
+
+    #[must_use]
+    pub const fn known(self) -> Option<GerbilStatus> {
+        self.known
+    }
+}
+
+impl std::fmt::Display for NativeRuntimeStatus {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.known {
+            Some(status) => write!(formatter, "{status:?} ({})", self.code),
+            None => write!(formatter, "UnknownGerbilStatus ({})", self.code),
+        }
+    }
 }
 
 /// Executes one complete native operation on the unique Gambit owner thread.
@@ -45,7 +83,9 @@ where
             .map_err(|_| NativeRuntimeError::Unavailable)?;
         match ready_receiver.recv() {
             Ok(0) => Ok(sender),
-            Ok(status) => Err(NativeRuntimeError::Status(status)),
+            Ok(status) => Err(NativeRuntimeError::Status(NativeRuntimeStatus::from_code(
+                status,
+            ))),
             Err(_) => Err(NativeRuntimeError::Unavailable),
         }
     });

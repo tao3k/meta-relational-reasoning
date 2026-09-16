@@ -1,7 +1,8 @@
 use crate::{
-    EntityId, EvidenceCompleteness, Fact, FactId, FactProvenance, FactValidity, GenerationId,
-    RelationAuthority, RelationCardinality, RelationContext, RelationError, RelationField,
-    RelationId, RelationSchema, Value, ValueType,
+    DerivationId, EntityId, EvidenceCompleteness, Fact, FactId, FactProvenance, FactValidity,
+    FloatWidth, GenerationId, RelationAuthority, RelationConstraint, RelationContext,
+    RelationContextError, RelationError, RelationField, RelationId, RelationSchema, RuleId,
+    TemporalUnit, TimezonePolicy, Value, ValueKind, ValueSchema,
 };
 
 fn id<T>(label: &str, derive: impl FnOnce(&[u8]) -> T) -> T {
@@ -21,6 +22,7 @@ fn source_context(domain: &str) -> RelationContext {
         EvidenceCompleteness::Complete,
         FactValidity::Valid,
     )
+    .expect("source context")
 }
 
 fn binary_schema(predicate: &str) -> RelationSchema {
@@ -30,10 +32,10 @@ fn binary_schema(predicate: &str) -> RelationSchema {
         }),
         predicate,
         vec![
-            RelationField::new("subject", ValueType::Entity).expect("subject field"),
-            RelationField::new("object", ValueType::Entity).expect("object field"),
+            RelationField::new("subject", ValueSchema::Entity, false).expect("subject field"),
+            RelationField::new("object", ValueSchema::Entity, false).expect("object field"),
         ],
-        RelationCardinality::ManyToMany,
+        Vec::new(),
     )
     .expect("binary schema")
 }
@@ -59,8 +61,8 @@ fn schema_is_the_single_fact_shape_and_type_authority() {
         schema.validate_fact(&fact),
         Err(RelationError::TypeMismatch {
             field: "object".into(),
-            expected: ValueType::Entity,
-            actual: ValueType::String,
+            expected: ValueSchema::Entity,
+            actual: ValueKind::String,
         })
     );
 }
@@ -103,25 +105,15 @@ fn malformed_schema_fails_closed() {
         RelationId::from_canonical_bytes(bytes).expect("relation")
     });
     let duplicate = vec![
-        RelationField::new("entity", ValueType::Entity).expect("field"),
-        RelationField::new("entity", ValueType::Entity).expect("field"),
+        RelationField::new("entity", ValueSchema::Entity, false).expect("field"),
+        RelationField::new("entity", ValueSchema::Entity, false).expect("field"),
     ];
     assert_eq!(
-        RelationSchema::new(
-            relation,
-            "duplicate",
-            duplicate,
-            RelationCardinality::ManyToMany,
-        ),
+        RelationSchema::new(relation, "duplicate", duplicate, Vec::new(),),
         Err(RelationError::DuplicateFieldName("entity".into()))
     );
     assert_eq!(
-        RelationSchema::new(
-            relation,
-            "empty",
-            Vec::new(),
-            RelationCardinality::ManyToMany,
-        ),
+        RelationSchema::new(relation, "empty", Vec::new(), Vec::new(),),
         Err(RelationError::EmptyFields)
     );
 }
@@ -163,4 +155,286 @@ fn wrong_relation_and_arity_fail_closed() {
             actual: 1,
         })
     );
+}
+
+#[test]
+fn recursive_schema_validates_nullability_decimal_and_nested_records() {
+    let relation = id("typed-document", |bytes| {
+        RelationId::from_canonical_bytes(bytes).expect("relation")
+    });
+    let schema = RelationSchema::new(
+        relation,
+        "typed-document",
+        vec![
+            RelationField::new(
+                "amount",
+                ValueSchema::Decimal {
+                    precision: 8,
+                    scale: 2,
+                },
+                false,
+            )
+            .expect("amount"),
+            RelationField::new(
+                "metadata",
+                ValueSchema::Record {
+                    fields: vec![
+                        RelationField::new("label", ValueSchema::String, false).expect("label"),
+                        RelationField::new(
+                            "samples",
+                            ValueSchema::List {
+                                element: Box::new(ValueSchema::Float {
+                                    width: FloatWidth::Binary64,
+                                }),
+                                element_nullable: true,
+                            },
+                            false,
+                        )
+                        .expect("samples"),
+                    ],
+                },
+                true,
+            )
+            .expect("metadata"),
+        ],
+        vec![RelationConstraint::Key(vec!["amount".into()])],
+    )
+    .expect("recursive schema");
+    let valid = Fact::new(
+        id("typed-document-valid", |bytes| {
+            FactId::from_canonical_bytes(bytes).expect("fact")
+        }),
+        relation,
+        vec![
+            Value::Decimal("1234.50".into()),
+            Value::Record(vec![
+                ("label".into(), Value::String("observed".into())),
+                (
+                    "samples".into(),
+                    Value::List(vec![Value::Float("1.5".into()), Value::Null]),
+                ),
+            ]),
+        ],
+        source_context("typed-authority"),
+    );
+    assert_eq!(schema.validate_fact(&valid), Ok(()));
+
+    let noncanonical = Fact::new(
+        id("typed-document-invalid", |bytes| {
+            FactId::from_canonical_bytes(bytes).expect("fact")
+        }),
+        relation,
+        vec![Value::Decimal("01234.50".into()), Value::Null],
+        source_context("typed-authority"),
+    );
+    assert!(matches!(
+        schema.validate_fact(&noncanonical),
+        Err(RelationError::InvalidValue { field, .. }) if field == "amount"
+    ));
+}
+
+#[test]
+fn nullability_and_constraint_references_fail_closed() {
+    let relation = id("nullable", |bytes| {
+        RelationId::from_canonical_bytes(bytes).expect("relation")
+    });
+    let schema = RelationSchema::new(
+        relation,
+        "nullable",
+        vec![
+            RelationField::new(
+                "observed-at",
+                ValueSchema::Timestamp {
+                    unit: TemporalUnit::Microsecond,
+                    timezone: TimezonePolicy::Utc,
+                },
+                false,
+            )
+            .expect("field"),
+        ],
+        Vec::new(),
+    )
+    .expect("schema");
+    let null = Fact::new(
+        id("null", |bytes| {
+            FactId::from_canonical_bytes(bytes).expect("fact")
+        }),
+        relation,
+        vec![Value::Null],
+        source_context("authority"),
+    );
+    assert_eq!(
+        schema.validate_fact(&null),
+        Err(RelationError::NullNotAllowed("observed-at".into()))
+    );
+
+    let invalid = RelationSchema::new(
+        relation,
+        "invalid-constraint",
+        vec![RelationField::new("known", ValueSchema::String, false).expect("field")],
+        vec![RelationConstraint::Unique(vec!["missing".into()])],
+    );
+    assert!(matches!(invalid, Err(RelationError::InvalidConstraint(_))));
+}
+
+#[test]
+fn authority_and_provenance_must_describe_one_origin() {
+    let authority = id("context-authority", |bytes| {
+        EntityId::from_canonical_bytes(bytes).expect("authority")
+    });
+    let other = id("context-source", |bytes| {
+        EntityId::from_canonical_bytes(bytes).expect("source")
+    });
+    let generation = id("context-generation", |bytes| {
+        GenerationId::from_canonical_bytes(bytes).expect("generation")
+    });
+    assert_eq!(
+        RelationContext::new(
+            generation,
+            RelationAuthority::Entity(authority),
+            FactProvenance::Source(other),
+            EvidenceCompleteness::Complete,
+            FactValidity::Valid,
+        ),
+        Err(RelationContextError::AuthorityProvenanceMismatch)
+    );
+
+    let rule = id("context-rule", |bytes| {
+        RuleId::from_canonical_bytes(bytes).expect("rule")
+    });
+    assert_eq!(
+        RelationContext::new(
+            generation,
+            RelationAuthority::Rule(rule),
+            FactProvenance::Source(authority),
+            EvidenceCompleteness::Complete,
+            FactValidity::Valid,
+        ),
+        Err(RelationContextError::AuthorityProvenanceMismatch)
+    );
+
+    let derivation = id("context-derivation", |bytes| {
+        DerivationId::from_canonical_bytes(bytes).expect("derivation")
+    });
+    assert!(
+        RelationContext::new(
+            generation,
+            RelationAuthority::Rule(rule),
+            FactProvenance::Derivation(derivation),
+            EvidenceCompleteness::Complete,
+            FactValidity::Valid,
+        )
+        .is_ok()
+    );
+}
+
+#[test]
+fn fact_cannot_invalidate_itself() {
+    let schema = binary_schema("self-invalidating");
+    let fact_id = id("self-invalidating-fact", |bytes| {
+        FactId::from_canonical_bytes(bytes).expect("fact")
+    });
+    let authority = id("self-invalidating-authority", |bytes| {
+        EntityId::from_canonical_bytes(bytes).expect("authority")
+    });
+    let fact = Fact::new(
+        fact_id,
+        schema.id(),
+        vec![Value::Entity(authority), Value::Entity(authority)],
+        RelationContext::new(
+            id("self-invalidating-generation", |bytes| {
+                GenerationId::from_canonical_bytes(bytes).expect("generation")
+            }),
+            RelationAuthority::Entity(authority),
+            FactProvenance::Source(authority),
+            EvidenceCompleteness::Complete,
+            FactValidity::InvalidatedBy(fact_id),
+        )
+        .expect("coherent context"),
+    );
+    assert_eq!(
+        schema.validate_fact(&fact),
+        Err(RelationError::SelfInvalidation(fact_id))
+    );
+}
+
+#[test]
+fn temporal_and_duration_values_use_the_canonical_v1_profile() {
+    let relation = id("temporal-profile", |bytes| {
+        RelationId::from_canonical_bytes(bytes).expect("relation")
+    });
+    let schema = RelationSchema::new(
+        relation,
+        "temporal-profile",
+        vec![
+            RelationField::new("date", ValueSchema::Date, false).unwrap(),
+            RelationField::new(
+                "timestamp",
+                ValueSchema::Timestamp {
+                    unit: TemporalUnit::Microsecond,
+                    timezone: TimezonePolicy::Utc,
+                },
+                false,
+            )
+            .unwrap(),
+            RelationField::new("duration", ValueSchema::Duration, false).unwrap(),
+        ],
+        Vec::new(),
+    )
+    .unwrap();
+    let fact = |label: &str, date: &str, timestamp: &str, duration: &str| {
+        Fact::new(
+            id(label, |bytes| {
+                FactId::from_canonical_bytes(bytes).expect("fact")
+            }),
+            relation,
+            vec![
+                Value::Date(date.into()),
+                Value::Timestamp(timestamp.into()),
+                Value::Duration(duration.into()),
+            ],
+            source_context("temporal-authority"),
+        )
+    };
+
+    assert_eq!(
+        schema.validate_fact(&fact(
+            "valid-temporal",
+            "2024-02-29",
+            "2024-02-29T23:59:59.123456Z",
+            "P1DT2H3M4.5S",
+        )),
+        Ok(())
+    );
+    for (label, date, timestamp, duration) in [
+        (
+            "invalid-date",
+            "2023-02-29",
+            "2024-02-29T23:59:59.123456Z",
+            "P1D",
+        ),
+        (
+            "invalid-time",
+            "2024-02-29",
+            "2024-02-29T24:00:00.000000Z",
+            "P1D",
+        ),
+        (
+            "repeated-duration-unit",
+            "2024-02-29",
+            "2024-02-29T23:59:59.123456Z",
+            "P1Y2Y",
+        ),
+        (
+            "ambiguous-duration",
+            "2024-02-29",
+            "2024-02-29T23:59:59.123456Z",
+            "P1W2D",
+        ),
+    ] {
+        assert!(matches!(
+            schema.validate_fact(&fact(label, date, timestamp, duration)),
+            Err(RelationError::InvalidValue { .. })
+        ));
+    }
 }

@@ -18,6 +18,13 @@ pub struct Transition {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum TransitionError {
     SameGeneration,
+    DuplicateInsertion(FactId),
+    DuplicateRetraction(FactId),
+    InsertionGenerationMismatch {
+        fact: FactId,
+        expected: GenerationId,
+        actual: GenerationId,
+    },
     ConflictingFact(FactId),
 }
 
@@ -31,7 +38,26 @@ impl Transition {
         if from == to {
             return Err(TransitionError::SameGeneration);
         }
-        let retracted = retractions.iter().copied().collect::<HashSet<_>>();
+        let mut inserted = HashSet::with_capacity(insertions.len());
+        for fact in &insertions {
+            if !inserted.insert(fact.id()) {
+                return Err(TransitionError::DuplicateInsertion(fact.id()));
+            }
+            let actual = fact.context().generation();
+            if actual != to {
+                return Err(TransitionError::InsertionGenerationMismatch {
+                    fact: fact.id(),
+                    expected: to,
+                    actual,
+                });
+            }
+        }
+        let mut retracted = HashSet::with_capacity(retractions.len());
+        for fact_id in &retractions {
+            if !retracted.insert(*fact_id) {
+                return Err(TransitionError::DuplicateRetraction(*fact_id));
+            }
+        }
         if let Some(conflict) = insertions
             .iter()
             .map(Fact::id)

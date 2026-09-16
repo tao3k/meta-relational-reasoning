@@ -9,6 +9,7 @@ repository.workspace = true
 
 [dependencies]
 mrr-identity.workspace = true
+sha2.workspace = true
 
 [build-dependencies]
 mrr-asp-rust-project-policy.workspace = true

@@ -15,6 +15,8 @@ flowchart LR
   E --> I[RevisionId]
   I --> B[RevisionBinding]
   G[GenerationId] --> B
+  B --> M[SemanticSnapshot]
+  G --> M
   S[StateId] -. never part of binding .-> B
 #+end_src
 
@@ -22,15 +24,21 @@ flowchart LR
 logical-change, and content-revision coordinates.  =RevisionId= is derived from
 their length-framed bytes under =mrr.external-revision.v1=.  A
 =RevisionBinding= then associates that stable revision with a caller-selected
-MRR generation.
+MRR generation.  =SemanticSnapshot= admits a non-empty, canonically ordered
+set of bindings for exactly one generation.  A revision cannot repeat, and one
+provider/logical-change coordinate cannot resolve to two content revisions in
+the same snapshot.
 
 #+begin_src typst
 #set page(width: 150mm, height: auto, margin: 12mm)
 $ r = "RevisionId"("provider", "logical-change", "content-revision") $
 $ "RevisionBinding" = (r, gamma) $
+$ "SemanticSnapshot"_gamma = "sort"({(r_i, gamma)}) $
 $ "logical-change" != "content-revision" != r != gamma != "runtime-state" $
 #+end_src
 
 Changing only content revision changes =RevisionId= while preserving the
 external logical-change coordinate.  Changing generation does not rewrite the
-external revision.  Runtime state remains owned by the transition layer.
+external revision.  Snapshot identity is independent of input order, while a
+mixed-generation or ambiguous logical source fails closed.  Runtime state
+remains owned by the transition layer.

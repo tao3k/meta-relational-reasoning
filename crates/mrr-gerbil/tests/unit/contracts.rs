@@ -1,5 +1,6 @@
 use crate::native::NativeGrammar;
 use crate::{load_reasoning_bundle, stamp_projection, validate_projection};
+use gerbil_scheme_sys::GerbilStatus;
 use mrr_bundle::{LineagePolicy, ProjectionPolicy, ValidationProfile};
 use std::sync::{Arc, Barrier};
 use std::{collections::BTreeMap, collections::BTreeSet, path::Path};
@@ -7,6 +8,19 @@ use std::{collections::BTreeMap, collections::BTreeSet, path::Path};
 const INPUT: &str = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
 const TEST_GRAMMAR_DIGEST: &str =
     "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+
+#[test]
+fn native_runtime_status_preserves_known_meaning_and_unknown_code() {
+    let unavailable = crate::NativeRuntimeStatus::from_code(4);
+    assert_eq!(unavailable.known(), Some(GerbilStatus::RuntimeUnavailable));
+    assert_eq!(unavailable.code(), 4);
+    assert_eq!(unavailable.to_string(), "RuntimeUnavailable (4)");
+
+    let future = crate::NativeRuntimeStatus::from_code(91);
+    assert_eq!(future.known(), None);
+    assert_eq!(future.code(), 91);
+    assert_eq!(future.to_string(), "UnknownGerbilStatus (91)");
+}
 
 #[test]
 fn stamped_projection_round_trips_through_admission() {

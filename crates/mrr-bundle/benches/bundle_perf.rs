@@ -1,7 +1,7 @@
 use criterion::{Criterion, criterion_group, criterion_main};
 use mrr_bundle::{ReasoningBundle, ReasoningBundleDeclaration};
 use mrr_identity::RelationId;
-use mrr_relation::{RelationCardinality, RelationField, RelationSchema, ValueType};
+use mrr_relation::{RelationField, RelationSchema, ValueSchema};
 
 fn bench(c: &mut Criterion) {
     c.bench_function("mrr_bundle_admit_minimal", |b| {
@@ -10,8 +10,8 @@ fn bench(c: &mut Criterion) {
                 RelationSchema::new(
                     RelationId::from_canonical_bytes(b"bench:relation").expect("relation"),
                     "bench",
-                    vec![RelationField::new("value", ValueType::Integer).expect("field")],
-                    RelationCardinality::ManyToMany,
+                    vec![RelationField::new("value", ValueSchema::Integer, false).expect("field")],
+                    Vec::new(),
                 )
                 .expect("schema"),
             ],

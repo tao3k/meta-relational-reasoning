@@ -7,8 +7,8 @@ use mrr_identity::{EntityId, FactId, GenerationId, RelationId, RuleId, RulePackI
 use mrr_logic::Rule;
 use mrr_query::{Atom, Term, Variable};
 use mrr_relation::{
-    EvidenceCompleteness, Fact, FactProvenance, FactValidity, RelationAuthority,
-    RelationCardinality, RelationContext, RelationField, RelationSchema, Value, ValueType,
+    EvidenceCompleteness, Fact, FactProvenance, FactValidity, RelationAuthority, RelationContext,
+    RelationField, RelationSchema, Value, ValueSchema,
 };
 
 const SCALES: &[usize] = &[1_000, 10_000, 100_000];
@@ -39,10 +39,10 @@ fn schema(relation: RelationId, name: &str) -> RelationSchema {
         relation,
         name,
         vec![
-            RelationField::new("from", ValueType::String).expect("from field"),
-            RelationField::new("to", ValueType::String).expect("to field"),
+            RelationField::new("from", ValueSchema::String, false).expect("from field"),
+            RelationField::new("to", ValueSchema::String, false).expect("to field"),
         ],
-        RelationCardinality::ManyToMany,
+        Vec::new(),
     )
     .expect("schema")
 }
@@ -73,7 +73,8 @@ fn fixture(size: usize) -> Fixture {
                     FactProvenance::Source(authority),
                     EvidenceCompleteness::Complete,
                     FactValidity::Valid,
-                ),
+                )
+                .expect("source context"),
             )
         })
         .collect();

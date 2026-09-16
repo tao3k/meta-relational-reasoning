@@ -118,7 +118,7 @@
     ((_ binding
         (module module-name)
         (relation-schemas
-         (schema-name schema-cardinality
+         (schema-name schema-constraint-profile
                       (field-name field-type) ...) ...)
         (query-templates
          (query-name query-relation (query-dependency ...)) ...)
@@ -137,7 +137,7 @@
         (validation-profile max-query-depth require-complete?))
      #'(def binding
          '((relation-schemas
-            (schema-name schema-cardinality
+            (schema-name schema-constraint-profile
                          ((field-name field-type) ...)) ...)
            (query-templates
             (query-name query-relation (query-dependency ...)) ...)

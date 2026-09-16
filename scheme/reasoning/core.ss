@@ -25,7 +25,7 @@
     ((_ binding
         (module module-name)
         (relation-schemas
-         (schema-name schema-cardinality
+         (schema-name schema-constraint-profile
                       (field-name field-type) ...) ...)
         (query-templates
          (query-name query-relation (query-dependency ...)) ...)
@@ -50,7 +50,7 @@
             (reasoning-module-id 'module-name)
             (relation-schemas
              (list
-              (list 'schema-name 'schema-cardinality
+              (list 'schema-name 'schema-constraint-profile
                     (list (list 'field-name 'field-type) ...)) ...))
             (query-templates
              (list

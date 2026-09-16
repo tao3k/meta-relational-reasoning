@@ -1,6 +1,6 @@
 use crate::{
-    ReasoningBundle, ReasoningBundleDeclaration, RelationCardinality, RelationField, RelationId,
-    RelationSchema, ValueType,
+    ReasoningBundle, ReasoningBundleDeclaration, RelationField, RelationId, RelationSchema,
+    ValueSchema,
 };
 #[test]
 fn facade_exposes_one_composable_contract_graph() {
@@ -10,10 +10,11 @@ fn facade_exposes_one_composable_contract_graph() {
                 RelationId::from_canonical_bytes(b"relation:depends-on").expect("relation id"),
                 "depends_on",
                 vec![
-                    RelationField::new("subject", ValueType::Entity).expect("subject field"),
-                    RelationField::new("object", ValueType::Entity).expect("object field"),
+                    RelationField::new("subject", ValueSchema::Entity, false)
+                        .expect("subject field"),
+                    RelationField::new("object", ValueSchema::Entity, false).expect("object field"),
                 ],
-                RelationCardinality::ManyToMany,
+                Vec::new(),
             )
             .expect("schema"),
         ],

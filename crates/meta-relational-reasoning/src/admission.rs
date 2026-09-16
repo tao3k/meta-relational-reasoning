@@ -7,6 +7,7 @@ use mrr_identity::{DerivationId, FactId, GenerationId, RulePackId};
 use mrr_lineage::{Derivation, LineageError};
 use mrr_relation::{
     EvidenceCompleteness, Fact, FactProvenance, FactValidity, RelationAuthority, RelationContext,
+    RelationContextError,
 };
 use mrr_transition::{Transition, TransitionError};
 use sha2::{Digest, Sha256};
@@ -63,6 +64,8 @@ pub enum ClosureAdmissionError {
     Lineage(LineageError),
     /// The canonical transition owner rejected the complete delta.
     Transition(TransitionError),
+    /// The derived fact context is internally incoherent.
+    Context(RelationContextError),
 }
 
 impl fmt::Display for ClosureAdmissionError {
@@ -273,17 +276,19 @@ fn build_derivations(
         .iter()
         .zip(identities)
         .map(|(candidate, identity)| {
+            let context = RelationContext::new(
+                generation,
+                RelationAuthority::Rule(candidate.rule()),
+                FactProvenance::Derivation(identity.derivation()),
+                EvidenceCompleteness::Complete,
+                FactValidity::Valid,
+            )
+            .map_err(ClosureAdmissionError::Context)?;
             let output = Fact::new(
                 identity.fact(),
                 candidate.relation(),
                 candidate.values().to_vec(),
-                RelationContext::new(
-                    generation,
-                    RelationAuthority::Rule(candidate.rule()),
-                    FactProvenance::Derivation(identity.derivation()),
-                    EvidenceCompleteness::Complete,
-                    FactValidity::Valid,
-                ),
+                context,
             );
             Derivation::new(
                 identity.derivation(),

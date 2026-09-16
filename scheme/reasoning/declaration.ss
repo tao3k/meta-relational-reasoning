@@ -6,8 +6,8 @@
      #'(consumer binding
          (module dependency-closure)
          (relation-schemas
-          (edge many-to-many (from string) (to string))
-          (reachable many-to-many (from string) (to string)))
+          (edge none (from string) (to string))
+          (reachable none (from string) (to string)))
          (query-templates
           (reachable-query reachable ()))
          (rule-packs

@@ -10,6 +10,8 @@ mod parser_cst;
 mod reasoning;
 mod runtime;
 
+pub use runtime::NativeRuntimeStatus;
+
 pub use driver::{
     DriverError, DriverPhase, DriverResource, DriverStatus, DriverTransition, driver_request,
     driver_transition,

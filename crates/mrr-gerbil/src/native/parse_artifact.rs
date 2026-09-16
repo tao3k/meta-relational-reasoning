@@ -145,7 +145,7 @@ pub struct ParseArtifact {
 pub enum ParseArtifactLoadError {
     InteriorNul,
     RuntimeUnavailable,
-    RuntimeStatus(i32),
+    RuntimeStatus(super::NativeRuntimeStatus),
     ParserFailed {
         call_status: i32,
         result_status: i32,

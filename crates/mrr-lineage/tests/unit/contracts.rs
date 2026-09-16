@@ -31,7 +31,8 @@ fn derived_fact(
             FactProvenance::Derivation(derivation),
             EvidenceCompleteness::Complete,
             FactValidity::Valid,
-        ),
+        )
+        .expect("derived context"),
     )
 }
 #[test]
