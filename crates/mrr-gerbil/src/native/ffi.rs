@@ -5,7 +5,8 @@ use std::ffi::{CStr, c_char};
 #[repr(C)]
 struct GerbilParserResultV1 {
     status: i32,
-    payload: *mut c_char,
+    payload: *mut u8,
+    length: usize,
 }
 
 pub(super) struct ParserNativeResult {
@@ -192,6 +193,7 @@ unsafe fn parser_native_result(
     let mut result = GerbilParserResultV1 {
         status: 0,
         payload: std::ptr::null_mut(),
+        length: 0,
     };
     unsafe { gerbil_parser_result_v1_init(&mut result) };
     let call_status = call(&mut result);
@@ -199,11 +201,7 @@ unsafe fn parser_native_result(
     let payload = if result.payload.is_null() {
         None
     } else {
-        Some(
-            unsafe { CStr::from_ptr(result.payload) }
-                .to_bytes()
-                .to_vec(),
-        )
+        Some(unsafe { std::slice::from_raw_parts(result.payload, result.length) }.to_vec())
     };
     unsafe { gerbil_parser_result_v1_release(&mut result) };
     ParserNativeResult {

@@ -56,6 +56,8 @@ pub struct ParserKindCatalog {
     kinds: Vec<ParserKindSpec>,
     by_name: BTreeMap<String, u16>,
     terminals: BTreeMap<String, u16>,
+    terminal_names: Vec<String>,
+    field_names: Vec<String>,
 }
 
 impl ParserKindCatalog {
@@ -83,6 +85,14 @@ impl ParserKindCatalog {
     #[must_use]
     pub fn terminal_kind_id(&self, terminal: &str) -> Option<u16> {
         self.terminals.get(terminal).copied()
+    }
+
+    fn terminal_name(&self, id: u32) -> Option<&str> {
+        self.terminal_names.get(id as usize).map(String::as_str)
+    }
+
+    fn field_name(&self, id: u32) -> Option<&str> {
+        self.field_names.get(id as usize).map(String::as_str)
     }
 }
 
@@ -142,7 +152,6 @@ pub enum ParseArtifactLoadError {
         diagnostic: Option<String>,
     },
     InvalidPayload,
-    InvalidSchema(String),
     InvalidGrammarDigest(String),
     InvalidSourceDigest(String),
     NativeDescriptorFailed {
@@ -157,11 +166,6 @@ pub enum ParseArtifactLoadError {
         row: i64,
         kind: String,
     },
-    InvalidNumber {
-        row: i64,
-        column: &'static str,
-        value: i64,
-    },
 }
 
 static PARSER_KIND_CATALOG: OnceLock<Result<Arc<ParserKindCatalog>, ParseArtifactLoadError>> =
@@ -169,7 +173,7 @@ static PARSER_KIND_CATALOG: OnceLock<Result<Arc<ParserKindCatalog>, ParseArtifac
 
 pub fn parse_gql_artifact(source: &str) -> Result<ParseArtifact, ParseArtifactLoadError> {
     let (payload, kind_catalog) = request_parse_artifact(source)?;
-    let artifact = decode_parse_artifact(&payload, kind_catalog)?;
+    let artifact = decode_parse_artifact(&payload, source, kind_catalog)?;
     validate_source_digest(&artifact, source)?;
     Ok(artifact)
 }
@@ -188,35 +192,49 @@ pub(crate) fn validate_source_digest(
 }
 
 pub(crate) fn decode_parse_artifact(
-    payload: &Value,
+    payload: &[u8],
+    source: &str,
     kind_catalog: Arc<ParserKindCatalog>,
 ) -> Result<ParseArtifact, ParseArtifactLoadError> {
-    let schema = string_field(payload, "schema")?.to_owned();
-    if schema != PARSE_ARTIFACT_SCHEMA_V1 {
-        return Err(ParseArtifactLoadError::InvalidSchema(schema));
+    const HEADER_SIZE: usize = 80;
+    const EVENT_SIZE: usize = 24;
+    if payload.len() < HEADER_SIZE || &payload[..4] != b"GPA1" || read_u32(payload, 4)? != 1 {
+        return Err(ParseArtifactLoadError::InvalidPayload);
     }
-    let status_text = string_field(payload, "status")?.to_owned();
-    let status = match status_text.as_str() {
-        "accepted" => ParseArtifactStatus::Accepted,
-        "rejected" => ParseArtifactStatus::Rejected,
-        _ => return Err(ParseArtifactLoadError::InvalidStatus(status_text)),
+    let status = match read_u32(payload, 8)? {
+        0 => ParseArtifactStatus::Accepted,
+        1 => ParseArtifactStatus::Rejected,
+        value => return Err(ParseArtifactLoadError::InvalidStatus(value.to_string())),
     };
-    let grammar_digest = string_field(payload, "grammarDigest")?.to_owned();
+    let event_count = usize::try_from(read_u32(payload, 12)?)
+        .map_err(|_| ParseArtifactLoadError::InvalidPayload)?;
+    let expected_length = HEADER_SIZE
+        .checked_add(
+            event_count
+                .checked_mul(EVENT_SIZE)
+                .ok_or(ParseArtifactLoadError::InvalidPayload)?,
+        )
+        .ok_or(ParseArtifactLoadError::InvalidPayload)?;
+    if payload.len() != expected_length {
+        return Err(ParseArtifactLoadError::InvalidPayload);
+    }
+    let grammar_digest = digest_text(&payload[16..48]);
     if grammar_digest != kind_catalog.grammar_digest {
         return Err(ParseArtifactLoadError::InvalidGrammarDigest(grammar_digest));
     }
-    let source_digest = string_field(payload, "sourceDigest")?.to_owned();
-    let event_values = payload
-        .get("events")
-        .and_then(Value::as_array)
-        .ok_or(ParseArtifactLoadError::MissingField("events"))?;
-    let events = event_values
-        .iter()
-        .enumerate()
-        .map(|(row, event)| load_event(row as i64, event))
-        .collect::<Result<Vec<_>, _>>()?;
+    let source_digest = digest_text(&payload[48..80]);
+    let mut events = Vec::with_capacity(event_count);
+    for row in 0..event_count {
+        let offset = HEADER_SIZE + row * EVENT_SIZE;
+        events.push(load_binary_event(
+            row,
+            &payload[offset..offset + EVENT_SIZE],
+            source,
+            &kind_catalog,
+        )?);
+    }
     Ok(ParseArtifact {
-        schema,
+        schema: PARSE_ARTIFACT_SCHEMA_V1.to_owned(),
         kind_catalog,
         status,
         grammar_digest,
@@ -227,7 +245,7 @@ pub(crate) fn decode_parse_artifact(
 
 fn request_parse_artifact(
     source: &str,
-) -> Result<(Value, Arc<ParserKindCatalog>), ParseArtifactLoadError> {
+) -> Result<(Vec<u8>, Arc<ParserKindCatalog>), ParseArtifactLoadError> {
     let kind_catalog = PARSER_KIND_CATALOG
         .get_or_init(load_native_kind_catalog)
         .clone()?;
@@ -241,9 +259,100 @@ fn request_parse_artifact(
             diagnostic,
         }
     })?;
-    let payload =
-        serde_json::from_slice(&payload).map_err(|_| ParseArtifactLoadError::InvalidPayload)?;
     Ok((payload, kind_catalog))
+}
+
+fn read_u32(payload: &[u8], offset: usize) -> Result<u32, ParseArtifactLoadError> {
+    let bytes = payload
+        .get(offset..offset + 4)
+        .ok_or(ParseArtifactLoadError::InvalidPayload)?;
+    Ok(u32::from_le_bytes(
+        bytes
+            .try_into()
+            .map_err(|_| ParseArtifactLoadError::InvalidPayload)?,
+    ))
+}
+
+fn read_u64(payload: &[u8], offset: usize) -> Result<u64, ParseArtifactLoadError> {
+    let bytes = payload
+        .get(offset..offset + 8)
+        .ok_or(ParseArtifactLoadError::InvalidPayload)?;
+    Ok(u64::from_le_bytes(
+        bytes
+            .try_into()
+            .map_err(|_| ParseArtifactLoadError::InvalidPayload)?,
+    ))
+}
+
+fn digest_text(bytes: &[u8]) -> String {
+    const HEX: &[u8; 16] = b"0123456789abcdef";
+    let mut digest = String::with_capacity(71);
+    digest.push_str("sha256:");
+    for byte in bytes {
+        digest.push(char::from(HEX[usize::from(byte >> 4)]));
+        digest.push(char::from(HEX[usize::from(byte & 0x0f)]));
+    }
+    digest
+}
+
+fn load_binary_event(
+    row: usize,
+    event: &[u8],
+    source: &str,
+    catalog: &ParserKindCatalog,
+) -> Result<ParseEvent, ParseArtifactLoadError> {
+    let tag = read_u32(event, 0)?;
+    let symbol = read_u32(event, 4)?;
+    let id = read_u64(event, 8)?;
+    let start = read_u32(event, 16)?;
+    let end = read_u32(event, 20)?;
+    let invalid = || ParseArtifactLoadError::InvalidEvent {
+        row: i64::try_from(row).unwrap_or(i64::MAX),
+        kind: format!("binary-tag-{tag}"),
+    };
+    match tag {
+        1 => Ok(ParseEvent::StartNode {
+            id,
+            kind: catalog
+                .kind_name(u16::try_from(symbol).map_err(|_| invalid())?)
+                .ok_or_else(invalid)?
+                .to_owned(),
+            start,
+        }),
+        2 => Ok(ParseEvent::FinishNode {
+            id,
+            kind: catalog
+                .kind_name(u16::try_from(symbol).map_err(|_| invalid())?)
+                .ok_or_else(invalid)?
+                .to_owned(),
+            end,
+        }),
+        3 => Ok(ParseEvent::StartField {
+            field: catalog.field_name(symbol).ok_or_else(invalid)?.to_owned(),
+            start,
+        }),
+        4 => Ok(ParseEvent::FinishField {
+            field: catalog.field_name(symbol).ok_or_else(invalid)?.to_owned(),
+            end,
+        }),
+        5 => {
+            let lexeme = source
+                .get(start as usize..end as usize)
+                .ok_or_else(invalid)?
+                .to_owned();
+            Ok(ParseEvent::Token {
+                id,
+                kind: catalog
+                    .terminal_name(symbol)
+                    .ok_or_else(invalid)?
+                    .to_owned(),
+                lexeme,
+                start,
+                end,
+            })
+        }
+        _ => Err(invalid()),
+    }
 }
 
 fn load_native_kind_catalog() -> Result<Arc<ParserKindCatalog>, ParseArtifactLoadError> {
@@ -307,6 +416,22 @@ pub(crate) fn load_kind_catalog(
     if !valid_sha256_digest(&grammar_digest) {
         return Err(ParseArtifactLoadError::InvalidHostDescriptor);
     }
+    let field_rows = payload
+        .get("fields")
+        .and_then(Value::as_array)
+        .ok_or(ParseArtifactLoadError::InvalidHostDescriptor)?;
+    let mut field_names = Vec::with_capacity(field_rows.len());
+    let mut field_ids = BTreeMap::new();
+    for field in field_rows {
+        let field = field
+            .as_str()
+            .ok_or(ParseArtifactLoadError::InvalidHostDescriptor)?
+            .to_owned();
+        if field_ids.insert(field.clone(), field_names.len()).is_some() {
+            return Err(ParseArtifactLoadError::InvalidHostDescriptor);
+        }
+        field_names.push(field);
+    }
     let rows = payload
         .get("syntaxKinds")
         .and_then(Value::as_array)
@@ -336,6 +461,9 @@ pub(crate) fn load_kind_catalog(
                     .ok_or(ParseArtifactLoadError::InvalidHostDescriptor)
             })
             .collect::<Result<Vec<_>, _>>()?;
+        if fields.iter().any(|field| !field_ids.contains_key(field)) {
+            return Err(ParseArtifactLoadError::InvalidHostDescriptor);
+        }
         if by_name.insert(name.clone(), id).is_some() {
             return Err(ParseArtifactLoadError::InvalidHostDescriptor);
         }
@@ -350,6 +478,7 @@ pub(crate) fn load_kind_catalog(
         .and_then(Value::as_array)
         .ok_or(ParseArtifactLoadError::InvalidHostDescriptor)?;
     let mut terminals = BTreeMap::new();
+    let mut terminal_names = Vec::with_capacity(terminal_rows.len());
     for row in terminal_rows {
         let row = row
             .as_array()
@@ -361,16 +490,19 @@ pub(crate) fn load_kind_catalog(
             .copied()
             .ok_or(ParseArtifactLoadError::InvalidHostDescriptor)?;
         if kinds[usize::from(id)].category != ParserKindCategory::Token
-            || terminals.insert(terminal, id).is_some()
+            || terminals.insert(terminal.clone(), id).is_some()
         {
             return Err(ParseArtifactLoadError::InvalidHostDescriptor);
         }
+        terminal_names.push(terminal);
     }
     Ok(ParserKindCatalog {
         grammar_digest,
         kinds,
         by_name,
         terminals,
+        terminal_names,
+        field_names,
     })
 }
 
@@ -399,75 +531,4 @@ fn event_string<'a>(
         .get(column)
         .and_then(Value::as_str)
         .ok_or(ParseArtifactLoadError::MissingField(name))
-}
-
-fn number(
-    row: i64,
-    event: &[Value],
-    column: usize,
-    name: &'static str,
-) -> Result<u64, ParseArtifactLoadError> {
-    event
-        .get(column)
-        .and_then(Value::as_u64)
-        .ok_or(ParseArtifactLoadError::InvalidNumber {
-            row,
-            column: name,
-            value: event
-                .get(column)
-                .and_then(Value::as_i64)
-                .unwrap_or(i64::MIN),
-        })
-}
-
-fn offset(
-    row: i64,
-    event: &[Value],
-    column: usize,
-    name: &'static str,
-) -> Result<u32, ParseArtifactLoadError> {
-    let value = number(row, event, column, name)?;
-    u32::try_from(value).map_err(|_| ParseArtifactLoadError::InvalidNumber {
-        row,
-        column: name,
-        value: i64::try_from(value).unwrap_or(i64::MAX),
-    })
-}
-
-fn load_event(row: i64, value: &Value) -> Result<ParseEvent, ParseArtifactLoadError> {
-    let event = value
-        .as_array()
-        .ok_or(ParseArtifactLoadError::MissingField("event"))?;
-    let kind = event_string(event, 0, "event.kind")?;
-    match kind {
-        "start-node" => Ok(ParseEvent::StartNode {
-            id: number(row, event, 1, "id")?,
-            kind: event_string(event, 2, "node.kind")?.to_owned(),
-            start: offset(row, event, 3, "start")?,
-        }),
-        "finish-node" => Ok(ParseEvent::FinishNode {
-            id: number(row, event, 1, "id")?,
-            kind: event_string(event, 2, "node.kind")?.to_owned(),
-            end: offset(row, event, 3, "end")?,
-        }),
-        "start-field" => Ok(ParseEvent::StartField {
-            field: event_string(event, 1, "field")?.to_owned(),
-            start: offset(row, event, 2, "start")?,
-        }),
-        "finish-field" => Ok(ParseEvent::FinishField {
-            field: event_string(event, 1, "field")?.to_owned(),
-            end: offset(row, event, 2, "end")?,
-        }),
-        "token" => Ok(ParseEvent::Token {
-            id: number(row, event, 1, "id")?,
-            kind: event_string(event, 2, "token.kind")?.to_owned(),
-            lexeme: event_string(event, 3, "token.lexeme")?.to_owned(),
-            start: offset(row, event, 4, "start")?,
-            end: offset(row, event, 5, "end")?,
-        }),
-        _ => Err(ParseArtifactLoadError::InvalidEvent {
-            row,
-            kind: kind.to_owned(),
-        }),
-    }
 }

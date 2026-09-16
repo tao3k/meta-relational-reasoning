@@ -34,7 +34,7 @@ fn stale_scheme_input_fails_closed() {
 fn gerbil_package_owns_only_the_linked_parser_edge() {
     let package = include_str!("../../../../gerbil.pkg");
     assert!(
-        package.contains("github.com/tao3k/gerbil-parser@98c1aabb60481331160b6e8cb4625c8c89c46f7e")
+        package.contains("github.com/tao3k/gerbil-parser@338ea9d84a2cef7eb47366393f9cdd08a6b3f919")
     );
     assert_eq!(package.matches("github.com/tao3k/").count(), 1);
     assert!(!package.contains("github.com/tao3k/poo-flow@"));
@@ -201,20 +201,24 @@ fn parser_owned_failure_does_not_publish_partial_cst_events() {
     );
 }
 
-fn parse_artifact_payload(schema: &str) -> serde_json::Value {
-    serde_json::json!({
-        "schema": schema,
-        "status": "accepted",
-        "grammarDigest": TEST_GRAMMAR_DIGEST,
-        "sourceDigest": "sha256:source",
-        "events": []
-    })
+fn parse_artifact_payload(source: &str) -> Vec<u8> {
+    use sha2::{Digest, Sha256};
+
+    let mut payload = vec![0_u8; 80];
+    payload[..4].copy_from_slice(b"GPA1");
+    payload[4..8].copy_from_slice(&1_u32.to_le_bytes());
+    payload[8..12].copy_from_slice(&0_u32.to_le_bytes());
+    payload[12..16].copy_from_slice(&0_u32.to_le_bytes());
+    payload[16..48].fill(0xaa);
+    payload[48..80].copy_from_slice(&Sha256::digest(source.as_bytes()));
+    payload
 }
 
 fn parser_kind_descriptor() -> serde_json::Value {
     serde_json::json!({
         "schema": crate::PARSER_NATIVE_DESCRIPTOR_SCHEMA_V1,
         "grammarDigest": TEST_GRAMMAR_DIGEST,
+        "fields": ["text", "operator", "sign"],
         "syntaxKinds": [
             ["GqlProgram", "node", []],
             ["UnknownToken", "token", ["text"]]
@@ -260,6 +264,14 @@ fn parser_kind_catalog_rejects_duplicate_and_unknown_kinds() {
     let mut unknown_category = parser_kind_descriptor();
     unknown_category["syntaxKinds"][0][1] = serde_json::json!("opaque");
     assert_invalid_kind_catalog(unknown_category);
+
+    let mut duplicate_fields = parser_kind_descriptor();
+    duplicate_fields["fields"] = serde_json::json!(["text", "text"]);
+    assert_invalid_kind_catalog(duplicate_fields);
+
+    let mut undeclared_field = parser_kind_descriptor();
+    undeclared_field["fields"] = serde_json::json!(["operator", "sign"]);
+    assert_invalid_kind_catalog(undeclared_field);
 }
 
 #[test]
@@ -279,26 +291,30 @@ fn parser_kind_catalog_rejects_invalid_terminal_ownership() {
 }
 
 #[test]
-fn unknown_parse_artifact_schema_fails_closed() {
+fn unknown_parse_artifact_wire_format_fails_closed() {
+    let source = "";
+    let mut payload = parse_artifact_payload(source);
+    payload[..4].copy_from_slice(b"GPA0");
     let error = crate::native::parse_artifact::decode_parse_artifact(
-        &parse_artifact_payload("gerbil-parser.parse-artifact.v2"),
+        &payload,
+        source,
         test_parser_kind_catalog(),
     )
-    .expect_err("only ParseArtifact V1 is admitted");
-    assert_eq!(
-        error,
-        crate::ParseArtifactLoadError::InvalidSchema("gerbil-parser.parse-artifact.v2".to_owned())
-    );
+    .expect_err("only the frozen ParseArtifact V1 wire projection is admitted");
+    assert_eq!(error, crate::ParseArtifactLoadError::InvalidPayload);
 }
 
 #[test]
 fn parse_artifact_grammar_must_match_the_admitted_native_descriptor() {
-    let mut payload = parse_artifact_payload(crate::PARSE_ARTIFACT_SCHEMA_V1);
-    payload["grammarDigest"] = serde_json::json!(
-        "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
-    );
+    let source = "";
+    let mut payload = parse_artifact_payload(source);
+    payload[16] = 0xbb;
     assert!(matches!(
-        crate::native::parse_artifact::decode_parse_artifact(&payload, test_parser_kind_catalog()),
+        crate::native::parse_artifact::decode_parse_artifact(
+            &payload,
+            source,
+            test_parser_kind_catalog()
+        ),
         Err(crate::ParseArtifactLoadError::InvalidGrammarDigest(_))
     ));
 }
