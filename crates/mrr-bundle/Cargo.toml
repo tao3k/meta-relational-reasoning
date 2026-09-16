@@ -15,6 +15,7 @@ mrr-query.workspace = true
 mrr-relation.workspace = true
 mrr-transition.workspace = true
 serde.workspace = true
+sha2.workspace = true
 
 [build-dependencies]
 mrr-asp-rust-project-policy.workspace = true

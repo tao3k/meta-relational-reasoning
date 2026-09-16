@@ -1,6 +1,7 @@
 use crate::{
     BundleError, Fact, InverseGoal, QueryTemplate, ReasoningBundle, ReasoningBundleDeclaration,
-    RelationError, RelationSchema, RulePack, ValidationProfile,
+    RelationCatalog, RelationCatalogError, RelationError, RelationSchema, RulePack,
+    ValidationProfile,
 };
 use mrr_identity::{
     EntityId, FactId, GenerationId, QueryId, QueryOperatorId, RelationId, RuleId, RulePackId,
@@ -114,6 +115,23 @@ fn bundle_admission_is_the_single_cross_contract_boundary() {
             expected: 2,
             actual: 1,
         }))
+    );
+}
+
+#[test]
+fn relation_catalog_is_order_independent_and_rejects_duplicate_identity() {
+    let first_id = relation("relation:catalog-first");
+    let second_id = relation("relation:catalog-second");
+    let first = schema(first_id, "catalog_first", 1);
+    let second = schema(second_id, "catalog_second", 2);
+    let left = RelationCatalog::admit(vec![first.clone(), second.clone()]).unwrap();
+    let right = RelationCatalog::admit(vec![second, first.clone()]).unwrap();
+    assert_eq!(left.digest(), right.digest());
+    assert_eq!(left.relation(first_id), Some(&first));
+    assert_eq!(left.relation(relation("relation:catalog-missing")), None);
+    assert_eq!(
+        RelationCatalog::admit(vec![first.clone(), first]),
+        Err(RelationCatalogError::DuplicateRelation(first_id))
     );
 }
 

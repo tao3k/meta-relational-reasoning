@@ -2,6 +2,7 @@
 #![forbid(unsafe_code)]
 mod admission;
 mod api;
+mod binding;
 mod counterexample;
 mod truth;
 pub use admission::{
@@ -11,6 +12,7 @@ pub use admission::{
 pub use api::{
     DeductionLimits, DeductionPlan, EngineBuildError, EngineQueryError, MrrEngine, MrrEngineBuilder,
 };
+pub use binding::{CatalogBoundQuery, QueryCatalogBindingError, bind_query_to_catalog};
 pub use counterexample::{
     CounterexampleFactIdentity, CounterexampleLineageError, CounterexampleLineageIdentities,
     counterexample_lineage,
@@ -21,8 +23,8 @@ pub use mrr_ascent::{
 };
 pub use mrr_bundle::{
     BundleError, InverseGoal, LineagePolicy, ProjectionPolicy, QueryTemplate, ReasoningBundle,
-    ReasoningBundleDeclaration, RulePack, TransitionSystem as BundleTransitionSystem,
-    ValidationProfile,
+    ReasoningBundleDeclaration, RelationCatalog, RelationCatalogDigest, RelationCatalogError,
+    RulePack, TransitionSystem as BundleTransitionSystem, ValidationProfile,
 };
 pub use mrr_identity::{
     ActionId, DerivationId, EntityId, FactId, GenerationId, LineageEdgeId, LineageNodeId, QueryId,

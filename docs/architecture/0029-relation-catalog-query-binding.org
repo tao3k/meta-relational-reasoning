@@ -1,0 +1,53 @@
+#+title: RFC 0029: Relation Catalog Query Binding V1
+#+status: accepted
+#+options: toc:2
+#+property: header-args :eval never-export :exports code
+
+* Decision
+
+Parsing and =MetaQueryIr= admission do not establish that a query can execute
+against a particular semantic state.  MRR therefore derives one canonical
+=RelationCatalogDigest= from the validated, =RelationId=-ordered schemas in a
+=ReasoningBundle=.  =CatalogBoundQuery= binds a canonical query to that digest
+and an admitted =SemanticSnapshot=.
+
+#+begin_src mermaid
+flowchart LR
+  Q[Canonical MetaQueryIr] --> B[CatalogBoundQuery admission]
+  C[RelationCatalogDigest] --> B
+  S[SemanticSnapshot] --> B
+  G[GenerationId] --> S
+  B --> R[Storage-neutral binding receipt]
+  R -. downstream extension .-> D[Arrow or GraphAr execution plan]
+#+end_src
+
+* Admission
+
+The binder requires every explicit =RelationId= referenced by the query to
+exist in the exact catalog.  Every fact carried by the reasoning bundle must
+belong to the snapshot generation.  The receipt hashes canonical query bytes,
+catalog digest, generation identity, and semantic snapshot digest with
+length-framed V1 fields.
+
+#+begin_src typst
+#set page(width: 150mm, height: auto, margin: 12mm)
+$ "bind"(q, C, S_g) := "refs"(q) subset.eq "ids"(C)
+  and forall f in "bundle-facts": "generation"(f) = g $
+$ "receipt" = H("v1", H(q), H(C), g, H(S_g)) $
+#+end_src
+
+* Explicit non-claims
+
+This is relation-catalog binding, not complete Property Graph type checking.
+MRR currently lacks a canonical entity/property catalog, so property keys,
+label-to-property ownership, and property value types are not certified by
+this receipt.  Dependent query templates fail closed until MRR owns a
+canonical dependency-plan digest.  Physical snapshot CIDs, GraphAr manifests,
+Arrow schemas, engine capabilities, and dialect extensions remain downstream
+in =mrr-data=.
+
+* Evidence
+
+Tests prove catalog order independence, duplicate-relation rejection,
+deterministic binding, snapshot-sensitive receipt identity, cross-generation
+fact rejection, and fail-closed handling of unowned dependency graphs.

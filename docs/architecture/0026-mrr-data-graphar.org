@@ -23,6 +23,7 @@ MRR owns:
 - =EntityId=, =RelationId=, =FactId=, =GenerationId=, and =RevisionId=;
 - =RelationSchema=, =Fact=, =RelationContext=, and canonical value semantics;
 - =ExternalRevisionIdentity=, =RevisionBinding=, and =SemanticSnapshot=;
+- =RelationCatalogDigest= and storage-neutral =CatalogBoundQuery= admission;
 - =MetaQueryIr=, lineage, transitions, receipts, and semantic admission.
 
 The downstream =mrr-data= repository may consume those contracts and own:
@@ -95,10 +96,21 @@ property, direction, path, filter, and result operators describe a Property
 Graph query model.  It intentionally does not carry Arrow schemas, GraphAr
 manifests, engine plans, or physical IDs.
 
-A future downstream =BoundDataQuery= may pair =MetaQueryIr= with:
+MRR now admits a =CatalogBoundQuery= that pairs =MetaQueryIr= with:
 
-- the exact =GenerationId=;
-- catalog and relation-model digests;
+- the exact =GenerationId= from an admitted =SemanticSnapshot=;
+- a canonical digest of the ordered =RelationSchema= catalog;
+- the semantic snapshot digest;
+- a digest of the canonical query and the complete binding.
+
+This admission resolves explicit relation references and rejects bundle facts
+from another generation.  It deliberately does not claim property-level type
+checking: MRR does not yet own an entity/property catalog.  Query templates
+with dependencies also fail closed until their plan graph has a canonical
+admission contract.
+
+A future downstream =BoundDataQuery= may extend that binding with:
+
 - a physical snapshot root CID;
 - an optional GraphAr projection profile and manifest CID;
 - language/dialect and engine capability declarations.
@@ -159,8 +171,8 @@ semantic contract.  The first expected decisions are:
 1. prove the complete =ValueSchema= to Arrow mapping, including canonical
    decimal, temporal, nested nullability, and record-field ordering;
 2. the canonical byte representation for MRR IDs at foreign-data boundaries;
-3. whether query binding needs an upstream storage-neutral catalog identity or
-   remains entirely downstream;
+3. define the missing entity/property catalog before claiming property-level
+   query type checking;
 4. which receipt fields MRR must admit after a physical round trip.
 
 No Arrow or GraphAr dependency is justified merely to answer those questions.

@@ -216,6 +216,7 @@ pub struct ReasoningBundleDeclaration {
 pub struct ReasoningBundle {
     id: ReasoningBundleId,
     declaration: ReasoningBundleDeclaration,
+    catalog: crate::RelationCatalog,
     canonical: Vec<u8>,
 }
 
@@ -240,6 +241,7 @@ pub enum BundleError {
     UnknownRetractedFact,
     IncompleteEvidence(mrr_identity::FactId),
     InvalidRelationSchema(RelationError),
+    InvalidRelationCatalog(crate::RelationCatalogError),
     InvalidFact(RelationError),
     InvalidName(String),
     InvalidValidationProfile,
@@ -264,12 +266,15 @@ impl ReasoningBundle {
     pub fn admit(mut declaration: ReasoningBundleDeclaration) -> Result<Self, BundleError> {
         normalize(&mut declaration);
         validate(&declaration)?;
+        let catalog = crate::RelationCatalog::from_validated(declaration.relations.clone())
+            .map_err(BundleError::InvalidRelationCatalog)?;
         let canonical = encode_declaration(&declaration)?;
         let id =
             ReasoningBundleId::from_canonical_bytes(&canonical).map_err(BundleError::Identity)?;
         Ok(Self {
             id,
             declaration,
+            catalog,
             canonical,
         })
     }
@@ -314,6 +319,12 @@ impl ReasoningBundle {
     #[must_use]
     pub fn relations(&self) -> &[RelationSchema] {
         &self.declaration.relations
+    }
+
+    /// Returns the canonical relation catalog admitted with this bundle.
+    #[must_use]
+    pub const fn relation_catalog(&self) -> &crate::RelationCatalog {
+        &self.catalog
     }
 
     #[must_use]

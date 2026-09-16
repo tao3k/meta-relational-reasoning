@@ -117,6 +117,15 @@ impl MrrEngine {
             .ok_or(EngineQueryError::UnknownQuery(query))
     }
 
+    /// Binds a query to this engine's exact relation catalog and a semantic snapshot.
+    pub fn bind_query(
+        &self,
+        query: mrr_identity::QueryId,
+        snapshot: &mrr_revision::SemanticSnapshot,
+    ) -> Result<crate::CatalogBoundQuery, crate::QueryCatalogBindingError> {
+        crate::bind_query_to_catalog(&self.bundle, query, snapshot)
+    }
+
     pub fn derive(
         &self,
         plan: DeductionPlan,
