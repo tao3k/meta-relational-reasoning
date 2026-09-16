@@ -34,7 +34,7 @@ fn stale_scheme_input_fails_closed() {
 fn gerbil_package_owns_only_the_linked_parser_edge() {
     let package = include_str!("../../../../gerbil.pkg");
     assert!(
-        package.contains("github.com/tao3k/gerbil-parser@8f2d4e71d76173b1a0b901252d1b5f2fc6248faf")
+        package.contains("github.com/tao3k/gerbil-parser@b9f2e97f96310f4cb7e16e2d3d4c3227aa9aa4d2")
     );
     assert_eq!(package.matches("github.com/tao3k/").count(), 1);
     assert!(!package.contains("github.com/tao3k/poo-flow@"));
@@ -76,6 +76,20 @@ fn native_aot_reuses_the_upstream_program_builder_and_runtime() {
 
     assert!(adapter.contains("build_program_archive_with_contract"));
     assert!(adapter.contains("ProgramArchiveObserver"));
+    for authoring_module in [
+        "gerbil-parser/language-support",
+        "gerbil-parser/src/language-support/antlr4-source",
+        "gerbil-parser/src/language-support/antlr4-source-lexer",
+        "gerbil-parser/src/language-support/fixture",
+        "gerbil-parser/src/language-support/grammar-source",
+        "gerbil-parser/src/language-support/iso-bnf",
+        "gerbil-parser/src/language-support/javacc-source",
+    ] {
+        assert!(
+            adapter.contains(authoring_module),
+            "AOT contract must reject authoring-only module {authoring_module}"
+        );
+    }
     assert!(!adapter.contains("Command::new(\"gxc\")"));
     assert!(!adapter.contains("Command::new(\"gcc\")"));
     assert!(ffi.contains("gerbil_scheme_rust_runtime_init_program(Some(mrr_grammar_linker))"));
