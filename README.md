@@ -11,16 +11,29 @@ Ascent is the core fixed-point engine: it proposes bounded derivations, while
 the facade validates identities, lineage, snapshot transitions, budgets, and
 complete admission before a result can be materialized.
 
-Gerbil Scheme and POO own the declarative reasoning program, outer scheduling,
-resource ordering, retry budgets, and termination. The declaration is compiled
-ahead of time through `build.ss` into a fixed-width native ABI. Scheme does not
-run inside the Rust/Ascent query hot path.
+[POO Flow](https://github.com/tao3k/poo-flow) and Gerbil Scheme own the
+declarative control plane around MRR: strategy composition, resource ordering,
+retry policy, and termination. MRR owns the narrower semantic layer for typed
+facts, inference, lineage, generation transitions, and admission. The
+declaration is compiled ahead of time through `build.ss` into a fixed-width
+native ABI. Scheme does not run inside the Rust/Ascent query hot path.
 
 GQL and Cypher are frontend adapters in this workspace, not the identity of the
 project. The ISO/IEC 39075 language profile remains evidence-driven and
 non-certifying. Rowan is used only as a lossless CST sink; external graph
 implementations such as SeleneDB, Grafeo, and froGQL are non-normative research
 references rather than dependencies or semantic authorities.
+
+## System context
+
+MRR is not the complete Agent stack. POO Flow composes and validates the Agent
+strategy, policy, session, loop, and runtime-handoff structure. MRR determines
+whether proposed semantic facts and state changes may be admitted. Ascent is an
+internal candidate engine; TLA+/TLC and Lean provide complementary verification;
+Rust, Marlin, or another admitted runtime owns durable execution and effects.
+
+The complete ownership and evidence boundary is documented in
+[POO Flow and MRR Agent Assurance](docs/architecture/0025-poo-flow-mrr-agent-assurance.org).
 
 ## Why
 
@@ -69,6 +82,7 @@ interaction boundary and MRR behind it without merging their authority models.
 
 Detailed design rationale lives with the component that owns each decision:
 
+- [how POO Flow and MRR compose into the Agent assurance stack](docs/architecture/0025-poo-flow-mrr-agent-assurance.org);
 - [why Ascent is the bounded proposal engine](docs/architecture/0003-mrr-ascent-evaluation.org);
 - [why semantic lineage is an admission contract](docs/architecture/0009-unified-lineage-v1.org);
 - [why TLA+ and TLC matter for agent protocol and composition safety](docs/architecture/0021-mrr-differential-oracles.org).

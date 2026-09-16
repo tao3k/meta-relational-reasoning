@@ -80,6 +80,12 @@ environment actions, adversary actions, and invariants explicit.  TLC then
 searches interleavings and returns a concrete counterexample trace that can be
 projected into a regression scenario.
 
+MRR owns only the semantic-state portion of that protocol.  POO Flow owns the
+surrounding strategy, policy, session, loop, retry, and runtime-handoff
+composition.  Cross-layer Agent assurance therefore requires the boundary in
+[[file:0025-poo-flow-mrr-agent-assurance.org][POO Flow and MRR Agent Assurance]];
+an MRR-only transition fixture cannot prove the entire Agent control plane.
+
 The 2026
 [[https://arxiv.org/abs/2603.23801][AgentRFC: Security Design Principles and Conformance Testing for Agent Protocols]]
 provides direct evidence for this use.  It defines an Agent Protocol Stack,

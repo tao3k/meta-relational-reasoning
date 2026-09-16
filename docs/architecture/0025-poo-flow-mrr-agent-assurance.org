@@ -1,0 +1,111 @@
+#+title: POO Flow and MRR Agent Assurance Boundary
+#+status: accepted
+
+* Context
+
+MRR is one semantic layer in an agent system.  It is not an agent framework,
+workflow runtime, session manager, sandbox, or general policy control plane.
+The surrounding control-plane owner is
+[[https://github.com/tao3k/poo-flow][POO Flow]], whose public architecture
+uses functional composition and Gerbil POO objects to describe strategies,
+profiles, modules, workflows, sessions, loops, capabilities, proof facts, and
+runtime handoff values before heavy execution.
+
+MRR supplies a narrower kernel to that control plane: typed facts and rules,
+bounded inference, semantic lineage, immutable generation transitions, safety
+receipts, and fail-closed admission.  Treating MRR alone as the entire Agent
+architecture would leave scheduling, authorization, lifecycle, recovery, and
+effect ownership unassigned.
+
+* Layer ownership
+
+| Layer | Owner | Responsibility | Explicit non-responsibility |
+|-
+| strategy and composition | POO Flow | POO/C3 policy objects, profiles, workflows, sessions, loops, resource ordering, retry policy, runtime handoff | fixed-point fact derivation and live effect execution |
+| semantic reasoning | MRR | identity, relations, queries, rules, lineage, generations, transitions, bounded safety, admission | Agent lifecycle, sandbox placement, scheduling, persistence |
+| candidate evaluation | Ascent | bounded Datalog-style fixed point | identity allocation, lineage admission, publication |
+| specification and checking | TLA+/TLC and Lean | finite transition/composition counterexamples and kernel-checked contract theorems | production scheduling or runtime authority |
+| durable execution | Rust, Marlin, or another admitted runtime | concurrency, persistence, subprocesses, IO, checkpoints, external effects | manufacturing POO Flow policy facts or MRR semantic receipts |
+
+#+begin_src mermaid
+flowchart TD
+  U[Agent intent and environment]
+  P[POO Flow control plane<br/>strategy + policy + lifecycle + handoff]
+  B[MRR bundle and typed semantic state]
+  A[Ascent bounded candidates]
+  M[MRR lineage + transition admission]
+  R[Durable runtime<br/>concurrency + persistence + effects]
+  V[TLA+/TLC composition scenarios]
+  L[Lean contract proofs]
+
+  U --> P
+  P -->|declare and schedule reasoning resources| B
+  B --> A
+  A --> M
+  M -->|typed receipt| P
+  P -->|authorized handoff| R
+  V -. checks protocol interleavings .-> P
+  V -. checks semantic transitions .-> M
+  L -. checks static contracts .-> P
+  L -. checks admission theorems .-> M
+#+end_src
+
+POO Flow decides which resource may run next and which policy, scope, retry,
+and lifecycle evidence is required.  MRR decides whether a proposed semantic
+result is complete, identity-bound, lineage-valid, and transition-valid.  The
+runtime performs admitted external work.  No layer may fabricate the receipt
+owned by another layer.
+
+* Why TLA+ crosses both layers
+
+Agent safety properties commonly span more than one component.  Delegation,
+revocation, cancellation, retry, checkpoint recovery, and exactly-once effect
+commit begin in the POO Flow control plane, while semantic generation and
+lineage validity belong to MRR.  A local unit test in either repository cannot
+establish that the composed state machine preserves the property.
+
+TLA+ is therefore most useful at the composition boundary.  It can model the
+POO Flow protocol state, MRR semantic state, runtime/environment actions, and
+adversary actions in one finite scenario without moving runtime authority into
+the specification.  TLC counterexamples can then become source-linked
+cross-repository regression scenarios.
+
+This follows the assurance shape described by
+[[https://arxiv.org/abs/2603.23801][AgentRFC]]: normative requirements
+are lowered to a typed protocol model, invariants are checked across protocol,
+environment, and adversary actions, and counterexamples are replayed against
+implementations.  Its Composition Safety result is the relevant warning:
+component-local safety does not imply safety after composition.
+
+* Current implementation evidence
+
+The current checkout already consumes POO Flow rather than rebuilding its
+composition machinery:
+
+- =scheme/search/playbook.ss= uses POO Flow flow, plan, object-syntax, and
+  functional APIs to compile Search composition into a DAG receipt;
+- =scheme/reasoning/core.ss= uses POO objects for the ReasoningBundle
+  declaration and its bounded resource driver;
+- the native build consumes POO Flow observability modules;
+- =gerbil.pkg= declares only =gerbil-parser=, while =gerbil-parser= owns the
+  transitive POO Flow revision.  MRR must not add a second direct pin.
+
+The implemented evidence is still narrower than the complete diagram.  Current
+TLC parity covers committed MRR transition fixtures.  It does not yet prove a
+composed POO Flow session/retry/effect protocol, all AgentRFC invariants, or a
+live runtime replay.  Those require source-linked cross-layer scenarios and
+receipts rather than a documentation-only conformance claim.
+
+* Integration contract
+
+A future end-to-end scenario is admitted only when it identifies:
+
+1. the POO Flow policy/profile and control-plane generation;
+2. the exact MRR bundle, semantic generation, and admission receipt;
+3. the runtime/environment/adversary actions admitted by the scenario;
+4. the TLA+ invariant and TLC counterexample or safe finite-model receipt;
+5. the implementation replay result and causal lineage back to source
+   requirements.
+
+Failure or incompleteness at any stage remains typed and cannot be projected as
+an Agent-level safety claim.
