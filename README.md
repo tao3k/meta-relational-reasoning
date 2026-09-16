@@ -1,140 +1,150 @@
 # Meta-Relational Reasoning
 
-A language-neutral Meta-Relational Reasoning (MRR) workspace for building
-bounded, explainable reasoning systems with explicit identity, provenance,
-lineage, transition, and admission boundaries.
+The semantic admission layer for POO Flow agent systems.
 
-The public Rust facade is `meta-relational-reasoning`. It composes the typed
-MRR contracts and exposes query, deduction, explanation, impact analysis, and
-atomic closure materialization without creating a second semantic authority.
-Ascent is the core fixed-point engine: it proposes bounded derivations, while
-the facade validates identities, lineage, snapshot transitions, budgets, and
-complete admission before a result can be materialized.
+Meta-Relational Reasoning (MRR) turns proposed facts into bounded, explainable,
+identity-bound semantic state changes. It is designed to be composed by
+[POO Flow](https://github.com/tao3k/poo-flow), not to replace its Agent control
+plane.
 
-[POO Flow](https://github.com/tao3k/poo-flow) and Gerbil Scheme own the
-declarative control plane around MRR: strategy composition, resource ordering,
-retry policy, and termination. MRR owns the narrower semantic layer for typed
-facts, inference, lineage, generation transitions, and admission. The
-declaration is compiled ahead of time through `build.ss` into a fixed-width
-native ABI. Scheme does not run inside the Rust/Ascent query hot path.
+## Why this exists
 
-GQL and Cypher are frontend adapters in this workspace, not the identity of the
-project. The ISO/IEC 39075 language profile remains evidence-driven and
-non-certifying. Rowan is used only as a lossless CST sink; external graph
-implementations such as SeleneDB, Grafeo, and froGQL are non-normative research
-references rather than dependencies or semantic authorities.
+An Agent system can select a strategy, call a model, run a parser, query a
+graph, and invoke tools. None of those operations makes their output true.
 
-## System context
+A proposed fact can still be unsafe to publish when:
 
-MRR is not the complete Agent stack. POO Flow composes and validates the Agent
-strategy, policy, session, loop, and runtime-handoff structure. MRR determines
-whether proposed semantic facts and state changes may be admitted. Ascent is an
-internal candidate engine; TLA+/TLC and Lean provide complementary verification;
-Rust, Marlin, or another admitted runtime owns durable execution and effects.
+- evaluation stopped at a budget and returned only a prefix;
+- the proposal was derived from a stale semantic generation;
+- evidence is missing or no longer valid;
+- fact or derivation identities collide;
+- its lineage does not justify the conclusion;
+- the resulting state transition violates an invariant.
 
-The complete ownership and evidence boundary is documented in
+MRR closes this gap between *a component produced an answer* and *the system may
+admit that answer as authoritative state*. Unknown and incomplete remain typed
+outcomes; they are never silently converted to false or success.
+
+## Where MRR fits
+
+```mermaid
+flowchart TD
+  U[Agent intent and environment]
+  P[POO Flow<br/>strategy + policy + session + loop]
+  B[MRR<br/>typed semantic state + admission]
+  A[Ascent<br/>bounded derivation candidates]
+  V[TLA+/TLC and Lean<br/>model checks + contract proofs]
+  R[Rust / Marlin runtime<br/>persistence + concurrency + effects]
+
+  U --> P
+  P -->|declare and schedule reasoning| B
+  B --> A
+  A -->|closure receipt| B
+  B -->|admitted semantic receipt| P
+  P -->|authorized handoff| R
+  V -. checks .-> P
+  V -. checks .-> B
+```
+
+[POO Flow](https://github.com/tao3k/poo-flow) owns composition, policy objects,
+profiles, sessions, loops, resource ordering, retry policy, and runtime handoff.
+MRR owns identity, relations, rules, semantic lineage, generations,
+transitions, bounded safety, and admission. The runtime owns durable execution
+and external effects.
+
+No layer may manufacture another layer's receipt. The complete boundary is
+specified in
 [POO Flow and MRR Agent Assurance](docs/architecture/0025-poo-flow-mrr-agent-assurance.org).
 
-## Why
+## The admission contract
 
-A fixed-point engine can answer "what follows from these facts and rules?" It
-does not, by itself, answer the operationally different question "what may now
-become authoritative?" A candidate can be logically derivable and still be
-unsafe to publish because its evaluation was truncated, its input generation is
-stale, its evidence is incomplete, its identities collide, or its resulting
-state transition is invalid.
+MRR materializes a closure only when all of these conditions hold:
 
-MRR makes that publication boundary explicit:
+1. A validated bundle supplies typed relations, rules, evidence, and an exact
+   input generation.
+2. Ascent computes bounded candidates and a deterministic closure receipt. It
+   does not allocate canonical identities or publish facts.
+3. The caller supplies exactly one unique `FactId` and `DerivationId` for every
+   sorted candidate.
+4. The canonical lineage owner accepts every derivation.
+5. The transition owner accepts the complete immutable generation delta.
 
-1. Typed relations, rules, evidence, and immutable identities define the input.
-2. Ascent computes bounded derivation candidates and a deterministic closure
-   receipt. It does not allocate canonical fact or derivation identities.
-3. The public facade admits only a complete receipt bound to the evaluated
-   generation, a one-to-one set of unique caller-owned identities, valid
-   lineage, and one valid semantic-generation transition.
-4. The complete transition, derivations, and identity-bearing receipt are
-   returned together. Any failed check publishes nothing.
+Only then does the public facade return the transition, derivations, and
+identity-complete receipt together. A truncated closure, stale generation,
+identity mismatch, invalid lineage, or invalid transition returns an error and
+materializes nothing.
 
-This separation keeps parsers, model providers, graph query frontends, and
-fixed-point evaluation useful without allowing any of them to become a second
-source of semantic authority. It also preserves `unknown` and `incomplete` as
-first-class outcomes instead of silently treating missing evidence as false.
+The executable owner is
+[`admission.rs`](crates/meta-relational-reasoning/src/admission.rs). Truth and
+incompleteness projection is owned by
+[`truth.rs`](crates/meta-relational-reasoning/src/truth.rs).
 
-## Comparison with adjacent systems
+## Why these technologies
 
-This is a comparison of design responsibilities, not a benchmark or a claim
-that one system should replace another.
+| Component | Why it is here | What it does not own |
+| --- | --- | --- |
+| POO Flow and Gerbil POO | Express extensible Agent strategies, policies, resource plans, and proof-facing handoff values | MRR fact truth or durable runtime effects |
+| Ascent | Reuse a maintained Rust-native Datalog-style fixed-point engine instead of implementing another closure/join engine | Identity, lineage admission, transitions, publication |
+| TLA+ and TLC | Explore finite protocol interleavings and produce counterexamples for transition and composition safety | Runtime execution or an unbounded correctness proof |
+| Lean | Kernel-check stated identity, admission, and composition theorems | Runtime conformance or state-space exploration |
+| Rust and Marlin | Own concurrency, persistence, checkpoints, subprocesses, and external effects | POO Flow policy facts or MRR semantic receipts |
 
-| System | Primary design center | Evidence or result | Relationship to MRR |
-| --- | --- | --- | --- |
-| MRR | Bounded reasoning followed by fail-closed publication | Generation-bound closure, lineage, transition, and identity-complete receipt | Owns the boundary between a proposed derivation and an authoritative semantic-generation delta |
-| [Parlant](https://www.parlant.io/docs/quickstart/motivation/) | Conversational control through dynamically selected guidelines, journeys, glossary terms, tools, and response composition | A trace of the contextual items and actions used to produce a controlled response | Complementary: Parlant governs what a conversational agent should say or do; MRR governs whether derived facts and state changes may be admitted |
-| [Ascent](https://s-arash.github.io/ascent/cc22main-p95-seamless-deductive-inference-via-macros.pdf) and [Souffle](https://github.com/souffle-lang/souffle) | Datalog-style fixed-point computation; Souffle also provides compiled parallel evaluation and provenance support | Derived relations and, where configured, provenance for logical results | MRR uses Ascent as its proposal engine, then adds identity allocation boundaries, bounded receipts, generation binding, and atomic admission |
-| [Open Policy Agent](https://www.openpolicyagent.org/docs) | Domain-neutral policy evaluation over structured input and data | A policy decision, optionally accompanied by decision-log metadata | Complementary: OPA can decide policy; MRR validates and materializes a complete derivation and state-transition bundle |
-| [TLA+ and TLC](https://lamport.azurewebsites.net/pubs/yuanyu-model-checking.pdf) | Specification and finite-state model checking of concurrent and reactive systems | Checked invariants or a model-level counterexample | Complementary: model checking validates a design space; MRR carries bounded transition evidence into typed runtime receipts and publication decisions |
+TLA+ is important at the Agent boundary because delegation, authorization,
+revocation, cancellation, retry, checkpoint recovery, and exactly-once effects
+are temporal properties. The
+[AgentRFC paper](https://arxiv.org/abs/2603.23801) similarly lowers Agent
+protocol requirements into typed models, checks TLA+ invariants, and replays
+counterexamples against implementations. MRR currently provides finite
+transition parity evidence; it does not claim AgentRFC conformance.
 
-The important distinction from Parlant is therefore not "rules versus no
-rules." Both systems structure behavior and expose traces. Parlant's documented
-engine selects relevant conversational guidance before composing an LLM
-response. MRR's admission layer runs after candidate inference and accepts or
-rejects an entire typed state delta. A deployment can use Parlant at the
-interaction boundary and MRR behind it without merging their authority models.
+Detailed decisions live with their owners:
 
-Detailed design rationale lives with the component that owns each decision:
+- [why Ascent is the bounded proposal engine](docs/architecture/0003-mrr-ascent-evaluation.org)
+- [why semantic lineage is an admission contract](docs/architecture/0009-unified-lineage-v1.org)
+- [why TLA+ and TLC matter for Agent composition](docs/architecture/0021-mrr-differential-oracles.org)
+- [the recorded performance baseline](docs/architecture/0022-mrr-performance-baseline.org)
 
-- [how POO Flow and MRR compose into the Agent assurance stack](docs/architecture/0025-poo-flow-mrr-agent-assurance.org);
-- [why Ascent is the bounded proposal engine](docs/architecture/0003-mrr-ascent-evaluation.org);
-- [why semantic lineage is an admission contract](docs/architecture/0009-unified-lineage-v1.org);
-- [why TLA+ and TLC matter for agent protocol and composition safety](docs/architecture/0021-mrr-differential-oracles.org).
+## What is implemented
 
-### Evidence basis
-
-- MRR's publication claims are executable contracts in
-  [`admission.rs`](crates/meta-relational-reasoning/src/admission.rs), while
-  [`truth.rs`](crates/meta-relational-reasoning/src/truth.rs) preserves the
-  distinction between false, unknown, and incomplete.
-- The proposal/admission split is explicit in
-  [`mrr-ascent`](crates/mrr-ascent/src/api.rs): closure evaluation produces
-  candidates that still await upstream identity allocation and lineage
-  admission.
-- The Parlant comparison is based on its official
-  [motivation](https://www.parlant.io/docs/quickstart/motivation/) and
-  [engine overview](https://www.parlant.io/docs/engine-internals/overview/),
-  including guideline matching, tool calls, response composition, and traces.
-- The logic-engine comparison uses the peer-reviewed
-  [Ascent paper](https://s-arash.github.io/ascent/cc22main-p95-seamless-deductive-inference-via-macros.pdf)
-  and Souffle's published
-  [provenance work](https://souffle-lang.github.io/pdf/toplas20.pdf).
-- The policy boundary follows OPA's official distinction between
-  [policy decisions](https://www.openpolicyagent.org/docs) and
-  [decision logs](https://www.openpolicyagent.org/docs/management-decision-logs).
-- The model-checking boundary follows the original
-  [TLC paper](https://lamport.azurewebsites.net/pubs/yuanyu-model-checking.pdf);
-  this repository separately checks transition fixtures against TLC in
-  [`oracle.rs`](crates/mrr-transition/tests/unit/oracle.rs).
-
-## Architecture
-
-- `meta-relational-reasoning` is the stable consumer facade.
-- `mrr-identity`, `mrr-relation`, `mrr-query`, and `mrr-logic` define typed
+- `meta-relational-reasoning` is the stable Rust consumer facade.
+- `mrr-identity`, `mrr-relation`, `mrr-query`, and `mrr-logic` own typed
   semantic contracts.
 - `mrr-bundle` admits complete reasoning bundles.
-- `mrr-ascent` computes bounded fixed-point candidates.
-- `mrr-lineage` and `mrr-transition` remain the sole lineage and snapshot-delta
-  validators.
-- `mrr-gerbil` consumes the Scheme AOT projection and exposes its typed native
-  boundary.
+- `mrr-ascent` evaluates bounded fixed-point candidates.
+- `mrr-lineage` and `mrr-transition` validate causal evidence and immutable
+  generation deltas.
+- `mrr-gerbil` consumes the Gerbil AOT projection through a fixed-width native
+  ABI; Scheme is not in the Rust/Ascent query hot path.
+- `mrr-frontends` lowers parser-owned ISO GQL artifacts into `MetaQueryIr`
+  without a second Rust parser or public GQL AST stack.
 - `mrr-conformance` exercises the public facade across multiple domains.
-- `mrr-frontends` lowers parser-owned ISO GQL artifacts directly into
-  `MetaQueryIr` without a second Rust parser or public GQL AST stack.
-- `experiments/mrr-live` evaluates real model proposals while keeping Scheme
+- `experiments/mrr-live` evaluates real model proposals while keeping POO Flow
   scheduling and MRR receipts authoritative.
 
-The project does not provide legacy compatibility modes or alternate admission
-paths. Provider output is observational input; it cannot publish facts, assign
-semantic authority, or replace an MRR receipt.
+The Scheme surface already reuses POO Flow object, flow, plan, functional, and
+observability APIs. The package declares only `gerbil-parser`; that package owns
+the transitive POO Flow revision so MRR does not create a second dependency pin.
 
-## Verification
+GQL and Cypher are adapters, not the identity of this project. The ISO/IEC 39075
+profile remains evidence-driven and non-certifying. Rowan is only a lossless
+CST sink. SeleneDB, Grafeo, and froGQL remain research references rather than
+dependencies or semantic authorities.
+
+## Comparison by responsibility
+
+This is a boundary comparison, not a performance ranking.
+
+| System | Design center | Relationship to MRR |
+| --- | --- | --- |
+| [Parlant](https://www.parlant.io/docs/quickstart/motivation/) | Select conversational guidelines, journeys, tools, and context before response generation | Can govern the interaction boundary; MRR separately admits derived semantic state |
+| [Open Policy Agent](https://www.openpolicyagent.org/docs) | Evaluate policy over structured input and data | Can supply policy decisions; it does not replace MRR derivation lineage and generation admission |
+| [Ascent](https://s-arash.github.io/ascent/cc22main-p95-seamless-deductive-inference-via-macros.pdf) and [Souffle](https://github.com/souffle-lang/souffle) | Compute Datalog-style logical results | Ascent is MRR's current candidate engine; MRR adds identity, receipts, lineage, and atomic admission |
+| [TLA+ and TLC](https://lamport.azurewebsites.net/pubs/yuanyu-model-checking.pdf) | Specify and check finite state models | Supplies independent transition evidence; it does not publish runtime state |
+
+## Build and verify
+
+Use the repository environment so Cargo, Gerbil packages, native libraries, and
+proof tools resolve through the same dependency graph.
 
 ```bash
 ./.devenv/devenv-profile-exec mrr-gerbil build
@@ -149,14 +159,18 @@ semantic authority, or replace an MRR receipt.
   experiments/mrr-live/tests
 ```
 
-## Status
+## Project status
 
-All workspace crates currently share the `0.1` release line. The repository is
-still pre-release research and engineering work: executable conformance gates
-are evidence for implemented contracts, not a claim of full ISO certification
-or general-purpose reasoning completeness.
+All workspace crates remain on the stable `0.1` release line. The repository is
+pre-release research and engineering work. Passing conformance, model-checking,
+proof, and benchmark gates is evidence for the implemented contracts; it is not
+a claim of full ISO certification, general-purpose reasoning completeness, or
+complete AgentRFC conformance.
 
-`cargo package` is intentionally excluded while workspace members retain
-local-only unpublished dependency edges used by the current policy and proof
-gates. Release packaging will be enabled only after those dependencies have a
-closed publication topology.
+There are no legacy compatibility modes or alternate admission paths. Provider
+output remains observational input and cannot publish facts or replace an MRR
+receipt.
+
+`cargo package` remains intentionally disabled while workspace crates retain
+local unpublished dependency edges. Packaging will be enabled only after the
+publication topology is closed.
