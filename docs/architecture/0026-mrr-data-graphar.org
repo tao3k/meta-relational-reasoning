@@ -104,11 +104,11 @@ MRR now admits a =CatalogBoundQuery= that pairs =MetaQueryIr= with:
 - the semantic snapshot digest;
 - a digest of the canonical query and the complete binding.
 
-This admission resolves explicit entity and relation references, resolves each
-property access to a shared =ValueSchema= plus nullability, and rejects bundle
-facts from another generation.  It deliberately does not claim complete
-expression/operator type checking.  Query templates with dependencies also
-fail closed until their plan graph has a canonical admission contract.
+This admission resolves explicit entity and relation references, statically
+checks expressions, parameters, aggregations, grouping, and output rows through
+RFC 0031, and rejects bundle facts from another generation.  Query templates
+with dependencies still fail closed until their plan graph has a canonical
+admission contract.
 
 A future downstream =BoundDataQuery= may extend that binding with:
 
@@ -172,8 +172,8 @@ semantic contract.  The first expected decisions are:
 1. prove the complete =ValueSchema= to Arrow mapping, including canonical
    decimal, temporal, nested nullability, and record-field ordering;
 2. the canonical byte representation for MRR IDs at foreign-data boundaries;
-3. extend the admitted property-resolution proof into complete expression and
-   operator type checking before claiming typed query execution;
+3. prove how RFC 0031 query types map to physical engine and Arrow types without
+   weakening their nullability or numeric constraints;
 4. which receipt fields MRR must admit after a physical round trip.
 
 No Arrow or GraphAr dependency is justified merely to answer those questions.

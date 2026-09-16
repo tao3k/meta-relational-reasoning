@@ -174,7 +174,8 @@ model. GraphQL is a separate API language.
 - `mrr-bundle` admits complete reasoning bundles and derives canonical relation
   and entity/property catalogs.
 - `CatalogBoundQuery` binds property access to both catalogs and an exact
-  semantic source snapshot before execution planning.
+  semantic source snapshot, statically checks expressions and parameters, and
+  publishes an ordered result row schema before execution planning.
 - `mrr-ascent` evaluates bounded fixed-point candidates.
 - `mrr-lineage` and `mrr-transition` validate causal evidence and immutable
   generation deltas.
@@ -207,6 +208,7 @@ their owners:
 - [proposed `mrr-data` boundary](docs/architecture/0026-mrr-data-graphar.org)
 - [relation-catalog query binding](docs/architecture/0029-relation-catalog-query-binding.org)
 - [entity and property catalog](docs/architecture/0030-entity-property-catalog.org)
+- [static query typing and result schema](docs/architecture/0031-static-query-typing.org)
 
 ## Build and verify
 

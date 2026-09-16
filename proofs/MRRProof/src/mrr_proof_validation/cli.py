@@ -72,6 +72,8 @@ PROOF_OBLIGATIONS = {
         "admitted_closure_binding_is_exact",
         "closure_admission_rejects_any_failed_owner",
         "returned_counterexample_is_valid",
+        "static_query_typing_admission_is_exact",
+        "static_query_typing_rejection_emits_no_receipt",
     },
 }
 COUNTEREXAMPLE_FIXTURE = (

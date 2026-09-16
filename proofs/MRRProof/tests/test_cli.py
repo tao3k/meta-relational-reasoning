@@ -210,6 +210,8 @@ $ A => B $
                 "primitive_result_admission_is_typed",
                 "primitive_result_rejection_emits_no_ir",
                 "returned_counterexample_is_valid",
+                "static_query_typing_admission_is_exact",
+                "static_query_typing_rejection_emits_no_receipt",
             ],
         )
 

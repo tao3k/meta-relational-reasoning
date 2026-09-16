@@ -41,13 +41,12 @@ $ "bind"(q, C_r, C_e, S_g) := "refs"(q) subset.eq "ids"(C_r union C_e)
 $ "receipt" = H("v1", H(q), H(C_r), H(C_e), H("properties"(q)), g, H(S_g)) $
 #+end_src
 
-* Explicit non-claims
+* Static typing extension
 
-This is catalog binding and property resolution, not complete expression type
-checking.  The receipt certifies property ownership, value schema, and
-nullability, but it does not yet prove unary/binary operator compatibility,
-parameter types, aggregation result types, or projection row schemas.
-Dependent query templates fail closed until MRR owns a
+RFC 0031 extends this receipt with catalog-derived unary/binary operator
+compatibility, parameter constraints, aggregation result types, grouping
+completeness, nullability propagation, and ordered projection row schemas.
+Dependent query templates still fail closed until MRR owns a
 canonical dependency-plan digest.  Physical snapshot CIDs, GraphAr manifests,
 Arrow schemas, engine capabilities, and dialect extensions remain downstream
 in =mrr-data=.
@@ -55,7 +54,8 @@ in =mrr-data=.
 * Evidence
 
 Tests prove both catalog identities are order independent, duplicate identities
-are rejected, property resolution is deterministic, receipts are snapshot
-sensitive, and untyped, absent, or conflicting property schemas fail closed.
-They also retain cross-generation fact rejection and fail-closed handling of
-unowned dependency graphs.
+are rejected, property resolution and static typing are deterministic, receipts
+are snapshot sensitive, and invalid bindings, properties, parameters,
+operators, aggregation groups, or output schemas fail closed.  They also retain
+cross-generation fact rejection and fail-closed handling of unowned dependency
+graphs.

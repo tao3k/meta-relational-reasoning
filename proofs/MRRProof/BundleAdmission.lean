@@ -529,4 +529,47 @@ theorem primitive_result_rejection_emits_no_ir
     canonicalPrimitiveResultIr? candidate = none := by
   simp [canonicalPrimitiveResultIr?, rejected]
 
+inductive StaticQueryType where
+  | boolean
+  | numeric
+  | string
+  | graphNode
+  | graphRelation
+  | list
+  | anyValue
+  deriving DecidableEq
+
+structure StaticQueryTypingReceipt where
+  parameterTypes : List (Prod String StaticQueryType)
+  resultTypes : List (Prod String StaticQueryType)
+  filtersBoolean : Bool
+  operatorsCompatible : Bool
+  groupingComplete : Bool
+  parameterNamesUnique : Bool
+  resultNamesUnique : Bool
+  deriving DecidableEq
+
+def staticQueryTypingAdmitted (receipt : StaticQueryTypingReceipt) : Bool :=
+  receipt.filtersBoolean &&
+    receipt.operatorsCompatible &&
+    receipt.groupingComplete &&
+    receipt.parameterNamesUnique &&
+    receipt.resultNamesUnique
+
+def canonicalStaticQueryTypingReceipt?
+    (receipt : StaticQueryTypingReceipt) : Option StaticQueryTypingReceipt :=
+  if staticQueryTypingAdmitted receipt then some receipt else none
+
+theorem static_query_typing_admission_is_exact
+    (receipt : StaticQueryTypingReceipt)
+    (admitted : staticQueryTypingAdmitted receipt = true) :
+    canonicalStaticQueryTypingReceipt? receipt = some receipt := by
+  simp [canonicalStaticQueryTypingReceipt?, admitted]
+
+theorem static_query_typing_rejection_emits_no_receipt
+    (receipt : StaticQueryTypingReceipt)
+    (rejected : staticQueryTypingAdmitted receipt = false) :
+    canonicalStaticQueryTypingReceipt? receipt = none := by
+  simp [canonicalStaticQueryTypingReceipt?, rejected]
+
 end MRRProof

@@ -132,6 +132,26 @@ pub enum ValueSchema {
 }
 
 impl ValueSchema {
+    /// Returns the runtime value kind admitted by this schema.
+    #[must_use]
+    pub const fn kind(&self) -> ValueKind {
+        match self {
+            Self::Entity => ValueKind::Entity,
+            Self::Boolean => ValueKind::Boolean,
+            Self::Integer => ValueKind::Integer,
+            Self::Decimal { .. } => ValueKind::Decimal,
+            Self::Float { .. } => ValueKind::Float,
+            Self::String => ValueKind::String,
+            Self::ByteString => ValueKind::ByteString,
+            Self::Date => ValueKind::Date,
+            Self::Time { .. } => ValueKind::Time,
+            Self::Timestamp { .. } => ValueKind::Timestamp,
+            Self::Duration => ValueKind::Duration,
+            Self::List { .. } => ValueKind::List,
+            Self::Record { .. } => ValueKind::Record,
+        }
+    }
+
     pub fn validate(&self) -> Result<(), RelationError> {
         match self {
             Self::Decimal { precision, scale }

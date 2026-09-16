@@ -53,8 +53,8 @@ $ "bindable"(b.k) => "types"(b) != emptyset $
 
 * Boundary
 
-This RFC does not introduce Arrow, GraphAr, storage IDs, or engine plans.  It
-also does not yet certify operator compatibility, parameter schemas,
-aggregation result schemas, or output row schemas.  Those claims require a
-separate expression typing judgment built on the admitted =ResolvedProperty=
-evidence; they must not be inferred from successful property resolution.
+This RFC does not introduce Arrow, GraphAr, storage IDs, or engine plans.
+Operator compatibility, parameter constraints, aggregation result types, and
+output row schemas are separately admitted by RFC 0031 on top of the
+=ResolvedProperty= evidence; they are never inferred from property resolution
+alone.

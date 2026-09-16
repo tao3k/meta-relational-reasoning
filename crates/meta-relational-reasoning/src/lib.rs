@@ -5,6 +5,7 @@ mod api;
 mod binding;
 mod counterexample;
 mod truth;
+mod typing;
 pub use admission::{
     CandidateIdentities, ClosureAdmissionError, DerivationReceipt, MaterializedClosure,
     admit_closure_candidates,
@@ -47,7 +48,7 @@ pub use mrr_logic::{
 };
 pub use mrr_query::{
     Aggregation, AggregationFunction, Atom, BinaryOperator, Binding, Direction, Expression, Filter,
-    GraphPattern, Grouping, MetaQueryIr, NodePattern, Ordering, PageValue, PathPattern,
+    GraphPattern, Grouping, MetaQueryIr, NodePattern, Ordering, PageValue, Parameter, PathPattern,
     PathSegment, Projection, PropertyKey, QueryIrError, QueryResult, RelationPattern,
     RelationalGoal, RelationalGoalError, ResultMode, SetQuantifier, SortDirection, Term,
     UnaryOperator, Variable,
@@ -68,6 +69,7 @@ pub use mrr_transition::{
     TransitionModelError, TransitionStep, TransitionSystem,
 };
 pub use truth::{TruthStatus, conflict_truth, intent_binding_truth, safety_truth, why_not_truth};
+pub use typing::{ExpressionType, ParameterType, QueryType, ResultField, StaticQueryTyping};
 #[cfg(test)]
 #[path = "../tests/unit/mod.rs"]
 mod tests;
