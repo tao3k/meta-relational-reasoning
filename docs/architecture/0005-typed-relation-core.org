@@ -10,7 +10,9 @@ Accepted architecture.
 * Decision
 
 =mrr-relation= is the sole owner of language-neutral relation schemas and
-facts.  A schema binds a stable =RelationId= to a predicate, an ordered non-empty
+facts.  It also owns =EntitySchema= so Property Graph node properties reuse the
+same recursive =ValueSchema= and =RelationField= contracts rather than defining
+a graph-only value system.  A relation schema binds a stable =RelationId= to a predicate, an ordered non-empty
 set of uniquely named typed fields, nullability, and generic relation
 constraints.  =ValueSchema= is recursive and parameterized: decimals retain
 precision and scale, floats retain width, temporal values retain unit and

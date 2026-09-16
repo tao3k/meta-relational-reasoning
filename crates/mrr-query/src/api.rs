@@ -79,7 +79,7 @@ impl RelationalGoal {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct Binding(String);
 
 impl Binding {
@@ -115,7 +115,7 @@ impl Parameter {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct PropertyKey(String);
 
 impl PropertyKey {
@@ -552,6 +552,11 @@ impl Ordering {
             direction,
         }
     }
+
+    #[must_use]
+    pub const fn expression(&self) -> &Expression {
+        &self.expression
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -642,6 +647,24 @@ impl MetaQueryIr {
         relations.sort_unstable();
         relations.dedup();
         relations
+    }
+
+    /// Returns the distinct entity type identities referenced by node patterns.
+    #[must_use]
+    pub fn referenced_entities(&self) -> Vec<EntityId> {
+        let mut entities = self
+            .graph
+            .paths
+            .iter()
+            .flat_map(|path| {
+                std::iter::once(&path.start)
+                    .chain(path.segments.iter().map(|segment| &segment.node))
+            })
+            .flat_map(|node| node.types.iter().copied())
+            .collect::<Vec<_>>();
+        entities.sort_unstable();
+        entities.dedup();
+        entities
     }
 
     #[must_use]

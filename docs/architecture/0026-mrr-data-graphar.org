@@ -23,7 +23,8 @@ MRR owns:
 - =EntityId=, =RelationId=, =FactId=, =GenerationId=, and =RevisionId=;
 - =RelationSchema=, =Fact=, =RelationContext=, and canonical value semantics;
 - =ExternalRevisionIdentity=, =RevisionBinding=, and =SemanticSnapshot=;
-- =RelationCatalogDigest= and storage-neutral =CatalogBoundQuery= admission;
+- =RelationCatalogDigest=, =EntityCatalogDigest=, and storage-neutral
+  =CatalogBoundQuery= admission;
 - =MetaQueryIr=, lineage, transitions, receipts, and semantic admission.
 
 The downstream =mrr-data= repository may consume those contracts and own:
@@ -103,11 +104,11 @@ MRR now admits a =CatalogBoundQuery= that pairs =MetaQueryIr= with:
 - the semantic snapshot digest;
 - a digest of the canonical query and the complete binding.
 
-This admission resolves explicit relation references and rejects bundle facts
-from another generation.  It deliberately does not claim property-level type
-checking: MRR does not yet own an entity/property catalog.  Query templates
-with dependencies also fail closed until their plan graph has a canonical
-admission contract.
+This admission resolves explicit entity and relation references, resolves each
+property access to a shared =ValueSchema= plus nullability, and rejects bundle
+facts from another generation.  It deliberately does not claim complete
+expression/operator type checking.  Query templates with dependencies also
+fail closed until their plan graph has a canonical admission contract.
 
 A future downstream =BoundDataQuery= may extend that binding with:
 
@@ -171,8 +172,8 @@ semantic contract.  The first expected decisions are:
 1. prove the complete =ValueSchema= to Arrow mapping, including canonical
    decimal, temporal, nested nullability, and record-field ordering;
 2. the canonical byte representation for MRR IDs at foreign-data boundaries;
-3. define the missing entity/property catalog before claiming property-level
-   query type checking;
+3. extend the admitted property-resolution proof into complete expression and
+   operator type checking before claiming typed query execution;
 4. which receipt fields MRR must admit after a physical round trip.
 
 No Arrow or GraphAr dependency is justified merely to answer those questions.

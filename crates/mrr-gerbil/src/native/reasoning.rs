@@ -93,6 +93,7 @@ fn load_reasoning_bundle_on_owner() -> Result<ReasoningBundle, ReasoningBundleLo
         .collect::<BTreeMap<_, _>>();
     let (query_templates, query_ids) = load_queries(&relation_ids)?;
     let declaration = ReasoningBundleDeclaration {
+        entities: Vec::new(),
         relations,
         facts: Vec::new(),
         query_templates,

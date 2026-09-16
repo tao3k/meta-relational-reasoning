@@ -1,7 +1,9 @@
 //! Language-neutral typed relation schemas and context-bearing facts.
 #![forbid(unsafe_code)]
 
-use crate::validation::{validate_constraints, validate_field_value, validate_fields};
+use crate::validation::{
+    validate_constraints, validate_field_value, validate_fields, validate_property_fields,
+};
 pub use mrr_identity::{
     DerivationId, EntityId, FactId, GenerationId, RelationId, RuleId, RulePackId,
 };
@@ -206,6 +208,14 @@ pub struct RelationSchema {
     constraints: Vec<RelationConstraint>,
 }
 
+/// A language-neutral entity type and its declared property shape.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct EntitySchema {
+    id: EntityId,
+    name: String,
+    properties: Vec<RelationField>,
+}
+
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub enum RelationAuthority {
     Entity(EntityId),
@@ -358,6 +368,7 @@ impl Fact {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum RelationError {
     EmptyPredicate,
+    EmptyEntityName,
     EmptyFields,
     EmptyFieldName,
     DuplicateFieldName(String),
@@ -380,6 +391,61 @@ pub enum RelationError {
     InvalidContext(RelationContextError),
     SelfInvalidation(FactId),
     WrongRelation,
+}
+
+impl EntitySchema {
+    pub fn new(
+        id: EntityId,
+        name: impl Into<String>,
+        properties: Vec<RelationField>,
+    ) -> Result<Self, RelationError> {
+        let schema = Self {
+            id,
+            name: name.into(),
+            properties,
+        }
+        .normalized();
+        schema.validate()?;
+        Ok(schema)
+    }
+
+    /// Revalidates an entity schema after external decoding.
+    pub fn validate(&self) -> Result<(), RelationError> {
+        if self.name.is_empty() || self.name.trim() != self.name {
+            return Err(RelationError::EmptyEntityName);
+        }
+        validate_property_fields(&self.properties)
+    }
+
+    #[must_use]
+    pub const fn id(&self) -> EntityId {
+        self.id
+    }
+
+    #[must_use]
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    #[must_use]
+    pub fn properties(&self) -> &[RelationField] {
+        &self.properties
+    }
+
+    #[must_use]
+    pub fn property(&self, name: &str) -> Option<&RelationField> {
+        self.properties
+            .binary_search_by(|property| property.name().cmp(name))
+            .ok()
+            .map(|index| &self.properties[index])
+    }
+
+    #[must_use]
+    pub fn normalized(mut self) -> Self {
+        self.properties
+            .sort_by(|left, right| left.name().cmp(right.name()));
+        self
+    }
 }
 
 impl RelationSchema {

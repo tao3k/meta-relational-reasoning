@@ -1,12 +1,32 @@
 use crate::{
-    DerivationId, EntityId, EvidenceCompleteness, Fact, FactId, FactProvenance, FactValidity,
-    FloatWidth, GenerationId, RelationAuthority, RelationConstraint, RelationContext,
+    DerivationId, EntityId, EntitySchema, EvidenceCompleteness, Fact, FactId, FactProvenance,
+    FactValidity, FloatWidth, GenerationId, RelationAuthority, RelationConstraint, RelationContext,
     RelationContextError, RelationError, RelationField, RelationId, RelationSchema, RuleId,
     TemporalUnit, TimezonePolicy, Value, ValueKind, ValueSchema,
 };
 
 fn id<T>(label: &str, derive: impl FnOnce(&[u8]) -> T) -> T {
     derive(format!("mrr-relation-test:{label}").as_bytes())
+}
+
+#[test]
+fn entity_schema_reuses_recursive_value_contracts_without_requiring_properties() {
+    let entity = id("entity-type", |bytes| {
+        EntityId::from_canonical_bytes(bytes).expect("entity")
+    });
+    assert!(EntitySchema::new(entity, "marker", Vec::new()).is_ok());
+    let duplicate = vec![
+        RelationField::new("name", ValueSchema::String, false).unwrap(),
+        RelationField::new("name", ValueSchema::Integer, false).unwrap(),
+    ];
+    assert_eq!(
+        EntitySchema::new(entity, "artifact", duplicate),
+        Err(RelationError::DuplicateFieldName("name".into()))
+    );
+    assert_eq!(
+        EntitySchema::new(entity, " ", Vec::new()),
+        Err(RelationError::EmptyEntityName)
+    );
 }
 
 fn source_context(domain: &str) -> RelationContext {

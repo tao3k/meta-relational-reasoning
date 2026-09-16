@@ -1,0 +1,60 @@
+#+title: RFC 0030: Entity and Property Catalog V1
+#+status: accepted
+#+options: toc:2
+#+property: header-args :eval never-export :exports code
+
+* Decision
+
+=mrr-relation= owns =EntitySchema=.  An entity schema binds one stable
+=EntityId= and human-readable name to zero or more uniquely named
+=RelationField= properties.  Properties reuse the existing recursive
+=ValueSchema= and nullability contract.  MRR therefore has one semantic value
+system for relation fields, entity properties, query literals, and future
+physical projections.
+
+=mrr-bundle= validates and sorts entity schemas by =EntityId= and properties by
+name, rejects duplicate identities and property names, and derives
+=EntityCatalogDigest=.  Property order is not semantic and admitted lookup uses
+binary search.  An empty entity catalog remains
+valid for purely relational bundles; any query that names an entity type must
+resolve it exactly.
+
+#+begin_src mermaid
+flowchart LR
+  E[EntitySchema] --> V[ValueSchema validation]
+  R[RelationSchema] --> V
+  E --> C[EntityCatalogDigest]
+  Q[MetaQueryIr property access] --> B[CatalogBoundQuery admission]
+  C --> B
+  V --> B
+  B --> P[ResolvedProperty proof]
+#+end_src
+
+* Static resolution
+
+The binder first derives graph binding targets from node and relation patterns.
+It then walks filters, projections, aggregations, grouping, and ordering.  A
+property access is admitted only when:
+
+1. its binding exists;
+2. the binding has at least one exact entity or relation type;
+3. every possible type declares the property;
+4. every declaration agrees on =ValueSchema= and nullability.
+
+The canonical proof records binding, property key, schema, and nullability and
+is included in =CatalogBoundQuery= identity.
+
+#+begin_src typst
+#set page(width: 155mm, height: auto, margin: 12mm)
+$ "resolve"(b.k) = (T, n) "iff"
+  forall s in "types"(b): "property"(s, k) = (T, n) $
+$ "bindable"(b.k) => "types"(b) != emptyset $
+#+end_src
+
+* Boundary
+
+This RFC does not introduce Arrow, GraphAr, storage IDs, or engine plans.  It
+also does not yet certify operator compatibility, parameter schemas,
+aggregation result schemas, or output row schemas.  Those claims require a
+separate expression typing judgment built on the admitted =ResolvedProperty=
+evidence; they must not be inferred from successful property resolution.

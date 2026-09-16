@@ -1,7 +1,7 @@
 use crate::{
-    BundleError, Fact, InverseGoal, QueryTemplate, ReasoningBundle, ReasoningBundleDeclaration,
-    RelationCatalog, RelationCatalogError, RelationError, RelationSchema, RulePack,
-    ValidationProfile,
+    BundleError, EntityCatalog, EntityCatalogError, Fact, InverseGoal, QueryTemplate,
+    ReasoningBundle, ReasoningBundleDeclaration, RelationCatalog, RelationCatalogError,
+    RelationError, RelationSchema, RulePack, ValidationProfile,
 };
 use mrr_identity::{
     EntityId, FactId, GenerationId, QueryId, QueryOperatorId, RelationId, RuleId, RulePackId,
@@ -12,12 +12,21 @@ use mrr_query::{
     PathSegment, Projection, RelationPattern,
 };
 use mrr_relation::{
-    EvidenceCompleteness, FactProvenance, FactValidity, RelationAuthority, RelationContext,
-    RelationField, Value, ValueSchema,
+    EntitySchema, EvidenceCompleteness, FactProvenance, FactValidity, RelationAuthority,
+    RelationContext, RelationField, Value, ValueSchema,
 };
 
 fn relation(label: &str) -> RelationId {
     RelationId::from_canonical_bytes(label.as_bytes()).expect("fixture relation identity")
+}
+
+fn entity(label: &str, property: ValueSchema) -> EntitySchema {
+    EntitySchema::new(
+        EntityId::from_canonical_bytes(label.as_bytes()).expect("entity identity"),
+        label,
+        vec![RelationField::new("name", property, false).unwrap()],
+    )
+    .unwrap()
 }
 
 fn schema(relation: RelationId, name: &str, arity: usize) -> RelationSchema {
@@ -48,8 +57,16 @@ fn source_context(generation: GenerationId, label: &[u8]) -> RelationContext {
 }
 
 fn query(query_id: QueryId, relation: RelationId) -> MetaQueryIr {
-    let start = NodePattern::new(Binding::new("left").expect("binding"), Vec::new());
-    let end = NodePattern::new(Binding::new("right").expect("binding"), Vec::new());
+    query_with_entities(query_id, relation, Vec::new())
+}
+
+fn query_with_entities(
+    query_id: QueryId,
+    relation: RelationId,
+    entities: Vec<EntityId>,
+) -> MetaQueryIr {
+    let start = NodePattern::new(Binding::new("left").expect("binding"), entities.clone());
+    let end = NodePattern::new(Binding::new("right").expect("binding"), entities);
     let edge = RelationPattern::new(None, vec![relation], Direction::Outgoing, 1, Some(1))
         .expect("relation pattern");
     let graph = GraphPattern::new(
@@ -136,6 +153,48 @@ fn relation_catalog_is_order_independent_and_rejects_duplicate_identity() {
 }
 
 #[test]
+fn entity_catalog_is_order_independent_and_rejects_duplicate_identity() {
+    let first = entity("catalog-first", ValueSchema::String);
+    let second = entity("catalog-second", ValueSchema::Integer);
+    let first_id = first.id();
+    let left = EntityCatalog::admit(vec![first.clone(), second.clone()]).unwrap();
+    let right = EntityCatalog::admit(vec![second, first.clone()]).unwrap();
+    assert_eq!(left.digest(), right.digest());
+    assert_eq!(left.entity(first_id), Some(&first));
+    assert_eq!(
+        EntityCatalog::admit(vec![first.clone(), first]),
+        Err(EntityCatalogError::DuplicateEntity(first_id))
+    );
+
+    let properties_forward = EntitySchema::new(
+        first_id,
+        "ordered-properties",
+        vec![
+            RelationField::new("name", ValueSchema::String, false).unwrap(),
+            RelationField::new("score", ValueSchema::Integer, true).unwrap(),
+        ],
+    )
+    .unwrap();
+    let properties_reverse = EntitySchema::new(
+        first_id,
+        "ordered-properties",
+        vec![
+            RelationField::new("score", ValueSchema::Integer, true).unwrap(),
+            RelationField::new("name", ValueSchema::String, false).unwrap(),
+        ],
+    )
+    .unwrap();
+    assert_eq!(
+        EntityCatalog::admit(vec![properties_forward])
+            .unwrap()
+            .digest(),
+        EntityCatalog::admit(vec![properties_reverse])
+            .unwrap()
+            .digest()
+    );
+}
+
+#[test]
 fn unknown_rule_and_query_relations_fail_closed() {
     let known = relation("relation:known");
     let unknown = relation("relation:unknown");
@@ -166,6 +225,26 @@ fn unknown_rule_and_query_relations_fail_closed() {
     assert_eq!(
         ReasoningBundle::admit(input),
         Err(BundleError::UnknownQueryRelation(unknown))
+    );
+}
+
+#[test]
+fn query_entity_references_must_resolve_in_the_bundle_catalog() {
+    let relation = relation("relation:entity-reference");
+    let unknown = EntityId::from_canonical_bytes(b"entity:unknown").unwrap();
+    let query_id = QueryId::from_canonical_bytes(b"query:unknown-entity").unwrap();
+    let mut input = declaration(
+        vec![schema(relation, "entity_reference", 1)],
+        Vec::new(),
+        Vec::new(),
+    );
+    input.query_templates = vec![QueryTemplate::new(
+        query_with_entities(query_id, relation, vec![unknown]),
+        Vec::new(),
+    )];
+    assert_eq!(
+        ReasoningBundle::admit(input),
+        Err(BundleError::UnknownQueryEntity(unknown))
     );
 }
 

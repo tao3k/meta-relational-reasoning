@@ -7,14 +7,16 @@
 
 Parsing and =MetaQueryIr= admission do not establish that a query can execute
 against a particular semantic state.  MRR therefore derives one canonical
-=RelationCatalogDigest= from the validated, =RelationId=-ordered schemas in a
-=ReasoningBundle=.  =CatalogBoundQuery= binds a canonical query to that digest
-and an admitted =SemanticSnapshot=.
+=RelationCatalogDigest= from the validated, =RelationId=-ordered schemas and an
+=EntityCatalogDigest= from the validated, =EntityId=-ordered entity/property
+schemas in a =ReasoningBundle=.  =CatalogBoundQuery= binds a canonical query to
+both digests and an admitted =SemanticSnapshot=.
 
 #+begin_src mermaid
 flowchart LR
   Q[Canonical MetaQueryIr] --> B[CatalogBoundQuery admission]
   C[RelationCatalogDigest] --> B
+  E[EntityCatalogDigest] --> B
   S[SemanticSnapshot] --> B
   G[GenerationId] --> S
   B --> R[Storage-neutral binding receipt]
@@ -23,31 +25,37 @@ flowchart LR
 
 * Admission
 
-The binder requires every explicit =RelationId= referenced by the query to
-exist in the exact catalog.  Every fact carried by the reasoning bundle must
-belong to the snapshot generation.  The receipt hashes canonical query bytes,
-catalog digest, generation identity, and semantic snapshot digest with
-length-framed V1 fields.
+The binder requires every explicit =RelationId= and =EntityId= referenced by
+the query to exist in the exact catalogs.  It resolves every property access
+to the shared =ValueSchema= and nullability declared for its binding's possible
+types.  Untyped bindings, absent properties, or disagreeing schemas fail
+closed.  Every fact carried by the reasoning bundle must belong to the snapshot
+generation.  The receipt hashes canonical query bytes, both catalog digests,
+the canonical property-resolution proof, generation identity, and semantic
+snapshot digest with length-framed V1 fields.
 
 #+begin_src typst
 #set page(width: 150mm, height: auto, margin: 12mm)
-$ "bind"(q, C, S_g) := "refs"(q) subset.eq "ids"(C)
+$ "bind"(q, C_r, C_e, S_g) := "refs"(q) subset.eq "ids"(C_r union C_e)
   and forall f in "bundle-facts": "generation"(f) = g $
-$ "receipt" = H("v1", H(q), H(C), g, H(S_g)) $
+$ "receipt" = H("v1", H(q), H(C_r), H(C_e), H("properties"(q)), g, H(S_g)) $
 #+end_src
 
 * Explicit non-claims
 
-This is relation-catalog binding, not complete Property Graph type checking.
-MRR currently lacks a canonical entity/property catalog, so property keys,
-label-to-property ownership, and property value types are not certified by
-this receipt.  Dependent query templates fail closed until MRR owns a
+This is catalog binding and property resolution, not complete expression type
+checking.  The receipt certifies property ownership, value schema, and
+nullability, but it does not yet prove unary/binary operator compatibility,
+parameter types, aggregation result types, or projection row schemas.
+Dependent query templates fail closed until MRR owns a
 canonical dependency-plan digest.  Physical snapshot CIDs, GraphAr manifests,
 Arrow schemas, engine capabilities, and dialect extensions remain downstream
 in =mrr-data=.
 
 * Evidence
 
-Tests prove catalog order independence, duplicate-relation rejection,
-deterministic binding, snapshot-sensitive receipt identity, cross-generation
-fact rejection, and fail-closed handling of unowned dependency graphs.
+Tests prove both catalog identities are order independent, duplicate identities
+are rejected, property resolution is deterministic, receipts are snapshot
+sensitive, and untyped, absent, or conflicting property schemas fail closed.
+They also retain cross-generation fact rejection and fail-closed handling of
+unowned dependency graphs.

@@ -168,11 +168,13 @@ current backend.
 - `meta-relational-reasoning` is the stable Rust consumer facade.
 - `mrr-identity`, `mrr-relation`, `mrr-query`, and `mrr-logic` own typed
   semantic contracts. `mrr-relation` validates recursive parameterized value
-  schemas, nullability, relation constraints, and coherent fact context.
+  schemas, entity properties, nullability, relation constraints, and coherent
+  fact context.
 - `mrr-bundle` admits complete reasoning bundles and derives a canonical
-  storage-neutral relation catalog;
-  `CatalogBoundQuery` binds a query to that catalog and an exact semantic
-  source snapshot before downstream execution planning.
+  storage-neutral relation catalog plus an entity/property catalog;
+  `CatalogBoundQuery` resolves property accesses and binds a query to both
+  catalogs and an exact semantic source snapshot before downstream execution
+  planning.
 - `mrr-ascent` evaluates bounded fixed-point candidates.
 - `mrr-lineage` and `mrr-transition` validate causal evidence and immutable
   generation deltas.

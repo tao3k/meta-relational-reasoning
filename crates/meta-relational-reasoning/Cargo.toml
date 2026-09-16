@@ -8,6 +8,7 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
+ciborium.workspace = true
 mrr-bundle.workspace = true
 mrr-ascent.workspace = true
 mrr-identity.workspace = true
@@ -19,6 +20,7 @@ mrr-relation.workspace = true
 mrr-revision.workspace = true
 mrr-transition.workspace = true
 sha2.workspace = true
+serde.workspace = true
 
 [build-dependencies]
 mrr-asp-rust-project-policy.workspace = true

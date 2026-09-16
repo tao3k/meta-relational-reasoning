@@ -5,11 +5,11 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 use std::io::Cursor;
 
-pub use mrr_identity::{QueryId, ReasoningBundleId, RelationId, RulePackId};
+pub use mrr_identity::{EntityId, QueryId, ReasoningBundleId, RelationId, RulePackId};
 pub use mrr_logic::Rule;
 pub use mrr_query::MetaQueryIr;
 use mrr_relation::EvidenceCompleteness;
-pub use mrr_relation::{Fact, RelationError, RelationSchema};
+pub use mrr_relation::{EntitySchema, Fact, RelationError, RelationSchema};
 pub use mrr_transition::Transition;
 use serde::{Deserialize, Serialize};
 
@@ -200,6 +200,7 @@ impl Default for ValidationProfile {
 /// Untrusted input to the bundle admission boundary.
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 pub struct ReasoningBundleDeclaration {
+    pub entities: Vec<EntitySchema>,
     pub relations: Vec<RelationSchema>,
     pub facts: Vec<Fact>,
     pub query_templates: Vec<QueryTemplate>,
@@ -216,14 +217,17 @@ pub struct ReasoningBundleDeclaration {
 pub struct ReasoningBundle {
     id: ReasoningBundleId,
     declaration: ReasoningBundleDeclaration,
+    entity_catalog: crate::EntityCatalog,
     catalog: crate::RelationCatalog,
     canonical: Vec<u8>,
 }
 
+/// Reasons an untrusted reasoning bundle declaration cannot be admitted.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum BundleError {
     EmptyRelations,
     DuplicateRelation,
+    DuplicateEntity(EntityId),
     DuplicateFact,
     DuplicateQueryTemplate(QueryId),
     DuplicateRulePack(RulePackId),
@@ -233,6 +237,7 @@ pub enum BundleError {
     EmptyRulePack(RulePackId),
     UnknownFactRelation,
     UnknownQueryRelation(RelationId),
+    UnknownQueryEntity(EntityId),
     UnknownQueryTemplate(QueryId),
     CyclicQueryTemplateReference(QueryId),
     QueryDependencyBudgetExceeded { limit: u32 },
@@ -242,6 +247,7 @@ pub enum BundleError {
     IncompleteEvidence(mrr_identity::FactId),
     InvalidRelationSchema(RelationError),
     InvalidRelationCatalog(crate::RelationCatalogError),
+    InvalidEntityCatalog(crate::EntityCatalogError),
     InvalidFact(RelationError),
     InvalidName(String),
     InvalidValidationProfile,
@@ -266,6 +272,8 @@ impl ReasoningBundle {
     pub fn admit(mut declaration: ReasoningBundleDeclaration) -> Result<Self, BundleError> {
         normalize(&mut declaration);
         validate(&declaration)?;
+        let entity_catalog = crate::EntityCatalog::from_validated(declaration.entities.clone())
+            .map_err(BundleError::InvalidEntityCatalog)?;
         let catalog = crate::RelationCatalog::from_validated(declaration.relations.clone())
             .map_err(BundleError::InvalidRelationCatalog)?;
         let canonical = encode_declaration(&declaration)?;
@@ -274,6 +282,7 @@ impl ReasoningBundle {
         Ok(Self {
             id,
             declaration,
+            entity_catalog,
             catalog,
             canonical,
         })
@@ -319,6 +328,12 @@ impl ReasoningBundle {
     #[must_use]
     pub fn relations(&self) -> &[RelationSchema] {
         &self.declaration.relations
+    }
+
+    /// Returns the canonical entity/property catalog admitted with this bundle.
+    #[must_use]
+    pub const fn entity_catalog(&self) -> &crate::EntityCatalog {
+        &self.entity_catalog
     }
 
     /// Returns the canonical relation catalog admitted with this bundle.
@@ -389,6 +404,10 @@ fn encode_declaration(declaration: &ReasoningBundleDeclaration) -> Result<Vec<u8
 }
 
 fn normalize(declaration: &mut ReasoningBundleDeclaration) {
+    for entity in &mut declaration.entities {
+        *entity = entity.clone().normalized();
+    }
+    declaration.entities.sort_by_key(EntitySchema::id);
     declaration.relations.sort_by_key(RelationSchema::id);
     declaration.facts.sort_by_key(Fact::id);
     for template in &mut declaration.query_templates {
@@ -418,6 +437,8 @@ fn validate(declaration: &ReasoningBundleDeclaration) -> Result<(), BundleError>
         return Err(BundleError::InvalidValidationProfile);
     }
 
+    let entity_ids = validate_entity_schemas(&declaration.entities)?;
+
     let mut schemas = BTreeMap::new();
     for schema in &declaration.relations {
         schema
@@ -443,11 +464,7 @@ fn validate(declaration: &ReasoningBundleDeclaration) -> Result<(), BundleError>
         if templates.insert(template.id(), template).is_some() {
             return Err(BundleError::DuplicateQueryTemplate(template.id()));
         }
-        for relation in template.query.referenced_relations() {
-            if !schemas.contains_key(&relation) {
-                return Err(BundleError::UnknownQueryRelation(relation));
-            }
-        }
+        validate_query_references(template.query(), &schemas, &entity_ids)?;
     }
     for template in &declaration.query_templates {
         for dependency in &template.dependencies {
@@ -522,6 +539,44 @@ fn validate(declaration: &ReasoningBundleDeclaration) -> Result<(), BundleError>
                 return Err(BundleError::UnknownRetractedFact);
             }
         }
+    }
+    Ok(())
+}
+
+fn validate_entity_schemas(entities: &[EntitySchema]) -> Result<BTreeSet<EntityId>, BundleError> {
+    let mut ids = BTreeSet::new();
+    for entity in entities {
+        entity.validate().map_err(|error| {
+            BundleError::InvalidEntityCatalog(crate::EntityCatalogError::InvalidSchema {
+                entity: entity.id(),
+                error,
+            })
+        })?;
+        if !ids.insert(entity.id()) {
+            return Err(BundleError::DuplicateEntity(entity.id()));
+        }
+    }
+    Ok(ids)
+}
+
+fn validate_query_references(
+    query: &MetaQueryIr,
+    relations: &BTreeMap<RelationId, &RelationSchema>,
+    entities: &BTreeSet<EntityId>,
+) -> Result<(), BundleError> {
+    if let Some(relation) = query
+        .referenced_relations()
+        .into_iter()
+        .find(|relation| !relations.contains_key(relation))
+    {
+        return Err(BundleError::UnknownQueryRelation(relation));
+    }
+    if let Some(entity) = query
+        .referenced_entities()
+        .into_iter()
+        .find(|entity| !entities.contains(entity))
+    {
+        return Err(BundleError::UnknownQueryEntity(entity));
     }
     Ok(())
 }

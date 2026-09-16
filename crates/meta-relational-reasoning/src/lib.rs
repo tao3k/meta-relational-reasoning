@@ -12,7 +12,9 @@ pub use admission::{
 pub use api::{
     DeductionLimits, DeductionPlan, EngineBuildError, EngineQueryError, MrrEngine, MrrEngineBuilder,
 };
-pub use binding::{CatalogBoundQuery, QueryCatalogBindingError, bind_query_to_catalog};
+pub use binding::{
+    CatalogBoundQuery, QueryCatalogBindingError, ResolvedProperty, bind_query_to_catalog,
+};
 pub use counterexample::{
     CounterexampleFactIdentity, CounterexampleLineageError, CounterexampleLineageIdentities,
     counterexample_lineage,
@@ -22,9 +24,10 @@ pub use mrr_ascent::{
     DerivationReceiptDigest,
 };
 pub use mrr_bundle::{
-    BundleError, InverseGoal, LineagePolicy, ProjectionPolicy, QueryTemplate, ReasoningBundle,
-    ReasoningBundleDeclaration, RelationCatalog, RelationCatalogDigest, RelationCatalogError,
-    RulePack, TransitionSystem as BundleTransitionSystem, ValidationProfile,
+    BundleError, EntityCatalog, EntityCatalogDigest, EntityCatalogError, InverseGoal,
+    LineagePolicy, ProjectionPolicy, QueryTemplate, ReasoningBundle, ReasoningBundleDeclaration,
+    RelationCatalog, RelationCatalogDigest, RelationCatalogError, RulePack,
+    TransitionSystem as BundleTransitionSystem, ValidationProfile,
 };
 pub use mrr_identity::{
     ActionId, DerivationId, EntityId, FactId, GenerationId, LineageEdgeId, LineageNodeId, QueryId,
@@ -50,9 +53,9 @@ pub use mrr_query::{
     UnaryOperator, Variable,
 };
 pub use mrr_relation::{
-    EvidenceCompleteness, Fact, FactProvenance, FactValidity, FloatWidth, RelationAuthority,
-    RelationConstraint, RelationContext, RelationContextError, RelationError, RelationField,
-    RelationSchema, TemporalUnit, TimezonePolicy, Value, ValueKind, ValueSchema,
+    EntitySchema, EvidenceCompleteness, Fact, FactProvenance, FactValidity, FloatWidth,
+    RelationAuthority, RelationConstraint, RelationContext, RelationContextError, RelationError,
+    RelationField, RelationSchema, TemporalUnit, TimezonePolicy, Value, ValueKind, ValueSchema,
 };
 pub use mrr_revision::{
     ExternalRevisionIdentity, RevisionBinding, RevisionBindingError, SemanticSnapshot,

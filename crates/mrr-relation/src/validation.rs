@@ -11,6 +11,10 @@ pub(crate) fn validate_fields(fields: &[RelationField]) -> Result<(), RelationEr
     if fields.is_empty() {
         return Err(RelationError::EmptyFields);
     }
+    validate_property_fields(fields)
+}
+
+pub(crate) fn validate_property_fields(fields: &[RelationField]) -> Result<(), RelationError> {
     let mut names = BTreeSet::new();
     for field in fields {
         field.schema().validate()?;

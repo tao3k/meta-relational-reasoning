@@ -9,15 +9,16 @@ Accepted architecture.
 * Decision
 
 A reasoning program crosses the public boundary only as an admitted
-=ReasoningBundle=. Its untrusted declaration contains relation schemas, source
+=ReasoningBundle=. Its untrusted declaration contains entity/property schemas,
+relation schemas, source
 facts, query templates, rule packs, inverse goals, transition systems, lineage
 policy, projection policy, and a validation profile.
 
 The admission order is fixed:
 
 1. normalize identity-keyed collections;
-2. validate relation and fact ownership;
-3. validate query relation references and dependency graph;
+2. validate entity/property schemas, relation schemas, and fact ownership;
+3. validate query entity/relation references and dependency graph;
 4. validate rule-pack identities and rule relation references;
 5. validate inverse-goal and transition-system references;
 6. validate the dependency-depth budget and explicit policies;

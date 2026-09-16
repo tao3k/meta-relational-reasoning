@@ -4,9 +4,9 @@
 mod api;
 mod validation;
 pub use api::{
-    EvidenceCompleteness, Fact, FactProvenance, FactValidity, FloatWidth, RelationAuthority,
-    RelationConstraint, RelationContext, RelationContextError, RelationError, RelationField,
-    RelationSchema, TemporalUnit, TimezonePolicy, Value, ValueKind, ValueSchema,
+    EntitySchema, EvidenceCompleteness, Fact, FactProvenance, FactValidity, FloatWidth,
+    RelationAuthority, RelationConstraint, RelationContext, RelationContextError, RelationError,
+    RelationField, RelationSchema, TemporalUnit, TimezonePolicy, Value, ValueKind, ValueSchema,
 };
 pub use mrr_identity::{
     DerivationId, EntityId, FactId, GenerationId, RelationId, RuleId, RulePackId,
