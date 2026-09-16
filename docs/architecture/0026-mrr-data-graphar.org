@@ -12,9 +12,9 @@ It specifies Arrow mapping, GraphAr projection, CID/CAR packaging, security,
 repository shape, and delivery milestones.  Those details are not duplicated
 here because that would create two drifting specifications.
 
-Both RFCs remain proposals.  The =mrr-data= repository does not yet implement
-the data plane, and this repository does not claim Arrow, GraphAr, CID, CAR, or
-schema-bound execution support.
+Both RFCs remain proposals.  The =mrr-data= repository now contains an initial
+scalar relation-row Arrow round-trip slice, but neither repository claims the
+complete data plane, GraphAr, CID/CAR, or physical query-binding closure.
 
 * Ownership and dependency direction
 
@@ -100,7 +100,7 @@ manifests, engine plans, or physical IDs.
 MRR now admits a =CatalogBoundQuery= that pairs =MetaQueryIr= with:
 
 - the exact =GenerationId= from an admitted =SemanticSnapshot=;
-- a canonical digest of the ordered =RelationSchema= catalog;
+- the exact =RelationCatalogDigest= and =EntityCatalogDigest=;
 - the semantic snapshot digest;
 - a digest of the canonical query and the complete binding.
 
@@ -119,6 +119,11 @@ A future downstream =BoundDataQuery= may extend that binding with:
 The generation must resolve to an admitted upstream =SemanticSnapshot=.
 Physical snapshot roots remain downstream identities and cannot replace its
 source-revision digest.
+
+The downstream binder validates physical availability, projection profile,
+snapshot root, and engine capability.  It must consume MRR's admitted catalog
+binding rather than reimplement unknown-label, unknown-property, relation-type,
+or expression-type semantics under a second error vocabulary.
 
 For catalog $S_g$, snapshot $D_g$, and query $q$, execution is defined only
 when every query reference resolves uniquely and all identities name the same
@@ -176,16 +181,23 @@ semantic contract.  The first expected decisions are:
    weakening their nullability or numeric constraints;
 4. which receipt fields MRR must admit after a physical round trip.
 
+MRR V1 preserves duration values as canonical source lexical text.  Until a
+separate semantic duration contract specifies month/day/nanosecond components,
+the lossless Arrow representation is UTF-8 plus namespaced MRR extension
+metadata.  A downstream adapter must not guess units from the spelling or
+silently coerce it into Arrow's fixed-unit duration type.
+
 No Arrow or GraphAr dependency is justified merely to answer those questions.
 
 * Cross-repository acceptance gates
 
-The proposal becomes implemented only when the downstream repository provides:
+The proposal becomes implemented only when the downstream repository provides,
+in dependency order:
 
-1. deterministic Manifest V1 and root-CID tests;
-2. property-tested =Fact -> Arrow -> Fact= round trips preserving every MRR
+1. property-tested =Fact -> Arrow -> Fact= round trips preserving every MRR
    identity and context field;
-3. typed rejection for ambiguous or unsupported value schemas;
+2. typed rejection for ambiguous or unsupported value schemas;
+3. a deterministic Manifest V1 and root-CID over the proven Arrow encoding;
 4. CAR import validation and resource-limit scenarios;
 5. a GraphAr projection that preserves MRR identities through repartition and
    rejects unowned n-ary mappings;

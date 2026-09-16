@@ -379,15 +379,6 @@ fn lower_expression(cst: &ParserCst, node: &Node) -> Result<Expression, Frontend
     if first_descendant(cst, node, "ValueTypePredicate").is_some() {
         return unsupported_exact("value-type predicate expression");
     }
-    if kind_is(cst, node, "ValueExpression") {
-        let mut levels = Vec::new();
-        collect_unparenthesized_binary_levels(cst, node, &mut levels);
-        levels.sort_unstable();
-        levels.dedup();
-        if levels.len() > 1 {
-            return unsupported("mixed operator precedence not encoded by parser CST");
-        }
-    }
     if kind_is(cst, node, "AggregateFunction") {
         return lower_aggregate(cst, node);
     }
@@ -660,38 +651,6 @@ fn lower_expression(cst: &ParserCst, node: &Node) -> Result<Expression, Frontend
         "expression kind {}",
         kind_name(cst, node).unwrap_or("<unknown>")
     ))
-}
-
-fn collect_unparenthesized_binary_levels(cst: &ParserCst, node: &Node, levels: &mut Vec<u8>) {
-    if kind_is(cst, node, "ParenthesizedValueExpression") {
-        return;
-    }
-    if kind_is(cst, node, "ValueExpression")
-        && let Some(level) = direct_binary_level(cst, node)
-    {
-        levels.push(level);
-    }
-    for child in node.children() {
-        collect_unparenthesized_binary_levels(cst, &child, levels);
-    }
-}
-
-fn direct_binary_level(cst: &ParserCst, node: &Node) -> Option<u8> {
-    if direct_children_named(cst, node, "ValueExpression").len() != 2 {
-        return None;
-    }
-    if direct_child_named(cst, node, "CompOp").is_some() {
-        return Some(2);
-    }
-    node.children_with_tokens()
-        .filter_map(rowan::NodeOrToken::into_token)
-        .find_map(|token| match token.text().to_ascii_uppercase().as_str() {
-            "OR" => Some(0),
-            "AND" => Some(1),
-            "+" | "-" => Some(3),
-            "*" | "/" => Some(4),
-            _ => None,
-        })
 }
 
 fn lower_identifier(cst: &ParserCst, node: &Node) -> Result<Identifier, FrontendError> {

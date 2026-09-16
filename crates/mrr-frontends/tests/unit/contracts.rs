@@ -182,18 +182,36 @@ fn parser_owned_rejection_never_falls_back_to_another_parser() {
 }
 
 #[test]
-fn parser_owned_where_precedence_is_not_partially_consumed() {
-    assert_eq!(
-        QueryFrontend::new(mrr_gerbil::ParserLanguage::Gql)
-            .compile(
-                "where-precedence.gql",
-                "MATCH (n) WHERE n.score > 2 AND n.active = TRUE RETURN n",
-            )
-            .expect_err("a parser artifact may not silently omit WHERE semantics"),
-        FrontendError::Unsupported(
-            "parser-owned lowering does not admit mixed operator precedence not encoded by parser CST"
-                .into(),
+fn parser_owned_where_precedence_follows_the_parser_cst() {
+    let query = QueryFrontend::new(mrr_gerbil::ParserLanguage::Gql)
+        .compile(
+            "where-precedence.gql",
+            "MATCH (n) WHERE n.score > 2 AND n.active = TRUE RETURN n",
         )
+        .expect("parser-owned CST encodes comparison before conjunction");
+    let predicate = query.filters()[0].predicate();
+    assert!(
+        matches!(
+            predicate,
+            Expression::Binary {
+                operator: BinaryOperator::And,
+                left,
+                right,
+            } if matches!(
+                left.as_ref(),
+                Expression::Binary {
+                    operator: BinaryOperator::Greater,
+                    ..
+                }
+            ) && matches!(
+                right.as_ref(),
+                Expression::Binary {
+                    operator: BinaryOperator::Equal,
+                    ..
+                }
+            )
+        ),
+        "{predicate:#?}"
     );
 }
 
@@ -273,17 +291,26 @@ fn parser_owned_arithmetic_and_boolean_precedence_is_admitted() {
             .expect("parser-owned operators");
     }
 
-    assert_eq!(
-        frontend
-            .compile(
-                "ambiguous-precedence.gql",
-                "MATCH (n) RETURN n.score + 1 * 2",
+    let mixed = frontend
+        .compile("mixed-precedence.gql", "MATCH (n) RETURN n.score + 1 * 2")
+        .expect("parser-owned CST encodes multiplication below addition");
+    let expression = mixed.projections()[0].expression();
+    assert!(
+        matches!(
+            expression,
+            Expression::Binary {
+                operator: BinaryOperator::Add,
+                right,
+                ..
+            } if matches!(
+                right.as_ref(),
+                Expression::Binary {
+                    operator: BinaryOperator::Multiply,
+                    ..
+                }
             )
-            .expect_err("parser CST must encode precedence before admission"),
-        FrontendError::Unsupported(
-            "parser-owned lowering does not admit mixed operator precedence not encoded by parser CST"
-                .into()
-        )
+        ),
+        "{expression:#?}"
     );
 }
 
