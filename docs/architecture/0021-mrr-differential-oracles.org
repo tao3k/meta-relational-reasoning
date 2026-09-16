@@ -30,3 +30,31 @@ an isolated temporary directory and are removed after validation.
 TLC is an independent test oracle. It is not linked into MRR, is not used at
 runtime, and owns no state, identity, lineage, admission, or publication
 authority.
+
+* Why TLA+ and TLC
+
+Transition safety is a state-space question, not only a collection of unit
+examples.  TLA+ provides an implementation-independent language for describing
+states, actions, and invariants, while TLC can exhaustively explore the finite
+fixture models and return a counterexample trace.  The original
+[[https://lamport.azurewebsites.net/pubs/yuanyu-model-checking.pdf][TLC paper]]
+defines this finite-state invariant-checking role.
+
+That independence is the main reason for the oracle.  Re-running the Rust
+safety checker through a second Rust helper would risk reproducing the same
+state-expansion, cycle, or invariant bug.  TLC instead gives the test suite a
+separately implemented answer with two values that map directly to the public
+contract: safe/unsafe status and counterexample path length.
+
+TLC is deliberately not the production engine:
+
+- it does not allocate or validate MRR identities;
+- it does not admit lineage or publish semantic generations;
+- a passing finite model is not a proof for every unbounded deployment;
+- budget exhaustion in the Rust checker remains =Incomplete=, never =Safe=.
+
+Property tests remain useful for broad input generation, and Lean remains the
+kernel-checked owner for stated admission theorems.  They answer different
+questions: property tests search generated examples, Lean checks formal
+theorems, and TLC differentially checks executable finite transition models.
+Keeping all three prevents one mechanism from becoming its own oracle.

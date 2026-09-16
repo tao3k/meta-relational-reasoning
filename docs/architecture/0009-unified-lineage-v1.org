@@ -24,6 +24,32 @@ The admitted node roles are =SourceFact=, =QueryOperator=, =RuleApplication=,
 roles are =derived_from=, =selected_by=, =produced_by=, =depends_on=, and
 =invalidated_by=.
 
+* Why lineage is first-class
+
+MRR uses semantic lineage in a stricter sense than a generic log or a
+warehouse-only table/column lineage catalog.  Four related records have
+different responsibilities:
+
+| Record | Question answered | Authority |
+|-
+| fact provenance | Where did this individual fact originate? | Part of the typed fact context |
+| semantic lineage | Which admitted facts, rules, query operators, transitions, and projections justify this result? | =mrr-lineage= validates the immutable causal graph |
+| execution trace | What happened, and in what runtime order? | Observability evidence only |
+| audit log | Which operational events were retained for later review? | Historical evidence only |
+
+Provenance alone cannot express a multi-step derivation.  A trace can contain
+retries, timings, and failed candidates that never became authoritative.  An
+audit log can show that an event occurred without proving that a result is
+derivable from the currently admitted generation.  None of those records can
+replace the causal graph admitted by =mrr-lineage=.
+
+First-class lineage is required for three public operations: WHY walks from a
+result toward its evidence, IMPACT walks from changed facts toward affected
+conclusions, and counterexample projection connects an unsafe transition path
+to the facts and actions that explain it.  Because these operations affect what
+the system can explain or invalidate, lineage is an admission contract rather
+than optional observability metadata.
+
 * Admission
 
 An admitted graph is finite, has unique node and edge identities, references

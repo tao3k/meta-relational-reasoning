@@ -31,6 +31,38 @@ pack fails closed.  Variable names are irrelevant; equality and join positions
 define the accepted shape.  Other programs fail closed instead of being silently
 approximated.
 
+* Why Ascent
+
+MRR needs a maintained fixed-point implementation, not another hand-written
+closure engine.  Ascent is embedded in Rust, accepts ordinary typed Rust values,
+and expresses Datalog-style forward inference without adding a service, a second
+runtime, or an FFI boundary to the public facade.  That makes it suitable for the
+narrow execution responsibility above while the MRR crates retain ownership of
+identity, evidence, lineage, transitions, and publication.
+
+This is a boundary decision, not a claim that Ascent is the semantic model or
+that it is universally faster than every alternative.  The
+[[https://s-arash.github.io/ascent/cc22main-p95-seamless-deductive-inference-via-macros.pdf][Ascent paper]]
+describes the macro-based integration of deductive inference with Rust.  MRR
+uses that maintained evaluation substrate and independently checks its output;
+the =ClosureReceipt=, deterministic witness reconstruction, admission rules, and
+public identities remain MRR contracts.
+
+The evaluated alternatives are:
+
+- a hand-written graph or closure loop would duplicate fixed-point, join, and
+  indexing machinery and would couple one current rule shape to the engine;
+- [[https://github.com/souffle-lang/souffle][Souffle]] is a strong compiled Datalog
+  implementation and research reference, but its generated C++ pipeline would
+  add a separate build and language boundary to this Rust facade;
+- direct graph traversal is appropriate for isolated graph algorithms, but is
+  not the intended abstraction for typed relations and multiple rule packs.
+
+The choice must be revisited if Ascent cannot preserve deterministic bounded
+receipts, cannot meet the measured scale envelope, or prevents a required
+deployment target.  Such a replacement may change the proposal engine; it must
+not weaken or bypass admission.
+
 * Bounds and deterministic evidence
 
 #+begin_src typst
