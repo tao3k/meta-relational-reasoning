@@ -283,7 +283,16 @@ complete Agent system needs all three; collapsing them into one generic
 ## Build and verify
 
 Use the repository environment so Cargo, Gerbil packages, native libraries, and
-proof tools resolve through the same dependency graph.
+proof tools resolve through the same dependency graph. The preferred entrypoint
+is `just`: its recipes always refresh the Gerbil package through the
+SDK-sanitizing `mrr-gerbil` wrapper before Cargo can stage the native archive.
+
+```bash
+./.devenv/devenv-profile-exec just test
+./.devenv/devenv-profile-exec just check
+```
+
+The underlying owner commands remain available for focused diagnosis:
 
 ```bash
 ./.devenv/devenv-profile-exec mrr-gerbil build

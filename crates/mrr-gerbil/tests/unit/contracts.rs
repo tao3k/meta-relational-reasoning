@@ -60,11 +60,16 @@ fn gerbil_package_owns_only_the_linked_parser_edge() {
 #[test]
 fn rust_commands_inherit_the_canonical_gxpkg_environment() {
     let devenv = include_str!("../../../../devenv.nix");
+    let justfile = include_str!("../../../../justfile");
     let readme = include_str!("../../../../README.md");
     let ci = include_str!("../../../../.github/workflows/ci.yml");
 
     assert!(devenv.contains("scripts.mrr-cargo.exec"));
     assert!(devenv.contains("exec gerbil env cargo \"$@\""));
+    assert!(justfile.contains("mrr-gerbil build"));
+    assert!(justfile.contains("mrr-cargo test --workspace --locked"));
+    assert!(!justfile.contains(" gxpkg "));
+    assert!(!justfile.contains(" cargo test"));
     assert!(readme.contains("devenv-profile-exec mrr-cargo test --workspace"));
     assert!(!readme.contains("devenv-profile-exec cargo test --workspace"));
     assert!(ci.contains("gerbil env cargo test --workspace --locked"));
