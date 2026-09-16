@@ -1,79 +1,114 @@
-#+title: RFC 0026: Downstream mrr-data Arrow and GraphAr Binding
+#+title: RFC 0026: MRR to mrr-data Boundary
 #+status: proposed
 #+options: toc:2
 #+property: header-args :eval never-export :exports code
 
-* Problem
+* Purpose
 
-A query language is meaningful only relative to a data model and an exact data
-generation.  Parser acceptance alone cannot establish that a node label, edge
-type, property, direction, path expression, or value operation exists in the
-graph that will execute the query.
+This RFC records only the upstream MRR side of the proposed =mrr-data=
+boundary.  The canonical data-plane design is owned by the separate
+[[https://github.com/tao3k/mrr-data/blob/main/docs/architecture/0001-mrr-data-plane.org][mrr-data RFC 0001]].
+It specifies Arrow mapping, GraphAr projection, CID/CAR packaging, security,
+repository shape, and delivery milestones.  Those details are not duplicated
+here because that would create two drifting specifications.
 
-MRR owns typed relation and storage-neutral query contracts.  =mrr-data= is a
-separate repository whose proposed design would depend on those contracts and
-combine Apache Arrow with GraphAr.  The current =mrr-data= checkout is only an
-initial repository skeleton; it contains no implementation or dependency
-metadata for this design.  Its absence from this workspace is intentional;
-adding it as an MRR crate or making MRR depend on it would invert the proposed
-dependency boundary.
+Both RFCs remain proposals.  The =mrr-data= repository does not yet implement
+the data plane, and this repository does not claim Arrow, GraphAr, CID, CAR, or
+schema-bound execution support.
 
-* Proposed decision
+* Ownership and dependency direction
 
-The separate [[https://github.com/tao3k/mrr-data][mrr-data repository]] would
-own the Property Graph data-plane binding between canonical Content and
-concrete query execution.  It would consume MRR semantic identity, relation,
-query, generation, provenance, and admission contracts; MRR would never import
-=mrr-data=.
+MRR owns:
 
-=mrr-data= would use [[https://arrow.apache.org/][Apache Arrow's]]
-language-independent columnar format for typed in-memory interchange and
-vectorized processing, and
-[[https://github.com/apache/incubator-graphar][Apache GraphAr]] for persistent,
-system-independent Property Graph layout.  Arrow and GraphAr complement one
-another; neither replaces MRR semantics.
+- =EntityId=, =RelationId=, =FactId=, =GenerationId=, and =RevisionId=;
+- =RelationSchema=, =Fact=, =RelationContext=, and canonical value semantics;
+- =ExternalRevisionIdentity= and =RevisionBinding=;
+- =MetaQueryIr=, lineage, transitions, receipts, and semantic admission.
 
-GraphAr is a storage format and library family, not a query language or truth
-authority.  It provides a system-independent Property Graph representation:
-metadata describes the graph; vertex and edge data is chunked; properties are
-split into column groups; and edge topology can use source/destination ordered
-or unordered layouts corresponding to CSR, CSC, and COO-style access.  Those
-choices enable interoperable storage and selective IO without defining MRR
-facts or Agent Context.
+The downstream =mrr-data= repository may consume those contracts and own:
+
+- deterministic Arrow physical interchange;
+- a gated GraphAr Property Graph projection;
+- physical snapshot manifests, block CIDs, and CAR archives;
+- filesystem, object-store, or later distribution providers;
+- a bound query wrapper that identifies an exact catalog and snapshot.
+
+The dependency direction is one way:
 
 #+begin_src mermaid
 flowchart LR
-  M[MRR<br/>identity + relation + MetaQueryIr + admission]
-  D[proposed external mrr-data<br/>catalog + bound query + snapshot receipt]
-  W[Arrow<br/>columnar memory and interchange]
-  G[GraphAr<br/>persistent property graph layout]
-  E[Concrete graph query engine]
-  A[MRR admission API]
+  M[MRR<br/>semantic contracts and admission]
+  D[mrr-data<br/>physical representation and distribution]
+  A[Arrow]
+  G[GraphAr]
+  C[CID and CAR]
+  E[query engine]
 
   M -->|downstream dependency| D
-  D -->|typed batches| W
-  D -->|metadata + chunk manifests| G
-  D -->|bound MetaQueryIr + exact snapshot| E
-  E -->|candidate result + execution receipt| D
-  D -->|MRR-native evidence| A
-  A -->|admitted or rejected| D
+  D --> A
+  D --> G
+  D --> C
+  D --> E
+  D -->|candidate facts and receipts| M
+  A -. must not leak into MRR APIs .-> M
+  G -. must not leak into MRR APIs .-> M
+  C -. must not redefine semantic identity .-> M
 #+end_src
 
-* Model and language binding
+MRR must never acquire a reverse dependency on =mrr-data=, Arrow, GraphAr,
+IPLD, CAR, IPFS, or a database engine.
 
-For graph catalog $S_g$, data snapshot $D_g$, and query $q$, execution is
-defined only when the query's language semantics target the snapshot's data
-model and every referenced graph element type-checks against the exact catalog.
+* Calibrations imposed by current MRR contracts
+
+The current relation model is typed and n-ary.  A fact contains a
+=RelationId=, an ordered vector of =Value= instances, and a =RelationContext=
+carrying generation, authority, provenance, completeness, and validity.
+Consequently:
+
+1. Arrow batches must be relation-specific and lossless.  A universal
+   subject/predicate/object table is at most an optional view for binary
+   relations, not MRR's canonical relation form.
+2. GraphAr is a specialization for the graph-shaped subset.  Binary
+   Entity-to-Entity relations can become edges; unsupported n-ary or mixed
+   value relations must be reified by a versioned profile or rejected.
+3. GraphAr internal vertex IDs, row positions, chunks, and adjacency offsets
+   are physical identifiers and cannot replace MRR IDs.
+4. CID identifies exact encoded bytes.  It is not =GenerationId=, semantic
+   equality, authority, or admission.
+5. Source revisions use MRR's provider-neutral =RevisionBinding=.  Jujutsu
+   ChangeId/CommitId values are one possible provider payload, not fields that
+   MRR hard-codes for all sources.
+
+MRR's current =ValueType= does not yet express decimal precision, temporal
+units, list element types, record shape, or nullability.  A downstream Arrow
+adapter must not guess those semantics.  If a lossless mapping needs richer
+semantic schema, it must propose that narrowly at the MRR boundary or reject
+the schema with a typed error.
+
+* Query binding boundary
+
+=MetaQueryIr= remains storage-neutral but not model-free: its node, relation,
+property, direction, path, filter, and result operators describe a Property
+Graph query model.  It intentionally does not carry Arrow schemas, GraphAr
+manifests, engine plans, or physical IDs.
+
+A future downstream =BoundDataQuery= may pair =MetaQueryIr= with:
+
+- the exact =GenerationId=;
+- catalog and relation-model digests;
+- a physical snapshot root CID;
+- an optional GraphAr projection profile and manifest CID;
+- language/dialect and engine capability declarations.
+
+For catalog $S_g$, snapshot $D_g$, and query $q$, execution is defined only
+when every query reference resolves uniquely and all identities name the same
+generation.
 
 #+begin_src typst
 #set page(width: 150mm, height: auto, margin: 12mm)
 #set text(size: 10pt)
 
-= Schema-bound graph query admission
-
-Let $S_g$ be the Property Graph catalog and $D_g$ its data snapshot at
-generation $g$.  Let $L$ be a language whose semantics are defined for data
-model $M_L$.
+= Schema-bound execution
 
 $
   "well-typed"(q, S_g)
@@ -82,109 +117,63 @@ $
 
 $
   "executable"(q, D_g)
-  := M_L = "model"(D_g)
-  and "well-typed"(q, S_g)
+  := "well-typed"(q, S_g)
   and "catalog-digest"(q) = "digest"(S_g)
-  and "generation"(q) = g
+  and "generation"(q) = "generation"(D_g) = g
 $
 
-$
-  "execute"(q, D_g) =
-  cases(
-    ("candidate-result", &"if" "executable"(q, D_g)),
-    ("typed-rejection", &"otherwise"),
-  )
-$
-
-A candidate result becomes Content only after source, lineage, completeness,
-and transition owners admit it at the same generation.
+A database result is a candidate. It becomes Content only after MRR source,
+lineage, completeness, and transition owners admit it at the same generation.
 #+end_src
 
-GQL, Cypher/openCypher, and PGQL all target Property Graph families, but their
-catalog and path semantics are not assumed identical.  Each frontend profile
-must declare its language revision, supported data-model features, and dialect
-extensions.  GraphQL is excluded from this boundary because it targets an API
-type/resolver model rather than the Property Graph database model.
-
-MRR's =MetaQueryIr= remains storage-neutral but not model-free: its node,
-relation, property, direction, path, filter, and result operators express the
-Property Graph query model.  The proposal assigns =mrr-data= a downstream
-=BoundDataQuery= concept pairing the IR with the exact catalog digest, Arrow
-schema, GraphAr manifest, semantic generation, and engine/dialect capabilities.
-Such a wrapper would preserve MRR dependency purity while ensuring that query
-semantics match the data model that executes them.
-
-* Identity boundary
-
-GraphAr's internal vertex identifiers, row positions, chunks, column groups,
-and adjacency offsets are physical storage identities.  They may change after
-compaction, repartitioning, export, or import and therefore cannot be used as
-=EntityId=, =FactId=, =RelationId=, or =GenerationId=.
-
-An admitted snapshot receipt must bind at least:
-
-1. the canonical Content graph identity and semantic generation;
-2. the GraphAr graph metadata/schema digest;
-3. the immutable file/chunk manifest digest;
-4. the mapping version from canonical MRR identities to physical GraphAr
-   vertex/edge positions;
-5. property types, vertex labels, edge triplets, nullability, and supported
-   path/query capabilities;
-6. source provenance and authorization scope.
-
-Repartitioning may produce a new physical manifest without changing canonical
-Content.  A schema, source, or semantic change produces a new semantic
-generation.  The receipt must distinguish those cases.
-
-* Query admission boundary
-
-The proposed downstream binder in =mrr-data= would resolve MRR query identities
-against its catalog rather than treating unknown labels as executable data
-identities.  It would reject:
-
-- unknown or ambiguous node labels, edge types, and properties;
-- property operations incompatible with their declared types;
-- directions or path modes unavailable in the selected graph/dialect;
-- catalog digest or data generation drift between lowering and execution;
-- query results whose execution receipt does not identify the exact snapshot.
-
-The query engine may be Neo4j, Memgraph, Kuzu, FalkorDB, Apache AGE, Oracle
-Graph, or another implementation admitted by an adapter.  Engine-specific
-indexes, query plans, dialect extensions, and physical identifiers remain
-behind that adapter.  No engine is the semantic authority merely because it
-stores the files or executes the query.
+Parsing, schema binding, execution, and semantic admission therefore produce
+different receipts.  Parser acceptance cannot establish that a property
+exists, that a snapshot is current, or that a result is authoritative.
 
 * Content and Context materialization
 
-One GraphAr-compatible store may contain both canonical Content materialization
-and derived Context materialization, but they require different graph
-identities and receipts:
+The same physical store may contain canonical Content and derived Context, but
+their identities and receipts remain different:
 
-- Content snapshots are durable, source-bound, versioned, and eligible to
-  anchor future Context projections;
-- Context snapshots bind a projection policy, actor/task/capability scope,
-  Content generation, expiry, and selection lineage;
-- Context data cannot be copied into Content by storage-level import or graph
-  merge; it must re-enter through source and MRR admission.
+- Content is durable, source-bound, versioned, and admitted;
+- Context is a task/actor/capability-scoped projection bound to an exact
+  Content generation, projection policy, selection lineage, and expiry;
+- storage import, graph merge, CID availability, or query success cannot
+  promote Context into Content.
 
-* Cross-repository delivery gates
+This separation is semantic and survives changes of Arrow batch, GraphAr
+layout, database engine, object store, or transport.
 
-This RFC becomes implemented only when all of the following exist:
+* Upstream obligations before implementation
 
-1. an external =mrr-data= package with typed catalog and snapshot receipts that
-   depends on MRR without a reverse dependency;
-2. deterministic Arrow schema and GraphAr metadata/manifest adapters with no
-   physical-ID leak;
-3. a downstream bound-query receipt pairing =MetaQueryIr= with catalog digest,
-   Arrow schema, GraphAr manifest, and data generation;
-4. schema-bound GQL lowering with positive and negative fixtures;
-5. stale-snapshot, dialect-mismatch, and unknown-property rejection tests;
-6. differential scenarios against at least one GraphAr reader and one
-   Property Graph query engine;
-7. performance evidence for selective property/adjacency reads without
-   reducing the declared corpus.
+MRR should change only when a concrete downstream proof exposes a missing
+semantic contract.  The first expected decisions are:
 
-Until these gates close in the external repository, Arrow/GraphAr integration
-is an =mrr-data= design claim, not an implemented MRR capability.  MRR's
-responsibility is to keep the semantic contracts stable and consumable without
-acquiring a reverse storage dependency.
+1. whether =RelationSchema= needs explicit nullability and parameterized
+   Decimal, temporal, List, and Record types for a lossless Arrow mapping;
+2. the canonical byte representation for MRR IDs at foreign-data boundaries;
+3. whether query binding needs an upstream storage-neutral catalog identity or
+   remains entirely downstream;
+4. which receipt fields MRR must admit after a physical round trip.
+
+No Arrow or GraphAr dependency is justified merely to answer those questions.
+
+* Cross-repository acceptance gates
+
+The proposal becomes implemented only when the downstream repository provides:
+
+1. deterministic Manifest V1 and root-CID tests;
+2. property-tested =Fact -> Arrow -> Fact= round trips preserving every MRR
+   identity and context field;
+3. typed rejection for ambiguous or unsupported value schemas;
+4. CAR import validation and resource-limit scenarios;
+5. a GraphAr projection that preserves MRR identities through repartition and
+   rejects unowned n-ary mappings;
+6. stale-generation, catalog-drift, dialect-mismatch, and unknown-property
+   query-binding tests;
+7. differential GraphAr reader evidence and performance scenarios without
+   reducing the declared corpus;
+8. proof that MRR has no reverse storage dependency.
+
+Until those gates pass, this RFC defines a boundary only.  The authoritative
+implementation plan and its current status live in =mrr-data= RFC 0001.

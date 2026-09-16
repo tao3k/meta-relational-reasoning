@@ -94,21 +94,22 @@ For ISO GQL, the proposed downstream schema-bound query path is:
 2. MRR lowering produces a storage-neutral =MetaQueryIr= whose node, relation,
    property, direction, and path constructs remain Property-Graph-specific;
 3. the separate downstream =mrr-data= repository would establish an exact
-   Property Graph catalog, Arrow representation, GraphAr storage snapshot, and
-   semantic generation;
+   Property Graph catalog, semantic generation, physical snapshot root, and an
+   optional versioned GraphAr projection over its Arrow interchange batches;
 4. =mrr-data= would resolve the IR against that catalog and wrap it in a bound
    query receipt carrying catalog/snapshot digests, without inserting Arrow or
    GraphAr types into =MetaQueryIr=;
 5. execution and result admission must reject a stale or mismatched data
    generation.
 
-The proposed cross-repository contract is described in
-[[file:0026-mrr-data-graphar.org][RFC 0026]].  The absence of an
-=mrr-data= crate here is intentional dependency purity: =mrr-data= would depend
-on MRR in the proposal, while MRR must not depend on its future Arrow/GraphAr
-consumer.  Neither repository currently provides that binding.  This
-repository does not claim it is implemented merely because parsing and
-storage-neutral lowering pass.
+The canonical downstream design is owned by
+[[https://github.com/tao3k/mrr-data/blob/main/docs/architecture/0001-mrr-data-plane.org][mrr-data RFC 0001]];
+[[file:0026-mrr-data-graphar.org][RFC 0026]] records only MRR's side of the
+contract.  The absence of an =mrr-data= crate here is intentional dependency
+purity: =mrr-data= would depend on MRR in the proposal, while MRR must not
+depend on its future Arrow/GraphAr/CID consumer.  Neither repository currently
+implements that binding.  This repository does not claim otherwise merely
+because parsing and storage-neutral lowering pass.
 
 #+name: rfc-0024-profile-admission
 #+begin_src mermaid

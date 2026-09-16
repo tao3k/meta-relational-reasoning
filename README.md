@@ -237,16 +237,22 @@ ranked, possibly summarized, permission-scoped, and replaceable. Database
 storage, indexes, traversal algorithms, and query syntax cannot establish that
 semantic distinction on their own.
 
-The proposed downstream data-plane boundary is specified in
-[MRR Data, Arrow, and GraphAr Binding](docs/architecture/0026-mrr-data-graphar.org).
-[`mrr-data`](https://github.com/tao3k/mrr-data) is a separate repository: it
-currently contains only an initial repository skeleton, not an implemented data
-plane. This RFC records the proposal for `mrr-data` to depend on MRR's
-storage-neutral contracts and combine the Arrow columnar format with GraphAr
-persistence. MRR must not depend
-back on `mrr-data`, Arrow, or GraphAr. Concrete catalog/snapshot binding would
-belong in a downstream `mrr-data` query receipt wrapped around `MetaQueryIr`;
-parser and frontend evidence alone is not end-to-end database-query admission.
+The proposed downstream data plane is canonically specified by
+[`mrr-data` RFC 0001](https://github.com/tao3k/mrr-data/blob/main/docs/architecture/0001-mrr-data-plane.org).
+This repository keeps only its upstream contract in
+[RFC 0026](docs/architecture/0026-mrr-data-graphar.org): `mrr-data` may depend
+on MRR's storage-neutral semantic contracts, while MRR must not depend back on
+`mrr-data`, Arrow, GraphAr, CID/CAR, IPFS, or a query engine. Both documents are
+currently proposals, not implementation claims.
+
+Arrow is the proposed canonical *physical interchange* form, not the semantic
+source of truth. GraphAr is a persistent projection for the graph-shaped subset
+of MRR relations, not a universal encoding of arbitrary n-ary facts. CID proves
+the identity of exact canonical bytes, not `GenerationId`, authority, or
+admission; CAR packages blocks but does not define semantic snapshot identity.
+Concrete catalog/snapshot binding belongs in a downstream query receipt around
+`MetaQueryIr`. Parser and frontend evidence alone is not end-to-end
+database-query admission.
 
 ## Comparison by responsibility
 
