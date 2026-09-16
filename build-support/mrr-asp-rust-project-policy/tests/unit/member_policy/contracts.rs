@@ -1,6 +1,9 @@
 use mrr_asp_rust_project_policy::mrr_workspace_member_policies;
+use std::collections::BTreeSet;
 use std::fs;
+use std::io::Write;
 use std::path::Path;
+use std::process::{Command, Stdio};
 
 const FORBIDDEN_POLICY_RULE_FILE: &str = "rust-project-harness-rules.toml";
 pub(super) const ISO_NORMATIVE_SOURCES_FILE: &str = "conformance/iso/normative-sources.yaml";
@@ -81,47 +84,85 @@ pub(super) fn workspace_root_from_manifest() -> std::path::PathBuf {
         .to_owned()
 }
 
-fn is_generated_or_vendor_directory(file_name: &str) -> bool {
-    matches!(
-        file_name,
-        ".git" | ".data" | "target" | "node_modules" | ".devenv" | ".gerbil" | ".venv"
-    )
+fn repository_files(workspace_root: &Path) -> Vec<std::path::PathBuf> {
+    let output = Command::new("git")
+        .args([
+            "-C",
+            ".",
+            "ls-files",
+            "-z",
+            "--cached",
+            "--others",
+            "--exclude-standard",
+        ])
+        .current_dir(workspace_root)
+        .output()
+        .expect("git must list repository-owned files");
+    assert!(
+        output.status.success(),
+        "git ls-files failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let relative = output
+        .stdout
+        .split(|byte| *byte == 0)
+        .filter(|path| !path.is_empty())
+        .map(|path| {
+            std::str::from_utf8(path)
+                .expect("repository paths must be valid UTF-8")
+                .to_owned()
+        })
+        .collect::<Vec<_>>();
+    let ignored = ignored_paths(workspace_root, &relative);
+    relative
+        .into_iter()
+        .filter(|path| !ignored.contains(path))
+        .map(|path| workspace_root.join(path))
+        .collect()
 }
 
-pub(super) fn collect_forbidden_policy_rule_files(dir: &Path, files: &mut Vec<std::path::PathBuf>) {
-    let entries = std::fs::read_dir(dir).expect("workspace source directory exists");
-    for entry in entries {
-        let entry = entry.expect("workspace source directory entry");
-        let file_type = entry
-            .file_type()
-            .expect("workspace source directory entry file type");
-        let path = entry.path();
-        let file_name = path
-            .file_name()
-            .and_then(|name| name.to_str())
-            .unwrap_or("");
-
-        if file_type.is_symlink() {
-            continue;
+fn ignored_paths(workspace_root: &Path, paths: &[String]) -> BTreeSet<String> {
+    let mut child = Command::new("git")
+        .args(["-C", ".", "check-ignore", "--no-index", "-z", "--stdin"])
+        .current_dir(workspace_root)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("git ignore engine must start");
+    {
+        let input = child.stdin.as_mut().expect("git ignore stdin");
+        for path in paths {
+            input.write_all(path.as_bytes()).expect("write path");
+            input.write_all(&[0]).expect("write path delimiter");
         }
+    }
+    let output = child
+        .wait_with_output()
+        .expect("git ignore engine must finish");
+    assert!(
+        matches!(output.status.code(), Some(0 | 1)),
+        "git check-ignore failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    output
+        .stdout
+        .split(|byte| *byte == 0)
+        .filter(|path| !path.is_empty())
+        .map(|path| {
+            std::str::from_utf8(path)
+                .expect("ignored repository paths must be valid UTF-8")
+                .to_owned()
+        })
+        .collect()
+}
 
-        if file_type.is_file() {
-            if file_name == FORBIDDEN_POLICY_RULE_FILE {
-                files.push(path);
-            }
-            continue;
-        }
-
-        if is_generated_or_vendor_directory(file_name) {
-            continue;
-        }
-
-        if file_type.is_dir() {
-            collect_forbidden_policy_rule_files(&path, files);
-            continue;
-        }
-
-        if file_name == FORBIDDEN_POLICY_RULE_FILE {
+pub(super) fn collect_forbidden_policy_rule_files(
+    workspace_root: &Path,
+    files: &mut Vec<std::path::PathBuf>,
+) {
+    for path in repository_files(workspace_root) {
+        if path.file_name().and_then(|name| name.to_str()) == Some(FORBIDDEN_POLICY_RULE_FILE) {
             files.push(path);
         }
     }
@@ -171,34 +212,14 @@ fn central_policy_registry_contains_migrated_member_crates() {
 #[test]
 fn repository_source_and_fixtures_are_ascii_only() {
     let workspace_root = workspace_root_from_manifest();
-    let mut pending = vec![workspace_root];
     let mut hits = Vec::new();
 
-    while let Some(dir) = pending.pop() {
-        for entry in fs::read_dir(&dir).expect("workspace source directory exists") {
-            let entry = entry.expect("workspace source directory entry");
-            let file_type = entry.file_type().expect("workspace entry file type");
-            let path = entry.path();
-            let file_name = path
-                .file_name()
-                .and_then(|name| name.to_str())
-                .unwrap_or("");
-
-            if file_type.is_symlink() {
-                continue;
-            }
-            if file_type.is_dir() {
-                if !is_generated_or_vendor_directory(file_name) {
-                    pending.push(path);
-                }
-                continue;
-            }
-            let Ok(text) = fs::read_to_string(&path) else {
-                continue;
-            };
-            if !text.is_ascii() {
-                hits.push(path);
-            }
+    for path in repository_files(&workspace_root) {
+        let Ok(text) = fs::read_to_string(&path) else {
+            continue;
+        };
+        if !text.is_ascii() {
+            hits.push(path);
         }
     }
 
@@ -209,11 +230,18 @@ fn repository_source_and_fixtures_are_ascii_only() {
 }
 
 #[test]
-fn uv_project_environment_is_generated_vendor_state_not_repository_source() {
-    assert!(is_generated_or_vendor_directory(".venv"));
-    assert!(is_generated_or_vendor_directory(".gerbil"));
-    assert!(!is_generated_or_vendor_directory("proofs"));
-    assert!(!is_generated_or_vendor_directory("src"));
+fn gitignore_is_the_generated_and_vendor_source_boundary() {
+    let workspace_root = workspace_root_from_manifest();
+    let candidates = [
+        ".ci/gerbil-src/src/std/io.ss",
+        ".gerbil/lib/module.ssi",
+        ".venv/bin/python",
+        "target/debug/example",
+        "crates/mrr-frontends/target/criterion/report.svg",
+    ]
+    .map(str::to_owned);
+    let ignored = ignored_paths(&workspace_root, &candidates);
+    assert_eq!(ignored, candidates.into_iter().collect());
 }
 
 fn assert_mrr_dependency_allowed(

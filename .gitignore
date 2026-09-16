@@ -6,7 +6,8 @@ tmp/
 
 
 /.devenv
-/target
+target/
+/.ci
 /.pre-commit-config.yaml
 /.data
 /.gerbil
