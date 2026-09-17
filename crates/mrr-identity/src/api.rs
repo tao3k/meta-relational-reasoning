@@ -1,7 +1,7 @@
 //! Versioned, domain-separated, content-derived identities shared by every MRR layer.
 #![forbid(unsafe_code)]
 
-use std::{fmt, str::FromStr};
+use std::{fmt, mem::size_of, str::FromStr};
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer, de::Error as _};
 use sha2::{Digest, Sha256};
@@ -104,24 +104,21 @@ fn encode_digest(digest: &[u8; DIGEST_BYTES], formatter: &mut fmt::Formatter<'_>
 }
 
 fn decode_digest(encoded: &str) -> Result<[u8; DIGEST_BYTES], IdentityError> {
-    if encoded.len() != ENCODED_DIGEST_BYTES {
+    if encoded.len() != ENCODED_DIGEST_BYTES
+        || encoded.bytes().any(|byte| byte.is_ascii_uppercase())
+    {
         return Err(IdentityError::InvalidDigest);
     }
     let mut digest = [0_u8; DIGEST_BYTES];
-    let (chunks, remainder) = encoded.as_bytes().as_chunks::<2>();
-    debug_assert!(remainder.is_empty(), "digest width is checked above");
-    for (index, [high, low]) in chunks.iter().enumerate() {
-        digest[index] = (decode_nibble(*high)? << 4) | decode_nibble(*low)?;
+    for (index, offset) in (0..ENCODED_DIGEST_BYTES).step_by(16).enumerate() {
+        let word = encoded
+            .get(offset..offset + 16)
+            .and_then(|chunk| u64::from_str_radix(chunk, 16).ok())
+            .ok_or(IdentityError::InvalidDigest)?;
+        let start = index * size_of::<u64>();
+        digest[start..start + size_of::<u64>()].copy_from_slice(&word.to_be_bytes());
     }
     Ok(digest)
-}
-
-fn decode_nibble(byte: u8) -> Result<u8, IdentityError> {
-    match byte {
-        b'0'..=b'9' => Ok(byte - b'0'),
-        b'a'..=b'f' => Ok(byte - b'a' + 10),
-        _ => Err(IdentityError::InvalidDigest),
-    }
 }
 
 fn parse_typed_identity(
