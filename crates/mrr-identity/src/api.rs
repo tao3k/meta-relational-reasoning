@@ -128,6 +128,27 @@ fn parse_typed_identity(
     encoded: &str,
     expected: IdentityDomain,
 ) -> Result<[u8; DIGEST_BYTES], IdentityError> {
+    let domain = expected.as_str().as_bytes();
+    let domain_start = b"mrr:".len();
+    let domain_end = domain_start + domain.len();
+    let digest_start = domain_end + b":v1:".len();
+    let bytes = encoded.as_bytes();
+    if bytes.len() == digest_start + ENCODED_DIGEST_BYTES
+        && bytes.starts_with(b"mrr:")
+        && bytes[domain_start..domain_end] == *domain
+        && bytes[domain_end..digest_start] == *b":v1:"
+    {
+        // The complete prefix is ASCII, so this offset is a UTF-8 boundary.
+        return decode_digest(&encoded[digest_start..]);
+    }
+
+    parse_typed_identity_error(encoded, expected)
+}
+
+fn parse_typed_identity_error(
+    encoded: &str,
+    expected: IdentityDomain,
+) -> Result<[u8; DIGEST_BYTES], IdentityError> {
     let mut fields = encoded.split(':');
     if fields.next() != Some("mrr") {
         return Err(IdentityError::SchemaMismatch);

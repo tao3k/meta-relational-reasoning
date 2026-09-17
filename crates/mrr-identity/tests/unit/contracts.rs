@@ -3,9 +3,9 @@ use std::str::FromStr;
 use serde::Deserialize;
 
 use crate::{
-    ActionId, DerivationId, EntityId, FactId, GenerationId, IdentityDomain, LineageEdgeId,
-    LineageNodeId, QueryId, QueryOperatorId, ReasoningBundleId, RelationId, RevisionId, RuleId,
-    RulePackId, StateId, TransitionId,
+    ActionId, DerivationId, EntityId, FactId, GenerationId, IdentityDomain, IdentityError,
+    LineageEdgeId, LineageNodeId, QueryId, QueryOperatorId, ReasoningBundleId, RelationId,
+    RevisionId, RuleId, RulePackId, StateId, TransitionId,
 };
 
 const CANONICAL_INPUT: &[u8] = b"depends_on";
@@ -154,6 +154,28 @@ fn empty_or_noncanonical_identity_inputs_fail_closed() {
             "mrr:relation:v1:fb20e2c5b1cd7b4a575a0f1fdce0e00c444fab69698ed8c9da105654e0ccd4f7:extra"
         )
         .is_err()
+    );
+}
+
+#[test]
+fn identity_parse_fast_path_preserves_typed_diagnostics() {
+    let relation = RelationId::from_canonical_bytes(CANONICAL_INPUT)
+        .expect("relation")
+        .to_string();
+    assert_eq!(
+        EntityId::from_str(&relation),
+        Err(IdentityError::DomainMismatch {
+            expected: IdentityDomain::Entity,
+            actual: "relation".to_owned(),
+        })
+    );
+    assert_eq!(
+        RelationId::from_str(&relation.replacen(":v1:", ":v2:", 1)),
+        Err(IdentityError::VersionMismatch("v2".to_owned()))
+    );
+    assert_eq!(
+        RelationId::from_str(&format!("{relation}:extra")),
+        Err(IdentityError::MalformedEncoding)
     );
 }
 
