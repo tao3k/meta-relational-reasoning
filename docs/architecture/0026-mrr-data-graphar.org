@@ -1,20 +1,25 @@
 #+title: RFC 0026: MRR to mrr-data Boundary
-#+status: proposed
+#+status: partially implemented
 #+options: toc:2
 #+property: header-args :eval never-export :exports code
 
 * Purpose
 
-This RFC records only the upstream MRR side of the proposed =mrr-data=
+This RFC records only the upstream MRR side of the =mrr-data=
 boundary.  The canonical data-plane design is owned by the separate
 [[https://github.com/tao3k/mrr-data/blob/main/docs/architecture/0001-mrr-data-plane.org][mrr-data RFC 0001]].
 It specifies Arrow mapping, GraphAr projection, CID/CAR packaging, security,
 repository shape, and delivery milestones.  Those details are not duplicated
 here because that would create two drifting specifications.
 
-Both RFCs remain proposals.  The =mrr-data= repository now contains an initial
-scalar relation-row Arrow round-trip slice, but neither repository claims the
-complete data plane, GraphAr, CID/CAR, or physical query-binding closure.
+The boundary is implemented for lossless Arrow relation batches, local
+Manifest V1 and CID/CAR validation, and a maintained native GraphAr
+write/read projection slice.  That GraphAr slice currently establishes
+physical interoperability, not complete semantic import: it does not yet
+reconstruct and re-admit every MRR identity and =RelationContext= field.
+Physical query binding and distributed providers also remain open.  This RFC
+therefore records a partially implemented boundary rather than claiming a
+complete data plane.
 
 * Ownership and dependency direction
 
@@ -191,7 +196,7 @@ No Arrow or GraphAr dependency is justified merely to answer those questions.
 
 * Cross-repository acceptance gates
 
-The proposal becomes implemented only when the downstream repository provides,
+The boundary becomes complete only when the downstream repository provides,
 in dependency order:
 
 1. property-tested =Fact -> Arrow -> Fact= round trips preserving every MRR
@@ -207,5 +212,8 @@ in dependency order:
    reducing the declared corpus;
 8. proof that MRR has no reverse storage dependency.
 
-Until those gates pass, this RFC defines a boundary only.  The authoritative
-implementation plan and its current status live in =mrr-data= RFC 0001.
+Gates 1--4 and 8 have implementation evidence.  Gate 5 has structural native
+write/read evidence but remains incomplete as a semantic import contract until
+GraphAr readback reconstructs and re-admits the entire MRR fact context.
+Gates 6 and 7 remain open.  The authoritative implementation plan and its
+current status live in =mrr-data= RFC 0001.

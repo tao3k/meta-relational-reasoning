@@ -159,8 +159,10 @@ MRR deliberately has a narrow ownership boundary:
 - **Ascent** computes candidate fixed points but cannot publish facts or invent
   MRR identities.
 - **Runtime and data systems** own persistence, concurrency, physical layout,
-  indexes, and external effects. The proposed `mrr-data` plane remains a
-  downstream design, not an MRR dependency.
+  indexes, and external effects. The downstream `mrr-data` plane implements
+  Arrow interchange, local CID/CAR packaging, and a maintained GraphAr native
+  projection slice without becoming an MRR dependency. Complete GraphAr
+  semantic import and physical query binding remain downstream work.
 
 MRR is not GraphQL, a graph database, a storage format, an Agent orchestrator,
 or a second parser. A Property Graph is one data model that can be projected
@@ -206,7 +208,7 @@ their owners:
 - [truth and incompleteness](docs/architecture/0023-mrr-truth-and-incompleteness.org)
 - [ISO GQL language profile](docs/architecture/0024-iso-gql-language-profile.org)
 - [POO Flow and MRR assurance boundary](docs/architecture/0025-poo-flow-mrr-agent-assurance.org)
-- [proposed `mrr-data` boundary](docs/architecture/0026-mrr-data-graphar.org)
+- [`mrr-data` boundary and implementation gates](docs/architecture/0026-mrr-data-graphar.org)
 - [relation-catalog query binding](docs/architecture/0029-relation-catalog-query-binding.org)
 - [entity and property catalog](docs/architecture/0030-entity-property-catalog.org)
 - [static query typing and result schema](docs/architecture/0031-static-query-typing.org)
