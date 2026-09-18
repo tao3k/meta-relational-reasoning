@@ -1,0 +1,31 @@
+#+title: M6 Reasoning Bundle Ownership Retrieval
+#+options: toc:nil
+
+* Current owners inspected
+
+- =mrr-relation= owns typed schemas and context-bearing facts.
+- =mrr-query= owns language-neutral =MetaQueryIr=.
+- =mrr-logic= owns safe rules; it has no provider abstraction.
+- =mrr-transition= owns immutable-generation deltas.
+- =mrr-bundle= previously validated only flat relations, facts, rules, and
+  transitions.
+- =gql-reasoning= exposes a frontend-specific provider trait. It is not copied
+  into the MRR bundle or native projection.
+
+* M6 gap
+
+The prior flat bundle had no query templates, rule-pack authority, inverse
+goals, named transition systems, lineage policy, projection policy, validation
+profile, canonical wire form, or bundle identity. It also allowed public struct
+literals to bypass admission.
+
+* Decision
+
+=ReasoningBundleDeclaration= is untrusted input. =ReasoningBundle::admit= is
+the only constructor for the validated object. It normalizes ordering, validates
+every cross-reference and budget, rejects dependency cycles, derives canonical
+bytes, and only then derives =ReasoningBundleId=.
+
+Gerbil owns the default reasoning-module declaration. The existing single
+=build.ss= AOT stage projects that declaration through the same staged
+=native.scm= and typed native ABI used by the grammar projection.

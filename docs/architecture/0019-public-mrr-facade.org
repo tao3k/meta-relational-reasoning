@@ -1,0 +1,33 @@
+#+title: RFC 0019 - Public MRR Facade
+#+status: accepted
+
+* Surface
+
+=meta-relational-reasoning= exposes one =MrrEngine= builder and flat MRR
+semantic types.  It does not reexport backend crates as modules.  Consumers do
+not name Ascent, Gerbil, GQL AST, parser tables, or native ABI details.
+
+#+begin_src mermaid
+flowchart LR
+  B[Validated ReasoningBundle] --> E[MrrEngine]
+  E --> Q[query]
+  E --> D[derive + materialize]
+  E --> Y[why + why-not + impact]
+  E --> S[check safety]
+  A[admit facts] --> E2[New immutable MrrEngine]
+#+end_src
+
+Engine admission is functional: adding facts validates and returns a new
+engine.  It never mutates or publishes live state.  Deduction is configured by
+=DeductionPlan= and =DeductionLimits=, which hide the execution backend while
+preserving explicit budgets.
+
+#+begin_src typst
+#set page(width: 150mm, height: auto, margin: 12mm)
+$ E = "MrrEngine"("ReasoningBundle") $
+$ E' = E."admit"("facts") $
+$ E != E' quad "and" quad "live-state"(E) = "none" $
+#+end_src
+
+Lineage and transition owners retain validation authority.  The facade only
+composes their immutable outputs after exact identity and generation binding.

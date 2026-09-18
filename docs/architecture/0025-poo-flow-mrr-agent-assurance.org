@@ -1,0 +1,315 @@
+#+title: POO Flow and MRR Agent Assurance Boundary
+#+status: accepted
+
+* Context
+
+MRR is one semantic layer in an agent system.  It is not an agent framework,
+workflow runtime, session manager, sandbox, or general policy control plane.
+The surrounding control-plane owner is
+[[https://github.com/tao3k/poo-flow][POO Flow]], whose public architecture
+uses functional composition and Gerbil POO objects to describe strategies,
+profiles, modules, workflows, sessions, loops, capabilities, proof facts, and
+runtime handoff values before heavy execution.
+
+MRR supplies a narrower kernel to that control plane: typed facts and rules,
+bounded inference, semantic lineage, immutable generation transitions, safety
+receipts, and fail-closed admission.  Treating MRR alone as the entire Agent
+architecture would leave scheduling, authorization, lifecycle, recovery, and
+effect ownership unassigned.
+
+* Content Graph and Context Graph
+
+This architecture distinguishes persistent content from executable context.
+The Content Graph is the system's single canonical semantic standard; the
+distinction is normative:
+
+| Concern | Content Graph | Context Graph |
+|-
+| meaning | canonical graph of source-bound content identities, revisions, facts, relations, and provenance | bounded projection assembled for one Agent, task, turn, and capability scope |
+| lifetime | durable and versioned | ephemeral, rebuildable, and eligible for compaction |
+| human role | supports cognition, explanation, navigation, and shared sensemaking | presents the smallest useful working view for a decision |
+| authority | each fact names one canonical source authority and exact generation | no independent truth authority; every node is anchored to Content |
+| owner | source owners plus MRR semantic admission | POO Flow projection policy plus the runtime context envelope |
+
+"Canonical" means one authority for a fact identity, not one physical storage
+system.  Multiple source systems can populate the graph, but they cannot
+silently co-own the same fact or erase disagreements.  Conflicting observations
+remain separately identified proposals until an owning admission path resolves
+or preserves the conflict.
+
+Context Engineering is therefore projection engineering rather than prompt
+decoration.  POO Flow selects, ranks, redacts, compacts, and expires content
+according to task, actor, capability, policy, time, and attention budget.  MRR
+ensures that inferred nodes and edges retain typed identity, exact semantic
+generation, rule/query evidence, and an admission receipt.  The runtime may
+consume the resulting Context Graph, but it cannot promote a model response,
+tool result, or cached summary into canonical Content by itself.
+
+** Anchoring invariants
+
+1. Every Context node resolves to a Content identity and exact revision or
+   semantic generation.
+2. Every inferred Context edge resolves to its query/rule, supporting facts,
+   and MRR admission receipt.
+3. Authorization, observation time, and expiry are part of the projection
+   boundary rather than untyped prompt metadata.
+4. A changed source revision, revoked capability, expired observation, or
+   invalidated derivation invalidates the affected Context projection.
+5. Agent and runtime output re-enters the system as a proposal.  Only the
+   owning source path and MRR admission may create authoritative Content.
+
+#+begin_src typst
+#set page(width: 150mm, height: auto, margin: 12mm)
+#set text(size: 10pt)
+
+= Content-anchored context
+
+Let $C_g = (V_g, E_g)$ be the canonical Content Graph at semantic generation
+$g$, and let $p = ("agent", "task", "turn", "capabilities", "policy",
+"time", "budget")$ be a POO Flow projection scope.  A Context Graph is not an
+independent graph of truth:
+
+$ X_(p,g) = pi_p(C_g). $
+
+Every projected node carries an anchor $a(x) = ("content-id", g,
+"provenance")$, and every inferred edge additionally carries an admitted MRR
+receipt $r(e)$.
+
+#let anchored(x, C, g) = $
+  exists v in C.V: a(x)."content-id" = v."id"
+  and a(x)."generation" = g
+$
+
+#let valid(X, C, p, g) = $
+  forall x in X.V: anchored(x, C, g) and "allowed"(p, x)
+  and forall e in X.E: e in C.E or "admitted"(r(e), g)
+$
+
+$ "usable"(X_(p,g)) "iff" valid(X_(p,g), C_g, p, g). $
+
+If a source revision advances $C_g$ to $C_(g+1)$, every node whose anchor or
+authorization changed is invalid in the old projection, and the usable context
+is recomputed rather than patched as a second authority:
+
+$ "changed"(C_g, C_(g+1)) => X_(p,g+1) = pi_p(C_(g+1)). $
+
+For an Agent observation $o$:
+
+$
+  o "not-in" C_g
+  quad and quad
+  "admit"("owner", o, "evidence", g) = "accepted"
+  => o in C_(g+1).
+$
+
+Without that admission result, $o$ remains a proposal and cannot calibrate any
+other Context Graph as canonical Content.
+#+end_src
+
+These constraints let the Content Graph continuously calibrate and anchor
+Context Graphs without freezing them.  Context remains cheap to rebuild and
+specialize; Content remains stable enough for human/Agent shared cognition,
+audit, and replay.
+
+The separation is consistent with three external results without treating any
+of them as this repository's semantic authority:
+
+- [[https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents][Anthropic's context-engineering guidance]] defines the work as repeatedly
+  curating high-signal information for a finite context window;
+- [[https://www.microsoft.com/en-us/research/publication/from-local-to-global-a-graph-rag-approach-to-query-focused-summarization/][GraphRAG]] reports gains for global sensemaking over large corpora, supporting
+  a graph-shaped content surface but not a truth claim for generated summaries;
+- [[https://www.w3.org/TR/prov-primer/][W3C PROV]] distinguishes entities, revisions, derivations, activities, and
+  responsible agents, which motivates source- and generation-bound anchors.
+
+* Layer ownership
+
+| Layer | Owner | Responsibility | Explicit non-responsibility |
+|-
+| canonical content | source owners and the Content Graph contract | source identity, revision, provenance, durable shared facts | task-local selection or Agent scheduling |
+| context engineering | POO Flow | Content projection, ranking, redaction, compaction, expiry, policy and capability scope | manufacturing Content truth or semantic admission |
+| strategy and composition | POO Flow | POO/C3 policy objects, profiles, workflows, sessions, loops, resource ordering, retry policy, runtime handoff | fixed-point fact derivation and live effect execution |
+| semantic reasoning | MRR | identity, relations, queries, rules, lineage, generations, transitions, bounded safety, admission | Agent lifecycle, sandbox placement, scheduling, persistence |
+| candidate evaluation | Ascent | bounded Datalog-style fixed point | identity allocation, lineage admission, publication |
+| specification and checking | TLA+/TLC and Lean | finite transition/composition counterexamples and kernel-checked contract theorems | production scheduling or runtime authority |
+| durable execution | Rust, Marlin, or another admitted runtime | concurrency, persistence, subprocesses, IO, checkpoints, external effects | manufacturing POO Flow policy facts or MRR semantic receipts |
+
+#+begin_src mermaid
+flowchart TD
+  U[Agent intent and environment]
+  S[Source systems and artifacts]
+  C[Content Graph<br/>canonical identities + revisions + provenance]
+  X[Context Graph<br/>task-local anchored projection]
+  P[POO Flow control plane<br/>strategy + policy + lifecycle + handoff]
+  B[MRR bundle and typed semantic state]
+  A[Ascent bounded candidates]
+  M[MRR lineage + transition admission]
+  R[Durable runtime<br/>concurrency + persistence + effects]
+  V[TLA+/TLC composition scenarios]
+  L[Lean contract proofs]
+
+  S -->|source-owned revisions| C
+  C -->|typed facts + exact generation| B
+  B --> A
+  A --> M
+  M -->|admitted relations + lineage| C
+  U --> P
+  P -->|projection policy + budget| X
+  C -->|anchored selection| X
+  X -->|bounded executable context| P
+  P -->|authorized handoff| R
+  R -->|observations remain proposals| B
+  V -. checks protocol interleavings .-> P
+  V -. checks semantic transitions .-> M
+  L -. checks static contracts .-> P
+  L -. checks admission theorems .-> M
+#+end_src
+
+POO Flow decides which resource may run next and which policy, scope, retry,
+and lifecycle evidence is required.  MRR decides whether a proposed semantic
+result is complete, identity-bound, lineage-valid, and transition-valid.  The
+runtime performs admitted external work.  No layer may fabricate the receipt
+owned by another layer.
+
+* Why TLA+ crosses both layers
+
+Agent safety properties commonly span more than one component.  Delegation,
+revocation, cancellation, retry, checkpoint recovery, and exactly-once effect
+commit begin in the POO Flow control plane, while semantic generation and
+lineage validity belong to MRR.  A local unit test in either repository cannot
+establish that the composed state machine preserves the property.
+
+TLA+ is therefore most useful at the composition boundary.  It can model the
+POO Flow protocol state, MRR semantic state, runtime/environment actions, and
+adversary actions in one finite scenario without moving runtime authority into
+the specification.  TLC counterexamples can then become source-linked
+cross-repository regression scenarios.
+
+This follows the assurance shape described by
+[[https://arxiv.org/abs/2603.23801][AgentRFC]]: normative requirements
+are lowered to a typed protocol model, invariants are checked across protocol,
+environment, and adversary actions, and counterexamples are replayed against
+implementations.  Its Composition Safety result is the relevant warning:
+component-local safety does not imply safety after composition.
+
+* Current implementation evidence
+
+The current checkout already consumes POO Flow rather than rebuilding its
+composition machinery:
+
+- =scheme/search/playbook.ss= uses POO Flow flow, plan, object-syntax, and
+  functional APIs to compile Search composition into a DAG receipt;
+- =scheme/reasoning/core.ss= uses POO objects for the ReasoningBundle
+  declaration and its bounded resource driver;
+- the native build consumes POO Flow observability modules;
+- =gerbil.pkg= declares only =gerbil-parser=, while =gerbil-parser= owns the
+  transitive POO Flow revision.  MRR must not add a second direct pin.
+
+The implemented evidence is still narrower than the complete diagram.  Current
+TLC parity covers committed MRR transition fixtures.  It does not yet prove a
+composed POO Flow session/retry/effect protocol, all AgentRFC invariants, or a
+live runtime replay.  Those require source-linked cross-layer scenarios and
+receipts rather than a documentation-only conformance claim.
+
+* Integration contract
+
+A future end-to-end scenario is admitted only when it identifies:
+
+1. the POO Flow policy/profile and control-plane generation;
+2. the exact MRR bundle, semantic generation, and admission receipt;
+3. the runtime/environment/adversary actions admitted by the scenario;
+4. the TLA+ invariant and TLC counterexample or safe finite-model receipt;
+5. the implementation replay result and causal lineage back to source
+   requirements.
+
+Failure or incompleteness at any stage remains typed and cannot be projected as
+an Agent-level safety claim.
+
+* Relation to Palantir
+
+The closest system-level comparison is not Palantir versus MRR.  Palantir's
+published architecture integrates Foundry, the Ontology, and AIP: enterprise
+data is represented as objects and links, actions provide operational verbs,
+logic evaluates decisions, security governs access, and agents operate on top
+of that shared system.  The corresponding comparison unit here is POO Flow,
+MRR, and the admitted runtime together.
+
+| Concern | Palantir public architecture | This architecture |
+|-
+| Agent and workflow composition | AIP and Ontology-powered workflows | POO Flow strategies, Profiles, sessions, loops, and handoffs |
+| semantic world | Ontology objects, links, properties, actions, and functions | MRR facts, relations, rules, generations, and transitions |
+| operational change | Ontology Actions and external-system writeback | POO Flow-authorized handoff to a durable runtime |
+| reasoning boundary | logic services and functions integrated with the Ontology | Ascent proposes; MRR lineage and transition owners admit |
+| verification evidence | platform security, audit, lineage, and scenario facilities | typed receipts, Lean contracts, and TLA+/TLC differential scenarios |
+
+Palantir's Ontology is closest to the combined Content Graph plus operational
+world model, while AIP consumes scoped views of that world for human/Agent
+workflows.  This architecture keeps the owners more explicit: Content is the
+canonical anchor, POO Flow engineers task-local Context, MRR admits semantic
+derivations, and the runtime owns effects.  The separation prevents a useful
+Agent context from accidentally becoming a competing source of truth.
+
+Neo4j and other Property Graph databases sit at a different layer.  They store
+and query nodes, relationships, labels, and properties through languages such
+as Cypher, openCypher, GQL, or PGQL.  A deployment may use one of them to
+materialize Content, Context, or both, but the engine is not intrinsically a
+Context Graph.  Palantir's Ontology likewise describes a shared operational
+world integrating data, logic, actions, and security; it is closer to canonical
+Content plus an operational model than to a disposable Context projection.
+AIP or another Agent workflow can derive scoped Context from that world.
+
+The official references are Palantir's
+[[https://www.palantir.com/docs/foundry/architecture-center/ontology-system][Ontology system]],
+[[https://www.palantir.com/docs/foundry/aip][AIP overview]], and
+[[https://www.palantir.com/docs/foundry/data-lineage/overview][Data Lineage overview]].
+They establish the comparison axes; they are research evidence, not semantic
+authorities or dependencies for this repository.
+
+** Three lineage layers
+
+The Palantir comparison exposes three distinct lineage questions:
+
+1. Data pipeline lineage asks which datasets, transforms, schemas, builds, and
+   source assets produced another dataset.
+2. MRR semantic lineage asks which admitted facts, rules, query operators, and
+   transitions justify a conclusion or are affected by its invalidation.
+3. POO Flow/runtime lineage asks which policy, session, delegation, handoff,
+   attempt, reconciliation, and external effect produced an operational result.
+
+MRR owns only the second layer.  A future integrated evidence graph may project
+all three for navigation, but it must preserve their typed identities and
+independent admission owners rather than merge them into an untyped provenance
+edge set.
+
+* Why Ascent and BYODS matter to Content and Context
+
+Content Graph reasoning is recursive and relational: reachability,
+dependencies, invalidation impact, and policy inheritance are naturally stated
+as rules and least fixed points.  Context construction is selective: it needs a
+bounded, explainable projection rather than the entire closure.  MRR separates
+these concerns by letting Ascent compute candidates while MRR retains identity,
+generation, lineage, bounds, and publication authority.
+
+The [[https://doi.org/10.1145/3622840][Bring Your Own Data Structures to Datalog
+(BYODS)]] paper identifies a further performance boundary.  Ordinary Datalog
+relations are commonly represented by generic maps or trees, and that
+representation can prevent the desired algorithmic complexity.  BYODS keeps
+declarative rules but makes their compiled joins parametric over user-provided
+Rust data structures through a concretization interface.  Its authors position
+the approach as a natural extension of Rust-embedded Datalog systems including
+Ascent.
+
+For MRR this is an optimization seam, not a new authority:
+
+1. the Content schema, source identities, rule meaning, and generation remain
+   unchanged;
+2. a specialized relation representation may replace a generic join only with
+   semantic equivalence and benchmark evidence;
+3. the evaluator still emits bounded deterministic candidates;
+4. MRR still reconstructs or validates witnesses and admits the complete
+   lineage/transition receipt atomically;
+5. Context Graph construction consumes only admitted results anchored to exact
+   Content generations.
+
+The current implementation uses Ascent and its lattice support; it does not yet
+implement a BYODS backend.  The paper therefore justifies where a future
+large-graph optimization belongs, not a present performance claim.

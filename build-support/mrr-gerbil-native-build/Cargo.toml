@@ -1,0 +1,15 @@
+[package]
+name = "mrr-gerbil-native-build"
+description = "Native AOT archive owner for the MRR Gerbil grammar ABI"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[dependencies]
+gerbil-scheme-native-build.workspace = true
+
+[lints]
+workspace = true

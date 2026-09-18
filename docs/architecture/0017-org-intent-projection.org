@@ -1,0 +1,33 @@
+#+title: RFC 0017 - Org Intent Projection
+#+status: accepted
+
+* Boundary
+
+Org is a human-authored semantic root, not a runtime dependency.  =mrr-intent=
+accepts one bounded ASCII Org vocabulary rooted at =Intent= with exactly the
+required semantic sections =Goal=, =Constraint=, =Question=, and =Invariant=.
+Unknown headings and content outside those sections fail closed.
+
+#+begin_src mermaid
+flowchart LR
+  O[Org intent] --> P[Intent projection]
+  P --> M[IntentSemanticModel]
+  M --> D[Intent digest]
+  D --> B[ReasoningBundle selection]
+  M2[Changed intent] --> D2[Changed digest]
+  D2 --> S[Old binding is Stale]
+#+end_src
+
+The projection is deliberately narrower than general Org parsing.  It produces
+canonical ordered semantic entries and a length-framed SHA-256 digest.  Bundle
+selection is an explicit caller action recorded by =IntentBundleBinding=.
+
+#+begin_src typst
+#set page(width: 150mm, height: auto, margin: 12mm)
+$ d = "sha256"("mrr.intent.v1", "goals", "constraints", "questions", "invariants") $
+$ "binding" = (d, "ReasoningBundleId") $
+$ d != d' => "status"("binding", d') = "Stale" $
+#+end_src
+
+No changed intent can silently reuse an old binding.  The projection does not
+compile Scheme, evaluate rules, or mutate a selected bundle.

@@ -1,0 +1,23 @@
+[package]
+name = "mrr-intent"
+description = "Bounded Org intent projection and bundle binding"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+mrr-identity.workspace = true
+sha2.workspace = true
+
+[dev-dependencies]
+criterion.workspace = true
+mrr-asp-rust-build-support.workspace = true
+
+[[bench]]
+name = "intent_perf"
+harness = false
+
+[lints]
+workspace = true

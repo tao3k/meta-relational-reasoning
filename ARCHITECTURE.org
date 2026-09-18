@@ -1,0 +1,69 @@
+#+title: Meta-Relational Reasoning Architecture
+#+options: toc:2
+#+property: header-args :eval never-export :exports code
+
+* Dependency graph
+
+#+name: workspace-dependency-graph
+#+begin_src mermaid
+flowchart LR
+    source[GQL source] --> parser[gerbil-parser AOT runtime]
+    parser --> artifact[lossless ParseArtifact and Rowan CST]
+    artifact --> frontend[mrr-frontends semantic lowering]
+    frontend --> query[mrr-query MetaQueryIr]
+    query --> facade[meta-relational-reasoning]
+    query --> ascent[mrr-ascent bounded evaluator]
+    scheme[Gerbil reasoning declarations] --> native[mrr-gerbil native ABI]
+    native --> facade
+    contracts[mrr identity relation logic lineage transition] --> facade
+#+end_src
+
+* Ownership boundary
+
+=gerbil-parser= is the sole GQL concrete-syntax owner. It produces a
+source-bound, lossless parse artifact through the linked Gerbil AOT runtime.
+=mrr-gerbil= owns the native ABI and Rowan projection. =mrr-frontends= lowers
+the admitted parser-owned CST directly into =mrr-query::MetaQueryIr=.
+
+There is no Rust GQL lexer, parser, public AST, catalog, semantic analyzer, IR,
+compiler, facade, command subprocess, or compatibility path in this workspace.
+Unsupported parser syntax and semantics fail closed with typed errors. An
+accepted CST must reproduce the complete source before semantic lowering.
+
+* Reasoning boundary
+
+The =mrr-*= crates own language-neutral identity, relation, query, logic,
+bundle, lineage, revision, transition, and conformance contracts. Ascent may
+propose bounded fixed-point candidates, but only the public
+=meta-relational-reasoning= facade can admit and materialize a complete result.
+Gerbil and POO own declarative reasoning programs and outer orchestration; they
+do not run inside the Rust query hot path.
+
+The complete ownership decision is recorded in
+=docs/architecture/0001-mrr-workspace-ownership.org=. Parser authority and ISO
+profile evidence are recorded in RFC 0002 and RFC 0024.
+
+* Mathematical publication view
+
+#+name: architecture-typst-publication
+#+begin_src typst
+#set page(paper: "a4", margin: 24mm)
+#set text(font: "Libertinus Serif", size: 10.5pt)
+
+= Meta-Relational Reasoning Architecture
+
+Let $"parse" : "Source" -> "CST"$ be the parser-owned AOT operation and
+$"lower" : "CST" -> "MetaQueryIr"$ be the only GQL semantic projection in MRR.
+The frontend requires $"bytes"("parse"(s)) = s$ and publishes no query when
+parsing, semantic lowering, or admission fails.
+
+The reasoning predicate $"BundleValid"(R, F_0, P, T)$ is defined by the
+language-neutral MRR contracts and detailed in RFC 0001.
+#+end_src
+
+* Assurance status
+
+The active profile is intentionally bounded and does not claim full ISO/IEC
+39075 conformance. =scheme/grammar/gql-profile.ss= records implemented,
+partial, and not-implemented feature families against executable parser-owned
+evidence.

@@ -1,0 +1,114 @@
+#+title: MRR Differential Oracles
+#+startup: overview
+
+* Status
+
+Normative for MVP differential validation. Oracle implementations are test-only
+and never become production dependencies or compatibility paths.
+
+* Query and grammar parity
+
+The committed positive and negative GQL/Cypher corpora are evaluated through
+the Gerbil-owned grammar projection and the Rust CST frontend. The corpus gate
+requires equal acceptance for positive cases and equal rejection for negative
+cases. Rowan remains only the lossless CST sink.
+
+Grafeo, froGQL, and SeleneDB are literature and behavior references. They are
+not linked, imported, or exposed by the production workspace.
+
+* Transition parity
+
+The transition oracle contains ten finite fixtures: five safe and five unsafe.
+Each fixture is evaluated by the MRR bounded safety checker and by a generated
+TLA+ module executed with TLC from the reproducible devenv toolchain.
+
+For every fixture the safe or unsafe status must agree. For unsafe fixtures,
+the number of states in the TLC error trace must equal the number of states in
+the MRR counterexample IR. Generated TLA+, TLC state data, and logs live only in
+an isolated temporary directory and are removed after validation.
+
+TLC is an independent test oracle. It is not linked into MRR, is not used at
+runtime, and owns no state, identity, lineage, admission, or publication
+authority.
+
+* Why TLA+ and TLC
+
+Transition safety is a state-space question, not only a collection of unit
+examples.  TLA+ provides an implementation-independent language for describing
+states, actions, and invariants, while TLC can exhaustively explore the finite
+fixture models and return a counterexample trace.  The original
+[[https://lamport.azurewebsites.net/pubs/yuanyu-model-checking.pdf][TLC paper]]
+defines this finite-state invariant-checking role.
+
+That independence is the main reason for the oracle.  Re-running the Rust
+safety checker through a second Rust helper would risk reproducing the same
+state-expansion, cycle, or invariant bug.  TLC instead gives the test suite a
+separately implemented answer with two values that map directly to the public
+contract: safe/unsafe status and counterexample path length.
+
+TLC is deliberately not the production engine:
+
+- it does not allocate or validate MRR identities;
+- it does not admit lineage or publish semantic generations;
+- a passing finite model is not a proof for every unbounded deployment;
+- budget exhaustion in the Rust checker remains =Incomplete=, never =Safe=.
+
+Property tests remain useful for broad input generation, and Lean remains the
+kernel-checked owner for stated admission theorems.  They answer different
+questions: property tests search generated examples, Lean checks formal
+theorems, and TLC differentially checks executable finite transition models.
+Keeping all three prevents one mechanism from becoming its own oracle.
+
+** Why this matters for agents
+
+An agent is not only a model invocation.  Once it discovers capabilities,
+delegates work, calls tools, retries after failure, resumes from checkpoints, or
+crosses MCP/A2A-style boundaries, it participates in a concurrent stateful
+protocol.  The model output may remain probabilistic, but the surrounding
+control-plane obligations must be deterministic and temporal:
+
+- consent or authorization must precede the effect it permits;
+- delegated authority must not silently widen across a chain;
+- cancellation, revocation, and generation changes must invalidate stale work;
+- retries must not duplicate an effect that is defined as single-commit;
+- every admitted effect must retain complete evidence and accountability;
+- properties preserved by each component must also survive their composition.
+
+These properties concern sequences of states and actions, so example-based
+tests of isolated calls are insufficient.  TLA+ makes the state variables,
+environment actions, adversary actions, and invariants explicit.  TLC then
+searches interleavings and returns a concrete counterexample trace that can be
+projected into a regression scenario.
+
+MRR owns only the semantic-state portion of that protocol.  POO Flow owns the
+surrounding strategy, policy, session, loop, retry, and runtime-handoff
+composition.  Cross-layer Agent assurance therefore requires the boundary in
+[[file:0025-poo-flow-mrr-agent-assurance.org][POO Flow and MRR Agent Assurance]];
+an MRR-only transition fixture cannot prove the entire Agent control plane.
+
+The 2026
+[[https://arxiv.org/abs/2603.23801][AgentRFC: Security Design Principles and Conformance Testing for Agent Protocols]]
+provides direct evidence for this use.  It defines an Agent Protocol Stack,
+formalizes eleven agent-protocol security and completeness principles as TLA+
+invariants, lowers normative clauses through a typed Protocol IR with explicit
+Protocol/Environment/Adversary action separation, and replays model-checker
+counterexamples against live SDK implementations.  Its Composition Safety
+principle is especially relevant to MRR: properties that hold for individual
+protocols can fail when a bridge or shared service composes them.
+
+The architectural mapping is:
+
+| Agent assurance stage | MRR owner |
+|-
+| source requirement and assumption | versioned declaration and evidence context |
+| typed state/action model | =mrr-transition= |
+| invariant result and bounded exploration | =SafetyCheckReceipt= |
+| concrete failing execution | =CounterexampleIr= |
+| causal explanation and affected results | =mrr-lineage= |
+| implementation-level replay | conformance and differential scenarios |
+
+This mapping is a design direction, not an AgentRFC conformance claim.  The
+current repository proves parity only for the committed finite transition
+fixtures.  Adopting AgentRFC properties requires source-linked invariants,
+Protocol/Environment/Adversary action ownership, composition fixtures, and live
+counterexample replay as separately admitted contracts.

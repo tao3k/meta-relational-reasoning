@@ -1,0 +1,234 @@
+#+title: RFC 0002: Gerbil Grammar Authority and Rust Projection
+#+author: gql-rust contributors
+#+options: toc:2
+#+property: header-args :eval never-export :exports code
+
+* Status
+
+Accepted architecture.
+
+* Decision
+
+Gerbil Parser owns the complete versioned ISO GQL and openCypher grammars,
+bound grammar IR, parser IR, and generated parser machines. MRR imports those
+language descriptors through =parser-authority.ss=. Its
+=with-mrr-gql-declaration= form is a downstream Rowan/MetaQueryIR projection,
+not a second complete grammar. Each POO projection carries the exact parser V1
+schema, language, version, contract, grammar IR, and parser IR that authorize it.
+
+=gerbil.pkg= declares only the linked Gerbil Parser edge. POO Flow and
+=asp-gerbil-scheme= are inherited through Gerbil Parser rather than independently
+pinned by MRR. Root =build.ss= declares the library package through the ASP POO
+extension and hands execution to Gerbil's first-party =defbuild-script= and
+=std/make=. It produces the normal project-local =.gerbil= package artifacts;
+MRR does not implement a parallel Scheme package builder.
+
+Cargo has a separate target-link responsibility. The workspace pins the
+=gerbil-scheme-native-build= and =gerbil-scheme-sys= interfaces from
+=gerbil-scheme-rust= to the same revision. A thin build adapter asks that
+upstream implementation to stage =native-program.ss=, compile the complete
+Gerbil program closure to target-native Gambit objects, package one static
+archive, generate its linker, and emit Cargo link directives. The adapter owns
+only MRR's program root, required-module contract, Cargo rebuild inputs, and
+observations; it is neither a replacement for =std/make= nor a grammar
+authority.
+
+The declarative development environment leaves =GERBIL_PATH= at Gerbil's
+default.  =gxpkg env= resolves the =gerbil.pkg= graph in its standard ignored
+project-local =.gerbil= context.  The =mrr-gerbil= command delegates every
+operation directly to the first-party =gerbil= multicall command after removing
+only Nix C compiler and SDK variables which are incompatible with the Homebrew
+Gerbil/Gambit toolchain.  It does not implement build or test semantics:
+=gerbil build= delegates to =gxpkg= and =gerbil test= delegates to =gxtest=.
+The =mrr-gerbil-deps= task is the provisioning entrypoint and executes
+=mrr-gerbil deps --install= against
+the exact revisions in =gerbil.pkg=; generation does not depend on an
+undeclared user-global Gerbil package installation.
+
+Rust build, test, and run commands use =mrr-cargo=. It delegates to
+=gerbil env cargo= so the executable inherits gxpkg's canonical project-local
+=GERBIL_PATH= and can admit parser-owned content-addressed Grammar IR sidecars.
+Unlike the Scheme compiler edge, =mrr-cargo= retains devenv's compiler and SDK
+variables; the Cargo AOT adapter quarantines only the Gerbil subprocesses it
+owns. This separation prevents both missing runtime assets and macOS SDK drift.
+
+The CST parser follows the pull-event architecture demonstrated by
+=gerbil-libyaml=: a bounded token/event source is interpreted by a small CST
+engine, while semantic AST construction remains a later phase. Gerbil
+=syntax-case= declarations generate the top-level event-dispatch table,
+operator binding powers, syntax shapes, and recovery routes. Rust owns the
+memory-safe Rowan event sink and never duplicates the grammar dispatch table.
+
+#+name: rfc-0002-authority-flow
+#+begin_src mermaid
+flowchart LR
+    pkg[gerbil.pkg] --> parser[gerbil-parser GQL and Cypher grammars]
+    parser --> flow[transitive POO Flow and ASP build API]
+    parser --> adapter[parser-authority.ss]
+    declaration[gql-declaration.ss MRR projection] --> object[parser-bound POO projection]
+    adapter --> object
+    declaration --> abi[native.ss fixed-width ABI tables]
+    core[core.ss POO macro] --> object
+    gql[gql.ss active ISO GQL profile] --> object
+    cypher[cypher.ss active openCypher profile] --> object
+    flow --> object
+    build[build.ss ASP package spec plus first-party defbuild-script] --> core
+    build --> gql
+    build --> cypher
+    build --> abi
+    abi --> program[native-program.ss AOT root]
+    pr16[gerbil-scheme-rust native program build API] --> cargo[thin Cargo target-link adapter]
+    program --> cargo
+    parser --> program
+    cargo --> native[static archive plus generated Gambit linker]
+    native --> owner[one thread-affine embedded runtime owner]
+    owner --> events[typed native C ABI ParseArtifact payload]
+    events --> fullcst[parser-owned 581-kind Rowan CST]
+    fullcst --> bridge[fail-closed parser-owned lowering]
+    bridge --> projection[private parser-owned semantic projection]
+    projection --> ir[language-neutral MetaQueryIR]
+#+end_src
+
+* Semantic ownership
+
+Gerbil Parser is the sole owner of complete lexical and syntactic grammar
+semantics, entry grammar, recovery flow, bound IR, and parser machine. MRR does
+not reproduce its 581-kind/574-rule GQL grammar. The MRR projection owns only
+the Rust frontend contract that it generates, in source order:
+
+- Rowan node and token kinds together with category and field-shape metadata;
+- reserved keyword spellings;
+- prefix and binary operator precedence and associativity;
+- recovery sites, typed diagnostic codes, and preservation strategies;
+- active language-profile labels.
+
+The fixed-width native ABI carries a V1 parser-authority receipt. A Scheme gate
+compares every receipt field with the live linked parser descriptor. The native
+module includes the receipt declaration directly; it never links or initializes
+the parser machine in Rust.
+
+The native boundary publishes parser-owned catalog and event identities through
+typed FFI. There is no JSON or S-expression parser generator on the Rust side,
+and Rust does not keep a second keyword, precedence, or recovery table. GQL and
+openCypher are selected explicitly by the frontend and lower into the same
+=MetaQueryIR=.
+
+* Runtime boundary
+
+=mrr-gerbil= links the compiler-owned static archive and generated Gambit
+linker through =gerbil-scheme-sys/external-program=. Rust lazily initializes
+that linker exactly once on a single named owner thread. Every scalar grammar,
+reasoning, descriptor, and parser call executes to completion on that same
+thread because Gambit's allocation state is thread-affine. Concurrent Rust
+callers submit typed jobs to the owner; they never initialize another runtime
+or share raw Scheme handles.
+
+Complete ParseArtifact V1 and descriptor values cross the native C ABI as
+owned payload buffers. JSON is the versioned payload encoding at this ABI
+boundary, not a subprocess protocol. Rust validates the native call status,
+result status, exact schema, grammar digest, source digest, catalog, event
+balance, byte ranges, and token replay before publishing a Rowan CST. A failed
+native call or rejected artifact cannot publish a partial CST.
+
+The parser deliberately externalizes large, content-addressed Grammar IR as
+=compiled-language-artifacts/*.gir.z= rather than regenerating enormous C
+initializers. These sidecars are ordinary =gxpkg= runtime assets resolved from
+the project-local =GERBIL_PATH= and validated by schema and digest. Development,
+tests, and applications therefore enter the declared profile and then
+=gxpkg env=; MRR does not invoke a =gparse= executable at runtime.
+
+At first use the embedded parser publishes the selected language's V1
+descriptor containing its parser-owned syntax kinds and terminal-to-token-kind
+mapping in Grammar IR declaration order. Rust caches one catalog per explicit
+=Gql= or =Cypher= selector and assigns Rowan's numeric kinds from that order; it
+does not maintain another name table. Each accepted event stream is checked for
+balanced node and field frames, continuous UTF-8 byte offsets, known catalog
+kinds, one root, and exact token text before a green tree is published.
+Rejected or structurally inconsistent artifacts produce no partial Rowan CST.
+
+The full parser CST is the only syntax input. =mrr-frontends= owns a private
+parser-owned projection for the admitted
+=MATCH/WHERE/RETURN= Graph-Relational slice and lowers that projection directly
+into =MetaQueryIR=. It does not publish or preserve a second public GQL or
+Cypher AST.
+Any accepted grammar shape that this adapter has not implemented--including
+match modes, path prefixes, quantifiers, and unowned operators--fails closed;
+it never falls back to a Rust parser and never silently erases syntax. GQL and
+Cypher receipts retain distinct grammar identities while their admitted common
+surface normalizes to equal, byte-identical canonical =MetaQueryIR=.
+
+=compile_with_receipt= keeps provenance outside the
+language-neutral IR, as required by RFC 0006. Its exact V1 receipt binds the
+explicit language, caller-visible source name, independently verified source
+SHA-256, parser grammar digest, and resulting =QueryId=. Rust verifies the source digest against
+the submitted UTF-8 bytes before publishing either a CST or compilation
+receipt; a mismatched response therefore cannot be admitted as another
+request's result.
+
+The parser-authority receipt binds the dependency declaration, grammar digest,
+language version, source digest, and resulting query identity. Missing canonical
+AOT, malformed native payloads, schema drift, or digest drift fail closed.
+
+* Mathematical publication view
+
+The Typst block is the mathematical publication of this Org authority, not an
+independent specification.
+
+#+name: rfc-0002-typst-publication
+#+begin_src typst
+#set page(paper: "a4", margin: 24mm)
+#set text(font: "Libertinus Serif", size: 10.5pt)
+#set heading(numbering: "1.")
+
+= RFC 0002: Gerbil Grammar Authority
+
+Let $D$ be a well-formed `with-mrr-gql-declaration` form,
+$"expand"_"POO"(D) = G$ its hygienic expansion into a normalized POO grammar
+object, and $"expand"_"ABI"(D) = N$ its expansion into native ABI tables. Let
+$P(N)$ be the canonical Rust projection and
+$H_I(D)$ and $H_B(P(N))$ be framed input and body SHA-256 digests.
+
+The admitted artifact is
+
+$ A = ("schema", H_I(D), H_B(P(N)), "native-revision", P(N)). $
+
+Admission requires
+
+$ "Admit"(A, D) :=
+  A."schema" = "v1" and
+  A.H_I = H_I(D) and
+  A.H_B = H_B(P("expand"_"ABI"(D))). $
+
+For a token stream $t$ and generated binding-power map $beta_G$, the Pratt
+parser uses only $beta_G$. Therefore changing precedence in $D$ either changes
+the exact generated body and its digest or is rejected as drift; no hidden Rust
+precedence authority can silently disagree.
+
+Losslessness remains
+
+$ "bytes"("parse"_(P(G))(s)) = s. $
+
+Gerbil package construction occurs through the =build.ss= declaration and
+first-party =std/make=. Cargo target linking independently maps the declared AOT
+program $D -> (G, N, L)$, where $N$ is the static program archive and $L$ its
+generated Gambit linker. The query runtime path is
+$s -> "native ABI payload" -> "ParseArtifactV1" -> "typed events" -> "CST" ->
+"AST" -> "IR"$ and contains neither a command subprocess nor a raw `SCM`
+projection.
+#+end_src
+
+* Reference pins and executable evidence
+
+=THIRD_PARTY_NOTICES.md= pins openCypher and SeleneDB by full commit digest as
+reference material only. Neither repository participates in dependency
+resolution, generation, linking, or execution.
+
+Executable =gerbil-parser= scenarios own syntax acceptance, rejection,
+round-trip, recovery, ambiguity, and conformance evidence. This workspace does
+not copy those corpora or maintain a second Rust parser oracle.
+
+=mrr-gerbil= validates the source-bound native artifact, exact event replay,
+kind catalog, and Rowan projection. =mrr-frontends= then validates the admitted
+semantic slice, typed fail-closed gaps, exact source coverage, and lowering into
+=MetaQueryIr=. These are ownership-bound contracts, not duplicated sample
+counts.

@@ -1,0 +1,50 @@
+//! MRR downstream policy crate for ASP Rust project evidence graphs.
+
+pub use asp_rust::{
+    AspRustConfig, AspRustDownstreamPolicy, AspRustWorkspacePolicy, RustOwnerResponsibility,
+    RustVerificationProfileHint, RustVerificationStabilityPictureConfig, RustVerificationTaskKind,
+    asp_rust_config_for_project, assert_asp_rust_clean_with_config,
+    assert_asp_rust_downstream_policy_from_env, assert_asp_rust_verification_from_env_with_config,
+    default_asp_rust_config,
+};
+
+#[doc(hidden)]
+pub use asp_rust;
+
+mod dev_gate;
+pub mod evidence;
+pub mod hook_registry_build;
+pub mod member_policy;
+pub mod package_evidence_graph;
+pub mod scenario;
+pub mod workspace_evidence_graph;
+
+pub use dev_gate::{mrr_member_policy_config, mrr_workspace_policy};
+pub use hook_registry_build::generate_agent_semantic_hook_registry_from_env;
+pub use member_policy::{MrrAspRustMemberPolicy, mrr_workspace_member_policies};
+pub use scenario::{
+    AspRustProjectScenario, AspRustProjectScenarioBenchmarkSpec, AspRustProjectScenarioCommand,
+    AspRustProjectScenarioMeasurement, AspRustProjectScenarioMetricKind,
+    AspRustProjectScenarioMetricSpec, AspRustProjectScenarioObservation,
+    AspRustProjectScenarioPackage, measure_asp_rust_project_scenario,
+    render_asp_rust_project_scenario_benchmark_toml,
+    write_asp_rust_project_scenario_benchmark_toml,
+};
+pub use scenario::{asp_rust_project_scenario, asp_rust_project_scenario_package};
+
+pub use workspace_evidence_graph::{
+    MrrAspRustWorkspaceEvidenceGraphEdgeKind, MrrAspRustWorkspaceEvidenceGraphEdgeReceipt,
+    MrrAspRustWorkspaceEvidenceGraphNodeKind, MrrAspRustWorkspaceEvidenceGraphNodeReceipt,
+    MrrAspRustWorkspaceEvidenceGraphReceipt, MrrAspRustWorkspaceEvidenceGraphRequest,
+    MrrAspRustWorkspaceEvidenceGraphSummaryReceipt, build_mrr_workspace_evidence_graph_receipt,
+    build_workspace_evidence_graph_receipt,
+};
+
+pub use evidence::{
+    MrrAspRustEvidenceGraphInput, MrrAspRustEvidenceGraphSummary,
+    summarize_client_db_evidence_graph,
+};
+pub use package_evidence_graph::{
+    MrrAspRustPackageEvidenceGraphReceipt, MrrAspRustPackageEvidenceGraphRequest,
+    build_package_evidence_graph_receipt,
+};

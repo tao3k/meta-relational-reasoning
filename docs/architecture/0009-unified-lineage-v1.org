@@ -1,0 +1,84 @@
+#+title: RFC 0009 - Unified Lineage v1
+#+status: accepted
+
+* Contract
+
+=mrr-lineage= is the sole validator for derivation evidence and immutable
+explanation graphs.  Callers own all =FactId=, =DerivationId=,
+=LineageNodeId=, and =LineageEdgeId= allocation.  The lineage crate never
+queries source systems, evaluates rules, mutates generations, or publishes
+results.
+
+#+begin_src mermaid
+flowchart RL
+  R[Result] -->|selected_by| P[Projection]
+  P -->|depends_on| Q[Query operator]
+  Q -->|derived_from| F[Derived fact]
+  F -->|produced_by| D[Rule application]
+  D -->|depends_on| S[Source fact]
+  F -->|invalidated_by| T[Transition]
+#+end_src
+
+The admitted node roles are =SourceFact=, =QueryOperator=, =RuleApplication=,
+=DerivedFact=, =Transition=, =State=, =SafetyViolation=, =Projection=, and =Result=.  The admitted edge
+roles are =derived_from=, =selected_by=, =produced_by=, =depends_on=, and
+=invalidated_by=.
+
+* Why lineage is first-class
+
+MRR uses semantic lineage in a stricter sense than a generic log or a
+warehouse-only table/column lineage catalog.  Four related records have
+different responsibilities:
+
+| Record | Question answered | Authority |
+|-
+| fact provenance | Where did this individual fact originate? | Part of the typed fact context |
+| semantic lineage | Which admitted facts, rules, query operators, transitions, and projections justify this result? | =mrr-lineage= validates the immutable causal graph |
+| execution trace | What happened, and in what runtime order? | Observability evidence only |
+| audit log | Which operational events were retained for later review? | Historical evidence only |
+
+Provenance alone cannot express a multi-step derivation.  A trace can contain
+retries, timings, and failed candidates that never became authoritative.  An
+audit log can show that an event occurred without proving that a result is
+derivable from the currently admitted generation.  None of those records can
+replace the causal graph admitted by =mrr-lineage=.
+
+First-class lineage is required for three public operations: WHY walks from a
+result toward its evidence, IMPACT walks from changed facts toward affected
+conclusions, and counterexample projection connects an unsafe transition path
+to the facts and actions that explain it.  Because these operations affect what
+the system can explain or invalidate, lineage is an admission contract rather
+than optional observability metadata.
+
+* Admission
+
+An admitted graph is finite, has unique node and edge identities, references
+only present endpoints, contains no self-edge, and is acyclic.  Edges are
+oriented from conclusion toward evidence so reverse reasoning can traverse a
+stable explanation graph without inventing missing nodes.
+
+#+begin_src typst
+#set page(width: 150mm, height: auto, margin: 12mm)
+$ A(N, E) =
+  "unique-node-ids"(N) and
+  "unique-edge-ids"(E) and
+  "endpoints-present"(N, E) and
+  "no-self-edge"(E) and
+  "acyclic"(N, E). $
+$ "LineageGraph"(N, E) = cases(
+  (N, E) & "if" A(N, E),
+  "Error" & "otherwise",
+). $
+#+end_src
+
+* Derivation authority
+
+A =Derivation= is admitted only when it has non-empty unique support, does not
+self-support, and its output context exactly matches its =DerivationId=,
+=RuleId=, and =GenerationId=.  Derived output evidence must be complete and
+valid.  These checks make lineage admission the only path from an execution
+candidate to an authority-bearing derived fact.
+
+The graph is an immutable semantic object.  WHY, WHY-NOT, and IMPACT may
+project or traverse it, but cannot weaken admission or create a second lineage
+authority.

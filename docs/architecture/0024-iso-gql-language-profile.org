@@ -1,0 +1,233 @@
+#+title: RFC 0024: ISO GQL Language Profile
+#+author: gql-rust contributors
+#+options: toc:2
+#+property: header-args :eval never-export :exports code
+
+* Status
+
+Accepted inventory and admission boundary. This RFC is not an ISO conformance
+claim.
+
+* Decision
+
+Gerbil Parser is the syntax authority for ISO GQL. MRR consumes its versioned
+parser descriptor, Grammar IR, parser machine, syntax catalog, and native event
+stream. MRR does not maintain another GQL lexer, parser, public AST, semantic
+model, catalog model, or language-specific IR in Rust.
+
+=scheme/grammar/gql-profile.ss= is the sole MRR-owned machine-readable inventory
+of releases, modules, profiles, feature dependencies, layer status, and evidence
+owners. The inventory is projected through the AOT native boundary and loaded
+as =mrr_gerbil::load_iso_profile=. It describes evidence state; it cannot widen
+the parser grammar or turn partial support into a conformance claim.
+
+The active Rust boundary is =mrr-frontends=. It consumes a validated
+parser-owned Rowan CST, constructs only a private semantic projection, and
+lowers the admitted Graph-Relational slice directly to =MetaQueryIr=. Shapes
+that have parser syntax but no MRR lowering fail closed by exact parser-owned
+kind. No rejected shape publishes partial IR and there is no legacy parser
+fallback.
+
+* Terminology and implementation landscape
+
+This RFC uses =GQL= only for ISO/IEC 39075.  Similar names occupy different
+layers and must not be treated as aliases.
+
+| Name | Kind | Contract |
+|-
+| Property Graph | data model | nodes/vertices and directed edges/relationships with labels and properties; no query language or Agent authority follows from the model alone |
+| ISO GQL | standalone database language | ISO/IEC 39075:2024 defines structures and operations for property graphs and graph collections; this RFC profiles that language |
+| Cypher | product-originated database-language family | Neo4j's declarative property-graph language; current Neo4j documentation declares substantial but incomplete mandatory GQL support |
+| openCypher | open language specification and TCK | the open specification of Cypher and an incremental migration path toward GQL; implementation dialects can still differ |
+| PGQL | database language | an SQL-like Property Graph Query Language associated with Oracle; it queries the Property Graph model but is not the model itself |
+| SQL/PGQ | SQL standard part | ISO/IEC 9075-16 adds property-graph querying to SQL; it is not the standalone GQL standard |
+| GraphQL | API query language/runtime | selects typed fields through API resolvers and is storage-independent; it is unrelated to ISO GQL despite the spelling |
+| Content Graph | semantic architecture role | canonical source-bound identities, versions, provenance, and admitted derivations |
+| Context Graph | Agent architecture role | task-local, permission- and budget-scoped projection anchored to Content |
+
+Separation of layers does not mean that a query language is independent of its
+data model.  ISO GQL syntax and semantics are defined for Property Graphs;
+Cypher/openCypher and PGQL likewise expose their respective Property Graph
+models.  SQL/PGQ binds graph patterns to Property Graph views inside SQL.
+GraphQL instead binds field selections to an API type schema and resolver
+contract.  A frontend must never lower these languages into a generic
+model-free "graph query" string.
+
+Primary references are the
+[[https://www.iso.org/standard/76120.html][ISO GQL record]],
+[[https://opencypher.org/][openCypher project]],
+[[https://neo4j.com/docs/cypher-manual/5/appendix/gql-conformance/][Neo4j GQL conformance declaration]],
+[[https://pgql-lang.org/spec/1.5/][PGQL specification]],
+[[https://www.iso.org/standard/79473.html][SQL/PGQ record]], and
+[[https://graphql.org/][GraphQL Foundation overview]].
+
+** Representative property-graph engines
+
+The ecosystem demonstrates why model, language, implementation, and semantic
+role must remain independent:
+
+| Engine | Declared surface | Boundary consequence |
+|-
+| Neo4j | Property Graph plus Cypher, moving toward GQL conformance | Cypher acceptance is not evidence that every ISO GQL feature is accepted |
+| Memgraph | openCypher-based Cypher dialect with extensions | dialect behavior needs differential evidence rather than assumed Neo4j parity |
+| Kuzu | embedded structured Property Graph and openCypher-based Cypher | its storage/schema choices are implementation facts, not MRR semantics |
+| FalkorDB | Property Graph, openCypher plus proprietary extensions, and GraphRAG tooling | retrieval and generated graph edges remain proposals until admitted |
+| Apache AGE | PostgreSQL graph extension with openCypher grammar and SQL/Cypher composition | one physical engine can expose relational and graph views without merging their authorities |
+| Oracle Property Graph | PGQL and SQL/PGQ integration | a Property Graph implementation need not use Cypher or standalone GQL |
+
+These engines can materialize a canonical Content Graph, a derived Context
+Graph, or both in separate generations.  None is intrinsically a "Context Graph
+database."  The role is determined by source identity, versioning, provenance,
+projection, and admission contracts.  In particular, GraphRAG or text-to-Cypher
+features make a database useful for Context construction; they do not promote
+retrieved or model-generated relationships into canonical Content.
+
+MRR therefore treats GQL and Cypher as frontend adapters.  A parser acceptance
+receipt proves a source was parsed under a named grammar artifact.  It does not
+prove database-dialect portability, query-result truth, Content authority, or
+Context freshness.  Those require separate conformance, source, lineage, and
+admission evidence.
+
+For ISO GQL, the implemented admission path and first engine slice are:
+
+1. the parser artifact establishes the language grammar and lossless CST;
+2. MRR lowering produces a storage-neutral =MetaQueryIr= whose node, relation,
+   property, direction, and path constructs remain Property-Graph-specific;
+3. the separate downstream =mrr-data= repository establishes an exact
+   Property Graph catalog, semantic generation, physical snapshot root, and an
+   optional versioned GraphAr projection over its Arrow interchange batches;
+4. MRR admits =CatalogBoundQuery= and owns label, property, expression, and
+   ordered-result typing; =mrr-data= consumes that receipt as =BoundDataQuery=
+   and adds only physical snapshot, projection, and engine-capability evidence;
+5. each engine keeps its native execution lifecycle, while the downstream
+   physical-output bridge accepts only the exact bound engine profile, injects
+   =QueryResultBinding= from the immutable MRR receipt, and returns a candidate
+   whose final admission remains owned by MRR;
+6. the first downstream engine slice builds a DataFusion plan directly from
+   admitted MRR IR, executes the same single-hop binary-Entity query over an
+   Arrow round trip and maintained GraphAr native read, and produces identical
+   MRR-admitted results; broader GQL execution and cross-engine parity remain
+   open.
+
+The canonical downstream design is owned by
+[[https://github.com/tao3k/mrr-data/blob/main/docs/architecture/0001-mrr-data-plane.org][mrr-data RFC 0001]];
+[[file:0026-mrr-data-graphar.org][RFC 0026]] records only MRR's side of the
+contract.  The absence of an =mrr-data= crate here is intentional dependency
+purity: =mrr-data= depends on MRR, while MRR must not
+depend on its Arrow/GraphAr/CID consumer.  Both the upstream semantic receipt
+and downstream physical binding/result-candidate bridge are implemented.  This
+repository claims physical-representation parity only for that declared
+DataFusion slice; parsing, storage-neutral lowering, and binding alone still
+establish no broader engine parity.
+
+#+name: rfc-0024-profile-admission
+#+begin_src mermaid
+flowchart LR
+  I[ISO release inventory] --> P[Gerbil Parser grammar authority]
+  P --> A[versioned native parser artifact]
+  A --> C[validated Rowan CST]
+  C --> F[private MRR frontend projection]
+  F --> M[MetaQueryIr]
+  C -->|unowned semantic shape| X[typed rejection and no IR]
+  S[scheme/grammar/gql-profile.ss] --> R[read-only profile receipt]
+  R --> F
+#+end_src
+
+* Profile semantics
+
+The profile uses four evidence states:
+
+- =partial=: an executable slice exists at that layer;
+- =not-implemented=: the inventory names the layer but MRR publishes no value;
+- =not-applicable=: the feature has no value at that layer;
+- =implemented=: reserved for evidence backed by adjudicated licensed clauses.
+
+Because licensed-clause adjudication remains pending, no layer may claim
+=implemented=. =gql-query-language-frontend-v1= is the selected bounded
+frontend. =gql-iso-audit-v1= inventories the whole standard without claiming an
+implementation. =gql-iso-language-frontend-v1= is a target profile, not the
+current release claim.
+
+Syntax support and MRR semantic admission are separate facts. Gerbil Parser may
+accept a complete ISO construct while MRR intentionally rejects it because
+=MetaQueryIr= has no owned representation. Such a rejection is positive
+boundary evidence, not a reason to reintroduce a Rust GQL framework.
+
+* Current executable surface
+
+The parser-owned frontend currently exercises the bounded query surface in
+=crates/mrr-frontends/tests/unit/contracts.rs=. Its positive contracts cover:
+
+- identifiers, parameters, Unicode strings, numeric and structured literals;
+- node and edge patterns, multiple paths, labels, properties, and direction;
+- =MATCH=, =WHERE=/=FILTER=, projection, aliases, distinct and wildcard results;
+- arithmetic, Boolean and truth predicates, aggregate functions, grouping,
+  ordering, offset, and limit;
+- stable canonical =MetaQueryIr= and parser-authority receipts.
+
+The same owner contains negative contracts for malformed parser input,
+unsupported match/path modes, operators not represented by =MetaQueryIr=,
+mutation, and complete query pipelines that cannot be admitted atomically.
+These cases must return typed failure without replaying a second parser or
+publishing a partial query.
+
+Catalog management, graph mutation, procedures, session control, optional
+matching, quantified paths, and the remainder of query composition stay in the
+inventory but do not have a public Rust domain model. Their MRR semantic layers
+remain =not-implemented= until a concrete =MetaQueryIr= boundary and executable
+acceptance evidence exist.
+
+* Publication contract
+
+A parser result is publishable only when all of the following hold:
+
+1. Native runtime status and payload schema are accepted.
+2. Language, grammar version, grammar digest, and source digest match the
+   requested parser authority.
+3. Node, field, and token events are balanced; byte ranges are continuous and
+   replay the exact UTF-8 source.
+4. Every semantic shape is owned by the private frontend projection.
+5. Lowering produces one complete, normalized =MetaQueryIr=.
+
+Failure of any premise publishes neither a CST claimed as admitted nor a query
+IR. External implementations may supply differential examples, but they are
+never normative dependencies or fallback parsers.
+
+#+name: rfc-0024-profile-mathematics
+#+begin_src typst
+#set page(paper: "a4", margin: 24mm)
+#set text(font: "Libertinus Serif", size: 10.5pt)
+
+= ISO GQL Profile Admission
+
+For parser artifact $a$, profile receipt $p$, and private lowering $L$,
+
+$ "publish"(L(a), p) "iff" "authority-valid"(a, p) and "total-owned"(L, a) $
+
+$ not "authority-valid"(a, p) or not "total-owned"(L, a)
+  => "cst" = "none" and "ir" = "none" $
+#+end_src
+
+* Performance and observability
+
+Performance scenarios must execute the real parser-owned AOT path and retain
+their declared sample count. A slow 100-sample scenario is an algorithm or
+boundary problem; reducing the corpus is not an optimization.
+
+=GERBIL_BUILD_VERBOSE=1= (or a higher native level when debugging) controls the
+first-party Gerbil build trace. POO Flow observations identify owned build
+phases. Cargo adapters must preserve those semantics and expose enough nested
+stage information to distinguish Gerbil closure generation, Gambit C emission,
+native C compilation, archive creation, and Rust linking. A heartbeat without
+the active native substage is not adequate observability.
+
+* Evidence owners
+
+- Profile schema and inventory: =scheme/grammar/gql-profile.ss=
+- Native loading and validation: =crates/mrr-gerbil/tests/unit/contracts.rs=
+- Parser-owned query admission: =crates/mrr-frontends/tests/unit/contracts.rs=
+- Project boundary policy: =build-support/mrr-asp-rust-project-policy/tests/unit/=
+
+Historical evidence for the removed Rust GQL stack remains available in Git
+history. It is not an active owner and must not be restored as a compatibility
+path.
