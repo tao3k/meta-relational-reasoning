@@ -1,4 +1,4 @@
-use mrr_asp_rust_project_policy::{asp_rust_project_scenario, asp_rust_project_scenario_package};
+use mrr_asp_rust_build_support::{asp_rust_project_scenario, asp_rust_project_scenario_package};
 
 #[test]
 fn scenario_macro_packages_custom_scenario_data() {

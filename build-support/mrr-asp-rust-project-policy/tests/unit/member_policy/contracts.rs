@@ -1,4 +1,4 @@
-use mrr_asp_rust_project_policy::mrr_workspace_member_policies;
+use mrr_asp_rust_build_support::mrr_workspace_member_policies;
 use std::collections::BTreeSet;
 use std::fs;
 use std::io::Write;
@@ -250,7 +250,7 @@ fn assert_mrr_dependency_allowed(
     section: &str,
     allowed_dependencies: &[&str],
 ) {
-    if dependency == "mrr-asp-rust-project-policy" {
+    if dependency == "mrr-asp-rust-build-support" {
         return;
     }
     let is_architecture_dependency = dependency == "ascent"
@@ -338,7 +338,7 @@ fn differential_oracles_are_not_workspace_dependencies() {
 }
 
 #[test]
-fn all_workspace_crate_manifests_enable_workspace_policy_only_as_a_build_dependency() {
+fn all_workspace_crate_manifests_enable_workspace_policy_only_as_a_dev_dependency() {
     let support_manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
     let workspace_root = support_manifest
         .ancestors()
@@ -357,7 +357,7 @@ fn all_workspace_crate_manifests_enable_workspace_policy_only_as_a_build_depende
                 in_section = line.trim() == section;
                 continue;
             }
-            if in_section && line.trim() == "mrr-asp-rust-project-policy.workspace = true" {
+            if in_section && line.trim() == "mrr-asp-rust-build-support.workspace = true" {
                 return true;
             }
         }
@@ -376,30 +376,39 @@ fn all_workspace_crate_manifests_enable_workspace_policy_only_as_a_build_depende
 
         let manifest_text = fs::read_to_string(&entry).expect("manifest readable");
         assert!(
-            manifest_text.contains("mrr-asp-rust-project-policy.workspace = true"),
+            manifest_text.contains("mrr-asp-rust-build-support.workspace = true"),
             "missing policy dependency in {}",
             entry.display()
         );
         assert!(
-            manifest_text.contains("[build-dependencies]"),
-            "missing [build-dependencies] section in {}",
+            manifest_text.contains("[dev-dependencies]"),
+            "missing [dev-dependencies] section in {}",
             entry.display()
         );
         assert!(
-            has_policy_in_section(&manifest_text, "[build-dependencies]"),
-            "missing build-dependency policy in {}",
+            has_policy_in_section(&manifest_text, "[dev-dependencies]"),
+            "missing dev-dependency policy in {}",
             entry.display()
         );
         assert!(
-            !has_policy_in_section(&manifest_text, "[dev-dependencies]"),
-            "policy must not be a dev-dependency in {}",
+            !has_policy_in_section(&manifest_text, "[build-dependencies]")
+                && !has_policy_in_section(&manifest_text, "[dependencies]"),
+            "policy must be absent from normal and build dependencies in {}",
             entry.display()
+        );
+        let gate_path = crate_dir.join("tests/unit/asp_rust_gate.rs");
+        let gate_text = fs::read_to_string(&gate_path)
+            .unwrap_or_else(|_| panic!("member Dev Gate is readable: {}", gate_path.display()));
+        assert!(
+            gate_text.contains("mrr_asp_rust_build_support::mrr_asp_rust_member_dev_gate!()"),
+            "member must mount the workspace Dev Gate in {}",
+            gate_path.display()
         );
     }
 }
 
 #[test]
-fn shared_build_support_is_the_only_workspace_policy_build_gate() {
+fn shared_build_support_owns_the_only_workspace_dev_gate() {
     let support_manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
     let workspace_root = support_manifest
         .ancestors()
@@ -426,7 +435,7 @@ fn shared_build_support_is_the_only_workspace_policy_build_gate() {
             let build_rs_text = fs::read_to_string(&build_rs)
                 .unwrap_or_else(|_| panic!("build.rs should be readable: {}", build_rs.display()));
             assert!(
-                !build_rs_text.contains("mrr_asp_rust_project_policy"),
+                !build_rs_text.contains("mrr_asp_rust_build_support"),
                 "member build script must not become a second policy authority: {}",
                 build_rs.display()
             );
@@ -434,15 +443,11 @@ fn shared_build_support_is_the_only_workspace_policy_build_gate() {
     }
 
     let support_root = Path::new(env!("CARGO_MANIFEST_DIR"));
-    let shared_build_gate =
-        fs::read_to_string(support_root.join("build.rs")).expect("shared build gate readable");
-    assert!(shared_build_gate.contains(
-        "assert_asp_rust_workspace_policy_from_env as assert_mrr_asp_rust_harness_policy_from_env"
-    ));
-    assert!(
-        shared_build_gate
-            .contains("assert_mrr_asp_rust_harness_policy_from_env(&workspace_policy)")
-    );
-    assert!(!shared_build_gate.contains("AspRustDownstreamPolicy"));
+    assert!(!support_root.join("build.rs").exists());
+    let dev_gate =
+        fs::read_to_string(support_root.join("src/dev_gate.rs")).expect("Dev Gate readable");
+    assert!(dev_gate.contains("macro_rules! mrr_asp_rust_workspace_dev_gate"));
+    assert!(dev_gate.contains("asp_rust_workspace_dev_gate!"));
+    assert!(dev_gate.contains("mrr_workspace_policy()"));
     assert!(!support_root.join("src/build_gate.rs").exists());
 }

@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use mrr_asp_rust_project_policy::{
+use mrr_asp_rust_build_support::{
     MrrAspRustEvidenceGraphInput, MrrAspRustPackageEvidenceGraphRequest,
     build_package_evidence_graph_receipt,
 };

@@ -22,10 +22,9 @@ mrr-transition.workspace = true
 sha2.workspace = true
 serde.workspace = true
 
-[build-dependencies]
-mrr-asp-rust-project-policy.workspace = true
 [dev-dependencies]
 criterion.workspace = true
+mrr-asp-rust-build-support.workspace = true
 [[bench]]
 name = "facade_perf"
 harness = false

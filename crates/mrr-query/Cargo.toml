@@ -13,10 +13,9 @@ mrr-relation.workspace = true
 serde.workspace = true
 ciborium.workspace = true
 
-[build-dependencies]
-mrr-asp-rust-project-policy.workspace = true
 [dev-dependencies]
 criterion.workspace = true
+mrr-asp-rust-build-support.workspace = true
 [[bench]]
 name = "query_perf"
 harness = false

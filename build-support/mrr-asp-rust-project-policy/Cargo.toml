@@ -1,21 +1,21 @@
 [package]
-name = "mrr-asp-rust-project-policy"
+name = "mrr-asp-rust-build-support"
 version = "0.1.0"
 edition = "2024"
 publish = false
-build = "build.rs"
 
 [dependencies]
-asp-rust = { git = "https://github.com/tao3k/asp-rust", rev = "f88445d971d6b7dfd6336d73e52dc0411921f5bf", version = "0.1.2", default-features = false }
-asp-rust-build-support = { git = "https://github.com/tao3k/asp-rust", rev = "f88445d971d6b7dfd6336d73e52dc0411921f5bf", version = "0.1.0" }
+asp-rust = { git = "https://github.com/tao3k/asp-rust", rev = "2419414ee5379bad89506496e3eaab928df68daf", version = "0.1.2", default-features = false }
+asp-rust-build-support = { git = "https://github.com/tao3k/asp-rust", rev = "2419414ee5379bad89506496e3eaab928df68daf", version = "0.1.0" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
-[build-dependencies]
-asp-rust = { git = "https://github.com/tao3k/asp-rust", rev = "f88445d971d6b7dfd6336d73e52dc0411921f5bf", version = "0.1.2", default-features = false }
-
 [dev-dependencies]
 criterion = { version = "0.8.2" }
+
+[[test]]
+name = "unit_test"
+path = "tests/unit_test.rs"
 
 [[bench]]
 name = "performance_verification"

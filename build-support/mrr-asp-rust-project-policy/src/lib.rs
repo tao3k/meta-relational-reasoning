@@ -8,6 +8,10 @@ pub use asp_rust::{
     default_asp_rust_config,
 };
 
+#[doc(hidden)]
+pub use asp_rust;
+
+mod dev_gate;
 pub mod evidence;
 pub mod hook_registry_build;
 pub mod member_policy;
@@ -15,6 +19,7 @@ pub mod package_evidence_graph;
 pub mod scenario;
 pub mod workspace_evidence_graph;
 
+pub use dev_gate::{mrr_member_policy_config, mrr_workspace_policy};
 pub use hook_registry_build::generate_agent_semantic_hook_registry_from_env;
 pub use member_policy::{MrrAspRustMemberPolicy, mrr_workspace_member_policies};
 pub use scenario::{

@@ -12,11 +12,9 @@ meta-relational-reasoning.workspace = true
 mrr-intent.workspace = true
 mrr-revision.workspace = true
 
-[build-dependencies]
-mrr-asp-rust-project-policy.workspace = true
-
 [dev-dependencies]
 criterion.workspace = true
+mrr-asp-rust-build-support.workspace = true
 
 [[bench]]
 name = "acceptance_perf"

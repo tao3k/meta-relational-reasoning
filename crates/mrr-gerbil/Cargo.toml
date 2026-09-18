@@ -20,11 +20,12 @@ sha2.workspace = true
 serde_json.workspace = true
 
 [build-dependencies]
-mrr-asp-rust-project-policy.workspace = true
 mrr-gerbil-native-build.workspace = true
 
 [dev-dependencies]
+mrr-asp-rust-build-support.workspace = true
 criterion.workspace = true
+
 
 [[bench]]
 name = "grammar_projection_perf"

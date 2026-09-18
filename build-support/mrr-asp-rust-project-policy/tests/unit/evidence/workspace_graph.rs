@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
-use mrr_asp_rust_project_policy::MrrAspRustEvidenceGraphInput;
-use mrr_asp_rust_project_policy::workspace_evidence_graph::{
+use mrr_asp_rust_build_support::MrrAspRustEvidenceGraphInput;
+use mrr_asp_rust_build_support::workspace_evidence_graph::{
     MrrAspRustWorkspaceEvidenceGraphEdgeKind, MrrAspRustWorkspaceEvidenceGraphNodeKind,
     MrrAspRustWorkspaceEvidenceGraphRequest, build_mrr_workspace_evidence_graph_receipt,
     build_workspace_evidence_graph_receipt,
@@ -53,7 +53,7 @@ fn default_workspace_receipt_uses_central_member_policy_registry() {
 
     assert_eq!(
         receipt.summary.member_crate_count,
-        mrr_asp_rust_project_policy::mrr_workspace_member_policies().len()
+        mrr_asp_rust_build_support::mrr_workspace_member_policies().len()
     );
     assert!(
         receipt

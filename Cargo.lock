@@ -148,11 +148,10 @@ dependencies = [
 [[package]]
 name = "asp-rust"
 version = "0.1.2"
-source = "git+https://github.com/tao3k/asp-rust?rev=f88445d971d6b7dfd6336d73e52dc0411921f5bf#f88445d971d6b7dfd6336d73e52dc0411921f5bf"
+source = "git+https://github.com/tao3k/asp-rust?rev=2419414ee5379bad89506496e3eaab928df68daf#2419414ee5379bad89506496e3eaab928df68daf"
 dependencies = [
  "asp-rust-build-support",
  "blake3",
- "cargo-lock",
  "cargo_toml",
  "globset",
  "libc",
@@ -170,7 +169,7 @@ dependencies = [
 [[package]]
 name = "asp-rust-build-support"
 version = "0.1.0"
-source = "git+https://github.com/tao3k/asp-rust?rev=f88445d971d6b7dfd6336d73e52dc0411921f5bf#f88445d971d6b7dfd6336d73e52dc0411921f5bf"
+source = "git+https://github.com/tao3k/asp-rust?rev=2419414ee5379bad89506496e3eaab928df68daf#2419414ee5379bad89506496e3eaab928df68daf"
 dependencies = [
  "blake3",
 ]
@@ -952,7 +951,7 @@ dependencies = [
  "ciborium",
  "criterion",
  "mrr-ascent",
- "mrr-asp-rust-project-policy",
+ "mrr-asp-rust-build-support",
  "mrr-bundle",
  "mrr-identity",
  "mrr-intent",
@@ -972,7 +971,7 @@ version = "0.1.0"
 dependencies = [
  "ascent",
  "criterion",
- "mrr-asp-rust-project-policy",
+ "mrr-asp-rust-build-support",
  "mrr-bundle",
  "mrr-identity",
  "mrr-logic",
@@ -982,7 +981,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "mrr-asp-rust-project-policy"
+name = "mrr-asp-rust-build-support"
 version = "0.1.0"
 dependencies = [
  "asp-rust",
@@ -998,7 +997,7 @@ version = "0.1.0"
 dependencies = [
  "ciborium",
  "criterion",
- "mrr-asp-rust-project-policy",
+ "mrr-asp-rust-build-support",
  "mrr-identity",
  "mrr-logic",
  "mrr-query",
@@ -1014,7 +1013,7 @@ version = "0.1.0"
 dependencies = [
  "criterion",
  "meta-relational-reasoning",
- "mrr-asp-rust-project-policy",
+ "mrr-asp-rust-build-support",
  "mrr-intent",
  "mrr-revision",
 ]
@@ -1025,7 +1024,7 @@ version = "0.1.0"
 dependencies = [
  "criterion",
  "icu_properties",
- "mrr-asp-rust-project-policy",
+ "mrr-asp-rust-build-support",
  "mrr-gerbil",
  "mrr-query",
  "rowan",
@@ -1038,7 +1037,7 @@ dependencies = [
  "blake3",
  "criterion",
  "gerbil-scheme-sys",
- "mrr-asp-rust-project-policy",
+ "mrr-asp-rust-build-support",
  "mrr-bundle",
  "mrr-gerbil-native-build",
  "mrr-identity",
@@ -1062,7 +1061,7 @@ name = "mrr-identity"
 version = "0.1.0"
 dependencies = [
  "criterion",
- "mrr-asp-rust-project-policy",
+ "mrr-asp-rust-build-support",
  "serde",
  "serde_json",
  "sha2 0.10.9",
@@ -1073,7 +1072,7 @@ name = "mrr-intent"
 version = "0.1.0"
 dependencies = [
  "criterion",
- "mrr-asp-rust-project-policy",
+ "mrr-asp-rust-build-support",
  "mrr-identity",
  "sha2 0.10.9",
 ]
@@ -1083,7 +1082,7 @@ name = "mrr-lineage"
 version = "0.1.0"
 dependencies = [
  "criterion",
- "mrr-asp-rust-project-policy",
+ "mrr-asp-rust-build-support",
  "mrr-identity",
  "mrr-relation",
 ]
@@ -1093,7 +1092,7 @@ name = "mrr-logic"
 version = "0.1.0"
 dependencies = [
  "criterion",
- "mrr-asp-rust-project-policy",
+ "mrr-asp-rust-build-support",
  "mrr-identity",
  "mrr-query",
  "mrr-relation",
@@ -1106,7 +1105,7 @@ version = "0.1.0"
 dependencies = [
  "ciborium",
  "criterion",
- "mrr-asp-rust-project-policy",
+ "mrr-asp-rust-build-support",
  "mrr-identity",
  "mrr-relation",
  "serde",
@@ -1117,7 +1116,7 @@ name = "mrr-relation"
 version = "0.1.0"
 dependencies = [
  "criterion",
- "mrr-asp-rust-project-policy",
+ "mrr-asp-rust-build-support",
  "mrr-identity",
  "serde",
 ]
@@ -1127,7 +1126,7 @@ name = "mrr-revision"
 version = "0.1.0"
 dependencies = [
  "criterion",
- "mrr-asp-rust-project-policy",
+ "mrr-asp-rust-build-support",
  "mrr-identity",
  "sha2 0.10.9",
 ]
@@ -1137,7 +1136,7 @@ name = "mrr-transition"
 version = "0.1.0"
 dependencies = [
  "criterion",
- "mrr-asp-rust-project-policy",
+ "mrr-asp-rust-build-support",
  "mrr-identity",
  "mrr-relation",
  "serde",

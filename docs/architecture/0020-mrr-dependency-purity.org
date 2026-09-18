@@ -30,12 +30,15 @@ import MRR frontend lowering or Gerbil projection code.
 
 * Executable gate
 
-The =mrr-asp-rust-project-policy= crate owns an allowlist for every MRR
+The =mrr-asp-rust-build-support= crate owns an allowlist for every MRR
 crate's architecture dependencies. Any new GQL, MRR, or Ascent dependency not
 explicitly admitted for that crate fails the harness tests. Architecture
 dependencies must use their canonical package name; renamed dependency aliases
-are rejected. This makes dependency direction a build-visible contract rather
-than a diagram-only claim.
+are rejected. Every product crate reaches this owner only through
+=[dev-dependencies]=, so normal and build dependency graphs remain free of ASP
+Rust. Package gates are composed into the existing unit suites, while Build
+Support runs the workspace-wide policy once. This keeps dependency direction a
+test-visible contract without creating one extra test process per crate.
 
 The gate covers normal, development, build, and target-specific dependency
 sections. Non-architecture utilities do not grant another semantic authority.
