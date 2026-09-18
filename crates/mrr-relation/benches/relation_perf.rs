@@ -60,6 +60,43 @@ fn bench(criterion: &mut Criterion) {
         );
     }
     group.finish();
+
+    let relation = RelationId::from_canonical_bytes(b"relation:binary").expect("relation id");
+    let fact = FactId::from_canonical_bytes(b"relation:binary:fact").expect("fact identity");
+    let generation =
+        GenerationId::from_canonical_bytes(b"relation:binary:generation").expect("generation");
+    let subject = EntityId::from_canonical_bytes(b"relation:binary:subject").expect("subject");
+    let object = EntityId::from_canonical_bytes(b"relation:binary:object").expect("object");
+    let context = RelationContext::new(
+        generation,
+        RelationAuthority::Entity(subject),
+        FactProvenance::Source(subject),
+        EvidenceCompleteness::Complete,
+        FactValidity::Valid,
+    )
+    .expect("source context");
+    let mut construction = criterion.benchmark_group("binary_fact_construction");
+    construction.bench_function("inline_array", |bencher| {
+        bencher.iter(|| {
+            std::hint::black_box(Fact::new_binary(
+                fact,
+                relation,
+                [Value::Entity(subject), Value::Entity(object)],
+                context,
+            ))
+        });
+    });
+    construction.bench_function("heap_vec", |bencher| {
+        bencher.iter(|| {
+            std::hint::black_box(Fact::new(
+                fact,
+                relation,
+                vec![Value::Entity(subject), Value::Entity(object)],
+                context,
+            ))
+        });
+    });
+    construction.finish();
 }
 
 criterion_group!(benches, bench);

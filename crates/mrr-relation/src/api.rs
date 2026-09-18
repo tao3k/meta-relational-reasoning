@@ -8,6 +8,7 @@ pub use mrr_identity::{
     DerivationId, EntityId, FactId, GenerationId, RelationId, RuleId, RulePackId,
 };
 use serde::{Deserialize, Serialize};
+use smallvec::SmallVec;
 
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub enum Value {
@@ -344,7 +345,7 @@ impl RelationContext {
 pub struct Fact {
     id: FactId,
     relation: RelationId,
-    values: Vec<Value>,
+    values: SmallVec<[Value; 2]>,
     context: RelationContext,
 }
 
@@ -359,7 +360,23 @@ impl Fact {
         Self {
             id,
             relation,
-            values,
+            values: SmallVec::from_vec(values),
+            context,
+        }
+    }
+
+    /// Constructs a binary fact without allocating its two relation values.
+    #[must_use]
+    pub fn new_binary(
+        id: FactId,
+        relation: RelationId,
+        values: [Value; 2],
+        context: RelationContext,
+    ) -> Self {
+        Self {
+            id,
+            relation,
+            values: SmallVec::from_buf(values),
             context,
         }
     }
@@ -376,7 +393,7 @@ impl Fact {
 
     #[must_use]
     pub fn values(&self) -> &[Value] {
-        &self.values
+        self.values.as_slice()
     }
 
     #[must_use]
