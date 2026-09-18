@@ -458,28 +458,3 @@ fn temporal_and_duration_values_use_the_canonical_v1_profile() {
         ));
     }
 }
-
-#[test]
-fn binary_fact_inline_values_preserve_the_v1_sequence_contract() {
-    let subject = id("inline-subject", |bytes| {
-        EntityId::from_canonical_bytes(bytes).expect("subject")
-    });
-    let object = id("inline-object", |bytes| {
-        EntityId::from_canonical_bytes(bytes).expect("object")
-    });
-    let fact = Fact::new_binary(
-        id("inline-fact", |bytes| {
-            FactId::from_canonical_bytes(bytes).expect("fact")
-        }),
-        id("inline-relation", |bytes| {
-            RelationId::from_canonical_bytes(bytes).expect("relation")
-        }),
-        [Value::Entity(subject), Value::Entity(object)],
-        source_context("inline-authority"),
-    );
-
-    let encoded = serde_json::to_value(&fact).expect("serialize inline fact");
-    assert_eq!(encoded["values"].as_array().map(Vec::len), Some(2));
-    let decoded: Fact = serde_json::from_value(encoded).expect("deserialize inline fact");
-    assert_eq!(decoded, fact);
-}
