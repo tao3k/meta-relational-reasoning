@@ -161,8 +161,9 @@ MRR deliberately has a narrow ownership boundary:
 - **Runtime and data systems** own persistence, concurrency, physical layout,
   indexes, and external effects. The downstream `mrr-data` plane implements
   Arrow interchange, local CID/CAR packaging, and a maintained GraphAr native
-  projection slice without becoming an MRR dependency. Complete GraphAr
-  semantic import and physical query binding remain downstream work.
+  projection slice without becoming an MRR dependency. It also executes the
+  first admitted single-hop binary-Entity slice through DataFusion over both
+  Arrow and GraphAr physical reads; broader query execution remains downstream.
 
 MRR is not GraphQL, a graph database, a storage format, an Agent orchestrator,
 or a second parser. A Property Graph is one data model that can be projected

@@ -88,7 +88,7 @@ prove database-dialect portability, query-result truth, Content authority, or
 Context freshness.  Those require separate conformance, source, lineage, and
 admission evidence.
 
-For ISO GQL, the implemented admission path and still-open engine path are:
+For ISO GQL, the implemented admission path and first engine slice are:
 
 1. the parser artifact establishes the language grammar and lossless CST;
 2. MRR lowering produces a storage-neutral =MetaQueryIr= whose node, relation,
@@ -103,8 +103,11 @@ For ISO GQL, the implemented admission path and still-open engine path are:
    physical-output bridge accepts only the exact bound engine profile, injects
    =QueryResultBinding= from the immutable MRR receipt, and returns a candidate
    whose final admission remains owned by MRR;
-6. engine-specific Arrow/GraphAr execution and differential parity still must
-   reject stale or mismatched generations without creating a second resolver.
+6. the first downstream engine slice builds a DataFusion plan directly from
+   admitted MRR IR, executes the same single-hop binary-Entity query over an
+   Arrow round trip and maintained GraphAr native read, and produces identical
+   MRR-admitted results; broader GQL execution and cross-engine parity remain
+   open.
 
 The canonical downstream design is owned by
 [[https://github.com/tao3k/mrr-data/blob/main/docs/architecture/0001-mrr-data-plane.org][mrr-data RFC 0001]];
@@ -113,8 +116,9 @@ contract.  The absence of an =mrr-data= crate here is intentional dependency
 purity: =mrr-data= depends on MRR, while MRR must not
 depend on its Arrow/GraphAr/CID consumer.  Both the upstream semantic receipt
 and downstream physical binding/result-candidate bridge are implemented.  This
-repository still does not claim engine parity merely because parsing,
-storage-neutral lowering, and binding pass.
+repository claims physical-representation parity only for that declared
+DataFusion slice; parsing, storage-neutral lowering, and binding alone still
+establish no broader engine parity.
 
 #+name: rfc-0024-profile-admission
 #+begin_src mermaid

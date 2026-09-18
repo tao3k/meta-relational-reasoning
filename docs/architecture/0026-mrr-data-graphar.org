@@ -18,9 +18,12 @@ write/read projection slice.  The GraphAr reader now reconstructs physical
 endpoints through persisted =EntityId= properties, restores every MRR identity
 and =RelationContext= field, and re-admits the complete fact through its owning
 relation.  Same-fixture differential and performance Scenarios cover the
-maintained native path.  Physical query binding and the identity-safe
-result-candidate bridge are implemented downstream.  Engine-specific
-schema-bound execution, cross-engine result parity, and distributed providers
+maintained native path.  Physical query binding, the identity-safe
+result-candidate bridge, and the first engine-specific schema-bound slice are
+implemented downstream.  That slice executes one admitted single-hop
+binary-Entity query through the same DataFusion plan after Arrow round-trip and
+GraphAr native read, then proves identical candidate and admission receipts.
+Broader query shapes, cross-engine result parity, and distributed providers
 remain open.  This RFC therefore records a partially implemented boundary
 rather than claiming a complete data plane.
 
@@ -226,10 +229,12 @@ The dependency order is:
    rather than accepting an engine-authored binding or owning a second engine
    runtime.  This step is implemented downstream.
 3. Cross-repository Scenarios execute the same admitted query through the
-   Arrow and maintained GraphAr paths, compare ordered typed results, and
+   Arrow and maintained GraphAr paths using one DataFusion plan, compare
+   ordered typed results, and
    exercise stale-generation, catalog-drift, projection-mismatch, and
    unsupported-capability failures.  The corpus and sample count may not be
-   reduced to make a performance gate pass.
+   reduced to make a performance gate pass.  The first exact query slice is
+   implemented downstream; widening it requires new typed negative contracts.
 4. Only after that result-admission chain is executable should the frontend
    widen the bounded GQL/Cypher surface.  Optional matching, quantified paths,
    and query composition require explicit =MetaQueryIr= ownership and static
@@ -243,10 +248,11 @@ The dependency order is:
 The first MRR deliverable, the query-result admission contract and its Rust,
 negative-contract, canonical-identity, and Lean evidence, is implemented by
 RFC 0032.  The physical binder and result-candidate bridge that consume that
-contract are also implemented downstream.  The active deliverable is now the
-engine-specific differential Scenario in step 3, not another binding layer.
-Remote distribution, IPFS, and broader provider work remain deferred because
-they do not block this chain.
+contract and the first engine-specific differential Scenario are also
+implemented downstream.  The active deliverable is now typed widening of the
+engine slice and measured execution performance, not another binding or
+runtime layer.  Remote distribution, IPFS, and broader provider work remain
+deferred because they do not block this chain.
 
 * Cross-repository acceptance gates
 
@@ -270,8 +276,9 @@ in dependency order:
 10. same-query ordered typed-result parity through the selected Arrow and
     maintained GraphAr engine paths.
 
-Gates 1--9 have implementation evidence.  Gate 7 is runner-specific A/B
-evidence and a regression guard, not a universal throughput claim.  Gate 10
-remains open and is the active cross-repository boundary described above.  The
-authoritative downstream implementation status lives in =mrr-data= RFC 0001;
-this RFC owns only the MRR obligations and dependency direction.
+Gates 1--10 have implementation evidence for the declared single-hop
+binary-Entity DataFusion slice.  Gate 7 is runner-specific A/B evidence and a
+regression guard, not a universal throughput claim; gate 10 is not evidence of
+broader query-shape or cross-engine parity.  The authoritative downstream
+implementation status lives in =mrr-data= RFC 0001; this RFC owns only the MRR
+obligations and dependency direction.

@@ -81,8 +81,10 @@ matching at this boundary.  The downstream =mrr-data= physical binding now
 identifies the snapshot, projection, and engine capability that produced the
 candidate; its physical-output bridge injects this receipt's identity rather
 than accepting an engine-authored binding or owning a second execution
-lifecycle.  Engine-specific differential execution Scenarios remain required
-before a downstream result can claim physical-query parity.
+lifecycle.  The downstream DataFusion adapter now proves this chain for one
+single-hop binary-Entity query across Arrow round-trip and maintained GraphAr
+native read.  Every broader query shape and cross-engine claim still requires
+its own differential Scenario.
 
 * Canonical identity
 
