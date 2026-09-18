@@ -87,7 +87,9 @@ in
     nixfmt.enable = true;
     clippy.enable = true;
     ruff.enable = true;
-    clippy.packageOverrides.cargo = config.languages.rust.toolchain.cargo;
+    # The hook runs outside the interactive devenv shell.  Put the complete
+    # toolchain on its wrapper PATH so cargo-clippy can spawn rustc.
+    clippy.packageOverrides.cargo = config.languages.rust.toolchainPackage;
     clippy.packageOverrides.clippy = config.languages.rust.toolchainPackage;
     clippy.settings.allFeatures = true;
   };

@@ -80,7 +80,11 @@ pub(crate) fn validate_field_value(
     validate_value(field.schema(), value, path)
 }
 
-fn validate_value(schema: &ValueSchema, value: &Value, path: &str) -> Result<(), RelationError> {
+pub(crate) fn validate_value(
+    schema: &ValueSchema,
+    value: &Value,
+    path: &str,
+) -> Result<(), RelationError> {
     let matches_kind = matches!(
         (schema, value),
         (ValueSchema::Entity, Value::Entity(_))

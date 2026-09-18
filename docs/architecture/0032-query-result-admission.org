@@ -1,0 +1,127 @@
+#+title: RFC 0032: Bounded Query-Result Candidate Admission V1
+#+status: implemented
+#+options: toc:2
+#+property: header-args :eval never-export :exports code
+
+* Decision
+
+MRR admits a physical query result only as typed candidate evidence for one
+exact =CatalogBoundQuery=.  Admission does not assert that the database result
+is true, complete, current beyond its named snapshot, or eligible for Content.
+Lineage, completeness, source authority, and transition owners retain those
+decisions.
+
+The =QueryResultBinding= repeats and checks the complete upstream identity:
+
+- =CatalogBoundQuery= digest;
+- =GenerationId=;
+- relation-catalog digest;
+- entity-catalog digest;
+- semantic-snapshot digest.
+
+Every value is then checked against the ordered =StaticQueryTyping= result
+fields already included in the bound-query identity.  The physical adapter
+does not receive a second schema resolver or type checker.
+
+#+name: rfc-0032-admission-flow
+#+begin_src mermaid
+flowchart LR
+  B[CatalogBoundQuery] --> I[Exact identity checks]
+  C[Physical result candidate] --> I
+  I --> S[Ordered column and row-shape checks]
+  S --> T[StaticQueryTyping value checks]
+  T --> Q[Query semantics and resource bounds]
+  Q --> R[QueryResultAdmissionReceipt]
+  I -->|mismatch| X[typed rejection - no receipt]
+  S -->|mismatch| X
+  T -->|mismatch| X
+  Q -->|mismatch| X
+#+end_src
+
+* Result value boundary
+
+=QueryResultValue= distinguishes the runtime categories that a Property Graph
+query can return:
+
+- =Scalar= carries both an exact MRR =ValueSchema= and =Value=.  Validation
+  reuses =mrr-relation='s canonical recursive value validator; query admission
+  does not copy decimal, float, temporal, list, or record algorithms.
+- =Node= carries an entity instance identity and its admitted entity type.
+- =Relation= carries a fact identity and its admitted relation type.
+- =List= recursively carries result values.  =QueryType::List= retains the
+  complete element =ExpressionType= so element nullability is not lost.
+- =Null= is accepted only when the static expression is nullable or has the
+  explicit null type.
+
+A coarse literal =ValueKind= or =Numeric= result still carries an exact runtime
+=ValueSchema=.  This lets admission validate canonical values without
+inventing precision, scale, width, or timezone policy in the query layer.
+Unlabelled graph bindings are expanded during static typing to the exact entity
+or relation types in the bound catalogs; an empty label list never means that
+result admission accepts an arbitrary external type identity.
+
+* Query semantics and bounds
+
+Admission is bounded by explicit non-zero row and cell limits.  It additionally
+enforces the result semantics available without executing the query again:
+
+- =FINISH= accepts no result rows;
+- a literal =LIMIT= bounds the returned row count;
+- =RETURN DISTINCT= rejects duplicate canonical rows;
+- column names and order exactly match the static result fields;
+- every row has the exact admitted width.
+
+Distinct detection canonically encodes each validated row and inserts it into
+a =BTreeSet=.  It does not use repeated linear scans.  Ordinary shape and type
+validation is linear in the number of cells; distinct checking is
+=$O(r log r)=$ for =r= rows.
+
+MRR does not claim to re-execute filters, aggregation, ordering, or path
+matching at this boundary.  A later =mrr-data= physical binding must identify
+the snapshot, projection, dialect, and engine capability that produced the
+candidate.  Differential execution Scenarios remain required before that
+downstream result can claim physical-query parity.
+
+* Canonical identity
+
+The receipt digest is length-framed SHA-256 over the namespace
+=mrr.query-result-admission.v1=, every semantic binding identity, and canonical
+CBOR for the ordered columns and rows.  Limits are admission policy and do not
+change the identity of an otherwise identical candidate.
+
+#+name: rfc-0032-admission-mathematics
+#+begin_src typst
+#set page(width: 160mm, height: auto, margin: 12mm)
+$
+  "admit"(b, c) "iff"
+  "identity"(c) = "identity"(b)
+  and "columns"(c) = "result-schema"(b)
+  and forall v in "cells"(c): "typed"(v)
+  and "bounded"(c)
+  and "result-semantics"(c)
+$
+
+$ not "admit"(b, c) => "receipt"(b, c) = "none" $
+#+end_src
+
+* Failure boundary
+
+Identity drift, excess rows or cells, unexpected =FINISH= rows, literal-limit
+overflow, duplicate distinct rows, column count or order drift, row-width
+drift, forbidden nulls, graph-type mismatch, scalar-schema mismatch, and
+invalid canonical values are distinct typed failures.  No failure returns a
+partial receipt.
+
+* Evidence
+
+Rust contracts cover deterministic identity, all five binding mismatches,
+shape, type, scalar, nullability, resource, =FINISH=, =DISTINCT=, literal
+=LIMIT=, graph values, and nullable list elements.  The Lean projection proves
+that a candidate satisfying every admission premise is returned exactly and
+that any rejected candidate emits no receipt.
+
+The Criterion owner executes 1K, 10K, and 100K one-column candidates.  On the
+recorded arm64 runner the quick-mode medians are =299.99us=, =1.7543ms=, and
+=18.250ms= respectively, with approximately 5.48 million cells per second at
+100K.  Admission borrows the candidate and retains only the compact binding,
+row count, and digest in its receipt; it does not deep-copy the row batch.

@@ -572,6 +572,51 @@ theorem static_query_typing_rejection_emits_no_receipt
     canonicalStaticQueryTypingReceipt? receipt = none := by
   simp [canonicalStaticQueryTypingReceipt?, rejected]
 
+structure QueryResultAdmissionCandidate where
+  queryBindingMatches : Bool
+  generationMatches : Bool
+  relationCatalogMatches : Bool
+  entityCatalogMatches : Bool
+  snapshotMatches : Bool
+  columnsMatch : Bool
+  rowsTyped : Bool
+  withinLimits : Bool
+  finishRowsValid : Bool
+  distinctRowsUnique : Bool
+  literalLimitSatisfied : Bool
+  deriving DecidableEq
+
+def queryResultCandidateAdmitted
+    (candidate : QueryResultAdmissionCandidate) : Bool :=
+  candidate.queryBindingMatches &&
+    candidate.generationMatches &&
+    candidate.relationCatalogMatches &&
+    candidate.entityCatalogMatches &&
+    candidate.snapshotMatches &&
+    candidate.columnsMatch &&
+    candidate.rowsTyped &&
+    candidate.withinLimits &&
+    candidate.finishRowsValid &&
+    candidate.distinctRowsUnique &&
+    candidate.literalLimitSatisfied
+
+def canonicalQueryResultAdmissionReceipt?
+    (candidate : QueryResultAdmissionCandidate) :
+    Option QueryResultAdmissionCandidate :=
+  if queryResultCandidateAdmitted candidate then some candidate else none
+
+theorem query_result_candidate_admission_is_exact
+    (candidate : QueryResultAdmissionCandidate)
+    (admitted : queryResultCandidateAdmitted candidate = true) :
+    canonicalQueryResultAdmissionReceipt? candidate = some candidate := by
+  simp [canonicalQueryResultAdmissionReceipt?, admitted]
+
+theorem query_result_candidate_rejection_emits_no_receipt
+    (candidate : QueryResultAdmissionCandidate)
+    (rejected : queryResultCandidateAdmitted candidate = false) :
+    canonicalQueryResultAdmissionReceipt? candidate = none := by
+  simp [canonicalQueryResultAdmissionReceipt?, rejected]
+
 inductive FrontendLanguage where
   | gql
   | cypher
@@ -592,8 +637,8 @@ structure FrontendCompilationReceipt where
 
 def lowerCommonFrontend
     (_language : FrontendLanguage)
-    (syntax : CommonFrontendSyntax) : NormalizedFrontendIr :=
-  { semanticKey := syntax.semanticKey }
+    (frontendSyntax : CommonFrontendSyntax) : NormalizedFrontendIr :=
+  { semanticKey := frontendSyntax.semanticKey }
 
 def frontendReceipt
     (language : FrontendLanguage)
@@ -601,8 +646,9 @@ def frontendReceipt
   { language, grammarDigest }
 
 theorem frontend_common_surface_normalizes_across_languages
-    (syntax : CommonFrontendSyntax) :
-    lowerCommonFrontend .gql syntax = lowerCommonFrontend .cypher syntax := by
+    (frontendSyntax : CommonFrontendSyntax) :
+    lowerCommonFrontend .gql frontendSyntax =
+      lowerCommonFrontend .cypher frontendSyntax := by
   rfl
 
 theorem frontend_receipt_retains_selected_language

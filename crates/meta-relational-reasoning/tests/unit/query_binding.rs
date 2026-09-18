@@ -671,10 +671,13 @@ fn query_binding_rejects_unconstrained_unknown_and_conflicting_properties() {
         };
     let source = Binding::new("source").unwrap();
     assert_error(
-        "unconstrained-property",
+        "wildcard-conflicting-property",
         Vec::new(),
         "name",
-        QueryCatalogBindingError::UnconstrainedPropertyBinding(source.clone()),
+        QueryCatalogBindingError::ConflictingPropertySchema {
+            binding: source.clone(),
+            key: PropertyKey::new("name").unwrap(),
+        },
     );
     assert_error(
         "unknown-property",

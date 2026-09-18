@@ -212,6 +212,7 @@ their owners:
 - [relation-catalog query binding](docs/architecture/0029-relation-catalog-query-binding.org)
 - [entity and property catalog](docs/architecture/0030-entity-property-catalog.org)
 - [static query typing and result schema](docs/architecture/0031-static-query-typing.org)
+- [bounded query-result candidate admission](docs/architecture/0032-query-result-admission.org)
 
 ## Build and verify
 

@@ -167,6 +167,14 @@ impl ValueSchema {
         }
         Ok(())
     }
+
+    /// Validates one non-null runtime value against this exact schema.
+    ///
+    /// Nullability belongs to the field or query-result boundary and must be
+    /// checked there before calling this method.
+    pub fn validate_value(&self, value: &Value) -> Result<(), RelationError> {
+        crate::validation::validate_value(self, value, "value")
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]

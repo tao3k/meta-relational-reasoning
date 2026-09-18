@@ -4,6 +4,7 @@ mod admission;
 mod api;
 mod binding;
 mod counterexample;
+mod query_result;
 mod truth;
 mod typing;
 pub use admission::{
@@ -67,6 +68,11 @@ pub use mrr_transition::{
     SafetyLimits, SafetyStatus, StatePredicate, StateSchema, StateSnapshot,
     Transition as GenerationTransition, TransitionError as GenerationTransitionError,
     TransitionModelError, TransitionStep, TransitionSystem,
+};
+pub use query_result::{
+    CandidateQueryResult, QueryResultAdmissionError, QueryResultAdmissionReceipt,
+    QueryResultBinding, QueryResultLimits, QueryResultValue, QueryResultValueKind,
+    admit_query_result_candidate,
 };
 pub use truth::{TruthStatus, conflict_truth, intent_binding_truth, safety_truth, why_not_truth};
 pub use typing::{ExpressionType, ParameterType, QueryType, ResultField, StaticQueryTyping};

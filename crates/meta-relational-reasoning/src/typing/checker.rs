@@ -139,10 +139,17 @@ impl<'a> TypeChecker<'a> {
         binding: &Binding,
         types: &[EntityId],
     ) -> Result<(), QueryCatalogBindingError> {
-        self.register_target(
-            binding,
-            BindingTarget::Node(types.iter().copied().collect()),
-        )
+        let types = if types.is_empty() {
+            self.bundle
+                .entity_catalog()
+                .entities()
+                .iter()
+                .map(mrr_relation::EntitySchema::id)
+                .collect()
+        } else {
+            types.iter().copied().collect()
+        };
+        self.register_target(binding, BindingTarget::Node(types))
     }
 
     fn register_relation(
@@ -150,10 +157,17 @@ impl<'a> TypeChecker<'a> {
         binding: &Binding,
         types: &[RelationId],
     ) -> Result<(), QueryCatalogBindingError> {
-        self.register_target(
-            binding,
-            BindingTarget::Relation(types.iter().copied().collect()),
-        )
+        let types = if types.is_empty() {
+            self.bundle
+                .relation_catalog()
+                .relations()
+                .iter()
+                .map(mrr_relation::RelationSchema::id)
+                .collect()
+        } else {
+            types.iter().copied().collect()
+        };
+        self.register_target(binding, BindingTarget::Relation(types))
     }
 
     fn register_scalar(
@@ -411,10 +425,9 @@ impl<'a> TypeChecker<'a> {
                 require_numeric(&first, "AVERAGE argument")?;
                 Ok(ExpressionType::new(QueryType::Numeric, true))
             }
-            AggregationFunction::CollectList => Ok(ExpressionType::new(
-                QueryType::List(Box::new(first.query_type)),
-                false,
-            )),
+            AggregationFunction::CollectList => {
+                Ok(ExpressionType::new(QueryType::List(Box::new(first)), false))
+            }
             AggregationFunction::StandardDeviationSample
             | AggregationFunction::StandardDeviationPopulation => {
                 require_numeric(&first, "standard deviation argument")?;

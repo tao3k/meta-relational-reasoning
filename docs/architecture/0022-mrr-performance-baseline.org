@@ -27,12 +27,19 @@ fixture shape and toolchain before the baseline is changed.
 | IMPACT                  | 4.0782 ms | 52.795 ms | 940.61 ms |
 | State exploration       | 23.808 ms | 345.40 ms | 4.5752 s  |
 | Lineage reconstruction  | 6.5944 ms | 108.41 ms | 705.53 ms |
+| Query-result admission  | 299.99 us | 1.7543 ms | 18.250 ms |
 
 All 24 scale points executed; compile-only results are not included. The Ascent
 fixture contains independent self edges so the output is linear while the
 configured theoretical pair budget remains explicit. The transition fixture is
 a deterministic chain and reaches the terminal unsafe state after the requested
 number of transitions.
+
+The query-result row was added on 2026-09-18 using the same host/toolchain
+class and Criterion quick mode.  It validates and canonically identifies a
+one-column candidate without cloning the retained row batch.  The 100K median
+corresponds to approximately 5.48 million admitted cells per second.  These
+numbers are runner-specific evidence, not a universal throughput claim.
 
 * Performance ownership
 
@@ -50,6 +57,8 @@ The executable Criterion owners are:
 - =crates/mrr-lineage/benches/lineage_perf.rs=
 - =crates/mrr-logic/benches/logic_perf.rs=
 - =crates/mrr-transition/benches/transition_perf.rs=
+- =crates/meta-relational-reasoning/benches/facade_perf.rs=, including bounded
+  query-result candidate admission without cloning the retained row batch
 
 Every owner contains the 1K, 10K, and 100K scales. Workspace all-targets checks
 compile every benchmark; an explicit Criterion run refreshes measurements.

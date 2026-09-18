@@ -126,6 +126,16 @@ impl MrrEngine {
         crate::bind_query_to_catalog(&self.bundle, query, snapshot)
     }
 
+    /// Admits a bounded physical result for one exact catalog-bound query.
+    pub fn admit_query_result_candidate(
+        &self,
+        query: &crate::CatalogBoundQuery,
+        candidate: &crate::CandidateQueryResult,
+        limits: crate::QueryResultLimits,
+    ) -> Result<crate::QueryResultAdmissionReceipt, crate::QueryResultAdmissionError> {
+        crate::admit_query_result_candidate(query, candidate, limits)
+    }
+
     pub fn derive(
         &self,
         plan: DeductionPlan,

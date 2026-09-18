@@ -211,6 +211,8 @@ $ A => B $
                 "order_page_rejection_emits_no_ir",
                 "primitive_result_admission_is_typed",
                 "primitive_result_rejection_emits_no_ir",
+                "query_result_candidate_admission_is_exact",
+                "query_result_candidate_rejection_emits_no_receipt",
                 "returned_counterexample_is_valid",
                 "static_query_typing_admission_is_exact",
                 "static_query_typing_rejection_emits_no_receipt",

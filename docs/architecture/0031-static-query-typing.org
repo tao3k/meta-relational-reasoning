@@ -58,6 +58,12 @@ The checker constructs one binding environment from graph patterns.  Repeated
 node or relation bindings union their possible types; crossing node, relation,
 and scalar categories fails closed.
 
+An unlabelled node or relation binding expands to the exact corresponding type
+set in the bound entity or relation catalog.  Property access succeeds only if
+every possible type exposes the same schema and nullability; otherwise it fails
+as an unknown or conflicting property.  An empty source label list therefore
+never becomes an unbounded external result type.
+
 It then checks, in semantic order:
 
 1. filters must produce Boolean values;

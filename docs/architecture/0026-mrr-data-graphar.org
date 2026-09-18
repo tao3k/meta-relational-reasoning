@@ -229,9 +229,10 @@ The dependency order is:
    candidate evidence and cannot bypass lineage, completeness, and transition
    admission.
 
-The first MRR deliverable is therefore the query-result admission contract and
-its Rust, negative-contract, canonical-identity, and Lean evidence.  The first
-downstream deliverable is the physical binder that consumes that contract.
+The first MRR deliverable, the query-result admission contract and its Rust,
+negative-contract, canonical-identity, and Lean evidence, is implemented by
+RFC 0032.  The active downstream deliverable is the physical binder that
+consumes that contract.
 Remote distribution, IPFS, and broader provider work remain deferred because
 they do not block this chain.
 

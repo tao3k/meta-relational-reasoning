@@ -17,7 +17,7 @@ pub enum QueryType {
     Numeric,
     AnyValue,
     Null,
-    List(Box<QueryType>),
+    List(Box<ExpressionType>),
 }
 
 /// Static type and nullability for one expression.

@@ -76,6 +76,8 @@ PROOF_OBLIGATIONS = {
         "returned_counterexample_is_valid",
         "static_query_typing_admission_is_exact",
         "static_query_typing_rejection_emits_no_receipt",
+        "query_result_candidate_admission_is_exact",
+        "query_result_candidate_rejection_emits_no_receipt",
     },
 }
 COUNTEREXAMPLE_FIXTURE = (
