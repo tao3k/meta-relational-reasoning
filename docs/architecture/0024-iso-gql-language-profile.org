@@ -99,9 +99,10 @@ For ISO GQL, the implemented admission path and still-open engine path are:
 4. MRR admits =CatalogBoundQuery= and owns label, property, expression, and
    ordered-result typing; =mrr-data= consumes that receipt as =BoundDataQuery=
    and adds only physical snapshot, projection, and engine-capability evidence;
-5. the downstream execution bridge accepts only the exact bound engine
-   profile, injects =QueryResultBinding= from the immutable MRR receipt, and
-   returns a candidate whose final admission remains owned by MRR;
+5. each engine keeps its native execution lifecycle, while the downstream
+   physical-output bridge accepts only the exact bound engine profile, injects
+   =QueryResultBinding= from the immutable MRR receipt, and returns a candidate
+   whose final admission remains owned by MRR;
 6. engine-specific Arrow/GraphAr execution and differential parity still must
    reject stale or mismatched generations without creating a second resolver.
 
