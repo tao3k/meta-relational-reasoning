@@ -77,10 +77,12 @@ validation is linear in the number of cells; distinct checking is
 =$O(r log r)=$ for =r= rows.
 
 MRR does not claim to re-execute filters, aggregation, ordering, or path
-matching at this boundary.  A later =mrr-data= physical binding must identify
-the snapshot, projection, dialect, and engine capability that produced the
-candidate.  Differential execution Scenarios remain required before that
-downstream result can claim physical-query parity.
+matching at this boundary.  The downstream =mrr-data= physical binding now
+identifies the snapshot, projection, and engine capability that produced the
+candidate; its execution bridge injects this receipt's identity rather than
+accepting an engine-authored binding.  Engine-specific differential execution
+Scenarios remain required before a downstream result can claim physical-query
+parity.
 
 * Canonical identity
 

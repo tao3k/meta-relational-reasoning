@@ -88,28 +88,32 @@ prove database-dialect portability, query-result truth, Content authority, or
 Context freshness.  Those require separate conformance, source, lineage, and
 admission evidence.
 
-For ISO GQL, the proposed downstream schema-bound query path is:
+For ISO GQL, the implemented admission path and still-open engine path are:
 
 1. the parser artifact establishes the language grammar and lossless CST;
 2. MRR lowering produces a storage-neutral =MetaQueryIr= whose node, relation,
    property, direction, and path constructs remain Property-Graph-specific;
-3. the separate downstream =mrr-data= repository would establish an exact
+3. the separate downstream =mrr-data= repository establishes an exact
    Property Graph catalog, semantic generation, physical snapshot root, and an
    optional versioned GraphAr projection over its Arrow interchange batches;
-4. =mrr-data= would resolve the IR against that catalog and wrap it in a bound
-   query receipt carrying catalog/snapshot digests, without inserting Arrow or
-   GraphAr types into =MetaQueryIr=;
-5. execution and result admission must reject a stale or mismatched data
-   generation.
+4. MRR admits =CatalogBoundQuery= and owns label, property, expression, and
+   ordered-result typing; =mrr-data= consumes that receipt as =BoundDataQuery=
+   and adds only physical snapshot, projection, and engine-capability evidence;
+5. the downstream execution bridge accepts only the exact bound engine
+   profile, injects =QueryResultBinding= from the immutable MRR receipt, and
+   returns a candidate whose final admission remains owned by MRR;
+6. engine-specific Arrow/GraphAr execution and differential parity still must
+   reject stale or mismatched generations without creating a second resolver.
 
 The canonical downstream design is owned by
 [[https://github.com/tao3k/mrr-data/blob/main/docs/architecture/0001-mrr-data-plane.org][mrr-data RFC 0001]];
 [[file:0026-mrr-data-graphar.org][RFC 0026]] records only MRR's side of the
 contract.  The absence of an =mrr-data= crate here is intentional dependency
-purity: =mrr-data= would depend on MRR in the proposal, while MRR must not
-depend on its future Arrow/GraphAr/CID consumer.  Neither repository currently
-implements that binding.  This repository does not claim otherwise merely
-because parsing and storage-neutral lowering pass.
+purity: =mrr-data= depends on MRR, while MRR must not
+depend on its Arrow/GraphAr/CID consumer.  Both the upstream semantic receipt
+and downstream physical binding/result-candidate bridge are implemented.  This
+repository still does not claim engine parity merely because parsing,
+storage-neutral lowering, and binding pass.
 
 #+name: rfc-0024-profile-admission
 #+begin_src mermaid

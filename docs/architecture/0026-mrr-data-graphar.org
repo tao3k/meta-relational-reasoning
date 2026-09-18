@@ -18,7 +18,9 @@ write/read projection slice.  The GraphAr reader now reconstructs physical
 endpoints through persisted =EntityId= properties, restores every MRR identity
 and =RelationContext= field, and re-admits the complete fact through its owning
 relation.  Same-fixture differential and performance Scenarios cover the
-maintained native path.  Physical query binding and distributed providers
+maintained native path.  Physical query binding and the identity-safe
+result-candidate bridge are implemented downstream.  Engine-specific
+schema-bound execution, cross-engine result parity, and distributed providers
 remain open.  This RFC therefore records a partially implemented boundary
 rather than claiming a complete data plane.
 
@@ -39,7 +41,9 @@ The downstream =mrr-data= repository may consume those contracts and own:
 - a gated GraphAr Property Graph projection;
 - physical snapshot manifests, block CIDs, and CAR archives;
 - filesystem, object-store, or later distribution providers;
-- a bound query wrapper that identifies an exact catalog and snapshot.
+- a bound query wrapper that identifies an exact catalog and snapshot;
+- an engine-profile-checked bridge from identity-free physical rows to an
+  MRR-owned result candidate.
 
 The dependency direction is one way:
 
@@ -116,20 +120,23 @@ RFC 0031, and rejects bundle facts from another generation.  Query templates
 with dependencies still fail closed until their plan graph has a canonical
 admission contract.
 
-A future downstream =BoundDataQuery= may extend that binding with:
+The downstream =BoundDataQuery= now extends that binding with:
 
 - a physical snapshot root CID;
 - an optional GraphAr projection profile and manifest CID;
-- language/dialect and engine capability declarations.
+- an engine capability profile.
 
 The generation must resolve to an admitted upstream =SemanticSnapshot=.
 Physical snapshot roots remain downstream identities and cannot replace its
 source-revision digest.
 
 The downstream binder validates physical availability, projection profile,
-snapshot root, and engine capability.  It must consume MRR's admitted catalog
-binding rather than reimplement unknown-label, unknown-property, relation-type,
-or expression-type semantics under a second error vocabulary.
+snapshot root, and engine capability.  Its execution bridge rejects an
+executor outside the exact bound profile, accepts only identity-free physical
+columns and rows, and injects =QueryResultBinding= from =CatalogBoundQuery=.
+It consumes MRR's admitted catalog binding rather than reimplementing
+unknown-label, unknown-property, relation-type, expression-type, or result
+admission semantics under a second error vocabulary.
 
 For catalog $S_g$, snapshot $D_g$, and query $q$, execution is defined only
 when every query reference resolves uniquely and all identities name the same
@@ -209,11 +216,14 @@ The dependency order is:
    digests, semantic snapshot digest, and ordered static result schema.  A
    stale generation, catalog mismatch, missing field, reordered field,
    incompatible value, or nullability violation publishes no admitted result.
+   This step is implemented by RFC 0032.
 2. =mrr-data= implements =BoundDataQuery= as a downstream physical binding.
    It adds the physical snapshot root, optional GraphAr projection profile,
-   dialect, and engine capability evidence, but consumes MRR's admitted
-   catalog and typing receipt instead of implementing a second resolver or
-   type checker.
+   and engine capability evidence, but consumes MRR's admitted catalog and
+   typing receipt instead of implementing a second resolver or type checker.
+   Its result bridge verifies the executor profile and injects MRR identity
+   rather than accepting an engine-authored binding.  This step is implemented
+   downstream.
 3. Cross-repository Scenarios execute the same admitted query through the
    Arrow and maintained GraphAr paths, compare ordered typed results, and
    exercise stale-generation, catalog-drift, projection-mismatch, and
@@ -231,8 +241,9 @@ The dependency order is:
 
 The first MRR deliverable, the query-result admission contract and its Rust,
 negative-contract, canonical-identity, and Lean evidence, is implemented by
-RFC 0032.  The active downstream deliverable is the physical binder that
-consumes that contract.
+RFC 0032.  The physical binder and result-candidate bridge that consume that
+contract are also implemented downstream.  The active deliverable is now the
+engine-specific differential Scenario in step 3, not another binding layer.
 Remote distribution, IPFS, and broader provider work remain deferred because
 they do not block this chain.
 
@@ -248,14 +259,18 @@ in dependency order:
 4. CAR import validation and resource-limit scenarios;
 5. a GraphAr projection that preserves MRR identities through repartition and
    rejects unowned n-ary mappings;
-6. stale-generation, catalog-drift, dialect-mismatch, and unknown-property
-   query-binding tests;
+6. stale-generation, catalog-drift, missing-projection, and
+   unsupported-capability query-binding tests;
 7. differential GraphAr reader evidence and performance scenarios without
    reducing the declared corpus;
-8. proof that MRR has no reverse storage dependency.
+8. proof that MRR has no reverse storage dependency;
+9. an execution bridge proving that a physical engine cannot author MRR result
+   identity and that profile drift publishes no candidate;
+10. same-query ordered typed-result parity through the selected Arrow and
+    maintained GraphAr engine paths.
 
-Gates 1--5, 7, and 8 have implementation evidence.  Gate 7 is runner-specific
-A/B evidence and a regression guard, not a universal throughput claim.  Gate 6
+Gates 1--9 have implementation evidence.  Gate 7 is runner-specific A/B
+evidence and a regression guard, not a universal throughput claim.  Gate 10
 remains open and is the active cross-repository boundary described above.  The
 authoritative downstream implementation status lives in =mrr-data= RFC 0001;
 this RFC owns only the MRR obligations and dependency direction.
