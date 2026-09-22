@@ -80,6 +80,11 @@ fn rust_commands_inherit_the_canonical_gxpkg_environment() {
     assert!(ci.contains("Build declared Gerbil package"));
     assert!(ci.contains("Install immutable Gerbil release"));
     assert!(ci.contains("tools/ci/install-gerbil-release.sh"));
+    assert!(ci.contains("brew install gcc jq openssl pkg-config sqlite zlib"));
+    assert!(ci.contains("PKG_CONFIG_PATH=$openssl_prefix/lib/pkgconfig"));
+    assert!(!ci.contains("CPPFLAGS="));
+    assert!(!ci.contains("LDFLAGS="));
+    assert!(!ci.contains("LIBRARY_PATH="));
     assert!(gerbil_release.contains("revision=d801e7a1c7f77df421f638e62aaebe370f193c97"));
     assert!(gerbil_release.contains("shasum -a 256 --check"));
     assert!(!ci.contains("gparse"));
