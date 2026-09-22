@@ -87,7 +87,7 @@ fn rust_commands_inherit_the_canonical_gxpkg_environment() {
     assert!(!ci.contains("CPPFLAGS="));
     assert!(!ci.contains("LDFLAGS="));
     assert!(!ci.contains("LIBRARY_PATH="));
-    assert!(gerbil_release.contains("revision=d801e7a1c7f77df421f638e62aaebe370f193c97"));
+    assert!(gerbil_release.contains("revision=2591dcd9b7c6d2c4e9dd8611a17c5b1a5d82bbdb"));
     assert!(gerbil_release.contains("shasum -a 256 --check"));
     assert!(!ci.contains("gparse"));
     assert!(!ci.contains("audit-spec"));
