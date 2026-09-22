@@ -76,4 +76,4 @@
                 'mrr-closure 'rejected 0 'counter-evidence))))
            #t))))))
 
-(run-tests! reasoning-driver-test)
+(export reasoning-driver-test)

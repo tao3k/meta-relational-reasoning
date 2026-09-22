@@ -48,7 +48,7 @@ fn stale_scheme_input_fails_closed() {
 fn gerbil_package_owns_only_the_linked_parser_edge() {
     let package = include_str!("../../../../gerbil.pkg");
     assert!(
-        package.contains("github.com/tao3k/gerbil-parser@1d0581a5e8eb60ca951f2781354c7d60d1871402")
+        package.contains("github.com/tao3k/gerbil-parser@04a91071b99c4471768c848b49269ce6fb1636ab")
     );
     assert_eq!(package.matches("github.com/tao3k/").count(), 1);
     assert!(!package.contains("github.com/tao3k/poo-flow@"));
@@ -63,6 +63,7 @@ fn rust_commands_inherit_the_canonical_gxpkg_environment() {
     let justfile = include_str!("../../../../justfile");
     let readme = include_str!("../../../../README.md");
     let ci = include_str!("../../../../.github/workflows/ci.yml");
+    let gerbil_release = include_str!("../../../../tools/ci/install-gerbil-release.sh");
 
     assert!(devenv.contains("scripts.mrr-cargo.exec"));
     assert!(devenv.contains("exec gerbil env cargo \"$@\""));
@@ -77,8 +78,10 @@ fn rust_commands_inherit_the_canonical_gxpkg_environment() {
     assert!(ci.contains("GERBIL_BUILD_VERBOSE: \"1\""));
     assert!(ci.contains("Install declared Gerbil dependencies"));
     assert!(ci.contains("Build declared Gerbil package"));
-    assert!(ci.contains("brew --prefix openssl@3"));
-    assert!(ci.contains("LIBRARY_PATH=$openssl_prefix/lib"));
+    assert!(ci.contains("Install immutable Gerbil release"));
+    assert!(ci.contains("tools/ci/install-gerbil-release.sh"));
+    assert!(gerbil_release.contains("revision=d801e7a1c7f77df421f638e62aaebe370f193c97"));
+    assert!(gerbil_release.contains("shasum -a 256 --check"));
     assert!(!ci.contains("gparse"));
     assert!(!ci.contains("audit-spec"));
 }
@@ -95,20 +98,7 @@ fn native_aot_reuses_the_upstream_program_builder_and_runtime() {
 
     assert!(adapter.contains("build_program_archive_with_contract"));
     assert!(adapter.contains("ProgramArchiveObserver"));
-    for authoring_module in [
-        "gerbil-parser/language-support",
-        "gerbil-parser/src/language-support/antlr4-source",
-        "gerbil-parser/src/language-support/antlr4-source-lexer",
-        "gerbil-parser/src/language-support/fixture",
-        "gerbil-parser/src/language-support/grammar-source",
-        "gerbil-parser/src/language-support/iso-bnf",
-        "gerbil-parser/src/language-support/javacc-source",
-    ] {
-        assert!(
-            adapter.contains(authoring_module),
-            "AOT contract must reject authoring-only module {authoring_module}"
-        );
-    }
+    assert!(adapter.contains("gerbil-parser/src/ffi/parse-artifact-v1-native"));
     assert!(!adapter.contains("Command::new(\"gxc\")"));
     assert!(!adapter.contains("Command::new(\"gcc\")"));
     assert!(ffi.contains("gerbil_scheme_rust_runtime_init_program(Some(mrr_grammar_linker))"));

@@ -2,8 +2,7 @@
 ;;; -*- Gerbil -*-
 ;;; MRR owns only the parser edge; POO Flow and ASP remain transitive.
 
-(import :std/test
-        (only-in :std/srfi/13 string-prefix?))
+(import :std/test)
 
 (def dependencies
   (call-with-input-file "gerbil.pkg"
@@ -24,4 +23,4 @@
       (check (dependency-count "github.com/tao3k/poo-flow") => 0)
       (check (dependency-count "github.com/tao3k/asp-gerbil-scheme") => 0))))
 
-(run-tests! dependency-contract-tests)
+(export dependency-contract-tests)

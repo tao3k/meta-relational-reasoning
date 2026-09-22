@@ -87,4 +87,4 @@
         (check-equal? (search-playbook-ref program 'producer-axes)
                       '((language) (documents org)))))))
 
-(run-tests! search-playbook-test)
+(export search-playbook-test)

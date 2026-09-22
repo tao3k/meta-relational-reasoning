@@ -1,10 +1,7 @@
 ;;; Native AOT ABI projection of the single ISO GQL Scheme declaration.
 
-(import :std/foreign
-        (only-in :std/sugar with-catch)
-        ./gql-declaration
+(import ./gql-declaration
         ./gql-profile)
-(export mrr-grammar-native-abi-version)
 (include "parser-authority-receipt-declaration.ss")
 (include "../reasoning/declaration.ss")
 (include "../search/enhanced-tree-sitter-query-declaration.ss")
@@ -304,8 +301,10 @@
     (and operands (>= index 0) (< index (length operands))
          (list-ref operands index))))
 
-(begin-ffi
-  (mrr-grammar-native-abi-version mrr-grammar-native-table-count
+(begin-foreign
+  (namespace
+   ("meta-relational-reasoning/scheme/grammar/native#"
+    mrr-grammar-native-abi-version mrr-grammar-native-table-count
    mrr-grammar-native-row-text-length mrr-grammar-native-row-text-char
    mrr-grammar-native-syntax-field-count
    mrr-grammar-native-syntax-field-length
@@ -323,8 +322,8 @@
    mrr-enhanced-query-row-text-length
    mrr-enhanced-query-row-text-char
    mrr-enhanced-query-operand-count
-   mrr-enhanced-query-operand-text-length
-   mrr-enhanced-query-operand-text-char)
+    mrr-enhanced-query-operand-text-length
+    mrr-enhanced-query-operand-text-char))
   (c-define (mrr-grammar-native-abi-version)
     () unsigned-int32 "mrr_grammar_native_abi_version" "extern" 3)
   (c-define (mrr-grammar-native-table-count table)

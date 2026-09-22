@@ -478,4 +478,4 @@
        (assq 'where-clause (.ref mrr-gql-grammar 'recoveries))
        '(where-clause "GQL-PARSE-WHERE-SYNTAX" preserve-source)))))
 
-(run-tests! grammar-authority-test)
+(export grammar-authority-test)

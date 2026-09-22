@@ -40,4 +40,4 @@
        (map caddr (enhanced-tree-sitter-query-table 'recoveries))
        '(reject reject reject reject reject reject reject)))))
 
-(run-tests! enhanced-tree-sitter-query-test)
+(export enhanced-tree-sitter-query-test)

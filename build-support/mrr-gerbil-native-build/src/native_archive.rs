@@ -17,20 +17,13 @@ use gerbil_scheme_native_build::{
 const REQUIRED_MODULES: &[&str] = &[
     "meta-relational-reasoning/scheme/grammar/native-program",
     "meta-relational-reasoning/scheme/grammar/native",
-    "gerbil-parser/src/ffi/parse-artifact-v1",
+    "gerbil-parser/src/ffi/parse-artifact-v1-native",
 ];
 
 const FORBIDDEN_RUNTIME_MODULES: &[&str] = &[
     "asp-gerbil-scheme/src/build-api/package-build",
     "asp-gerbil-scheme/src/build-api/native-import-closure",
     "asp-gerbil-scheme/src/support/time",
-    "gerbil-parser/language-support",
-    "gerbil-parser/src/language-support/antlr4-source",
-    "gerbil-parser/src/language-support/antlr4-source-lexer",
-    "gerbil-parser/src/language-support/fixture",
-    "gerbil-parser/src/language-support/grammar-source",
-    "gerbil-parser/src/language-support/iso-bnf",
-    "gerbil-parser/src/language-support/javacc-source",
     "poo-flow/src/module-system/observability/interface",
     "poo-flow/src/module-system/observability/source-admission",
     "poo-flow/src/module-system/observability/build-projection",

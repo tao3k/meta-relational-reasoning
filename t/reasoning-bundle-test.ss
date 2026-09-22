@@ -55,4 +55,4 @@
          lineage-policy projection-policy
          validation-profile)))))
 
-(run-tests! reasoning-bundle-test)
+(export reasoning-bundle-test)
