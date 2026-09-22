@@ -75,6 +75,7 @@ fn rust_commands_inherit_the_canonical_gxpkg_environment() {
     assert!(!readme.contains("devenv-profile-exec cargo test --workspace"));
     assert!(ci.contains("gerbil env cargo test --workspace --locked"));
     assert!(ci.contains("macos-latest"));
+    assert!(ci.contains("github.event_name"));
     assert!(ci.contains("GERBIL_BUILD_VERBOSE: \"1\""));
     assert!(ci.contains("Install declared Gerbil dependencies"));
     assert!(ci.contains("Build declared Gerbil package"));
