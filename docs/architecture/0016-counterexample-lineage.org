@@ -1,0 +1,33 @@
+#+title: RFC 0016 - Counterexample Lineage
+#+status: accepted
+
+* Atomic projection
+
+The public facade projects a validated =CounterexampleIr= into the same
+=LineageGraph= used by WHY and IMPACT.  It does not allocate identity: callers
+must provide the exact node identity for the violation, every state, every
+transition, every referenced fact, and every edge.
+
+#+begin_src mermaid
+flowchart RL
+  V[SafetyViolation] --> S1[Terminal state]
+  S1 --> T[Transition]
+  T --> S0[Prior state]
+  T --> P[Precondition fact]
+  T --> E[Effect fact]
+#+end_src
+
+The binding validates state and transition cardinality, exact step endpoints,
+action ownership, the exact referenced fact set, and exact edge count before
+constructing any graph.  =mrr-lineage= then remains the sole graph validator.
+
+#+begin_src typst
+#set page(width: 150mm, height: auto, margin: 12mm)
+$ |"states"| = |"steps"| + 1 $
+$ forall i: F("step"_i) = "state"_i and T("step"_i) = "state"_(i+1) $
+$ "facts" = union_i ("precondition-facts"_i union "effect-facts"_i) $
+#+end_src
+
+The resulting violation node can be passed directly to =why=.  Every returned
+transition is therefore traceable through prior state and relation-fact
+identities; no prose-only counterexample path exists.

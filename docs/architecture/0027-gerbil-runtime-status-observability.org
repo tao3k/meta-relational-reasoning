@@ -1,0 +1,40 @@
+#+title: RFC 0027: Typed Gerbil Runtime Status Observability
+#+status: accepted
+#+options: toc:2
+#+property: header-args :eval never-export :exports code
+
+* Decision
+
+The MRR native boundary preserves =gerbil-scheme-sys= status semantics instead
+of reducing failures to an unexplained integer.  =NativeRuntimeStatus= carries
+the exact numeric ABI code and, when the upstream crate recognizes it, its
+=GerbilStatus= meaning.  Unknown future codes remain observable and fail
+closed; MRR does not define a second status table.
+
+#+begin_src mermaid
+flowchart LR
+  A[Gerbil AOT ABI] --> C[exact status code]
+  C --> U[upstream GerbilStatus decoding]
+  U --> M[NativeRuntimeStatus]
+  C --> M
+  M --> E[typed MRR error]
+#+end_src
+
+* Contract
+
+The raw code is never discarded, known meanings are formatted beside the
+code, and every native grammar, parse-artifact, and driver failure propagates
+the same status owner.  No retry, fallback process, or inferred runtime state
+is introduced by this observability layer.
+
+#+begin_src typst
+#set page(width: 150mm, height: auto, margin: 12mm)
+$ "status"(c) = (c, "upstream-meaning"(c)) $
+$ "known"(c) = "false" => "preserve"(c) and "fail-closed" $
+#+end_src
+
+* Evidence
+
+Unit tests cover a recognized upstream code and an unknown code.  Native AOT
+tests exercise propagation through the existing fixed-width ABI after a fresh
+=mrr-gerbil build=.

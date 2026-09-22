@@ -1,0 +1,63 @@
+#+title: Ascent MVP Capability and Authority Boundary
+#+options: toc:nil
+
+* Retrieval
+
+The workspace resolves =ascent 0.8.0=.  Its installed upstream README defines
+lattice fixed points, demonstrates shortest paths with =Dual=, and describes
+BYODS as an optional custom-relation optimization.  The local kernel uses only
+the declarative =ascent!= macro plus =Dual<usize>=.  It deliberately does not
+use parallel evaluation, =ascent_run!=, BYODS, or deletion maintenance in this
+milestone.
+
+- [[file:/Users/guangtao/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ascent-0.8.0/README.MD::65][lattice fixed-point semantics]]
+- [[file:/Users/guangtao/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ascent-0.8.0/README.MD::91][BYODS boundary]]
+- [[file:../crates/mrr-ascent/src/api.rs][workspace execution owner]]
+
+* Bounded semantic slice
+
+#+begin_src mermaid
+flowchart LR
+  B[Validated ReasoningBundle] --> C[Selected RulePack]
+  C --> A[Bounded Ascent closure]
+  A --> W[Deterministic shortest witness]
+  W --> R[ClosureReceipt]
+  R --> F[Facade identity and lineage admission]
+#+end_src
+
+The adapter accepts one validated binary source relation, one binary derived
+relation, and exactly two rules from one named rule pack.  Input count and the
+finite node-pair upper bound are checked before Ascent runs.  Output truncation
+is explicit and cannot be admitted as a complete generation delta.
+
+* Receipt and authority
+
+The pre-admission =ClosureReceipt= binds the selected =RulePackId=, input
+=GenerationId=, sorted complete input =FactId= set, closure status, sorted
+derivation candidates, and a domain-framed SHA-256 digest.  Repeating the same
+evaluation therefore yields the same receipt digest.
+
+#+begin_src typst
+#let closure-receipt(pack, generation, inputs, status, candidates) = (
+  pack: pack,
+  generation: generation,
+  inputs: inputs.sorted(),
+  status: status,
+  candidates: candidates.sorted(),
+)
+$ digest = sha256("mrr.derivation-receipt.v1" || encode(closure-receipt)) $
+#+end_src
+
+Ascent does not allocate =FactId= or =DerivationId=.  Caller-assigned identities
+remain external and become authoritative only after the facade composes the
+canonical lineage and transition validators.  This is the corrected MRR
+architecture, not a compatibility path: execution, identity, lineage, and
+transition each have exactly one owner.
+
+* Verification
+
+- transitive dependency derives the expected indirect pair;
+- cyclic input reaches a finite fixed point with shortest support;
+- repeated evaluation is byte-for-byte receipt-idempotent;
+- a rule outside the selected rule pack fails closed;
+- input, theoretical pair, and result budgets remain explicit.

@@ -1,0 +1,116 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      run_deepseek_live:
+        description: Run the paid DeepSeek MRR live gate
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event_name }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Native Gerbil and Rust (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+    env:
+      GERBIL_PREFIX: ${{ github.workspace }}/.ci/gerbil
+      GERBIL_BUILD_VERBOSE: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: astral-sh/setup-uv@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: typst-community/setup-typst@v4
+
+      - name: Install documentation proof dependencies
+        env:
+          PUPPETEER_SKIP_DOWNLOAD: "true"
+        run: npm install --global @mermaid-js/mermaid-cli@11.12.0
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libsqlite3-dev libssl-dev pkg-config zlib1g-dev
+
+      - name: Install macOS dependencies
+        if: runner.os == 'macOS'
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: 1
+          HOMEBREW_NO_INSTALL_CLEANUP: 1
+        run: |
+          brew install gcc jq openssl pkg-config sqlite zlib
+          openssl_prefix="$(brew --prefix openssl@3 2>/dev/null || brew --prefix openssl)"
+          macos_major="$(sw_vers -productVersion | cut -d. -f1)"
+          echo "PKG_CONFIG_PATH=$openssl_prefix/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}" >> "$GITHUB_ENV"
+          echo "MACOSX_DEPLOYMENT_TARGET=$macos_major.0" >> "$GITHUB_ENV"
+
+      - name: Install immutable Gerbil release
+        shell: bash
+        run: tools/ci/install-gerbil-release.sh "$GERBIL_PREFIX"
+
+      - name: Activate Gerbil build controls
+        shell: bash
+        run: |
+          test -x "$GERBIL_PREFIX/bin/gsc"
+          echo "GERBIL_GSC=$GERBIL_PREFIX/bin/gsc" >> "$GITHUB_ENV"
+          cores="$(getconf _NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.ncpu)"
+          echo "GERBIL_BUILD_CORES=$cores" >> "$GITHUB_ENV"
+          gerbil --version
+          "$GERBIL_PREFIX/bin/gsc" -v
+
+      - name: Restore Gerbil package graph
+        uses: actions/cache@v4
+        with:
+          path: .gerbil
+          key: gxpkg-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('gerbil.pkg', 'tools/ci/install-gerbil-release.sh') }}
+
+      - name: Install declared Gerbil dependencies
+        run: gerbil deps --install
+
+      - name: Build declared Gerbil package
+        run: gerbil build
+
+      - name: Test Gerbil package
+        run: gerbil test
+
+      - name: Test Rust workspace in the Gerbil package environment
+        run: gerbil env cargo test --workspace --locked
+
+      - name: Lint Rust workspace
+        run: gerbil env cargo clippy --all-targets --locked -- -D warnings
+
+      - name: Test Python evidence projects
+        run: |
+          uv --project proofs/MRRProof run pytest -q proofs/MRRProof/tests
+          uv --project experiments/mrr-live run pytest -q experiments/mrr-live/tests
+
+  deepseek-live:
+    if: github.event_name == 'workflow_dispatch' && inputs.run_deepseek_live
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: DeepSeek MRR live smoke
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+        run: uv --project experiments/mrr-live run mrr-live

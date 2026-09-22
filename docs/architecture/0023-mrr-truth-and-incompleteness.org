@@ -1,0 +1,35 @@
+#+title: MRR Truth and Incompleteness
+#+startup: overview
+
+* Status
+
+Normative for public MRR conclusion states.
+
+* Truth states
+
+MRR exposes six disjoint states:
+
+- TRUE: a complete authority-bearing receipt establishes the conclusion.
+- FALSE: complete bounded analysis establishes that the conclusion does not hold.
+- UNKNOWN: evidence coverage is not complete enough to decide.
+- INCOMPLETE: evaluation stopped because of a cycle or explicit budget.
+- STALE: the selected intent or revision no longer matches current content.
+- CONFLICT: admitted authorities provide incompatible claims.
+
+These states are not aliases. UNKNOWN, INCOMPLETE, STALE, and CONFLICT never
+project to FALSE or TRUE.
+
+* Owner projections
+
+WHY-NOT owns missing-premise and evidence-coverage analysis. Missing premises
+and no applicable rule project to FALSE only when its bounded analysis is
+complete. Incomplete evidence coverage projects to UNKNOWN. Cycle, depth,
+expansion, and alternative limits project to INCOMPLETE.
+
+The transition checker owns safety status. Safe projects to TRUE, unsafe to
+FALSE, and a state or transition budget stop to INCOMPLETE. A budget stop is
+never published as safe.
+
+Intent binding owns freshness. Current projects to TRUE and stale to STALE.
+Explicit authority conflicts project to CONFLICT. The public facade performs
+only these typed projections and does not become a second proof authority.

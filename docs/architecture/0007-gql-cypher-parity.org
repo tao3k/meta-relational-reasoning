@@ -1,0 +1,90 @@
+#+title: RFC 0007: GQL and Cypher Frontend Parity Slice
+#+author: gql-rust contributors
+#+options: toc:2
+#+property: header-args :eval never-export :exports code
+
+* Status
+
+Implemented and executable.
+
+* Decision
+
+=mrr-frontends= is a peripheral adapter crate.  Callers select =Gql= or
+=Cypher= explicitly; both adapters consume the Gerbil-projected Rowan syntax
+surface, lower the supported AST slice directly, and admit only shared
+=MetaQueryIr=. They do not route through a second public GQL syntax, AST,
+semantic, or IR stack.
+
+The parity slice is deliberately bounded to one =MATCH= clause containing one
+or more graph path patterns, node/relationship type labels, direction,
+property constraints and access, =WHERE= expressions, =RETURN= projection,
+aggregates, ordering, and limit. Unsupported mutation, optional matching,
+path quantifiers, union, offset, case, subscript, and unowned operators fail
+before IR admission. Until the parser CST publishes precedence grouping,
+mixed-precedence expressions require explicit parentheses.
+
+Stable entity/relation type identities derive from language-neutral label
+content.  Query and operator identities derive from the span-free semantic AST
+projection, so source filename, whitespace, and selected frontend dialect do
+not change the admitted relational intent.
+
+#+name: rfc-0007-parity-flow
+#+begin_src mermaid
+flowchart LR
+  G[GQL source] --> GS[Gerbil projected syntax]
+  C[Cypher source] --> GS
+  GS --> R[Lossless Rowan CST]
+  R --> A[Frontend AST evidence]
+  A --> L[Direct language-neutral lowering]
+  L --> M[Normalized MetaQueryIR]
+  O[external implementation samples] -. differential evidence only .-> L
+#+end_src
+
+* Executable equality
+
+The focused acceptance query contains typed nodes, an outgoing typed relation,
+property access in a predicate, and a projection.  Both explicit frontend
+instances must return equal normalized IR and byte-identical versioned canonical
+encoding.
+
+The executable contract is
+=gql_and_cypher_frontends_admit_identical_normalized_ir=. It selects each
+language through =ParserLanguage=, requires distinct parser grammar digests,
+then proves equal normalized values and byte-identical canonical encodings.
+The V1 compilation receipt records the selected language; grammar identity is
+therefore never inferred from a filename or source spelling.
+
+The embedded runtime remains one thread-affine owner, while Rust callers and
+the test harness remain concurrent. The upstream linked-program runtime fixes
+Gambit processor ownership at initialization; the default parallel frontend
+suite is the regression scenario and must not require =--test-threads=1= or a
+caller-provided =GAMBOPT= workaround.
+
+#+name: rfc-0007-parity-lean
+#+begin_src lean
+theorem frontend_common_surface_normalizes_across_languages
+    (syntax : CommonFrontendSyntax) :
+    lowerCommonFrontend .gql syntax = lowerCommonFrontend .cypher syntax := by
+  rfl
+
+theorem frontend_receipt_retains_selected_language
+    (language : FrontendLanguage)
+    (grammarDigest : Digest256) :
+    (frontendReceipt language grammarDigest).language = language := by
+  rfl
+#+end_src
+
+#+name: rfc-0007-parity-mathematics
+#+begin_src typst
+#set page(paper: "a4", margin: 24mm)
+#set text(font: "Libertinus Serif", size: 10.5pt)
+
+= RFC 0007: Frontend Parity
+
+For the admitted common surface $S$ and semantic normalization $N$,
+
+$ N("lower"_"GQL"(s)) = N("lower"_"Cypher"(s)) $
+
+for every $s in S$.  Parser diagnostics or an unsupported construct produces
+no partial =MetaQueryIR= value.
+#+end_src

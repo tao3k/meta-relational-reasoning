@@ -1,0 +1,120 @@
+#+title: RFC 0031: Static Query Typing and Result Schema V1
+#+status: accepted
+#+options: toc:2
+#+property: header-args :eval never-export :exports code
+
+* Decision
+
+=CatalogBoundQuery= admits a query only after a catalog-derived static typing
+judgment succeeds.  The judgment is language-neutral and consumes the existing
+=MetaQueryIr=, =EntityCatalog=, =RelationCatalog=, and =ValueSchema= contracts.
+It does not parse source text and does not define another scalar schema system.
+
+The canonical =StaticQueryTyping= receipt contains:
+
+- every property access resolved to its exact =ValueSchema= and nullability;
+- deterministic runtime-parameter constraints inferred from every use;
+- the ordered output row fields for projections and aggregations;
+- graph-node and graph-relation result types with their exact possible IDs.
+
+The complete receipt is encoded into =CatalogBoundQuery= identity.  A type
+failure publishes neither a partial typing receipt nor a bound query.
+
+#+name: rfc-0031-typing-flow
+#+begin_src mermaid
+flowchart LR
+  Q[MetaQueryIr] --> T[Static type checker]
+  E[Entity catalog] --> T
+  R[Relation catalog] --> T
+  T --> P[Resolved properties]
+  T --> A[Parameter constraints]
+  T --> O[Ordered result row schema]
+  P --> B[CatalogBoundQuery receipt]
+  A --> B
+  O --> B
+#+end_src
+
+* Type domain
+
+Exact scalar types reuse =ValueSchema=.  The query layer adds only the shapes
+that =ValueSchema= intentionally does not represent:
+
+- node and relation bindings parameterized by admitted semantic IDs;
+- =NULL= before contextual typing;
+- a numeric promotion category when the current IR cannot claim one exact
+  decimal or floating representation;
+- =AnyValue= for operations such as =COUNT= and =IS NULL= whose result does not
+  depend on the operand's concrete scalar type;
+- query-produced lists parameterized by their inferred element type.
+
+Parameterized literals whose width, scale, timezone policy, or nested schema is
+not present in =MetaQueryIr= retain their exact =ValueKind= rather than
+inventing a =ValueSchema=.  A catalog property may refine that kind to an exact
+schema when they are compatible.
+
+* Judgment
+
+The checker constructs one binding environment from graph patterns.  Repeated
+node or relation bindings union their possible types; crossing node, relation,
+and scalar categories fails closed.
+
+An unlabelled node or relation binding expands to the exact corresponding type
+set in the bound entity or relation catalog.  Property access succeeds only if
+every possible type exposes the same schema and nullability; otherwise it fails
+as an unknown or conflicting property.  An empty source label list therefore
+never becomes an unbounded external result type.
+
+It then checks, in semantic order:
+
+1. filters must produce Boolean values;
+2. unary and binary operators must accept their operand types;
+3. parameters collect compatible constraints from all uses;
+4. aggregate arguments and results receive explicit types;
+5. non-aggregate projections in an aggregate query must occur in the grouping
+   keys;
+6. output aliases receive ordered result-field types;
+7. ordering expressions must be orderable;
+8. offset and limit parameters must be non-null integers.
+
+Numeric operands with distinct exact numeric schemas join to the explicit
+=Numeric= category.  Non-numeric cross-kind operations do not coerce.
+Nullability is propagated through ordinary operators; =IS NULL= and truth
+predicates return non-null Boolean values, and =COUNT= returns non-null Integer.
+
+#+name: rfc-0031-typing-mathematics
+#+begin_src typst
+#set page(width: 160mm, height: auto, margin: 12mm)
+$ Gamma; C_E; C_R tack e : (tau, n) $
+$ Gamma; C_E; C_R tack q : (P, A, O) $
+
+$ "admit"(q, C_E, C_R) "iff"
+  "filters-bool"(q) and
+  "operators-compatible"(q) and
+  "parameters-coherent"(A) and
+  "grouping-complete"(q) and
+  "outputs-unique"(O) $
+
+$ "digest" = H("v1", H(q), H(C_E), H(C_R), H(P), H(A), H(O)) $
+#+end_src
+
+* Failure boundary
+
+The public error distinguishes unknown or conflicting bindings and properties,
+unconstrained or conflicting parameters, incompatible operands, unsupported
+value categories, non-Boolean filters, and ungrouped projections.  These are
+semantic admission failures, not parser diagnostics and not runtime fallback
+requests.
+
+Dependent query templates remain outside this RFC.  They require a canonical
+dependency-plan digest that binds every template and its static typing receipt.
+Physical Arrow schemas, GraphAr manifests, engine capabilities, and execution
+plans remain downstream in =mrr-data=.
+
+* Evidence
+
+Rust tests cover deterministic property resolution, parameter inference,
+pagination constraints, aggregate result typing, ordered row schemas,
+non-Boolean filters, unconstrained and conflicting parameters, invalid
+arithmetic, and incomplete grouping.  The Lean projection proves that an
+admitted static-typing receipt is returned exactly and that any failed typing
+owner emits no receipt.

@@ -1,0 +1,53 @@
+#+title: RFC 0028: Parameterized Relation Schema V1
+#+status: accepted
+#+options: toc:2
+#+property: header-args :eval never-export :exports code
+
+* Decision
+
+MRR V1 uses =ValueSchema= as the sole semantic type description.  Runtime
+=ValueKind= is only a discriminant for diagnostics; it cannot authorize an
+Arrow mapping, query binding, or fact.  The schema retains parameters required
+for canonical values and recursive physical interchange without importing a
+storage library into MRR.
+
+#+begin_src mermaid
+flowchart TD
+  S[ValueSchema]
+  S --> D[Decimal precision and scale]
+  S --> F[Float width]
+  S --> T[Temporal unit and timezone]
+  S --> L[List element schema and nullability]
+  S --> R[Ordered record fields]
+  S --> P[Primitive schemas]
+  S --> V[Canonical recursive validation]
+  C[Relation constraints] --> V
+  X[RelationContext coherence] --> V
+#+end_src
+
+* Admission invariants
+
+- Decimal precision is between 1 and 76 and scale does not exceed precision.
+- Decimal, float, date, time, timestamp, and duration values use canonical
+  lexical representations.
+- List elements and record fields are recursively validated; nullability is
+  explicit at each field or list-element boundary.
+- Key, unique, and functional-dependency constraints name existing fields once.
+- Entity authority agrees with source provenance; rule authority requires a
+  derivation; a fact cannot invalidate itself.
+- A transition insertion belongs to its target generation, and duplicate
+  insertion or retraction operations are rejected.
+
+#+begin_src typst
+#set page(width: 150mm, height: auto, margin: 12mm)
+$ "admit"(f, S, g) := "shape-valid"(f,S)
+  and "context-coherent"(f)
+  and "generation"(f) = g $
+#+end_src
+
+* Boundary
+
+This remains a semantic contract.  Arrow, GraphAr, CID, CAR, and engine plans
+belong downstream in =mrr-data=.  Downstream implementations must prove a
+lossless mapping or reject unsupported schemas; they may not weaken V1 by
+guessing parameters from runtime values.

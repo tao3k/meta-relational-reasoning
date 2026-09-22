@@ -1,0 +1,21 @@
+{
+  "schema": "mrr.counterexample-receipt.v1",
+  "initialState": 10,
+  "steps": [
+    {
+      "action": 20,
+      "fromState": 10,
+      "toState": 11,
+      "legal": true
+    },
+    {
+      "action": 21,
+      "fromState": 11,
+      "toState": 12,
+      "legal": true
+    }
+  ],
+  "terminalState": 12,
+  "initialValid": true,
+  "terminalViolates": true
+}
