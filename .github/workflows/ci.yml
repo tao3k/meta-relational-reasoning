@@ -82,7 +82,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .gerbil
-          key: gxpkg-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('gerbil.pkg') }}
+          key: gxpkg-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('gerbil.pkg', 'tools/ci/install-gerbil-release.sh') }}
 
       - name: Install declared Gerbil dependencies
         run: gerbil deps --install

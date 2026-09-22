@@ -48,7 +48,7 @@ fn stale_scheme_input_fails_closed() {
 fn gerbil_package_owns_only_the_linked_parser_edge() {
     let package = include_str!("../../../../gerbil.pkg");
     assert!(
-        package.contains("github.com/tao3k/gerbil-parser@04a91071b99c4471768c848b49269ce6fb1636ab")
+        package.contains("github.com/tao3k/gerbil-parser@5b1c028e382ff83a94d7842e2c74bffed1111f37")
     );
     assert_eq!(package.matches("github.com/tao3k/").count(), 1);
     assert!(!package.contains("github.com/tao3k/poo-flow@"));
@@ -80,6 +80,7 @@ fn rust_commands_inherit_the_canonical_gxpkg_environment() {
     assert!(ci.contains("Build declared Gerbil package"));
     assert!(ci.contains("Install immutable Gerbil release"));
     assert!(ci.contains("tools/ci/install-gerbil-release.sh"));
+    assert!(ci.contains("hashFiles('gerbil.pkg', 'tools/ci/install-gerbil-release.sh')"));
     assert!(ci.contains("brew install gcc jq openssl pkg-config sqlite zlib"));
     assert!(ci.contains("PKG_CONFIG_PATH=$openssl_prefix/lib/pkgconfig"));
     assert!(ci.contains("macos_major=\"$(sw_vers -productVersion | cut -d. -f1)\""));
