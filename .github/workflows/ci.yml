@@ -60,7 +60,9 @@ jobs:
         run: |
           brew install gcc jq openssl pkg-config sqlite zlib
           openssl_prefix="$(brew --prefix openssl@3 2>/dev/null || brew --prefix openssl)"
+          macos_major="$(sw_vers -productVersion | cut -d. -f1)"
           echo "PKG_CONFIG_PATH=$openssl_prefix/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}" >> "$GITHUB_ENV"
+          echo "MACOSX_DEPLOYMENT_TARGET=$macos_major.0" >> "$GITHUB_ENV"
 
       - name: Install immutable Gerbil release
         shell: bash

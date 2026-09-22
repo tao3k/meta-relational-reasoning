@@ -82,6 +82,8 @@ fn rust_commands_inherit_the_canonical_gxpkg_environment() {
     assert!(ci.contains("tools/ci/install-gerbil-release.sh"));
     assert!(ci.contains("brew install gcc jq openssl pkg-config sqlite zlib"));
     assert!(ci.contains("PKG_CONFIG_PATH=$openssl_prefix/lib/pkgconfig"));
+    assert!(ci.contains("macos_major=\"$(sw_vers -productVersion | cut -d. -f1)\""));
+    assert!(ci.contains("MACOSX_DEPLOYMENT_TARGET=$macos_major.0"));
     assert!(!ci.contains("CPPFLAGS="));
     assert!(!ci.contains("LDFLAGS="));
     assert!(!ci.contains("LIBRARY_PATH="));
