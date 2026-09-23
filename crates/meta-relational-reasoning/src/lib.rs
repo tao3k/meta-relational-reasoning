@@ -63,6 +63,11 @@ pub use mrr_revision::{
     ExternalRevisionIdentity, RevisionBinding, RevisionBindingError, SemanticSnapshot,
     SemanticSnapshotError,
 };
+pub use mrr_search::{
+    SearchFactor, SearchFactorEdge, SearchFactorRole, SearchFrameworkError, SearchFrameworkLimits,
+    SearchFrameworkReceipt, SearchFrameworkStatus, SearchInfluence, SearchObservation,
+    SearchReasoningDigest, evaluate_search_factors,
+};
 pub use mrr_transition::{
     Action, CounterexampleIr, Effect, InitialState, Invariant, Precondition, SafetyCheckReceipt,
     SafetyLimits, SafetyStatus, StatePredicate, StateSchema, StateSnapshot,

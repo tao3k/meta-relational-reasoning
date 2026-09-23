@@ -1,0 +1,20 @@
+[package]
+name = "mrr-search"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Backend-neutral POO Search factor reasoning over Ascent and MRR lineage"
+
+[dependencies]
+ascent.workspace = true
+mrr-identity.workspace = true
+mrr-lineage.workspace = true
+sha2.workspace = true
+
+[dev-dependencies]
+mrr-asp-rust-build-support.workspace = true
+
+[lints]
+workspace = true

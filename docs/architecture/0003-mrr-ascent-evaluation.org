@@ -31,6 +31,21 @@ pack fails closed.  Variable names are irrelevant; equality and join positions
 define the accepted shape.  Other programs fail closed instead of being silently
 approximated.
 
+** Search-factor Ascent adapter
+
+=mrr-search= owns a second, equally narrow Ascent program for the POO Search
+framework.  It does not extend =mrr-ascent='s validated ReasoningBundle rule
+shape and does not pretend consumer factors are MRR bundle rules.  Its only
+relations are declared factor edges, generation-bound factor observations,
+shortest factor reachability, and candidate influence.  POO Flow owns temporal
+causal traces; =mrr-lineage= owns the resulting explanation graph and Impact.
+
+This vertical adapter is separate so text retrieval, scoring, tokenization,
+parser facts, and consumer-specific operators cannot leak into the general MRR
+closure engine.  Both adapters use Ascent as a maintained fixed-point substrate,
+apply finite pre-execution budgets, reconstruct deterministic witnesses, and
+return inert receipts rather than publishing state.
+
 * Why Ascent
 
 MRR needs a maintained fixed-point implementation, not another hand-written

@@ -16,6 +16,12 @@ test:
     {{profile}} mrr-gerbil test
     {{profile}} mrr-cargo test --workspace --locked
 
+# Run the backend-neutral Search factor contracts independently.
+test-search:
+    {{profile}} mrr-cargo test -p mrr-search --locked
+    {{profile}} mrr-cargo test -p mrr-asp-rust-build-support --locked
+
+
 # Enforce Rust lints after refreshing the Gerbil native inputs.
 lint:
     {{profile}} mrr-gerbil build

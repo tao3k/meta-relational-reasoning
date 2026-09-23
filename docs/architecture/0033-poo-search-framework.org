@@ -1,0 +1,143 @@
+#+title: POO Search Framework Ownership
+#+startup: overview
+
+* Decision
+
+MRR owns a backend-neutral POO Search framework.  It does not own the ASP
+Search Playbook language.
+
+The framework provides C3-composable factor roles, typed stage boundaries,
+sequential and parallel composition, explicit merge composition, strategy
+objects, POO Flow temporal-causality observations and trajectories, bounded
+Ascent factor-influence derivation, MRR lineage, and Impact projection.  It
+deliberately has no knowledge of
+=rg=, Tantivy, Topology, workspace scope, provider registries, Scheme source
+syntax, Runtime generations, indexes, or result projection packets.
+
+ASP owns all of those concrete concerns.  Its V1 Playbook parser lowers an
+already validated ASP program into MRR Search objects.  This direction is
+one-way:
+
+#+begin_src mermaid
+flowchart LR
+  P[ASP Search Playbook V1] -->|validated lowering| O[MRR POO Search objects]
+  O --> F[POO Flow factor graph and DAG receipt]
+  F --> R[ASP Runtime factor observations]
+  R --> T[POO Flow temporal causal trace]
+  T --> A[MRR Ascent factor influence]
+  A --> L[MRR lineage and Impact]
+  L --> E[ASP bounded projection]
+#+end_src
+
+MRR must never reconstruct the Playbook from strings or publish a second
+operator registry.  ASP must never replace the generic POO object model with a
+private positional plan representation.
+
+* POO object model
+
+The framework has four orthogonal stage roles:
+
+| Role | Abstract responsibility | Concrete owner |
+|-
+| acquisition | produce a candidate frontier | ASP or another consumer |
+| refinement | transform or rank an existing frontier | ASP or another consumer |
+| reasoning | derive graph or relational evidence from a typed frontier | MRR-capable consumer |
+| projection | form a bounded public result from admitted evidence | ASP or another consumer |
+
+A stage binds a stable name, an opaque consumer operation, arguments, an input
+domain, and an output domain.  A concrete consumer role can inherit one of the
+abstract roles and add backend-specific slots.  The MRR framework never
+switches on those backend slots.
+
+Each stage is also a Search factor.  A consumer runtime emits immutable factor
+observations with a candidate identity, logical position, provenance identity,
+and causal parents.  MRR delegates causal event-graph construction, trajectory
+assessment, temporal cuts, and structural Impact to POO Flow's existing
+=temporal-causality= module; it does not duplicate those algorithms.
+
+A composition is either sequential, parallel, or an explicit merge of a
+parallel composition.  Sequential edges are admitted only when the preceding
+output domain equals the following input domain.  Parallel branches must share
+one input domain.  A merge is an ordinary typed stage; therefore conjunction,
+ranking joins, union, or any other aggregation semantics remain explicit and
+consumer-owned.
+
+A strategy binds one root composition to policy metadata.  It is declarative:
+the execution owner remains the consumer runtime.
+
+* Ascent and lineage integration
+
+=mrr-search= is the native, backend-neutral reasoning adapter.  Downstream
+systems register factor identities and roles, directed factor edges, and
+generation-bound observations.  The adapter first rejects duplicate or unknown
+factors, cyclic factor graphs, missing causal parents, temporal inversions,
+causal-parent edges that disagree with the factor graph, and budget overflow.
+
+Only after admission does a small Ascent program derive the transitive factor
+influence relation for each observed candidate.  A deterministic breadth-first
+reconstruction must reproduce Ascent's shortest distance; disagreement is an
+internal error, not a partial result.  The resulting factor trajectory is
+projected into =mrr-lineage=.  Therefore a changed observation can use the
+existing =IMPACT= operation to classify direct and transitive invalidation.
+
+Ascent does not rank source text, parse regexes, tokenize documents, choose a
+backend, or assign relevance scores.  Those are factor-owned observations or
+consumer policy.  Keeping the Ascent relation set to factor reachability and
+candidate influence prevents Core and Search from repeating a broad retrieval.
+
+* Why the removed Playbook was wrong
+
+The former =scheme/search/playbook.ss= combined three authorities:
+
+1. ASP command-language parsing and concrete operator registration;
+2. POO Flow composition;
+3. MRR package identity.
+
+That made MRR a second source of truth for ASP syntax and allowed its operator
+set to drift independently.  Renaming or extending an ASP leaf then required a
+new MRR release even though no meta-relational semantic contract had changed.
+The module and its package test are removed rather than retained as a
+compatibility surface.
+
+* Mathematical contract
+
+Let a stage be a typed arrow =f : A -> B=.  The framework admits sequential
+composition only for =f : A -> B= and =g : B -> C=, producing
+=g o f : A -> C=.  Parallel composition admits arrows
+=f_i : A -> B_i= sharing one domain and produces
+=<f_1, ..., f_n> : A -> (B_1 * ... * B_n)=.  An aggregation is not inferred:
+it is another consumer-supplied arrow from that product domain.
+
+This is structural safety, not a relevance theorem.  Precision, recall,
+coverage, generation completeness, and graph-admission proofs remain separate
+receipts owned by the concrete search and reasoning layers.
+
+#+begin_src typst
+#set page(width: 150mm, height: auto, margin: 14mm)
+#set text(size: 10pt)
+
+= POO Search composition
+
+For typed arrows $f: A arrow B$ and $g: B arrow C$, sequential composition is
+$g compose f: A arrow C$. Parallel composition is admitted only for a shared
+domain: $f: A arrow B$ and $g: A arrow C$ produce
+$"parallel"(f, g): A arrow (B times C)$. Aggregation is a separate arrow
+$m: (B times C) arrow D$; the framework never invents $m$.
+#+end_src
+
+The executable counterpart is
+=proofs/MRRProof/BundleAdmission.lean=.  Its admissions carry the boundary
+equalities as proof fields, so a successful receipt cannot represent a
+mismatched sequential, parallel, or merge edge.
+
+* Acceptance
+
+- MRR exports no =compile-search-playbook= or =defsearch-playbook= API.
+- The framework source contains no concrete search engine name.
+- C3-composed consumer roles remain visible on stage objects.
+- factor observations reuse the POO Flow temporal-causality objects;
+- Ascent derives only bounded factor influence and emits deterministic paths;
+- every published influence has reusable MRR lineage and Impact;
+- mismatched sequential domains and parallel branch domains fail closed;
+- a merge cannot run unless its input equals the parallel product domain;
+- generated DAG receipts remain declarations and do not claim runtime work.
