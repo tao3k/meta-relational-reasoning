@@ -657,4 +657,98 @@ theorem frontend_receipt_retains_selected_language
     (frontendReceipt language grammarDigest).language = language := by
   rfl
 
+/- Backend-neutral POO Search arrows. Concrete Playbook operators remain
+   consumer-owned and therefore do not occur in this model. -/
+inductive SearchDomain where
+  | atom (identity : Nat)
+  | product (left right : SearchDomain)
+  deriving DecidableEq
+
+structure SearchArrow where
+  input : SearchDomain
+  output : SearchDomain
+  deriving DecidableEq
+
+structure SequentialSearchAdmission (left right : SearchArrow) : Prop where
+  boundary : left.output = right.input
+
+structure ParallelSearchAdmission (left right : SearchArrow) : Prop where
+  sharedInput : left.input = right.input
+
+def sequentialSearchArrow
+    (left right : SearchArrow)
+    (_admission : SequentialSearchAdmission left right) : SearchArrow :=
+  { input := left.input, output := right.output }
+
+def parallelSearchArrow
+    (left right : SearchArrow)
+    (_admission : ParallelSearchAdmission left right) : SearchArrow :=
+  { input := left.input, output := .product left.output right.output }
+
+theorem sequential_search_admission_preserves_endpoints
+    (left right : SearchArrow)
+    (admission : SequentialSearchAdmission left right) :
+    (sequentialSearchArrow left right admission).input = left.input /\
+      (sequentialSearchArrow left right admission).output = right.output := by
+  exact And.intro rfl rfl
+
+theorem parallel_search_admission_preserves_product
+    (left right : SearchArrow)
+    (admission : ParallelSearchAdmission left right) :
+    (parallelSearchArrow left right admission).input = left.input /\
+      (parallelSearchArrow left right admission).output =
+        .product left.output right.output := by
+  exact And.intro rfl rfl
+
+theorem explicit_search_merge_requires_product_boundary
+    (left right merge : SearchArrow)
+    (parallelAdmission : ParallelSearchAdmission left right)
+    (mergeAdmission : SequentialSearchAdmission
+      (parallelSearchArrow left right parallelAdmission) merge) :
+    merge.input = .product left.output right.output := by
+  exact mergeAdmission.boundary.symm
+
+inductive SearchFactorRole where
+  | acquisition
+  | refinement
+  | reasoning
+  | projection
+  deriving DecidableEq
+
+structure SearchFactorObservation where
+  factor : Nat
+  role : SearchFactorRole
+  candidate : Nat
+  logicalPosition : Nat
+  deriving DecidableEq
+
+structure SearchCausalAdmission
+    (factorEdge : Nat -> Nat -> Prop)
+    (parent child : SearchFactorObservation) : Prop where
+  temporalOrder : parent.logicalPosition <= child.logicalPosition
+  factorContinuity : parent.factor = child.factor \/
+    factorEdge parent.factor child.factor
+
+inductive SearchFactorInfluence (factorEdge : Nat -> Nat -> Prop) : Nat -> Nat -> Prop
+  | observed (factor : Nat) : SearchFactorInfluence factorEdge factor factor
+  | step {source via target : Nat} :
+      SearchFactorInfluence factorEdge source via ->
+      factorEdge via target ->
+      SearchFactorInfluence factorEdge source target
+
+theorem admitted_search_cause_cannot_follow_its_effect
+    (factorEdge : Nat -> Nat -> Prop)
+    (parent child : SearchFactorObservation)
+    (admission : SearchCausalAdmission factorEdge parent child) :
+    parent.logicalPosition <= child.logicalPosition := by
+  exact admission.temporalOrder
+
+theorem search_factor_influence_extends_only_through_declared_edge
+    (factorEdge : Nat -> Nat -> Prop)
+    (source via target : Nat)
+    (influencePrefix : SearchFactorInfluence factorEdge source via)
+    (edge : factorEdge via target) :
+    SearchFactorInfluence factorEdge source target := by
+  exact SearchFactorInfluence.step influencePrefix edge
+
 end MRRProof

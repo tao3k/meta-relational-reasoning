@@ -960,6 +960,7 @@ dependencies = [
  "mrr-query",
  "mrr-relation",
  "mrr-revision",
+ "mrr-search",
  "mrr-transition",
  "serde",
  "sha2 0.10.9",
@@ -1128,6 +1129,17 @@ dependencies = [
  "criterion",
  "mrr-asp-rust-build-support",
  "mrr-identity",
+ "sha2 0.10.9",
+]
+
+[[package]]
+name = "mrr-search"
+version = "0.1.0"
+dependencies = [
+ "ascent",
+ "mrr-asp-rust-build-support",
+ "mrr-identity",
+ "mrr-lineage",
  "sha2 0.10.9",
 ]
 

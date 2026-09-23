@@ -48,7 +48,7 @@ fn stale_scheme_input_fails_closed() {
 fn gerbil_package_owns_only_the_linked_parser_edge() {
     let package = include_str!("../../../../gerbil.pkg");
     assert!(
-        package.contains("github.com/tao3k/gerbil-parser@5b1c028e382ff83a94d7842e2c74bffed1111f37")
+        package.contains("github.com/tao3k/gerbil-parser@d48355979ea1a919d37d0458225cfec2a500252d")
     );
     assert_eq!(package.matches("github.com/tao3k/").count(), 1);
     assert!(!package.contains("github.com/tao3k/poo-flow@"));

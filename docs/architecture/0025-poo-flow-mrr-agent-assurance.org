@@ -196,8 +196,9 @@ component-local safety does not imply safety after composition.
 The current checkout already consumes POO Flow rather than rebuilding its
 composition machinery:
 
-- =scheme/search/playbook.ss= uses POO Flow flow, plan, object-syntax, and
-  functional APIs to compile Search composition into a DAG receipt;
+- =scheme/search/core.ss= exposes backend-neutral POO Search roles, typed
+  stages, compositions, and strategies.  A consumer such as ASP owns its
+  Playbook grammar and lowers concrete operators into this framework;
 - =scheme/reasoning/core.ss= uses POO objects for the ReasoningBundle
   declaration and its bounded resource driver;
 - the native build consumes POO Flow observability modules;

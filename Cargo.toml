@@ -20,6 +20,7 @@ default-members = [
   "crates/mrr-query",
   "crates/mrr-relation",
   "crates/mrr-revision",
+  "crates/mrr-search",
   "crates/mrr-transition",
 ]
 resolver = "2"
@@ -44,6 +45,7 @@ mrr-identity = { path = "crates/mrr-identity", version = "0.1.0" }
 mrr-intent = { path = "crates/mrr-intent", version = "0.1.0" }
 mrr-relation = { path = "crates/mrr-relation", version = "0.1.0" }
 mrr-revision = { path = "crates/mrr-revision", version = "0.1.0" }
+mrr-search = { path = "crates/mrr-search", version = "0.1.0" }
 mrr-query = { path = "crates/mrr-query", version = "0.1.0" }
 mrr-frontends = { path = "crates/mrr-frontends", version = "0.1.0" }
 mrr-logic = { path = "crates/mrr-logic", version = "0.1.0" }

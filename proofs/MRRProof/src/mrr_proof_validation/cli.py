@@ -25,6 +25,7 @@ CORE_CRATES = (
     "mrr-query",
     "mrr-logic",
     "mrr-lineage",
+    "mrr-search",
     "mrr-transition",
     "mrr-bundle",
     "mrr-ascent",
@@ -60,6 +61,13 @@ PROOF_OBLIGATIONS = {
         "admitted_derivation_has_rule_and_premises",
     },
     "mrr-lineage": {"admitted_derivation_has_rule_and_premises"},
+    "mrr-search": {
+        "sequential_search_admission_preserves_endpoints",
+        "parallel_search_admission_preserves_product",
+        "explicit_search_merge_requires_product_boundary",
+        "admitted_search_cause_cannot_follow_its_effect",
+        "search_factor_influence_extends_only_through_declared_edge",
+    },
     "mrr-transition": {
         "inserted_fact_has_admitted_schema",
         "admitted_fact_ids_are_unique",
