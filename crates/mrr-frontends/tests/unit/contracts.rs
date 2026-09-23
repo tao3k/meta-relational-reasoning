@@ -7,6 +7,49 @@ use mrr_query::{
 const PARITY_QUERY: &str =
     "MATCH (a:Module)-[:DEPENDS_ON]->(b:Module) WHERE a.name = 'runtime' RETURN b";
 
+const HEALTHCARE_CASE_PROFILE_QUERY: &str =
+    include_str!("../fixtures/healthcare-case-profile-relations.gql");
+
+#[test]
+fn original_healthcare_case_profile_query_retains_two_hop_property_contract() {
+    let compilation = QueryFrontend::new(mrr_gerbil::ParserLanguage::Gql)
+        .compile_with_receipt(
+            "user-interface/scenarios/healthcare/reasoning/case-profile-relations.gql",
+            HEALTHCARE_CASE_PROFILE_QUERY,
+        )
+        .expect("original Healthcare GQL must compile without an alternate parser");
+    assert_eq!(
+        compilation.receipt.source_digest,
+        "sha256:7a3a88a9ebd24cd738d426c0def633247d1a0fc13e9e37cca13bb23e90ba0c63"
+    );
+    let query = &compilation.query;
+    let [path] = query.graph().paths() else {
+        panic!("one Healthcare path required")
+    };
+    assert_eq!(path.start().binding().as_str(), "s");
+    assert_eq!(path.segments().len(), 2);
+    assert_eq!(path.segments()[0].node().binding().as_str(), "c");
+    assert_eq!(path.segments()[1].node().binding().as_str(), "p");
+    assert!(path.segments().iter().all(|segment| {
+        segment.relation().direction() == Direction::Outgoing
+            && segment.relation().types().len() == 1
+    }));
+    assert_eq!(query.filters().len(), 1);
+    assert_eq!(query.projections().len(), 3);
+    for (projection, (binding, key)) in
+        query
+            .projections()
+            .iter()
+            .zip([("s", "identity"), ("c", "id"), ("p", "identity")])
+    {
+        assert!(matches!(
+            projection.expression(),
+            Expression::Property { binding: actual_binding, key: actual_key }
+                if actual_binding.as_str() == binding && actual_key.as_str() == key
+        ));
+    }
+}
+
 #[test]
 fn parser_owned_gql_projection_preserves_the_bounded_graph_shape() {
     let query = QueryFrontend::new(mrr_gerbil::ParserLanguage::Gql)

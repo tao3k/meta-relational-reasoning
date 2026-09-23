@@ -36,8 +36,8 @@ blake3 = "1.8"
 ascent = "0.8.0"
 asp-rust-build-support = { git = "https://github.com/tao3k/asp-rust", rev = "2419414ee5379bad89506496e3eaab928df68daf", version = "0.1.0" }
 criterion = "0.8.2"
-gerbil-scheme-sys = { git = "https://github.com/tao3k/gerbil-scheme-rust.git", rev = "e35b9c86d05623e3914fd1a02d420ffa46e41de9", features = ["external-program"] }
-gerbil-scheme-native-build = { git = "https://github.com/tao3k/gerbil-scheme-rust.git", rev = "e35b9c86d05623e3914fd1a02d420ffa46e41de9" }
+gerbil-scheme-sys = { git = "https://github.com/tao3k/gerbil-scheme-rust.git", rev = "b3eb5dce9bfb1e57c3ce618de46798e360213f6a", features = ["external-program"] }
+gerbil-scheme-native-build = { git = "https://github.com/tao3k/gerbil-scheme-rust.git", rev = "b3eb5dce9bfb1e57c3ce618de46798e360213f6a" }
 icu_properties = "2.2.0"
 mrr-asp-rust-build-support = { path = "build-support/mrr-asp-rust-project-policy", version = "0.1.0" }
 mrr-identity = { path = "crates/mrr-identity", version = "0.1.0" }
