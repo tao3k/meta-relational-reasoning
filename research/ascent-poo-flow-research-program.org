@@ -14,12 +14,16 @@ owns the first control-plane slice.  This note does not change the accepted
 [[file:../docs/architecture/0003-mrr-ascent-evaluation.org][bounded Ascent RFC]] or
 [[file:../docs/architecture/0025-poo-flow-mrr-agent-assurance.org][assurance boundary]].
 
-The first step is a POO Flow Scheme/POO declaration and end-to-end control and
-evidence path calling the current MRR/Ascent adapter.  Reimplementing Ascent's
-semi-naive evaluator in Scheme is a later candidate only if a named semantic
-or deployment requirement cannot be met by Ascent and a replacement passes
-parity and scale gates.  Scheme remains useful as a small independent oracle
-for bounded fixtures; such an oracle does not become the production engine.
+The first experiment now maps one recursive query to existing POO and Gerbil
+standard library facilities: prototype =self= recursion, C4 inheritance,
+and persistent set operations.  POO Flow's focused fixture produces the same
+five reachable pairs as this repository's =mrr-ascent= four-edge fixture and
+terminates on a duplicate-edge cycle.  This is finite set-level parity, not
+semi-naive evaluation, shortest-distance lattice parity, support selection,
+or an admissible MRR receipt.  The next cross-repository step is to compare
+these richer outputs under an exact source generation, then exercise the
+control and evidence path against the current MRR/Ascent adapter.  A Scheme
+experiment remains an independent candidate and cannot publish MRR facts.
 
 * Current baseline and gaps
 
@@ -40,6 +44,15 @@ The [[file:../docs/architecture/0022-mrr-performance-baseline.org][performance b
 uses independent self edges for Ascent closure.  It is a useful reproducible
 baseline but does not measure recursive multi-support graphs or update-heavy
 workloads.
+
+The POO experiment deliberately uses the native library fixed point for
+recursive *function-slot binding*.  MRR's Ascent contract evaluates a least
+*relation* closure and then reconstructs shortest support.  The two meanings
+must be compared through observable result and receipt fields, not equated by
+their shared name.  Gerbil-POO's table =.join= is a map union; it is not an
+Ascent rule-body relational join.  The focused MRR fixture test
+=derives_deterministic_shortest_lineage_candidates_from_a_validated_bundle=
+passed, and the full =mrr-ascent= package test passed with nine tests.
 
 * Agent problem and value hypothesis
 
