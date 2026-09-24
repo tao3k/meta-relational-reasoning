@@ -41,6 +41,58 @@ uses independent self edges for Ascent closure.  It is a useful reproducible
 baseline but does not measure recursive multi-support graphs or update-heavy
 workloads.
 
+* Agent problem and value hypothesis
+
+Current Agent workflows often make several decisions from retrieved text,
+tool output, and model summaries.  Their failure is not only a wrong final
+answer: a stale source, missing supporting path, unobserved contradiction, or
+revoked capability can lead to an unjustified next action.  MRR's research
+value is to turn relevant source-bound observations into typed, generation-bound
+derivations with explicit coverage, invalidation, and explanation.  Ascent
+supplies efficient candidate computation; POO Flow supplies the context and
+decision boundary.  Search, inference, probabilistic judgment, authorization,
+and effect remain distinguishable in every trace.
+
+Jev is a concrete decision-model case.  The
+[[https://docs.typesafe.ai/introduction][official TypeSafe documentation]]
+defines Choice, Score, and Noul answers over supplied state and typed questions.
+The model is useful for routing, ranking, or deciding what evidence to seek
+next.  Its probability is a judgment about the supplied state, not a source
+fact, proof of a derivation, or permission to act.  Research questions include:
+
+- Which exact source revisions, selectors, admitted derivations, and coverage
+  claims must be projected into a compact state before a model can judge?
+- Can a model choose among only valid, capability-allowed options, while MRR
+  explains why each option is supported or ruled out?
+- When a source or support is withdrawn, which prior judgments and downstream
+  decisions require re-evaluation, and can this be computed incrementally?
+- Does adding MRR derivations improve independent task outcomes and calibrated
+  abstention enough to justify its cost over retrieval plus a decision model?
+
+The same questions apply to generative LLMs, human reviewers, and other
+decision models.  Do not encode Jev-specific output fields as MRR fact
+semantics.  Bind model version, question criteria, supplied-state digest,
+output distribution, and observation time in an external proposal/receipt
+when an experiment needs them; source ownership and MRR admission remain
+separate.
+
+** Scenario fixtures
+
+| Scenario | Inputs and MRR task | Decisive failure fixture |
+|----------+---------------------+--------------------------|
+| coding Agent patch planning | exact code snapshot, call/dependency facts, changed API; derive transitive affected tests and explain supports | delete or revise one caller and verify affected-set and witness invalidation |
+| incident triage | versioned topology, log observations, causal hypotheses; derive bounded influence and competing support | stale log or contradictory observation must not silently become a unique root cause |
+| research Agent | cited passages, revisions, claim links; derive support/contradiction and coverage gaps | one source retraction leaves an alternative support or forces abstention |
+
+Build task-level oracles from frozen fixtures and independent human/source
+adjudication.  Compare generative-only, retrieval plus judgment, and
+retrieval plus MRR plus judgment/control under the same action set and budget.
+Measure source/impact recall, unsupported claims and actions, explanation
+fidelity, calibration and abstention, end-to-end success, latency, and cost.
+TypeSafe's [[https://typesafe.ai/blog/introducing-system-one-models-and-jev][launch claims]]
+motivate a hypothesis; they are not our benchmark receipts or correctness
+oracle.
+
 * Priority research questions
 
 ** 1. Exact maintenance under insertion and retraction
