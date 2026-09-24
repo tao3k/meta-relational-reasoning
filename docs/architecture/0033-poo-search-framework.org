@@ -3,35 +3,33 @@
 
 * Decision
 
-MRR owns a backend-neutral POO Search framework.  It does not own the ASP
-Search Playbook language.
+POO Flow owns the backend-neutral Search object and composition framework.
+MRR consumes that framework for GQL, bounded Ascent factor influence, lineage,
+and semantic Impact.  ASP owns its Search Playbook, concrete search operators,
+resident execution, scoring policy, and public projection.
 
-The framework provides C3-composable factor roles, typed stage boundaries,
-sequential and parallel composition, explicit merge composition, strategy
-objects, POO Flow temporal-causality observations and trajectories, bounded
-Ascent factor-influence derivation, MRR lineage, and Impact projection.  It
-deliberately has no knowledge of
-=rg=, Tantivy, Topology, workspace scope, provider registries, Scheme source
-syntax, Runtime generations, indexes, or result projection packets.
-
-ASP owns all of those concrete concerns.  Its V1 Playbook parser lowers an
-already validated ASP program into MRR Search objects.  This direction is
-one-way:
+The source dependency direction is POO Flow -> MRR -> ASP.  At runtime ASP
+provides admitted candidate and relation facts to MRR's semantic stages and
+receives bounded derivation receipts.  POO Flow's DAG receipt describes a plan;
+it is not evidence that ASP executed it.
 
 #+begin_src mermaid
 flowchart LR
-  P[ASP Search Playbook V1] -->|validated lowering| O[MRR POO Search objects]
-  O --> F[POO Flow factor graph and DAG receipt]
-  F --> R[ASP Runtime factor observations]
+  P[ASP Search Playbook V1] -->|validated lowering| O[POO Flow Search objects]
+  O --> D[POO Flow typed DAG declaration]
+  D --> R[ASP resident factor observations]
   R --> T[POO Flow temporal causal trace]
-  T --> A[MRR Ascent factor influence]
-  A --> L[MRR lineage and Impact]
+  R --> G[MRR GQL MetaQueryIR]
+  G --> A[MRR bounded Ascent]
+  T --> A
+  A --> L[MRR lineage and semantic Impact]
   L --> E[ASP bounded projection]
 #+end_src
 
-MRR must never reconstruct the Playbook from strings or publish a second
-operator registry.  ASP must never replace the generic POO object model with a
-private positional plan representation.
+MRR does not reconstruct the Playbook from strings or publish a second operator
+registry.  ASP does not replace the POO Flow Search object model with a private
+semantic plan.  A consumer may keep a wire projection, but it must be derived
+from the admitted POO declaration and checked against its identity.
 
 * POO object model
 
@@ -46,14 +44,14 @@ The framework has four orthogonal stage roles:
 
 A stage binds a stable name, an opaque consumer operation, arguments, an input
 domain, and an output domain.  A concrete consumer role can inherit one of the
-abstract roles and add backend-specific slots.  The MRR framework never
+abstract roles and add backend-specific slots.  The POO Flow framework never
 switches on those backend slots.
 
 Each stage is also a Search factor.  A consumer runtime emits immutable factor
 observations with a candidate identity, logical position, provenance identity,
-and causal parents.  MRR delegates causal event-graph construction, trajectory
-assessment, temporal cuts, and structural Impact to POO Flow's existing
-=temporal-causality= module; it does not duplicate those algorithms.
+and causal parents.  POO Flow owns event-graph construction, trajectory
+assessment, temporal cuts, and structural Impact in its existing
+=temporal-causality= module.  MRR consumes those admitted observations.
 
 A composition is either sequential, parallel, or an explicit merge of a
 parallel composition.  Sequential edges are admitted only when the preceding
@@ -129,6 +127,23 @@ The executable counterpart is
 =proofs/MRRProof/BundleAdmission.lean=.  Its admissions carry the boundary
 equalities as proof fields, so a successful receipt cannot represent a
 mismatched sequential, parallel, or merge edge.
+
+* Migration gate
+
+The POO Flow Search module is the source authority for stage roles and typed
+composition.  MRR removes its former =scheme/search/core.ss= implementation
+rather than retaining a forwarding compatibility module.  The MRR Rust
+=mrr-search= adapter still accepts caller-supplied factor identities and
+observations; it does not yet verify that they were projected from the same
+POO Flow Search strategy.  Its receipt is reasoning evidence, not runtime
+execution evidence.
+
+The first cross-language gate must bind one POO Flow strategy and DAG receipt to
+MRR factor identities, a generation-bound observation set, one parser-owned GQL
+=MetaQueryIr=, and one bounded Ascent result.  ASP may adopt the new POO Flow
+revision only after that exact interface is published and its existing Playbook
+parser lowers into the admitted POO declaration.  Until then, the diagram above
+is the target composition rather than an end-to-end conformance claim.
 
 * Acceptance
 

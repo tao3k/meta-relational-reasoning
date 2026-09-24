@@ -18,7 +18,6 @@
     "scheme/reasoning/core"
     "scheme/reasoning/default"
     "scheme/search/enhanced-tree-sitter-query"
-    "scheme/search/core"
     "scheme/grammar/native"
     "scheme/grammar/native-program"))
 
