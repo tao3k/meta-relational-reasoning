@@ -1,0 +1,116 @@
+#+title: MRR Research Program for Ascent and POO Flow
+#+date: 2026-09-25
+#+status: research proposal
+
+* Research question and ownership
+
+How can Ascent's fixed-point and BYODS machinery support dynamic, explainable,
+and independently admitted reasoning for Agent systems?  MRR owns relation and
+rule semantics, identities, generations, lineage, transitions, and admission.
+Ascent and future physical evaluators produce candidates.  POO Flow composes
+policy, capability, resource strategy, and runtime handoff.  The corresponding
+[[https://github.com/tao3k/poo-flow/blob/main/docs/10-19-design/10.06-poo-module-system/ascent-mrr-research-program.org][POO Flow research program]]
+owns the first control-plane slice.  This note does not change the accepted
+[[file:../docs/architecture/0003-mrr-ascent-evaluation.org][bounded Ascent RFC]] or
+[[file:../docs/architecture/0025-poo-flow-mrr-agent-assurance.org][assurance boundary]].
+
+The first step is a POO Flow Scheme/POO declaration and end-to-end control and
+evidence path calling the current MRR/Ascent adapter.  Reimplementing Ascent's
+semi-naive evaluator in Scheme is a later candidate only if a named semantic
+or deployment requirement cannot be met by Ascent and a replacement passes
+parity and scale gates.  Scheme remains useful as a small independent oracle
+for bounded fixtures; such an oracle does not become the production engine.
+
+* Current baseline and gaps
+
+The accepted evaluator handles exactly one selected two-rule transitive
+closure shape over a validated bundle.  It checks finite input and pair bounds
+before Ascent, reconstructs deterministic shortest witnesses, and emits a
+generation-bound =ClosureReceipt=.  Facade admission requires complete output,
+caller-assigned identities, lineage validity, and transition validity.
+[[file:ascent-mvp-capability.org][The MVP capability note]] records that parallel
+evaluation, BYODS, and deletion maintenance are not used in that slice; this
+does not mean upstream Ascent lacks parallel or BYODS support.  MRR transition
+can represent retractions, but evaluator maintenance across retractions has not
+been established.  [[file:why-provenance.org][WHY provenance notes]] defer
+recursive equations, multiplicities, semiring annotations, and trust-valued
+provenance; current WHY projects an admitted finite explanation graph.
+
+The [[file:../docs/architecture/0022-mrr-performance-baseline.org][performance baseline]]
+uses independent self edges for Ascent closure.  It is a useful reproducible
+baseline but does not measure recursive multi-support graphs or update-heavy
+workloads.
+
+* Priority research questions
+
+** 1. Exact maintenance under insertion and retraction
+
+Compare [[https://ojs.aaai.org/index.php/AAAI/article/view/11554][DRed,
+Backward/Forward, and Counting hybrids]] with
+[[https://arxiv.org/abs/2203.16684][DBSP-style incrementalization]] for the
+MRR rule class actually admitted.  The invariant is:
+
+#+begin_example
+after every admitted source delta at generation g:
+  incremental_result(g) = from_scratch_result(g)
+#+end_example
+
+Equality includes the derived fact set, all required supports, deterministic
+witness selection, and the admitted generation/identity bindings.  Receipt
+digests may differ across distinct physical plans only if a separately
+specified canonical semantic receipt remains identical.  Source deletion,
+revocation, cancellation, and a stale generation must never materialize a
+prefix of a result.  The experiment must include diamonds, cycles, multiple
+independent supports, and deletion of one support that leaves another valid.
+
+** 2. Finite recursive provenance
+
+[[https://www.cs.ucdavis.edu/~green/papers/pods07.pdf][Provenance semirings]]
+offer a general annotation algebra, but
+[[https://proceedings.kr.org/2022/10/kr2022-0010-bourgaux-et-al.pdf][recursive
+Datalog provenance]] has several non-equivalent semantics and potentially
+infinitely many derivation trees.  Choose the intended semantics before adding
+a public type.  Study finite cyclic equations, bounded minimal witnesses, and
+support invalidation separately.  Keep an uncertainty or trust annotation
+distinct from source authority and admission: a score does not turn a proposal
+into an authoritative fact.
+
+** 3. Rule and provider contracts
+
+[[https://www.cl.cam.ac.uk/~nk480/datafun.pdf][Datafun]] motivates typed
+monotonicity and termination checks.  [[https://kmicinski.com/assets/byods.pdf][BYODS]]
+permits custom relation representations, whose delta/total behavior must
+preserve the rule semantics.  Specify an admitted rule subset and a provider
+contract before comparing physical plans.  Test joins, index choices,
+parallelism, and custom storage against an independent bounded oracle and the
+current Ascent adapter.  POO Flow may choose a profile; MRR owns the semantic
+equivalence and receipt requirements.
+
+** 4. Equality and constraints as separate extensions
+
+[[https://effect.systems/doc/pldi-2023-egglog/paper.pdf][egglog]] already
+combines Datalog with equality saturation.  First test whether its term
+rewrites can optimize rule or plan candidates while retaining a checkable
+equivalence witness.  [[https://arxiv.org/abs/2009.08361][Formulog]] shows a
+Datalog/SMT path for constraint-heavy analyses.  Neither extension should be
+silently folded into the current two-rule closure contract.
+
+* First experiment and exit criteria
+
+1. Freeze one validated rule pack, source-generation sequence, and canonical
+   semantic-result format.  Use current Ascent from-scratch evaluation as the
+   baseline, not as its own sole oracle.
+2. Run inserts, single-support deletions, multi-support deletions, cycles,
+   source revision changes, and budget/cancellation failures.  After each
+   delta compare incremental proposals with independent full recomputation.
+3. Check exact derived pairs, surviving support sets, deterministic witness
+   order, complete/partial status, and MRR lineage/transition admission.
+4. Benchmark cold, warm, sparse-delta, and high-fanout cases on exact
+   revisions; report time, memory, and evidence size separately.  Preserve
+   failures as typed counterexamples rather than counting an exit code as
+   semantic success.
+
+The first milestone is a cross-repository end-to-end control/evidence
+demonstration plus this executable differential fixture.  It does not claim
+general recursive provenance, arbitrary Datalog, BYODS speedup, or runtime
+release readiness.
