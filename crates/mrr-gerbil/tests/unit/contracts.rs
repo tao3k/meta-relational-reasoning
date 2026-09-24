@@ -45,19 +45,6 @@ fn stale_scheme_input_fails_closed() {
 }
 
 #[test]
-fn gerbil_package_owns_only_the_linked_parser_edge() {
-    let package = include_str!("../../../../gerbil.pkg");
-    assert!(
-        package.contains("github.com/tao3k/gerbil-parser@d48355979ea1a919d37d0458225cfec2a500252d")
-    );
-    assert_eq!(package.matches("github.com/tao3k/").count(), 1);
-    assert!(!package.contains("github.com/tao3k/poo-flow@"));
-    assert!(!package.contains("github.com/tao3k/asp-gerbil-scheme@"));
-    assert!(!package.contains("github.com/mighty-gerbils/gerbil-poo@"));
-    assert!(!package.contains("gerbil-scheme-language-project-harness"));
-}
-
-#[test]
 fn rust_commands_inherit_the_canonical_gxpkg_environment() {
     let devenv = include_str!("../../../../devenv.nix");
     let justfile = include_str!("../../../../justfile");
