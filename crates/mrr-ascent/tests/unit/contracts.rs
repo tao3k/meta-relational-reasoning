@@ -169,6 +169,49 @@ fn derives_deterministic_shortest_lineage_candidates_from_a_validated_bundle() {
 }
 
 #[test]
+fn source_snapshots_match_the_poo_reachability_fixture() {
+    let (bundle, config) = fixture_bundle();
+    let generation = id!(GenerationId, 900);
+    let expected = [
+        vec![
+            ("Ada", "Bob"),
+            ("Ada", "Cy"),
+            ("Ada", "Dan"),
+            ("Bob", "Cy"),
+            ("Dan", "Cy"),
+        ],
+        vec![("Ada", "Bob"), ("Ada", "Cy"), ("Ada", "Dan"), ("Dan", "Cy")],
+        vec![("Ada", "Bob"), ("Ada", "Dan")],
+    ];
+
+    for (withdrawn, expected_pairs) in expected.into_iter().enumerate() {
+        let mut declaration = bundle.declaration().clone();
+        declaration
+            .facts
+            .retain(|fact| fact.id() != id!(FactId, 101) || withdrawn == 0);
+        declaration
+            .facts
+            .retain(|fact| fact.id() != id!(FactId, 103) || withdrawn < 2);
+        let snapshot = ReasoningBundle::admit(declaration).expect("snapshot admission");
+        let receipt =
+            evaluate_transitive_closure(&snapshot, config, generation, limits(16, 64, 64))
+                .expect("bounded closure");
+
+        assert_eq!(receipt.status(), ClosureStatus::Complete);
+        assert_eq!(receipt.input_fact_count(), 4 - withdrawn);
+        let pairs: Vec<_> = receipt
+            .candidates()
+            .iter()
+            .map(|candidate| match candidate.values() {
+                [Value::String(from), Value::String(to)] => (from.as_str(), to.as_str()),
+                _ => panic!("binary closure must contain strings"),
+            })
+            .collect();
+        assert_eq!(pairs, expected_pairs);
+    }
+}
+
+#[test]
 fn repeated_evaluation_is_identity_and_digest_idempotent() {
     let (bundle, config) = fixture_bundle();
     let generation = id!(GenerationId, 900);

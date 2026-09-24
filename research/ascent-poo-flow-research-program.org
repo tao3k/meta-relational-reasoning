@@ -52,14 +52,16 @@ must be compared through observable result and receipt fields, not equated by
 their shared name.  Gerbil-POO's table =.join= is a map union; it is not an
 Ascent rule-body relational join.  The focused MRR fixture test
 =derives_deterministic_shortest_lineage_candidates_from_a_validated_bundle=
-passed, and the full =mrr-ascent= package test passed with nine tests.
+passed.
 The public =mrr-closure-tool= admitted three independently constructed
 snapshots of that same diamond: four edges produced five candidates and
 Ada-to-Cy =true=; removing Bob-to-Cy produced four candidates and =true=;
 also removing Dan-to-Cy produced two candidates and =false=.  The POO
-experiment's encoded relation sets matched all three counts.  The Ascent,
-facade, and conformance package tests passed locally with 37 tests across
-eight suites.  These CLI calls are fresh snapshots, not a test of MRR's
+experiment's encoded relation sets matched all three counts.  The same three
+full candidate sets are now asserted by
+=source_snapshots_match_the_poo_reachability_fixture= in the MRR Ascent tests;
+the focused Ascent, facade, and conformance run passes 38 tests across eight
+suites.  These CLI calls are fresh snapshots, not a test of MRR's
 transition-based retraction or POO candidate admission.
 
 * Agent problem and value hypothesis
