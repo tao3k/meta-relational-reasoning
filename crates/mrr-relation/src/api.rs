@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2026 tao3k team and Contributors
+//
+// SPDX-License-Identifier: AGPL-3.0-only
+
 //! Language-neutral typed relation schemas and context-bearing facts.
 #![forbid(unsafe_code)]
 

@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2026 tao3k team and Contributors
+//
+// SPDX-License-Identifier: AGPL-3.0-only
+
 //! Raw declarations isolated behind the safe native grammar loader.
 
 use std::ffi::{CStr, c_char};

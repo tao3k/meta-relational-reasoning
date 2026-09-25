@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2026 tao3k team and Contributors
+//
+// SPDX-License-Identifier: AGPL-3.0-only
+
 //! Small, deterministic type-combination rules shared by the checker.
 
 use mrr_query::BinaryOperator;

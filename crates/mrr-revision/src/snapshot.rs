@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2026 tao3k team and Contributors
+//
+// SPDX-License-Identifier: AGPL-3.0-only
+
 //! Admission for one immutable semantic generation and its source revisions.
 
 use std::collections::BTreeSet;

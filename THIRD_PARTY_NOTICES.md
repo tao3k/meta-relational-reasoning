@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2026 tao3k team and Contributors
+
+SPDX-License-Identifier: AGPL-3.0-only
+-->
+
 # Third-Party Reference Material
 
 The projects below are pinned as specification and differential-test references.

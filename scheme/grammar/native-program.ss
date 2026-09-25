@@ -1,3 +1,7 @@
+;;; SPDX-FileCopyrightText: 2026 tao3k team and Contributors
+;;;
+;;; SPDX-License-Identifier: AGPL-3.0-only
+
 ;;; Gerbil compiler-owned AOT root for the embedded MRR runtime.
 
 (import ./native

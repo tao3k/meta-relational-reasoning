@@ -1,3 +1,7 @@
+;;; SPDX-FileCopyrightText: 2026 tao3k team and Contributors
+;;;
+;;; SPDX-License-Identifier: AGPL-3.0-only
+
 ;;; MRR-owned Rowan/IR projection consumed by parser-bound language profiles
 ;;; and by the native AOT ABI owner. Complete grammar semantics stay in
 ;;; gerbil-parser; this declaration contains only the downstream projection.

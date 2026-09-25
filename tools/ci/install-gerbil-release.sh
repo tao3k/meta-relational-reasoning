@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # SPDX-FileCopyrightText: 2026 tao3k team and Contributors
-# SPDX-License-Identifier: Apache-2.0 AND LGPL-2.1-or-later
+# SPDX-License-Identifier: AGPL-3.0-only
 
 set -euo pipefail
 

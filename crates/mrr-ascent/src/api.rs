@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2026 tao3k team and Contributors
+//
+// SPDX-License-Identifier: AGPL-3.0-only
+
 //! Validates a narrow transitive-closure contract and evaluates it with `Ascent`.
 
 use std::collections::{BTreeMap, BTreeSet, VecDeque};

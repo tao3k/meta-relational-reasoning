@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2026 tao3k team and Contributors
+//
+// SPDX-License-Identifier: AGPL-3.0-only
+
 //! Shared MRR configuration for ASP Rust test-only policy gates.
 
 use asp_rust::{AspRustConfig, AspRustWorkspacePolicy, default_asp_rust_config};

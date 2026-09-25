@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2026 tao3k team and Contributors
+//
+// SPDX-License-Identifier: AGPL-3.0-only
+
 //! Static query typing derived from admitted semantic catalogs.
 
 use std::collections::{BTreeMap, BTreeSet};

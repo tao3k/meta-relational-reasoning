@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 tao3k team and Contributors
+#
+# SPDX-License-Identifier: AGPL-3.0-only
+
 name: CI
 
 on:
@@ -19,6 +23,16 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  license-contract:
+    name: License contract
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate SPDX and published license metadata
+        run: |
+          python3 scripts/check_license_contract.py
+          python3 -m unittest discover -s scripts/tests -p 'test_check_license_contract.py'
+
   test:
     name: Native Gerbil and Rust (${{ matrix.os }})
     runs-on: ${{ matrix.os }}

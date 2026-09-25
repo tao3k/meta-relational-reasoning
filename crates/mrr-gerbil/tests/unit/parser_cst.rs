@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2026 tao3k team and Contributors
+//
+// SPDX-License-Identifier: AGPL-3.0-only
+
 #[test]
 fn parser_owned_cypher_uses_its_exact_native_grammar() {
     let source = "MATCH (p:Person)-[r:KNOWS]->(f:Person) WHERE p.age > 18 RETURN f.name\n";

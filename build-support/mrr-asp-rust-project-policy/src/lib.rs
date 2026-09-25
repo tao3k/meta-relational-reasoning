@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2026 tao3k team and Contributors
+//
+// SPDX-License-Identifier: AGPL-3.0-only
+
 //! MRR downstream policy crate for ASP Rust project evidence graphs.
 
 pub use asp_rust::{

@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2026 tao3k team and Contributors
+//
+// SPDX-License-Identifier: AGPL-3.0-only
+
 //! Backend-hidden public engine for the language-neutral MRR contract graph.
 
 use core::num::NonZeroUsize;

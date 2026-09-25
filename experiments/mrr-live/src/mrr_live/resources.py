@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 tao3k team and Contributors
+#
+# SPDX-License-Identifier: AGPL-3.0-only
+
 """Process adapters for Scheme scheduling and the Rust MRR resource."""
 
 from __future__ import annotations

@@ -1,4 +1,8 @@
 #!/usr/bin/env gxi
+;;; SPDX-FileCopyrightText: 2026 tao3k team and Contributors
+;;;
+;;; SPDX-License-Identifier: AGPL-3.0-only
+
 ;;; -*- Gerbil -*-
 ;;; MRR owns only the parser edge; POO Flow and ASP remain transitive.
 

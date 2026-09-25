@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2026 tao3k team and Contributors
+//
+// SPDX-License-Identifier: AGPL-3.0-only
+
 use mrr_identity::{GenerationId, RevisionId};
 
 const REVISION_BINDING_SCHEMA: &[u8] = b"mrr.external-revision.v1";

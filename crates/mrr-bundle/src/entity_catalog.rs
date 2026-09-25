@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2026 tao3k team and Contributors
+//
+// SPDX-License-Identifier: AGPL-3.0-only
+
 //! Canonical identity for the entity and property schemas admitted by a bundle.
 
 use std::{collections::BTreeSet, fmt};

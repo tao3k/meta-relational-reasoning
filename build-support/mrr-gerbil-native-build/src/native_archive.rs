@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2026 tao3k team and Contributors
+//
+// SPDX-License-Identifier: AGPL-3.0-only
+
 //! Thin Cargo adapter for the canonical Gerbil AOT program builder.
 
 use std::env;

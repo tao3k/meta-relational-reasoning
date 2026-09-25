@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2026 tao3k team and Contributors
+//
+// SPDX-License-Identifier: AGPL-3.0-only
+
 //! Safe typed projection of the Scheme-owned enhanced Tree-sitter Query V1 table.
 
 use std::fmt;

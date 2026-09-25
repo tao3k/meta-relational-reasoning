@@ -1,9 +1,18 @@
+# SPDX-FileCopyrightText: 2026 tao3k team and Contributors
+#
+# SPDX-License-Identifier: AGPL-3.0-only
+
 set shell := ["bash", "-eu", "-o", "pipefail", "-c"]
 
 profile := "./.devenv/devenv-profile-exec"
 
 default:
     @just --list
+
+# Validate repository-wide SPDX coverage and published license metadata.
+check-license-contract:
+    {{profile}} python3 scripts/check_license_contract.py
+    {{profile}} python3 -m unittest discover -s scripts/tests -p 'test_check_license_contract.py'
 
 # Build the Gerbil package through the SDK-sanitizing repository wrapper first.
 build:
@@ -33,7 +42,7 @@ evidence:
     env UV_CACHE_DIR=/tmp/mrr-uv-cache {{profile}} uv --project experiments/mrr-live run pytest -q experiments/mrr-live/tests
 
 # Full local admission gate.
-check: test lint evidence
+check: check-license-contract test lint evidence
 
 # Remove generated Gerbil and Rust artifacts through their owning tools.
 clean:

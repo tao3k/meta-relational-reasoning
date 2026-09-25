@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2026 tao3k team and Contributors
+//
+// SPDX-License-Identifier: AGPL-3.0-only
+
 use std::path::PathBuf;
 
 use mrr_asp_rust_build_support::MrrAspRustEvidenceGraphInput;

@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2026 tao3k team and Contributors
+//
+// SPDX-License-Identifier: AGPL-3.0-only
+
 use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
 use mrr_lineage::{
     FactId, LineageEdge, LineageEdgeId, LineageEdgeKind, LineageGraph, LineageNode, LineageNodeId,

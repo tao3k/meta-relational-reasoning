@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2026 tao3k team and Contributors
+//
+// SPDX-License-Identifier: AGPL-3.0-only
+
 use criterion::{Criterion, criterion_group, criterion_main};
 use mrr_bundle::{ReasoningBundle, ReasoningBundleDeclaration};
 use mrr_identity::RelationId;

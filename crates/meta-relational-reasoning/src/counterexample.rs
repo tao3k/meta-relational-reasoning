@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2026 tao3k team and Contributors
+//
+// SPDX-License-Identifier: AGPL-3.0-only
+
 //! Atomic projection of a validated safety counterexample into unified lineage.
 
 use std::collections::BTreeSet;

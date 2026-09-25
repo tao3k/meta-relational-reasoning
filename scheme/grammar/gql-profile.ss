@@ -1,3 +1,7 @@
+;;; SPDX-FileCopyrightText: 2026 tao3k team and Contributors
+;;;
+;;; SPDX-License-Identifier: AGPL-3.0-only
+
 ;;; ISO GQL language-profile inventory owned by Gerbil and projected through AOT.
 ;;; Statuses are implementation evidence states, never ISO certification claims.
 
