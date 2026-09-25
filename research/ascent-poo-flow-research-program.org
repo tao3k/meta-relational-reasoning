@@ -79,7 +79,10 @@ new receipts have distinct digests.  This is from-scratch support reselection
 across separately admitted snapshots; incremental deletion maintenance and a
 validated source-snapshot-to-generation binding remain open.
 The inspected POO library has no general relational join, least-closure
-evaluator, or shortest-support operation.  POO does not currently implement
+evaluator, or shortest-support operation.  A bounded POO table-expression
+experiment now composes binary pairs with an indexed right-hand =SimpleTrie=
+and =UIntTrieSet= folds; it checks two-hop paths and snapshot separation, not
+full closure or support semantics.  POO does not currently implement
 MRR's canonical =FactId= tie ordering or produce an admissible support receipt.
 
 * Agent problem and value hypothesis
