@@ -96,6 +96,18 @@ publishes canonical pairs and optional persistent-set materialization.  The
 p95 of 119us over 20 standard samples.  POO does not currently implement
 MRR's canonical =FactId= tie ordering or produce an admissible support receipt.
 
+The MRR facade now offers a read-only =compare_closure_pairs= operation for a
+physical evaluator's string-valued binary relation.  It compares a complete
+pair set against the existing =BundleBoundClosure= from the exact admitted
+=ReasoningBundleId= and requested =GenerationId=.  Wrong Bundle or generation,
+truncation, count mismatch, duplicates, and incorrect pairs are typed
+rejections.  The POO five-edge cyclic result and its six-pair withdrawal
+result pass as external candidates; an old result fails against the new Bundle.
+The operation neither changes the V1 receipt/digest nor grants lineage or
+effect admission.  Mapping POO's local encoded pair domain to MRR's source
+values, transporting it, and binding an external source snapshot to the
+requested generation remain separate obligations.
+
 * Agent problem and value hypothesis
 
 Current Agent workflows often make several decisions from retrieved text,

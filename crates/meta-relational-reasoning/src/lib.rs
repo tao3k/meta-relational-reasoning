@@ -8,8 +8,8 @@ mod query_result;
 mod truth;
 mod typing;
 pub use admission::{
-    BundleBoundClosure, CandidateIdentities, ClosureAdmissionError, DerivationReceipt,
-    MaterializedClosure, admit_closure_candidates,
+    BundleBoundClosure, CandidateIdentities, ClosureAdmissionError, ClosurePairComparisonError,
+    DerivationReceipt, MaterializedClosure, admit_closure_candidates, compare_closure_pairs,
 };
 pub use api::{
     DeductionLimits, DeductionPlan, EngineBuildError, EngineQueryError, MrrEngine, MrrEngineBuilder,

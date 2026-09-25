@@ -8,7 +8,7 @@ use mrr_identity::{DerivationId, FactId, GenerationId, ReasoningBundleId, RulePa
 use mrr_lineage::{Derivation, LineageError};
 use mrr_relation::{
     EvidenceCompleteness, Fact, FactProvenance, FactValidity, RelationAuthority, RelationContext,
-    RelationContextError,
+    RelationContextError, Value,
 };
 use mrr_transition::{Transition, TransitionError};
 use sha2::{Digest, Sha256};
@@ -39,6 +39,88 @@ impl BundleBoundClosure {
     pub const fn closure(&self) -> &ClosureReceipt {
         &self.closure
     }
+}
+
+/// A physical closure candidate failed comparison with one complete MRR result.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum ClosurePairComparisonError {
+    SourceBundleMismatch {
+        expected: ReasoningBundleId,
+        actual: ReasoningBundleId,
+    },
+    GenerationMismatch {
+        expected: GenerationId,
+        actual: GenerationId,
+    },
+    IncompleteReceipt,
+    PairCountMismatch {
+        expected: usize,
+        actual: usize,
+    },
+    DuplicatePair(String, String),
+    PairSetMismatch,
+    UnsupportedOracleValue,
+}
+
+impl fmt::Display for ClosurePairComparisonError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(formatter, "{self:?}")
+    }
+}
+
+impl std::error::Error for ClosurePairComparisonError {}
+
+/// Checks an external binary relation against the exact bundle-bound Ascent
+/// result. This is a read-only equivalence check, not lineage admission.
+pub fn compare_closure_pairs(
+    bundle: &ReasoningBundle,
+    evaluation: &BundleBoundClosure,
+    generation: GenerationId,
+    pairs: &[(String, String)],
+) -> Result<(), ClosurePairComparisonError> {
+    if evaluation.source_bundle() != bundle.id() {
+        return Err(ClosurePairComparisonError::SourceBundleMismatch {
+            expected: bundle.id(),
+            actual: evaluation.source_bundle(),
+        });
+    }
+    let receipt = evaluation.closure();
+    if receipt.input_generation() != generation {
+        return Err(ClosurePairComparisonError::GenerationMismatch {
+            expected: generation,
+            actual: receipt.input_generation(),
+        });
+    }
+    if receipt.status() != ClosureStatus::Complete {
+        return Err(ClosurePairComparisonError::IncompleteReceipt);
+    }
+    if pairs.len() != receipt.candidates().len() {
+        return Err(ClosurePairComparisonError::PairCountMismatch {
+            expected: receipt.candidates().len(),
+            actual: pairs.len(),
+        });
+    }
+
+    let mut actual = BTreeSet::new();
+    for (from, to) in pairs {
+        if !actual.insert((from.as_str(), to.as_str())) {
+            return Err(ClosurePairComparisonError::DuplicatePair(
+                from.clone(),
+                to.clone(),
+            ));
+        }
+    }
+    let mut expected = BTreeSet::new();
+    for candidate in receipt.candidates() {
+        let [Value::String(from), Value::String(to)] = candidate.values() else {
+            return Err(ClosurePairComparisonError::UnsupportedOracleValue);
+        };
+        expected.insert((from.as_str(), to.as_str()));
+    }
+    if actual != expected {
+        return Err(ClosurePairComparisonError::PairSetMismatch);
+    }
+    Ok(())
 }
 
 /// Caller-owned stable identities assigned to one sorted closure candidate.

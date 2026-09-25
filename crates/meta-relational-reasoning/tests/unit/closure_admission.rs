@@ -1,9 +1,9 @@
 use core::num::NonZeroUsize;
 
 use crate::{
-    BundleBoundClosure, CandidateIdentities, ClosureAdmissionError, DeductionError,
-    DeductionLimits, DeductionPlan, DerivationId, EntityId, EvidenceCompleteness, Fact, FactId,
-    FactProvenance, FactValidity, GenerationId, GenerationTransitionError, MrrEngine,
+    BundleBoundClosure, CandidateIdentities, ClosureAdmissionError, ClosurePairComparisonError,
+    DeductionError, DeductionLimits, DeductionPlan, DerivationId, EntityId, EvidenceCompleteness,
+    Fact, FactId, FactProvenance, FactValidity, GenerationId, GenerationTransitionError, MrrEngine,
     ReasoningBundle, ReasoningBundleDeclaration, RelationAuthority, RelationContext, RelationField,
     RelationId, RelationSchema, Rule, RuleId, RulePack, RulePackId, Term, Value, ValueSchema,
     Variable, admit_closure_candidates,
@@ -131,6 +131,185 @@ fn identities(count: usize) -> Vec<CandidateIdentities> {
             )
         })
         .collect()
+}
+
+#[test]
+fn compares_external_pairs_only_against_the_exact_complete_bundle_generation() {
+    let (bundle, plan) = fixture();
+    let generation = id!(GenerationId, 51);
+    let engine = MrrEngine::builder()
+        .with_bundle(bundle.clone())
+        .build()
+        .expect("engine");
+    let complete = engine
+        .derive(plan, generation, limits(16))
+        .expect("complete Ascent result");
+    let pairs = vec![
+        ("Bob".into(), "Cy".into()),
+        ("Ada".into(), "Cy".into()),
+        ("Ada".into(), "Bob".into()),
+    ];
+    assert_eq!(
+        engine.compare_closure_pairs(&complete, generation, &pairs),
+        Ok(())
+    );
+
+    assert_eq!(
+        engine.compare_closure_pairs(&complete, id!(GenerationId, 52), &pairs),
+        Err(ClosurePairComparisonError::GenerationMismatch {
+            expected: id!(GenerationId, 52),
+            actual: generation,
+        })
+    );
+    assert_eq!(
+        engine.compare_closure_pairs(&complete, generation, &pairs[..2]),
+        Err(ClosurePairComparisonError::PairCountMismatch {
+            expected: 3,
+            actual: 2,
+        })
+    );
+    assert_eq!(
+        engine.compare_closure_pairs(
+            &complete,
+            generation,
+            &[pairs[0].clone(), pairs[0].clone(), pairs[2].clone()],
+        ),
+        Err(ClosurePairComparisonError::DuplicatePair(
+            "Bob".into(),
+            "Cy".into(),
+        ))
+    );
+    assert_eq!(
+        engine.compare_closure_pairs(
+            &complete,
+            generation,
+            &[
+                pairs[0].clone(),
+                pairs[1].clone(),
+                ("Ada".into(), "Eve".into())
+            ],
+        ),
+        Err(ClosurePairComparisonError::PairSetMismatch)
+    );
+
+    let truncated = engine
+        .derive(plan, generation, limits(1))
+        .expect("bounded output");
+    assert_eq!(
+        engine.compare_closure_pairs(&truncated, generation, &pairs),
+        Err(ClosurePairComparisonError::IncompleteReceipt)
+    );
+
+    let mut changed = bundle.declaration().clone();
+    *changed
+        .facts
+        .iter_mut()
+        .find(|fact| fact.id() == id!(FactId, 100))
+        .expect("source fact 100") = source_fact(100, id!(RelationId, 1), "Ada", "Eve");
+    let changed = MrrEngine::builder()
+        .with_bundle(ReasoningBundle::admit(changed).expect("changed bundle"))
+        .build()
+        .expect("changed engine");
+    assert_eq!(
+        changed.compare_closure_pairs(&complete, generation, &pairs),
+        Err(ClosurePairComparisonError::SourceBundleMismatch {
+            expected: changed.bundle().id(),
+            actual: bundle.id(),
+        })
+    );
+
+    let mut empty_declaration = bundle.declaration().clone();
+    empty_declaration.facts.clear();
+    let empty_engine = MrrEngine::builder()
+        .with_bundle(ReasoningBundle::admit(empty_declaration).expect("empty source bundle"))
+        .build()
+        .expect("empty engine");
+    let empty_generation = id!(GenerationId, 53);
+    let empty = empty_engine
+        .derive(plan, empty_generation, limits(16))
+        .expect("complete empty closure");
+    assert_eq!(
+        empty_engine.compare_closure_pairs(&empty, empty_generation, &[]),
+        Ok(())
+    );
+    assert_eq!(
+        empty_engine.compare_closure_pairs(&empty, generation, &[]),
+        Err(ClosurePairComparisonError::GenerationMismatch {
+            expected: generation,
+            actual: empty_generation,
+        })
+    );
+}
+
+#[test]
+fn compares_the_poo_cyclic_closure_and_withdrawn_snapshot() {
+    let (bundle, plan) = fixture();
+    let edge = id!(RelationId, 1);
+    let mut declaration = bundle.declaration().clone();
+    declaration.facts = vec![
+        source_fact(100, edge, "1", "2"),
+        source_fact(101, edge, "2", "3"),
+        source_fact(102, edge, "3", "4"),
+        source_fact(103, edge, "4", "2"),
+        source_fact(104, edge, "1", "3"),
+    ];
+    let engine = MrrEngine::builder()
+        .with_bundle(ReasoningBundle::admit(declaration.clone()).expect("cyclic bundle"))
+        .build()
+        .expect("cyclic engine");
+    let first_generation = id!(GenerationId, 51);
+    let first = engine
+        .derive(plan, first_generation, limits(16))
+        .expect("complete cyclic closure");
+    let pairs = vec![
+        ("1".into(), "2".into()),
+        ("1".into(), "3".into()),
+        ("1".into(), "4".into()),
+        ("2".into(), "2".into()),
+        ("2".into(), "3".into()),
+        ("2".into(), "4".into()),
+        ("3".into(), "2".into()),
+        ("3".into(), "3".into()),
+        ("3".into(), "4".into()),
+        ("4".into(), "2".into()),
+        ("4".into(), "3".into()),
+        ("4".into(), "4".into()),
+    ];
+    assert_eq!(
+        engine.compare_closure_pairs(&first, first_generation, &pairs),
+        Ok(())
+    );
+
+    declaration
+        .facts
+        .retain(|fact| fact.id() != id!(FactId, 103));
+    let withdrawn = MrrEngine::builder()
+        .with_bundle(ReasoningBundle::admit(declaration).expect("withdrawn bundle"))
+        .build()
+        .expect("withdrawn engine");
+    let next_generation = id!(GenerationId, 52);
+    let second = withdrawn
+        .derive(plan, next_generation, limits(16))
+        .expect("complete closure after withdrawal");
+    let remaining = vec![
+        ("1".into(), "2".into()),
+        ("1".into(), "3".into()),
+        ("1".into(), "4".into()),
+        ("2".into(), "3".into()),
+        ("2".into(), "4".into()),
+        ("3".into(), "4".into()),
+    ];
+    assert_eq!(
+        withdrawn.compare_closure_pairs(&second, next_generation, &remaining),
+        Ok(())
+    );
+    assert_eq!(
+        withdrawn.compare_closure_pairs(&first, first_generation, &pairs),
+        Err(ClosurePairComparisonError::SourceBundleMismatch {
+            expected: withdrawn.bundle().id(),
+            actual: engine.bundle().id(),
+        })
+    );
 }
 
 #[test]
