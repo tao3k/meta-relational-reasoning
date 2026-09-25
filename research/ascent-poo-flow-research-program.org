@@ -14,16 +14,18 @@ owns the first control-plane slice.  This note does not change the accepted
 [[file:../docs/architecture/0003-mrr-ascent-evaluation.org][bounded Ascent RFC]] or
 [[file:../docs/architecture/0025-poo-flow-mrr-agent-assurance.org][assurance boundary]].
 
-The first experiment now maps one recursive query to existing POO and Gerbil
-standard library facilities: prototype =self= recursion, C4 inheritance,
-and persistent set operations.  POO Flow's focused fixture produces the same
-five reachable pairs as this repository's =mrr-ascent= four-edge fixture and
-terminates on a duplicate-edge cycle.  This is finite set-level parity, not
-semi-naive evaluation, shortest-distance lattice parity, support selection,
-or an admissible MRR receipt.  The next cross-repository step is to compare
-these richer outputs under an exact source generation, then exercise the
-control and evidence path against the current MRR/Ascent adapter.  A Scheme
-experiment remains an independent candidate and cannot publish MRR facts.
+The first experiment maps a bounded binary relation query to POO prototypes,
+C4 inheritance, persistent sets, and an indexed right-hand join.  POO Flow
+now exposes one explicit frontier step: compose the frontier, remove pairs
+already accumulated, and return both new and total =UIntTrieSet= values.  Its
+focused fixture checks multiple derivations, a cycle, and an empty final
+frontier over three caller-driven steps.  This is relation-algebra evidence,
+not a general semi-naive driver, shortest-distance lattice parity, support
+selection, or an admissible MRR receipt.  The next cross-repository step is to
+compare full candidate sets under an exact source generation, then exercise
+the control and evidence path against the current MRR/Ascent adapter.  A
+Scheme experiment remains an independent candidate and cannot publish MRR
+facts.
 
 * Current baseline and gaps
 
@@ -63,9 +65,11 @@ The public =mrr-closure-tool= admitted three independently constructed
 snapshots of that same diamond: four edges produced five candidates and
 Ada-to-Cy =true=; removing Bob-to-Cy produced four candidates and =true=;
 also removing Dan-to-Cy produced two candidates and =false=.  The POO
-fixture now exercises only native persistent source-set composition; its
+primitive fixture exercises native persistent source-set composition; its
 hand-written graph walk was removed because it duplicated Ascent rather than
-reusing a standard-library closure operation.  The same three MRR
+reusing a standard-library closure operation.  A separate POO relation
+expression fixture checks bounded joins and explicit frontier steps.  The
+same three MRR
 candidate sets are asserted by
 =source_snapshots_match_expected_ascent_closure= in the MRR Ascent tests;
 the focused Ascent, facade, and conformance run passes 39 tests across eight
@@ -79,10 +83,12 @@ new receipts have distinct digests.  This is from-scratch support reselection
 across separately admitted snapshots; incremental deletion maintenance and a
 validated source-snapshot-to-generation binding remain open.
 The inspected POO library has no general relational join, least-closure
-evaluator, or shortest-support operation.  A bounded POO table-expression
-experiment now composes binary pairs with an indexed right-hand =SimpleTrie=
-and =UIntTrieSet= folds; it checks two-hop paths and snapshot separation, not
-full closure or support semantics.  POO does not currently implement
+evaluator, or shortest-support operation.  The bounded POO table expression
+composes binary pairs from a =UIntTrieSet= source through a private adjacency
+index.  Its =delta-step= returns an incremental set and an accumulated set,
+using the library's =Table .merge= and =Set .union= operations.  The declared
+V19 =Set .diff= method omits the operands in its forwarding call, so the
+experiment uses =Table .merge= directly.  POO does not currently implement
 MRR's canonical =FactId= tie ordering or produce an admissible support receipt.
 
 * Agent problem and value hypothesis
