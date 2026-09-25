@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2026 tao3k team and Contributors
+//
+// SPDX-License-Identifier: AGPL-3.0-only
+
 use crate::{
     Aggregation, AggregationFunction, Atom, BinaryOperator, Binding, Direction, Expression, Filter,
     GraphPattern, MetaQueryIr, NodePattern, PageValue, PathPattern, PathSegment, Projection,

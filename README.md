@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2026 tao3k team and Contributors
+
+SPDX-License-Identifier: AGPL-3.0-only
+-->
+
 # Meta-Relational Reasoning
 
 A typed logic and admission layer for reasoning-grade languages.
@@ -257,3 +263,9 @@ receipt.
 `cargo package` remains intentionally disabled while workspace crates retain
 local unpublished dependency edges. Packaging will be enabled only after the
 publication topology is closed.
+
+## License
+
+Original MRR work is licensed under `AGPL-3.0-only`.
+See [LICENSE](LICENSE) for the terms and
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for reference material.

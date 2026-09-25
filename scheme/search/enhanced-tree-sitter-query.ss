@@ -1,3 +1,7 @@
+;;; SPDX-FileCopyrightText: 2026 tao3k team and Contributors
+;;;
+;;; SPDX-License-Identifier: AGPL-3.0-only
+
 ;;; Gerbil AOT authority for enhanced Tree-sitter Query V1 extensions.
 ;;;
 ;;; This module validates the closed declaration itself. It intentionally does

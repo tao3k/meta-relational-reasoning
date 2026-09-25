@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2026 tao3k team and Contributors
+//
+// SPDX-License-Identifier: AGPL-3.0-only
+
 use crate::{
     GroundAtom, IntentBindingStatus, RelationId, SafetyStatus, TruthStatus, Value,
     WhyNotIncomplete, WhyNotStatus, conflict_truth, intent_binding_truth, safety_truth,

@@ -1,3 +1,7 @@
+;;; SPDX-FileCopyrightText: 2026 tao3k team and Contributors
+;;;
+;;; SPDX-License-Identifier: AGPL-3.0-only
+
 ;;; Backend-neutral POO Search composition framework.
 ;;;
 ;;; Consumers own their query languages, concrete operators, runtime execution,

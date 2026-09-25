@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 tao3k team and Contributors
+#
+# SPDX-License-Identifier: AGPL-3.0-only
+
 schema_version: 1
 baseline_release: iso-39075-2024
 evidence_policy:

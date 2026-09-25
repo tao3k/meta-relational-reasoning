@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2026 tao3k team and Contributors
+//
+// SPDX-License-Identifier: AGPL-3.0-only
+
 //! Typed command adapter for the live MRR experiment.
 
 use std::{env, process::ExitCode};

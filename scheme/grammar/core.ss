@@ -1,3 +1,7 @@
+;;; SPDX-FileCopyrightText: 2026 tao3k team and Contributors
+;;;
+;;; SPDX-License-Identifier: AGPL-3.0-only
+
 ;;; MRR projection over parser-owned GQL-family language grammars.
 
 (import :clan/poo/object

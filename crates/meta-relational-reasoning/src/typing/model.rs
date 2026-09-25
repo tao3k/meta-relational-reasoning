@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2026 tao3k team and Contributors
+//
+// SPDX-License-Identifier: AGPL-3.0-only
+
 //! Canonical public evidence emitted by static query typing.
 
 use mrr_identity::{EntityId, RelationId};

@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2026 tao3k team and Contributors
+//
+// SPDX-License-Identifier: AGPL-3.0-only
+
 //! ASP Rust build-support scenario contracts used by the GQL workspace.
 
 pub use asp_rust_build_support::{

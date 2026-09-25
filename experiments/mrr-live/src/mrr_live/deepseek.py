@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 tao3k team and Contributors
+#
+# SPDX-License-Identifier: AGPL-3.0-only
+
 """DeepSeek Responses API adapter; never an MRR truth authority."""
 
 from __future__ import annotations

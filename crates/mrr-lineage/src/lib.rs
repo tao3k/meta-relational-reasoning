@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2026 tao3k team and Contributors
+//
+// SPDX-License-Identifier: AGPL-3.0-only
+
 //! Derivation lineage and support sets for MRR facts.
 #![forbid(unsafe_code)]
 mod api;

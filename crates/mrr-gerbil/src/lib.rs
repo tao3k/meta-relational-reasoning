@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2026 tao3k team and Contributors
+//
+// SPDX-License-Identifier: AGPL-3.0-only
+
 //! Build-time Gerbil native projection and provenance admission.
 //!
 //! This crate is intentionally absent from the query runtime dependency graph.

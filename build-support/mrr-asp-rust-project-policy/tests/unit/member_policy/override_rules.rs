@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2026 tao3k team and Contributors
+//
+// SPDX-License-Identifier: AGPL-3.0-only
+
 use super::contracts::{collect_forbidden_policy_rule_files, workspace_root_from_manifest};
 
 #[test]

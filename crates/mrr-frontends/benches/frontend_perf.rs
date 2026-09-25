@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2026 tao3k team and Contributors
+//
+// SPDX-License-Identifier: AGPL-3.0-only
+
 use criterion::{Criterion, Throughput, criterion_group, criterion_main};
 use mrr_frontends::QueryFrontend;
 use mrr_gerbil::parse_gql_artifact;

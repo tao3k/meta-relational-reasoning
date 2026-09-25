@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2026 tao3k team and Contributors
+//
+// SPDX-License-Identifier: AGPL-3.0-only
+
 //! Safe fixed-width boundary to the Scheme-owned outer resource scheduler.
 
 use std::{error::Error, fmt};

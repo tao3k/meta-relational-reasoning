@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2026 tao3k team and Contributors
+//
+// SPDX-License-Identifier: AGPL-3.0-only
+
 use crate::{FrontendError, PARSER_OWNED_COMPILATION_SCHEMA_V1, QueryFrontend};
 use mrr_query::{
     AggregationFunction, BinaryOperator, Direction, Expression, PageValue, Parameter, ResultMode,

@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2026 tao3k team and Contributors
+
+SPDX-License-Identifier: AGPL-3.0-only
+-->
+
 # Repository command environment
 
 Run repository build, test, lint, and commit commands through `./.devenv/devenv-profile-exec` so they use this workspace's captured devenv environment. For example:

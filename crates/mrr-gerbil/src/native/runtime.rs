@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2026 tao3k team and Contributors
+//
+// SPDX-License-Identifier: AGPL-3.0-only
+
 //! Single-owner execution boundary for the embedded Gambit runtime.
 
 use std::sync::{OnceLock, mpsc};

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 tao3k team and Contributors
+#
+# SPDX-License-Identifier: AGPL-3.0-only
+
 """Natural-task evaluation of the Scheme-driven MRR v0.1 boundary."""
 
 from __future__ import annotations

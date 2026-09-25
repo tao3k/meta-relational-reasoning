@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2026 tao3k team and Contributors
+//
+// SPDX-License-Identifier: AGPL-3.0-only
+
 use std::num::NonZeroUsize;
 
 use mrr_identity::{FactId, GenerationId, QueryOperatorId};

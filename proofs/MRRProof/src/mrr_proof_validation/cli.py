@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+# SPDX-FileCopyrightText: 2026 tao3k team and Contributors
+#
+# SPDX-License-Identifier: AGPL-3.0-only
+
 """Validate MRR proof impact and kernel-check it with pinned local Lean."""
 
 from __future__ import annotations

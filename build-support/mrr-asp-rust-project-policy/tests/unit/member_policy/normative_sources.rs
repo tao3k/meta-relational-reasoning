@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2026 tao3k team and Contributors
+//
+// SPDX-License-Identifier: AGPL-3.0-only
+
 use std::collections::BTreeSet;
 
 pub(super) fn assert_normative_source_registry(normative_sources: &str) -> BTreeSet<String> {
