@@ -19,11 +19,12 @@ C4 inheritance, persistent sets, and an indexed right-hand join.  POO Flow
 now exposes one explicit frontier step: compose the frontier, remove pairs
 already accumulated, and return both new and total =UIntTrieSet= values.  Its
 focused fixture checks multiple derivations, a cycle, and an empty final
-frontier over three caller-driven steps.  This is relation-algebra evidence,
-not a general semi-naive driver, shortest-distance lattice parity, support
-selection, or an admissible MRR receipt.  The next cross-repository step is to
-compare full candidate sets under an exact source generation, then exercise
-the control and evidence path against the current MRR/Ascent adapter.  A
+frontier over three caller-driven steps.  A paired MRR/Ascent fixture now
+checks the same five-edge graph's full 12-pair closure.  This is set-level
+parity for one bounded case, not a general semi-naive driver, shortest-distance
+lattice parity, support selection, or an admissible MRR receipt.  The next
+cross-repository step is to bind full candidate sets to exact source
+generations and exercise the control and evidence path.  A
 Scheme experiment remains an independent candidate and cannot publish MRR
 facts.
 
@@ -69,7 +70,8 @@ primitive fixture exercises native persistent source-set composition; its
 hand-written graph walk was removed because it duplicated Ascent rather than
 reusing a standard-library closure operation.  A separate POO relation
 expression fixture checks bounded joins and explicit frontier steps.  The
-same three MRR
+paired =cyclic_frontier_fixture_matches_the_poo_relation_pairs= test checks
+the same graph through MRR/Ascent.  The same three MRR
 candidate sets are asserted by
 =source_snapshots_match_expected_ascent_closure= in the MRR Ascent tests;
 the focused Ascent, facade, and conformance run passes 39 tests across eight

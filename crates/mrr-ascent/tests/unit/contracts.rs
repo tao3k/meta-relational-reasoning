@@ -219,6 +219,54 @@ fn source_snapshots_match_expected_ascent_closure() {
 }
 
 #[test]
+fn cyclic_frontier_fixture_matches_the_poo_relation_pairs() {
+    // The POO relation-expression fixture encodes the same five edges with
+    // radix eight. Its three explicit frontier steps yield these 12 pairs.
+    let (bundle, config) = fixture_bundle();
+    let edge = id!(RelationId, 1);
+    let mut declaration = bundle.declaration().clone();
+    declaration.facts = vec![
+        source_fact(100, edge, "1", "2"),
+        source_fact(101, edge, "2", "3"),
+        source_fact(102, edge, "3", "4"),
+        source_fact(103, edge, "4", "2"),
+        source_fact(104, edge, "1", "3"),
+    ];
+    let snapshot = ReasoningBundle::admit(declaration).expect("cyclic source snapshot");
+    let receipt =
+        evaluate_transitive_closure(&snapshot, config, id!(GenerationId, 900), limits(5, 16, 16))
+            .expect("bounded cyclic closure");
+    assert_eq!(receipt.status(), ClosureStatus::Complete);
+
+    let mut pairs: Vec<_> = receipt
+        .candidates()
+        .iter()
+        .map(|candidate| match candidate.values() {
+            [Value::String(from), Value::String(to)] => (from.as_str(), to.as_str()),
+            _ => panic!("binary closure must contain strings"),
+        })
+        .collect();
+    pairs.sort_unstable();
+    assert_eq!(
+        pairs,
+        [
+            ("1", "2"),
+            ("1", "3"),
+            ("1", "4"),
+            ("2", "2"),
+            ("2", "3"),
+            ("2", "4"),
+            ("3", "2"),
+            ("3", "3"),
+            ("3", "4"),
+            ("4", "2"),
+            ("4", "3"),
+            ("4", "4"),
+        ]
+    );
+}
+
+#[test]
 fn withdrawing_the_selected_support_reselects_the_surviving_path() {
     let (bundle, config) = fixture_bundle();
     let initial =
