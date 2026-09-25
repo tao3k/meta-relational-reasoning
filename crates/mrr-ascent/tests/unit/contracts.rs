@@ -1,7 +1,8 @@
 use core::num::NonZeroUsize;
 
 use mrr_ascent::{
-    ClosureConfig, ClosureError, ClosureLimits, ClosureStatus, evaluate_transitive_closure,
+    ClosureConfig, ClosureError, ClosureLimits, ClosureReceipt, ClosureStatus, DerivationCandidate,
+    evaluate_transitive_closure,
 };
 use mrr_bundle::{ReasoningBundle, ReasoningBundleDeclaration, RulePack};
 use mrr_identity::{EntityId, FactId, GenerationId, RelationId, RuleId, RulePackId};
@@ -128,6 +129,12 @@ fn limits(input: usize, pairs: usize, results: usize) -> ClosureLimits {
     )
 }
 
+fn ada_to_cy(receipt: &ClosureReceipt) -> Option<&DerivationCandidate> {
+    receipt.candidates().iter().find(|candidate| {
+        *candidate.values() == [Value::String("Ada".into()), Value::String("Cy".into())]
+    })
+}
+
 #[test]
 fn derives_deterministic_shortest_lineage_candidates_from_a_validated_bundle() {
     let (bundle, config) = fixture_bundle();
@@ -209,6 +216,66 @@ fn source_snapshots_match_the_poo_reachability_fixture() {
             .collect();
         assert_eq!(pairs, expected_pairs);
     }
+}
+
+#[test]
+fn withdrawing_the_selected_support_reselects_the_surviving_path() {
+    let (bundle, config) = fixture_bundle();
+    let initial =
+        evaluate_transitive_closure(&bundle, config, id!(GenerationId, 900), limits(16, 64, 64))
+            .expect("initial complete closure");
+    let selected = ada_to_cy(&initial).expect("two supported paths").support();
+    let via_bob = [id!(FactId, 100), id!(FactId, 101)];
+    let via_dan = [id!(FactId, 99), id!(FactId, 103)];
+    assert!(selected == via_bob || selected == via_dan);
+
+    let withdrawn = if selected == via_bob {
+        id!(FactId, 101)
+    } else {
+        id!(FactId, 103)
+    };
+    let surviving = if selected == via_bob {
+        via_dan
+    } else {
+        via_bob
+    };
+    let mut declaration = bundle.declaration().clone();
+    declaration.facts.retain(|fact| fact.id() != withdrawn);
+    let snapshot = ReasoningBundle::admit(declaration.clone()).expect("surviving source snapshot");
+    let after_one = evaluate_transitive_closure(
+        &snapshot,
+        config,
+        id!(GenerationId, 901),
+        limits(16, 64, 64),
+    )
+    .expect("alternative path remains complete");
+    assert_eq!(after_one.status(), ClosureStatus::Complete);
+    assert_eq!(after_one.input_generation(), id!(GenerationId, 901));
+    assert_eq!(
+        ada_to_cy(&after_one).expect("alternative path").support(),
+        surviving
+    );
+    assert!(
+        after_one
+            .candidates()
+            .iter()
+            .all(|candidate| candidate.generation() == id!(GenerationId, 901))
+    );
+    assert_ne!(initial.digest(), after_one.digest());
+
+    declaration.facts.retain(|fact| fact.id() != surviving[1]);
+    let snapshot = ReasoningBundle::admit(declaration).expect("disconnected source snapshot");
+    let after_both = evaluate_transitive_closure(
+        &snapshot,
+        config,
+        id!(GenerationId, 902),
+        limits(16, 64, 64),
+    )
+    .expect("disconnected complete closure");
+    assert_eq!(after_both.status(), ClosureStatus::Complete);
+    assert_eq!(after_both.input_generation(), id!(GenerationId, 902));
+    assert!(ada_to_cy(&after_both).is_none());
+    assert_ne!(after_one.digest(), after_both.digest());
 }
 
 #[test]

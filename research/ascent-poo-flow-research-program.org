@@ -60,9 +60,19 @@ also removing Dan-to-Cy produced two candidates and =false=.  The POO
 experiment's encoded relation sets matched all three counts.  The same three
 full candidate sets are now asserted by
 =source_snapshots_match_the_poo_reachability_fixture= in the MRR Ascent tests;
-the focused Ascent, facade, and conformance run passes 38 tests across eight
+the focused Ascent, facade, and conformance run passes 39 tests across eight
 suites.  These CLI calls are fresh snapshots, not a test of MRR's
 transition-based retraction or POO candidate admission.
+The differential fixture also withdraws whichever shortest Ada-to-Cy witness
+the evaluator selected, checks that the other branch becomes its support at a
+new requested generation, and then removes that branch.  The final result
+contains no Ada-to-Cy candidate.  The old receipt remains immutable and the
+new receipts have distinct digests.  This is from-scratch support reselection
+across separately admitted snapshots; incremental deletion maintenance and a
+validated source-snapshot-to-generation binding remain open.
+The POO native =self= witness experiment independently returns the surviving
+source-edge labels for each single-branch withdrawal.  It does not implement
+MRR's canonical =FactId= tie ordering or produce an admissible support receipt.
 
 * Agent problem and value hypothesis
 
