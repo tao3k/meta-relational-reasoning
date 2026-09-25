@@ -21,10 +21,13 @@ positive binary transitive rule.  Its focused fixture checks multiple
 derivations, a cycle, an empty final frontier, source withdrawal, and the
 complete 12-pair set.  A paired MRR/Ascent fixture checks the same five-edge
 graph.  This is set-level parity for one bounded rule, not general Datalog,
-shortest-distance lattice parity, support selection, or an admissible MRR
-receipt.  The next cross-repository step is to bind full candidate sets to
+or an admissible MRR receipt.  POO Flow has since added a Scheme
+=Dual<usize>= minimum-distance projection and deterministic shortest support
+selection for caller-labelled source facts.  Its diamond, cycle, withdrawal,
+and bounded-result tests reuse the current MRR/Ascent fixtures.  The next
+cross-repository step is to bind full candidate sets to
 exact source generations and exercise the control and evidence path.  A
-Scheme experiment remains an independent candidate and cannot publish MRR
+Scheme evaluator remains an independent candidate and cannot publish MRR
 facts.
 
 * Current baseline and gaps
@@ -84,7 +87,9 @@ new receipts have distinct digests.  This is from-scratch support reselection
 across separately admitted snapshots; incremental deletion maintenance and a
 validated source-snapshot-to-generation binding remain open.
 The inspected POO library has no general relational join, least-closure
-evaluator, or shortest-support operation.  The bounded POO table expression
+evaluator, or shortest-support operation.  POO Flow's Scheme qualification
+code now implements the selected binary rule on top of that library; it does
+not add another generic fixed-point driver.  The bounded POO table expression
 composes binary pairs from a =UIntTrieSet= source through a private adjacency
 index.  Its =delta-step= returns an incremental set and an accumulated set
 using the library's =Table .merge= and =Set .union=.  The declared V19 =Set
@@ -93,8 +98,14 @@ using the library's =Table .merge= and =Set .union=.  The declared V19 =Set
 library's =until= combinator and private bounded membership storage; it
 publishes canonical pairs and optional persistent-set materialization.  The
 20-node chain fixture checks all 190 reachable pairs, with local optimized
-p95 of 119us over 20 standard samples.  POO does not currently implement
-MRR's canonical =FactId= tie ordering or produce an admissible support receipt.
+p95 of 119us over 20 standard samples.  A demanded distance projection now
+uses strict minimum updates like the MRR/Ascent =Dual<usize>= path lattice.
+The Scheme candidate evaluator selects the shortest path and a deterministic
+equal-length source-label ordering, then checks its path length against that
+lattice distance.  A separate 20-sample standard fixture measured all 190
+distance and support candidates on the 20-node chain at local optimized p95
+306us.  These labels are not MRR's semantic =FactId=s; POO does not produce an
+admissible support receipt or bind the external source generation.
 
 The MRR facade now offers a read-only =compare_closure_pairs= operation for a
 physical evaluator's string-valued binary relation.  It compares a complete
