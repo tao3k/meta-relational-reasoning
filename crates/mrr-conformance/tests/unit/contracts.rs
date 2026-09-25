@@ -208,8 +208,8 @@ fn execute(domain: Domain<'_>) {
             ),
         )
         .expect("bounded closure");
-    assert_eq!(closure.status(), ClosureStatus::Complete);
-    assert!(closure.candidates().iter().any(|candidate| {
+    assert_eq!(closure.closure().status(), ClosureStatus::Complete);
+    assert!(closure.closure().candidates().iter().any(|candidate| {
         candidate.values()
             == &[
                 Value::String(domain.left.into()),
@@ -217,6 +217,7 @@ fn execute(domain: Domain<'_>) {
             ]
     }));
     let identities: Vec<_> = closure
+        .closure()
         .candidates()
         .iter()
         .enumerate()
@@ -235,7 +236,10 @@ fn execute(domain: Domain<'_>) {
             &identities,
         )
         .expect("atomic materialization");
-    assert_eq!(materialized.derivations().len(), closure.candidates().len());
+    assert_eq!(
+        materialized.derivations().len(),
+        closure.closure().candidates().len()
+    );
 
     let derivation = &materialized.derivations()[0];
     let result_node = id!(LineageNodeId, domain.name, "result");

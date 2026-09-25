@@ -5,7 +5,8 @@ use core::num::NonZeroUsize;
 use mrr_ascent::{ClosureConfig, ClosureLimits, evaluate_transitive_closure};
 
 use crate::{
-    CandidateIdentities, ClosureAdmissionError, MaterializedClosure, admit_closure_candidates,
+    BundleBoundClosure, CandidateIdentities, ClosureAdmissionError, MaterializedClosure,
+    admit_closure_candidates,
 };
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -141,18 +142,19 @@ impl MrrEngine {
         plan: DeductionPlan,
         generation: mrr_identity::GenerationId,
         limits: DeductionLimits,
-    ) -> Result<mrr_ascent::ClosureReceipt, mrr_ascent::ClosureError> {
+    ) -> Result<BundleBoundClosure, mrr_ascent::ClosureError> {
         evaluate_transitive_closure(&self.bundle, plan.0, generation, limits.0)
+            .map(|receipt| BundleBoundClosure::bind(self.bundle.id(), receipt))
     }
 
     pub fn materialize(
         &self,
-        receipt: &mrr_ascent::ClosureReceipt,
+        receipt: &BundleBoundClosure,
         from: mrr_identity::GenerationId,
         to: mrr_identity::GenerationId,
         identities: &[CandidateIdentities],
     ) -> Result<MaterializedClosure, ClosureAdmissionError> {
-        admit_closure_candidates(receipt, from, to, identities)
+        admit_closure_candidates(&self.bundle, receipt, from, to, identities)
     }
 
     pub fn why(

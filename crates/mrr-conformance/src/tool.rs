@@ -148,10 +148,10 @@ fn execute_closure_tool(input: &ClosureToolInput) -> Result<ClosureToolReceipt, 
             ),
         )
         .map_err(|error| ClosureToolError(format!("closure failed: {error:?}")))?;
-    if closure.status() != ClosureStatus::Complete {
+    if closure.closure().status() != ClosureStatus::Complete {
         return Err(ClosureToolError("closure is incomplete".into()));
     }
-    let result_is_reachable = closure.candidates().iter().any(|candidate| {
+    let result_is_reachable = closure.closure().candidates().iter().any(|candidate| {
         *candidate.values()
             == [
                 Value::String(input.source.clone()),
@@ -159,6 +159,7 @@ fn execute_closure_tool(input: &ClosureToolInput) -> Result<ClosureToolReceipt, 
             ]
     });
     let identities = closure
+        .closure()
         .candidates()
         .iter()
         .enumerate()

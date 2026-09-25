@@ -30,8 +30,14 @@ experiment remains an independent candidate and cannot publish MRR facts.
 The accepted evaluator handles exactly one selected two-rule transitive
 closure shape over a validated bundle.  It checks finite input and pair bounds
 before Ascent, reconstructs deterministic shortest witnesses, and emits a
-generation-bound =ClosureReceipt=.  Facade admission requires complete output,
-caller-assigned identities, lineage validity, and transition validity.
+generation-bound V1 =ClosureReceipt=.  The facade binds this runtime evaluation
+to the exact admitted =ReasoningBundleId= without changing the V1 receipt
+schema or digest.  Admission checks that Bundle identity even when two bundles
+reuse the same input =FactId=s, and
+checks the requested generation even for an empty closure.  It then requires
+complete output, caller-assigned identities, lineage validity, and transition
+validity.  Binding a source owner's semantic snapshot to the caller-supplied
+generation remains a separate obligation.
 [[file:ascent-mvp-capability.org][The MVP capability note]] records that parallel
 evaluation, BYODS, and deletion maintenance are not used in that slice; this
 does not mean upstream Ascent lacks parallel or BYODS support.  MRR transition

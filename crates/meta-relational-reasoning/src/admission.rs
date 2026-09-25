@@ -3,7 +3,8 @@
 use std::{collections::BTreeSet, fmt};
 
 use mrr_ascent::{ClosureReceipt, ClosureStatus, DerivationCandidate};
-use mrr_identity::{DerivationId, FactId, GenerationId, RulePackId};
+use mrr_bundle::ReasoningBundle;
+use mrr_identity::{DerivationId, FactId, GenerationId, ReasoningBundleId, RulePackId};
 use mrr_lineage::{Derivation, LineageError};
 use mrr_relation::{
     EvidenceCompleteness, Fact, FactProvenance, FactValidity, RelationAuthority, RelationContext,
@@ -13,6 +14,32 @@ use mrr_transition::{Transition, TransitionError};
 use sha2::{Digest, Sha256};
 
 const DERIVATION_RECEIPT_SCHEMA: &[u8] = b"mrr.materialized-derivation-receipt.v1";
+
+/// In-process evaluation bound to the exact source bundle without changing the V1 receipt.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct BundleBoundClosure {
+    source_bundle: ReasoningBundleId,
+    closure: ClosureReceipt,
+}
+
+impl BundleBoundClosure {
+    pub(crate) const fn bind(source_bundle: ReasoningBundleId, closure: ClosureReceipt) -> Self {
+        Self {
+            source_bundle,
+            closure,
+        }
+    }
+
+    #[must_use]
+    pub const fn source_bundle(&self) -> ReasoningBundleId {
+        self.source_bundle
+    }
+
+    #[must_use]
+    pub const fn closure(&self) -> &ClosureReceipt {
+        &self.closure
+    }
+}
 
 /// Caller-owned stable identities assigned to one sorted closure candidate.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -44,6 +71,11 @@ impl CandidateIdentities {
 /// Fail-closed reasons why a closure receipt cannot be materialized atomically.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ClosureAdmissionError {
+    /// The candidate receipt was evaluated from a different admitted bundle.
+    SourceBundleMismatch {
+        expected: ReasoningBundleId,
+        actual: ReasoningBundleId,
+    },
     /// A truncated receipt cannot define a complete semantic-generation delta.
     IncompleteReceipt,
     /// Every sorted candidate must have exactly one caller-assigned identity pair.
@@ -159,12 +191,14 @@ impl DerivationReceipt {
 /// the complete transition and lineage collection only after every canonical
 /// owner has accepted its respective object.
 pub fn admit_closure_candidates(
-    receipt: &ClosureReceipt,
+    bundle: &ReasoningBundle,
+    evaluation: &BundleBoundClosure,
     from: GenerationId,
     to: GenerationId,
     identities: &[CandidateIdentities],
 ) -> Result<MaterializedClosure, ClosureAdmissionError> {
-    validate_receipt_binding(receipt, to, identities)?;
+    validate_receipt_binding(bundle, evaluation, to, identities)?;
+    let receipt = evaluation.closure();
     let derivations = build_derivations(receipt.candidates(), to, identities)?;
     let insertions = derivations
         .iter()
@@ -221,10 +255,24 @@ fn hash_field(hasher: &mut Sha256, bytes: &[u8]) {
 }
 
 fn validate_receipt_binding(
-    receipt: &ClosureReceipt,
+    bundle: &ReasoningBundle,
+    evaluation: &BundleBoundClosure,
     to: GenerationId,
     identities: &[CandidateIdentities],
 ) -> Result<(), ClosureAdmissionError> {
+    if bundle.id() != evaluation.source_bundle() {
+        return Err(ClosureAdmissionError::SourceBundleMismatch {
+            expected: bundle.id(),
+            actual: evaluation.source_bundle(),
+        });
+    }
+    let receipt = evaluation.closure();
+    if receipt.input_generation() != to {
+        return Err(ClosureAdmissionError::GenerationMismatch {
+            expected: to,
+            actual: receipt.input_generation(),
+        });
+    }
     if receipt.status() != ClosureStatus::Complete {
         return Err(ClosureAdmissionError::IncompleteReceipt);
     }
