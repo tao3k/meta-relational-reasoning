@@ -63,9 +63,11 @@ The public =mrr-closure-tool= admitted three independently constructed
 snapshots of that same diamond: four edges produced five candidates and
 Ada-to-Cy =true=; removing Bob-to-Cy produced four candidates and =true=;
 also removing Dan-to-Cy produced two candidates and =false=.  The POO
-experiment's encoded relation sets matched all three counts.  The same three
-full candidate sets are now asserted by
-=source_snapshots_match_the_poo_reachability_fixture= in the MRR Ascent tests;
+fixture now exercises only native persistent source-set composition; its
+hand-written graph walk was removed because it duplicated Ascent rather than
+reusing a standard-library closure operation.  The same three MRR
+candidate sets are asserted by
+=source_snapshots_match_expected_ascent_closure= in the MRR Ascent tests;
 the focused Ascent, facade, and conformance run passes 39 tests across eight
 suites.  These CLI calls are fresh snapshots, not a test of MRR's
 transition-based retraction or POO candidate admission.
@@ -76,8 +78,8 @@ contains no Ada-to-Cy candidate.  The old receipt remains immutable and the
 new receipts have distinct digests.  This is from-scratch support reselection
 across separately admitted snapshots; incremental deletion maintenance and a
 validated source-snapshot-to-generation binding remain open.
-The POO native =self= witness experiment independently returns the surviving
-source-edge labels for each single-branch withdrawal.  It does not implement
+The inspected POO library has no general relational join, least-closure
+evaluator, or shortest-support operation.  POO does not currently implement
 MRR's canonical =FactId= tie ordering or produce an admissible support receipt.
 
 * Agent problem and value hypothesis

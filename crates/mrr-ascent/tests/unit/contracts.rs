@@ -176,7 +176,7 @@ fn derives_deterministic_shortest_lineage_candidates_from_a_validated_bundle() {
 }
 
 #[test]
-fn source_snapshots_match_the_poo_reachability_fixture() {
+fn source_snapshots_match_expected_ascent_closure() {
     let (bundle, config) = fixture_bundle();
     let generation = id!(GenerationId, 900);
     let expected = [
