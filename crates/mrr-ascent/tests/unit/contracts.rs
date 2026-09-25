@@ -264,6 +264,38 @@ fn cyclic_frontier_fixture_matches_the_poo_relation_pairs() {
             ("4", "4"),
         ]
     );
+
+    let mut withdrawn = snapshot.declaration().clone();
+    withdrawn.facts.retain(|fact| fact.id() != id!(FactId, 103));
+    let without_cycle = ReasoningBundle::admit(withdrawn).expect("withdrawn source snapshot");
+    let after_withdrawal = evaluate_transitive_closure(
+        &without_cycle,
+        config,
+        id!(GenerationId, 901),
+        limits(5, 16, 16),
+    )
+    .expect("complete closure after withdrawal");
+    assert_eq!(after_withdrawal.status(), ClosureStatus::Complete);
+    let mut remaining: Vec<_> = after_withdrawal
+        .candidates()
+        .iter()
+        .map(|candidate| match candidate.values() {
+            [Value::String(from), Value::String(to)] => (from.as_str(), to.as_str()),
+            _ => panic!("binary closure must contain strings"),
+        })
+        .collect();
+    remaining.sort_unstable();
+    assert_eq!(
+        remaining,
+        [
+            ("1", "2"),
+            ("1", "3"),
+            ("1", "4"),
+            ("2", "3"),
+            ("2", "4"),
+            ("3", "4"),
+        ]
+    );
 }
 
 #[test]

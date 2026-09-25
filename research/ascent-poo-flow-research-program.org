@@ -16,15 +16,14 @@ owns the first control-plane slice.  This note does not change the accepted
 
 The first experiment maps a bounded binary relation query to POO prototypes,
 C4 inheritance, persistent sets, and an indexed right-hand join.  POO Flow
-now exposes one explicit frontier step: compose the frontier, remove pairs
-already accumulated, and return both new and total =UIntTrieSet= values.  Its
-focused fixture checks multiple derivations, a cycle, and an empty final
-frontier over three caller-driven steps.  A paired MRR/Ascent fixture now
-checks the same five-edge graph's full 12-pair closure.  This is set-level
-parity for one bounded case, not a general semi-naive driver, shortest-distance
-lattice parity, support selection, or an admissible MRR receipt.  The next
-cross-repository step is to bind full candidate sets to exact source
-generations and exercise the control and evidence path.  A
+exposes an explicit frontier step and a demanded full closure for the selected
+positive binary transitive rule.  Its focused fixture checks multiple
+derivations, a cycle, an empty final frontier, source withdrawal, and the
+complete 12-pair set.  A paired MRR/Ascent fixture checks the same five-edge
+graph.  This is set-level parity for one bounded rule, not general Datalog,
+shortest-distance lattice parity, support selection, or an admissible MRR
+receipt.  The next cross-repository step is to bind full candidate sets to
+exact source generations and exercise the control and evidence path.  A
 Scheme experiment remains an independent candidate and cannot publish MRR
 facts.
 
@@ -87,10 +86,14 @@ validated source-snapshot-to-generation binding remain open.
 The inspected POO library has no general relational join, least-closure
 evaluator, or shortest-support operation.  The bounded POO table expression
 composes binary pairs from a =UIntTrieSet= source through a private adjacency
-index.  Its =delta-step= returns an incremental set and an accumulated set,
-using the library's =Table .merge= and =Set .union= operations.  The declared
-V19 =Set .diff= method omits the operands in its forwarding call, so the
-experiment uses =Table .merge= directly.  POO does not currently implement
+index.  Its =delta-step= returns an incremental set and an accumulated set
+using the library's =Table .merge= and =Set .union=.  The declared V19 =Set
+.diff= method omits operands in its forwarding call, so the experiment uses
+=Table .merge= directly.  A separate demanded closure projection uses the
+library's =until= combinator and private bounded membership storage; it
+publishes canonical pairs and optional persistent-set materialization.  The
+20-node chain fixture checks all 190 reachable pairs, with local optimized
+p95 of 119us over 20 standard samples.  POO does not currently implement
 MRR's canonical =FactId= tie ordering or produce an admissible support receipt.
 
 * Agent problem and value hypothesis
