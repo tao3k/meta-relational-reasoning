@@ -110,19 +110,21 @@ admissible support receipt or bind the external source generation.
 POO Flow now also has a Scheme evaluator for POO-declared positive binary
 =copy= and =join= rules across multiple named relations.  It performs
 simultaneous semi-naive rounds with private dense or sparse indexes and
-publishes persistent set snapshots.  Its tests repeat the three Rust Ascent
+publishes complete canonical pair lists; official persistent sets are available
+by a separate on-demand conversion.  Its tests repeat the three Rust Ascent
 diamond source snapshots and their exact 5, 4, and 2 pair sets, plus the
 cyclic closure and withdrawal pairs.  They also cover two changing join
 inputs, multiple relation heads, rule order, and sparse radix.  Input,
 derived, and complete output pair budgets reject before an oversized
 candidate can enter the pending frontier.  This extends the executable rule
-fragment; it does not
-change MRR's selected admitted rule pack or semantic authority.  The 20-node
-  standard fixture currently measures about 1.3ms p95 locally for 190 output
-  pairs, above the 1ms target.  The selected recursive closure reuses the
-  Scheme algorithm directly; official persistent-set publication is the
-  measured bottleneck.  Submillisecond optimization and generic Ascent
-rule features remain research work.
+fragment; it does not change MRR's selected admitted rule pack or semantic
+authority.  The 20-node standard fixture verifies all 190 output pairs and
+measured 139us p95 locally for full canonical list publication.  Earlier eager
+persistent-set publication measured about 1.3ms locally and 2.298391ms on
+Ubuntu, exceeding its 2ms ceiling.  These are different output contracts;
+optional set conversion is outside the new fixture.  The selected recursive
+closure reuses the Scheme algorithm directly.  Generic Ascent rule features
+remain research work.
 
 The MRR facade now offers a read-only =compare_closure_pairs= operation for a
 physical evaluator's string-valued binary relation.  It compares a complete
