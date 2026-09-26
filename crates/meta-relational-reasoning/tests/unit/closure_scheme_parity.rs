@@ -45,8 +45,8 @@ fn scheme_fixture_output(recipe: &str, request: &str) -> String {
     String::from_utf8(output.stdout).expect("Scheme output is UTF-8")
 }
 
-fn scheme_closure_pairs(edges: &[(&str, &str)]) -> Vec<(String, String)> {
-    let mut request = String::from("(8");
+fn scheme_closure_pairs(edges: &[(&str, &str)], generic: bool) -> Vec<(String, String)> {
+    let mut request = String::from(if generic { "(generic 8" } else { "(8" });
     for &(from, to) in edges {
         assert!(from.parse::<u32>().is_ok() && to.parse::<u32>().is_ok());
         request.push(' ');
@@ -76,7 +76,7 @@ struct PriorSnapshot {
 
 #[test]
 #[ignore = "requires a built POO Flow checkout in MRR_POO_FLOW_ROOT"]
-fn live_scheme_pairs_match_ascent_for_source_snapshots() {
+fn live_scheme_fast_and_generic_pairs_match_ascent_for_source_snapshots() {
     let (bundle, plan) = fixture();
     let edge = id!(RelationId, 1);
     let snapshots: &[&[(&str, &str)]] = &[
@@ -104,11 +104,17 @@ fn live_scheme_pairs_match_ascent_for_source_snapshots() {
         let result = engine
             .derive(plan, &snapshot(generation), limits(16))
             .expect("complete Ascent result");
-        let pairs = scheme_closure_pairs(edges);
+        let pairs = scheme_closure_pairs(edges, false);
+        let generic_pairs = scheme_closure_pairs(edges, true);
         assert_eq!(
             engine.compare_closure_pairs(&result, &snapshot(generation), &pairs),
             Ok(()),
-            "Scheme/Ascent mismatch at source snapshot {snapshot_index}"
+            "Scheme fast closure/Ascent mismatch at source snapshot {snapshot_index}"
+        );
+        assert_eq!(
+            engine.compare_closure_pairs(&result, &snapshot(generation), &generic_pairs),
+            Ok(()),
+            "Scheme generic closure/Ascent mismatch at source snapshot {snapshot_index}"
         );
         if let Some(old) = prior.take() {
             assert!(matches!(
