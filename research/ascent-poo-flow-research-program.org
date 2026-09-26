@@ -144,7 +144,9 @@ cross-repository gate runs the POO Flow Scheme binary-program evaluator for
 five source snapshots and passes its actual canonical pairs to this MRR
 comparison.  The ordinary unit test retains literal pairs for typed rejection
 cases.  Live parity still does not bind an external source owner's snapshot to
-the requested generation or admit a POO receipt.
+the requested generation or admit a POO receipt.  The closure evaluator now
+rejects a source fact whose context generation differs from the requested
+generation before running Ascent; external revision authentication remains open.
 
 * Agent problem and value hypothesis
 

@@ -51,13 +51,23 @@ fn binary_schema(relation: RelationId, predicate: &str) -> RelationSchema {
 }
 
 fn source_fact(identity: u128, relation: RelationId, from: &str, to: &str) -> Fact {
+    source_fact_at(identity, relation, from, to, id!(GenerationId, 51))
+}
+
+fn source_fact_at(
+    identity: u128,
+    relation: RelationId,
+    from: &str,
+    to: &str,
+    generation: GenerationId,
+) -> Fact {
     let authority = id!(EntityId, identity);
     Fact::new(
         id!(FactId, identity),
         relation,
         vec![Value::String(from.into()), Value::String(to.into())],
         RelationContext::new(
-            id!(GenerationId, 51),
+            generation,
             RelationAuthority::Entity(authority),
             FactProvenance::Source(authority),
             EvidenceCompleteness::Complete,
@@ -65,6 +75,28 @@ fn source_fact(identity: u128, relation: RelationId, from: &str, to: &str) -> Fa
         )
         .expect("source context"),
     )
+}
+
+fn source_snapshot_at(facts: &[Fact], generation: GenerationId) -> Vec<Fact> {
+    facts
+        .iter()
+        .map(|fact| {
+            let context = fact.context();
+            Fact::new(
+                fact.id(),
+                fact.relation(),
+                fact.values().to_vec(),
+                RelationContext::new(
+                    generation,
+                    context.authority(),
+                    context.provenance(),
+                    context.completeness(),
+                    context.validity(),
+                )
+                .expect("source snapshot context"),
+            )
+        })
+        .collect()
 }
 
 fn fixture() -> (ReasoningBundle, DeductionPlan) {
@@ -213,17 +245,19 @@ fn live_scheme_pairs_match_ascent_for_source_snapshots() {
     ];
     let mut prior: Option<PriorSnapshot> = None;
     for (snapshot_index, edges) in snapshots.iter().enumerate() {
+        let generation = id!(GenerationId, 51 + snapshot_index);
         let mut declaration = bundle.declaration().clone();
         declaration.facts = edges
             .iter()
             .enumerate()
-            .map(|(index, &(from, to))| source_fact(100 + index as u128, edge, from, to))
+            .map(|(index, &(from, to))| {
+                source_fact_at(100 + index as u128, edge, from, to, generation)
+            })
             .collect();
         let engine = MrrEngine::builder()
             .with_bundle(ReasoningBundle::admit(declaration).expect("source snapshot"))
             .build()
             .expect("MRR engine");
-        let generation = id!(GenerationId, 51 + snapshot_index);
         let result = engine
             .derive(plan, generation, limits(16))
             .expect("complete Ascent result");
@@ -397,6 +431,7 @@ fn compares_the_poo_cyclic_closure_and_withdrawn_snapshot() {
     declaration
         .facts
         .retain(|fact| fact.id() != id!(FactId, 103));
+    declaration.facts = source_snapshot_at(&declaration.facts, id!(GenerationId, 52));
     let withdrawn = MrrEngine::builder()
         .with_bundle(ReasoningBundle::admit(declaration).expect("withdrawn bundle"))
         .build()

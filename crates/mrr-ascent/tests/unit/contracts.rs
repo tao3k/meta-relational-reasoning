@@ -64,6 +64,28 @@ fn source_fact(identity: u128, relation: RelationId, from: &str, to: &str) -> Fa
     )
 }
 
+fn source_snapshot_at(facts: &[Fact], generation: GenerationId) -> Vec<Fact> {
+    facts
+        .iter()
+        .map(|fact| {
+            let context = fact.context();
+            Fact::new(
+                fact.id(),
+                fact.relation(),
+                fact.values().to_vec(),
+                RelationContext::new(
+                    generation,
+                    context.authority(),
+                    context.provenance(),
+                    context.completeness(),
+                    context.validity(),
+                )
+                .expect("source snapshot context"),
+            )
+        })
+        .collect()
+}
+
 fn admitted_bundle(
     relations: Vec<RelationSchema>,
     facts: Vec<Fact>,
@@ -178,7 +200,6 @@ fn derives_deterministic_shortest_lineage_candidates_from_a_validated_bundle() {
 #[test]
 fn source_snapshots_match_expected_ascent_closure() {
     let (bundle, config) = fixture_bundle();
-    let generation = id!(GenerationId, 900);
     let expected = [
         vec![
             ("Ada", "Bob"),
@@ -192,6 +213,7 @@ fn source_snapshots_match_expected_ascent_closure() {
     ];
 
     for (withdrawn, expected_pairs) in expected.into_iter().enumerate() {
+        let generation = id!(GenerationId, 900 + withdrawn);
         let mut declaration = bundle.declaration().clone();
         declaration
             .facts
@@ -199,6 +221,7 @@ fn source_snapshots_match_expected_ascent_closure() {
         declaration
             .facts
             .retain(|fact| fact.id() != id!(FactId, 103) || withdrawn < 2);
+        declaration.facts = source_snapshot_at(&declaration.facts, generation);
         let snapshot = ReasoningBundle::admit(declaration).expect("snapshot admission");
         let receipt =
             evaluate_transitive_closure(&snapshot, config, generation, limits(16, 64, 64))
@@ -216,6 +239,24 @@ fn source_snapshots_match_expected_ascent_closure() {
             .collect();
         assert_eq!(pairs, expected_pairs);
     }
+}
+
+#[test]
+fn stale_source_generation_is_rejected_before_ascent() {
+    let (bundle, config) = fixture_bundle();
+    assert!(matches!(
+        evaluate_transitive_closure(
+            &bundle,
+            config,
+            id!(GenerationId, 901),
+            limits(16, 64, 64),
+        ),
+        Err(ClosureError::SourceGenerationMismatch {
+            expected,
+            actual,
+            ..
+        }) if expected == id!(GenerationId, 901) && actual == id!(GenerationId, 900)
+    ));
 }
 
 #[test]
@@ -267,6 +308,7 @@ fn cyclic_frontier_fixture_matches_the_poo_relation_pairs() {
 
     let mut withdrawn = snapshot.declaration().clone();
     withdrawn.facts.retain(|fact| fact.id() != id!(FactId, 103));
+    withdrawn.facts = source_snapshot_at(&withdrawn.facts, id!(GenerationId, 901));
     let without_cycle = ReasoningBundle::admit(withdrawn).expect("withdrawn source snapshot");
     let after_withdrawal = evaluate_transitive_closure(
         &without_cycle,
@@ -321,6 +363,7 @@ fn withdrawing_the_selected_support_reselects_the_surviving_path() {
     };
     let mut declaration = bundle.declaration().clone();
     declaration.facts.retain(|fact| fact.id() != withdrawn);
+    declaration.facts = source_snapshot_at(&declaration.facts, id!(GenerationId, 901));
     let snapshot = ReasoningBundle::admit(declaration.clone()).expect("surviving source snapshot");
     let after_one = evaluate_transitive_closure(
         &snapshot,
@@ -344,6 +387,7 @@ fn withdrawing_the_selected_support_reselects_the_surviving_path() {
     assert_ne!(initial.digest(), after_one.digest());
 
     declaration.facts.retain(|fact| fact.id() != surviving[1]);
+    declaration.facts = source_snapshot_at(&declaration.facts, id!(GenerationId, 902));
     let snapshot = ReasoningBundle::admit(declaration).expect("disconnected source snapshot");
     let after_both = evaluate_transitive_closure(
         &snapshot,
