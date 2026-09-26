@@ -1,18 +1,285 @@
 //! Atomic composition of evaluated closure candidates into canonical MRR objects.
 
-use std::{collections::BTreeSet, fmt};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    fmt,
+};
 
 use mrr_ascent::{ClosureReceipt, ClosureStatus, DerivationCandidate};
-use mrr_identity::{DerivationId, FactId, GenerationId, RulePackId};
+use mrr_bundle::ReasoningBundle;
+use mrr_identity::{DerivationId, FactId, GenerationId, ReasoningBundleId, RuleId, RulePackId};
 use mrr_lineage::{Derivation, LineageError};
 use mrr_relation::{
     EvidenceCompleteness, Fact, FactProvenance, FactValidity, RelationAuthority, RelationContext,
-    RelationContextError,
+    RelationContextError, Value,
 };
+use mrr_revision::SemanticSnapshot;
 use mrr_transition::{Transition, TransitionError};
 use sha2::{Digest, Sha256};
 
 const DERIVATION_RECEIPT_SCHEMA: &[u8] = b"mrr.materialized-derivation-receipt.v1";
+
+/// In-process evaluation bound to the exact source bundle without changing the V1 receipt.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct BundleBoundClosure {
+    source_bundle: ReasoningBundleId,
+    snapshot_digest: [u8; 32],
+    closure: ClosureReceipt,
+}
+
+impl BundleBoundClosure {
+    pub(crate) const fn bind(
+        source_bundle: ReasoningBundleId,
+        snapshot_digest: [u8; 32],
+        closure: ClosureReceipt,
+    ) -> Self {
+        Self {
+            source_bundle,
+            snapshot_digest,
+            closure,
+        }
+    }
+
+    #[must_use]
+    pub const fn source_bundle(&self) -> ReasoningBundleId {
+        self.source_bundle
+    }
+
+    #[must_use]
+    pub const fn snapshot_digest(&self) -> &[u8; 32] {
+        &self.snapshot_digest
+    }
+
+    #[must_use]
+    pub const fn closure(&self) -> &ClosureReceipt {
+        &self.closure
+    }
+}
+
+/// A physical closure candidate failed comparison with one complete MRR result.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum ClosurePairComparisonError {
+    SourceBundleMismatch {
+        expected: ReasoningBundleId,
+        actual: ReasoningBundleId,
+    },
+    GenerationMismatch {
+        expected: GenerationId,
+        actual: GenerationId,
+    },
+    SnapshotMismatch {
+        expected: [u8; 32],
+        actual: [u8; 32],
+    },
+    IncompleteReceipt,
+    PairCountMismatch {
+        expected: usize,
+        actual: usize,
+    },
+    DuplicatePair(String, String),
+    PairSetMismatch,
+    UnsupportedOracleValue,
+}
+
+/// One physical closure candidate projected into MRR-owned rule and fact identities.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ClosureCandidateRow {
+    from: String,
+    to: String,
+    distance: usize,
+    rule: RuleId,
+    support: Vec<FactId>,
+}
+
+impl ClosureCandidateRow {
+    #[must_use]
+    pub fn new(
+        from: impl Into<String>,
+        to: impl Into<String>,
+        distance: usize,
+        rule: RuleId,
+        support: Vec<FactId>,
+    ) -> Self {
+        Self {
+            from: from.into(),
+            to: to.into(),
+            distance,
+            rule,
+            support,
+        }
+    }
+}
+
+/// A complete physical candidate disagrees with MRR's bound Ascent result.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum ClosureCandidateComparisonError {
+    Pairs(ClosurePairComparisonError),
+    DistanceMismatch {
+        from: String,
+        to: String,
+        expected: usize,
+        actual: usize,
+    },
+    RuleMismatch {
+        from: String,
+        to: String,
+        expected: RuleId,
+        actual: RuleId,
+    },
+    SupportMismatch {
+        from: String,
+        to: String,
+        expected: Vec<FactId>,
+        actual: Vec<FactId>,
+    },
+}
+
+impl fmt::Display for ClosureCandidateComparisonError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(formatter, "{self:?}")
+    }
+}
+
+impl std::error::Error for ClosureCandidateComparisonError {}
+
+impl fmt::Display for ClosurePairComparisonError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(formatter, "{self:?}")
+    }
+}
+
+impl std::error::Error for ClosurePairComparisonError {}
+
+/// Checks an external binary relation against the exact bundle-bound Ascent
+/// result. This is a read-only equivalence check, not lineage admission.
+pub fn compare_closure_pairs(
+    bundle: &ReasoningBundle,
+    evaluation: &BundleBoundClosure,
+    snapshot: &SemanticSnapshot,
+    pairs: &[(String, String)],
+) -> Result<(), ClosurePairComparisonError> {
+    let receipt = validate_closure_comparison(bundle, evaluation, snapshot, pairs.len())?;
+
+    let mut actual = BTreeSet::new();
+    for (from, to) in pairs {
+        if !actual.insert((from.as_str(), to.as_str())) {
+            return Err(ClosurePairComparisonError::DuplicatePair(
+                from.clone(),
+                to.clone(),
+            ));
+        }
+    }
+    let mut expected = BTreeSet::new();
+    for candidate in receipt.candidates() {
+        let [Value::String(from), Value::String(to)] = candidate.values() else {
+            return Err(ClosurePairComparisonError::UnsupportedOracleValue);
+        };
+        expected.insert((from.as_str(), to.as_str()));
+    }
+    if actual != expected {
+        return Err(ClosurePairComparisonError::PairSetMismatch);
+    }
+    Ok(())
+}
+
+fn validate_closure_comparison<'a>(
+    bundle: &ReasoningBundle,
+    evaluation: &'a BundleBoundClosure,
+    snapshot: &SemanticSnapshot,
+    candidate_count: usize,
+) -> Result<&'a ClosureReceipt, ClosurePairComparisonError> {
+    if evaluation.source_bundle() != bundle.id() {
+        return Err(ClosurePairComparisonError::SourceBundleMismatch {
+            expected: bundle.id(),
+            actual: evaluation.source_bundle(),
+        });
+    }
+    let receipt = evaluation.closure();
+    let generation = snapshot.generation();
+    if receipt.input_generation() != generation {
+        return Err(ClosurePairComparisonError::GenerationMismatch {
+            expected: generation,
+            actual: receipt.input_generation(),
+        });
+    }
+    if evaluation.snapshot_digest() != snapshot.digest() {
+        return Err(ClosurePairComparisonError::SnapshotMismatch {
+            expected: *snapshot.digest(),
+            actual: *evaluation.snapshot_digest(),
+        });
+    }
+    if receipt.status() != ClosureStatus::Complete {
+        return Err(ClosurePairComparisonError::IncompleteReceipt);
+    }
+    if candidate_count != receipt.candidates().len() {
+        return Err(ClosurePairComparisonError::PairCountMismatch {
+            expected: receipt.candidates().len(),
+            actual: candidate_count,
+        });
+    }
+    Ok(receipt)
+}
+
+/// Checks exact distance, rule, and ordered source support after the bound pair set.
+/// This comparison does not admit lineage or publish a semantic result.
+pub fn compare_closure_candidates(
+    bundle: &ReasoningBundle,
+    evaluation: &BundleBoundClosure,
+    snapshot: &SemanticSnapshot,
+    candidates: &[ClosureCandidateRow],
+) -> Result<(), ClosureCandidateComparisonError> {
+    let receipt = validate_closure_comparison(bundle, evaluation, snapshot, candidates.len())
+        .map_err(ClosureCandidateComparisonError::Pairs)?;
+    let mut rows = BTreeMap::new();
+    for candidate in candidates {
+        if rows
+            .insert((candidate.from.as_str(), candidate.to.as_str()), candidate)
+            .is_some()
+        {
+            return Err(ClosureCandidateComparisonError::Pairs(
+                ClosurePairComparisonError::DuplicatePair(
+                    candidate.from.clone(),
+                    candidate.to.clone(),
+                ),
+            ));
+        }
+    }
+    for expected in receipt.candidates() {
+        let [Value::String(from), Value::String(to)] = expected.values() else {
+            return Err(ClosureCandidateComparisonError::Pairs(
+                ClosurePairComparisonError::UnsupportedOracleValue,
+            ));
+        };
+        let actual = rows.get(&(from.as_str(), to.as_str())).ok_or(
+            ClosureCandidateComparisonError::Pairs(ClosurePairComparisonError::PairSetMismatch),
+        )?;
+        if actual.distance != expected.support().len() {
+            return Err(ClosureCandidateComparisonError::DistanceMismatch {
+                from: from.clone(),
+                to: to.clone(),
+                expected: expected.support().len(),
+                actual: actual.distance,
+            });
+        }
+        if actual.rule != expected.rule() {
+            return Err(ClosureCandidateComparisonError::RuleMismatch {
+                from: from.clone(),
+                to: to.clone(),
+                expected: expected.rule(),
+                actual: actual.rule,
+            });
+        }
+        if actual.support != expected.support() {
+            return Err(ClosureCandidateComparisonError::SupportMismatch {
+                from: from.clone(),
+                to: to.clone(),
+                expected: expected.support().to_vec(),
+                actual: actual.support.clone(),
+            });
+        }
+    }
+    Ok(())
+}
 
 /// Caller-owned stable identities assigned to one sorted closure candidate.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -44,6 +311,15 @@ impl CandidateIdentities {
 /// Fail-closed reasons why a closure receipt cannot be materialized atomically.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ClosureAdmissionError {
+    /// The candidate receipt was evaluated from a different admitted bundle.
+    SourceBundleMismatch {
+        expected: ReasoningBundleId,
+        actual: ReasoningBundleId,
+    },
+    SnapshotMismatch {
+        expected: [u8; 32],
+        actual: [u8; 32],
+    },
     /// A truncated receipt cannot define a complete semantic-generation delta.
     IncompleteReceipt,
     /// Every sorted candidate must have exactly one caller-assigned identity pair.
@@ -79,12 +355,53 @@ impl std::error::Error for ClosureAdmissionError {}
 /// Fully validated lineage and transition outputs from one admission attempt.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct MaterializedClosure {
+    source_bundle: ReasoningBundleId,
+    snapshot_digest: [u8; 32],
     transition: Transition,
     derivations: Vec<Derivation>,
     receipt: DerivationReceipt,
 }
 
 impl MaterializedClosure {
+    /// Returns the exact admitted source bundle.
+    #[must_use]
+    pub const fn source_bundle(&self) -> ReasoningBundleId {
+        self.source_bundle
+    }
+
+    /// Returns the exact admitted semantic snapshot digest.
+    #[must_use]
+    pub const fn snapshot_digest(&self) -> &[u8; 32] {
+        &self.snapshot_digest
+    }
+
+    /// Checks the source identities again before this materialization is reused.
+    pub fn check_source(
+        &self,
+        bundle: &ReasoningBundle,
+        snapshot: &SemanticSnapshot,
+    ) -> Result<(), ClosureAdmissionError> {
+        if bundle.id() != self.source_bundle {
+            return Err(ClosureAdmissionError::SourceBundleMismatch {
+                expected: bundle.id(),
+                actual: self.source_bundle,
+            });
+        }
+        if snapshot.generation() != self.receipt.input_generation() {
+            return Err(ClosureAdmissionError::GenerationMismatch {
+                expected: snapshot.generation(),
+                actual: self.receipt.input_generation(),
+            });
+        }
+        if snapshot.digest() != &self.snapshot_digest {
+            return Err(ClosureAdmissionError::SnapshotMismatch {
+                expected: *snapshot.digest(),
+                actual: self.snapshot_digest,
+            });
+        }
+        Ok(())
+    }
+
     /// Returns the canonical immutable semantic-generation delta.
     #[must_use]
     pub const fn transition(&self) -> &Transition {
@@ -159,12 +476,15 @@ impl DerivationReceipt {
 /// the complete transition and lineage collection only after every canonical
 /// owner has accepted its respective object.
 pub fn admit_closure_candidates(
-    receipt: &ClosureReceipt,
+    bundle: &ReasoningBundle,
+    evaluation: &BundleBoundClosure,
     from: GenerationId,
-    to: GenerationId,
+    snapshot: &SemanticSnapshot,
     identities: &[CandidateIdentities],
 ) -> Result<MaterializedClosure, ClosureAdmissionError> {
-    validate_receipt_binding(receipt, to, identities)?;
+    let to = snapshot.generation();
+    validate_receipt_binding(bundle, evaluation, snapshot, identities)?;
+    let receipt = evaluation.closure();
     let derivations = build_derivations(receipt.candidates(), to, identities)?;
     let insertions = derivations
         .iter()
@@ -174,6 +494,8 @@ pub fn admit_closure_candidates(
         .map_err(ClosureAdmissionError::Transition)?;
     let receipt = materialized_receipt(receipt, identities);
     Ok(MaterializedClosure {
+        source_bundle: evaluation.source_bundle(),
+        snapshot_digest: *evaluation.snapshot_digest(),
         transition,
         derivations,
         receipt,
@@ -221,10 +543,31 @@ fn hash_field(hasher: &mut Sha256, bytes: &[u8]) {
 }
 
 fn validate_receipt_binding(
-    receipt: &ClosureReceipt,
-    to: GenerationId,
+    bundle: &ReasoningBundle,
+    evaluation: &BundleBoundClosure,
+    snapshot: &SemanticSnapshot,
     identities: &[CandidateIdentities],
 ) -> Result<(), ClosureAdmissionError> {
+    if bundle.id() != evaluation.source_bundle() {
+        return Err(ClosureAdmissionError::SourceBundleMismatch {
+            expected: bundle.id(),
+            actual: evaluation.source_bundle(),
+        });
+    }
+    let receipt = evaluation.closure();
+    let to = snapshot.generation();
+    if receipt.input_generation() != to {
+        return Err(ClosureAdmissionError::GenerationMismatch {
+            expected: to,
+            actual: receipt.input_generation(),
+        });
+    }
+    if evaluation.snapshot_digest() != snapshot.digest() {
+        return Err(ClosureAdmissionError::SnapshotMismatch {
+            expected: *snapshot.digest(),
+            actual: *evaluation.snapshot_digest(),
+        });
+    }
     if receipt.status() != ClosureStatus::Complete {
         return Err(ClosureAdmissionError::IncompleteReceipt);
     }
