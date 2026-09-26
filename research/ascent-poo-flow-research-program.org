@@ -140,7 +140,7 @@ The operation neither changes the V1 receipt/digest nor grants lineage or
 effect admission.  Mapping the Scheme package's local encoded pair domain to MRR's source
 values, transporting it, and binding an external source snapshot to the
 requested generation remain separate obligations.  The Scheme rule and candidate differential tests now run in gerbil-ascent,
-which depends on POO Flow Foundation and is pinned as a POO Flow submodule.
+which depends on POO Flow Core and is pinned as a POO Flow submodule.
 MRR CI tests only its semantic comparison and admission contracts. Complete
 source-owner snapshot binding and an MRR-admissible external candidate receipt
 remain open.
