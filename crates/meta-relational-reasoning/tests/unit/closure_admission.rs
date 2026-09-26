@@ -1,5 +1,6 @@
 use core::num::NonZeroUsize;
 use std::{
+    collections::BTreeMap,
     io::Write,
     path::PathBuf,
     process::{Command, Stdio},
@@ -170,25 +171,16 @@ fn identities(count: usize) -> Vec<CandidateIdentities> {
         .collect()
 }
 
-fn scheme_closure_pairs(edges: &[(&str, &str)]) -> Vec<(String, String)> {
+fn scheme_fixture_output(recipe: &str, request: &str) -> String {
     let root =
         PathBuf::from(std::env::var_os("MRR_POO_FLOW_ROOT").expect("POO Flow checkout path"));
     let mut command = Command::new("just");
     command
         .current_dir(&root)
-        .arg("ascent-pairs")
+        .arg(recipe)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
-    let mut request = String::from("(8");
-    for &(from, to) in edges {
-        assert!(from.parse::<u32>().is_ok() && to.parse::<u32>().is_ok());
-        request.push(' ');
-        request.push_str(from);
-        request.push(' ');
-        request.push_str(to);
-    }
-    request.push_str(")\n");
     let mut loadpath = format!("{}:{}", root.display(), root.join(".gerbil/lib").display());
     if let Some(extra) = std::env::var_os("MRR_POO_FLOW_EXTRA_LOADPATH") {
         loadpath.push(':');
@@ -211,8 +203,20 @@ fn scheme_closure_pairs(edges: &[(&str, &str)]) -> Vec<(String, String)> {
         "Scheme evaluator failed: {}",
         String::from_utf8_lossy(&output.stderr)
     );
-    let stdout = String::from_utf8(output.stdout).expect("Scheme pair output is UTF-8");
-    stdout
+    String::from_utf8(output.stdout).expect("Scheme output is UTF-8")
+}
+
+fn scheme_closure_pairs(edges: &[(&str, &str)]) -> Vec<(String, String)> {
+    let mut request = String::from("(8");
+    for &(from, to) in edges {
+        assert!(from.parse::<u32>().is_ok() && to.parse::<u32>().is_ok());
+        request.push(' ');
+        request.push_str(from);
+        request.push(' ');
+        request.push_str(to);
+    }
+    request.push_str(")\n");
+    scheme_fixture_output("ascent-pairs", &request)
         .lines()
         .map(|line| {
             let (from, to) = line.split_once('\t').expect("Scheme pair has two columns");
@@ -278,6 +282,129 @@ fn live_scheme_pairs_match_ascent_for_source_snapshots() {
             generation,
             pairs,
         });
+    }
+}
+
+#[derive(Debug, Eq, PartialEq)]
+struct SupportRow {
+    from: String,
+    to: String,
+    distance: usize,
+    rule: String,
+    support: Vec<usize>,
+}
+
+fn scheme_support_rows(
+    edges: &[(u128, &str, &str)],
+    ranks: &BTreeMap<FactId, usize>,
+) -> Vec<SupportRow> {
+    let mut request = String::from("(8");
+    for &(identity, from, to) in edges {
+        assert!(from.parse::<u32>().is_ok() && to.parse::<u32>().is_ok());
+        request.push_str(&format!(" {from} {to} {}", ranks[&id!(FactId, identity)]));
+    }
+    request.push_str(")\n");
+    scheme_fixture_output("ascent-candidates", &request)
+        .lines()
+        .map(|line| {
+            let fields: Vec<_> = line.split('\t').collect();
+            assert!(fields.len() >= 5, "Scheme support row has a witness");
+            SupportRow {
+                from: fields[0].to_owned(),
+                to: fields[1].to_owned(),
+                distance: fields[2].parse().expect("Scheme distance"),
+                rule: fields[3].to_owned(),
+                support: fields[4..]
+                    .iter()
+                    .map(|label| label.parse().expect("Scheme source rank"))
+                    .collect(),
+            }
+        })
+        .collect()
+}
+
+#[test]
+#[ignore = "requires a built POO Flow checkout in MRR_POO_FLOW_ROOT"]
+fn live_scheme_shortest_support_matches_ascent_for_source_snapshots() {
+    let (bundle, plan) = fixture();
+    let edge = id!(RelationId, 1);
+    let snapshots: &[&[(u128, &str, &str)]] = &[
+        &[
+            (100, "1", "2"),
+            (101, "2", "3"),
+            (99, "1", "4"),
+            (103, "4", "3"),
+        ],
+        &[(100, "1", "2"), (99, "1", "4"), (103, "4", "3")],
+        &[(100, "1", "2"), (99, "1", "4")],
+        &[
+            (100, "1", "2"),
+            (101, "2", "3"),
+            (102, "3", "4"),
+            (103, "4", "2"),
+            (104, "1", "3"),
+        ],
+        &[
+            (100, "1", "2"),
+            (101, "2", "3"),
+            (102, "3", "4"),
+            (104, "1", "3"),
+        ],
+    ];
+    for (snapshot_index, edges) in snapshots.iter().enumerate() {
+        let generation = id!(GenerationId, 51 + snapshot_index);
+        let mut fact_ids: Vec<_> = edges
+            .iter()
+            .map(|(identity, _, _)| id!(FactId, identity))
+            .collect();
+        fact_ids.sort_unstable();
+        let ranks: BTreeMap<_, _> = fact_ids
+            .into_iter()
+            .enumerate()
+            .map(|(rank, identity)| (identity, rank))
+            .collect();
+        let mut declaration = bundle.declaration().clone();
+        declaration.facts = edges
+            .iter()
+            .map(|&(identity, from, to)| source_fact_at(identity, edge, from, to, generation))
+            .collect();
+        let engine = MrrEngine::builder()
+            .with_bundle(ReasoningBundle::admit(declaration).expect("source snapshot"))
+            .build()
+            .expect("MRR engine");
+        let receipt = engine
+            .derive(plan, generation, limits(16))
+            .expect("complete Ascent result");
+        let mut expected: Vec<_> = receipt
+            .closure()
+            .candidates()
+            .iter()
+            .map(|candidate| {
+                let [Value::String(from), Value::String(to)] = candidate.values() else {
+                    panic!("closure candidate has string endpoints")
+                };
+                let rule = if candidate.rule() == id!(RuleId, 10) {
+                    "base"
+                } else {
+                    assert_eq!(candidate.rule(), id!(RuleId, 11));
+                    "transitive"
+                };
+                SupportRow {
+                    from: from.clone(),
+                    to: to.clone(),
+                    distance: candidate.support().len(),
+                    rule: rule.to_owned(),
+                    support: candidate.support().iter().map(|fact| ranks[fact]).collect(),
+                }
+            })
+            .collect();
+        let mut actual = scheme_support_rows(edges, &ranks);
+        expected.sort_by(|left, right| (&left.from, &left.to).cmp(&(&right.from, &right.to)));
+        actual.sort_by(|left, right| (&left.from, &left.to).cmp(&(&right.from, &right.to)));
+        assert_eq!(
+            actual, expected,
+            "support mismatch at snapshot {snapshot_index}"
+        );
     }
 }
 

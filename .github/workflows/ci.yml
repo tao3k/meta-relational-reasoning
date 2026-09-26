@@ -103,7 +103,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: tao3k/poo-flow
-          ref: 3bc0b290b62e98157b0f815ca2c83414c4763343
+          ref: 932882819b141ba5335bc4634be310059ddc0f76
           path: .ci/poo-flow
 
       - name: Install POO Flow test launcher
@@ -117,7 +117,7 @@ jobs:
           (cd .ci/poo-flow && gerbil deps --install && gerbil build)
           MRR_POO_FLOW_ROOT="$GITHUB_WORKSPACE/.ci/poo-flow" \
             gerbil env cargo test -p meta-relational-reasoning --lib \
-            live_scheme_pairs_match_ascent_for_source_snapshots -- --ignored --nocapture
+            live_scheme_ -- --ignored --nocapture
 
       - name: Lint Rust workspace
         run: gerbil env cargo clippy --all-targets --locked -- -D warnings
