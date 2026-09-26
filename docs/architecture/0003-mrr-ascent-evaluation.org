@@ -157,6 +157,11 @@ bundle fact must carry the snapshot generation.  The existing V1 closure and
 materialization receipt formats remain unchanged.  This binding assumes the
 caller supplies a source-owned revision; independently authenticating a remote
 provider revision remains an upstream source-admission obligation.
+The read-only physical comparison also accepts complete candidate rows with
+caller-projected =RuleId= and ordered source =FactId= support.  It checks the
+exact pair set, shortest distance, rule, and support against the bound Ascent
+evaluation.  This comparison is evidence of parity for supplied rows, not a
+source-owner attestation or a lineage admission.
 That value includes an identity-complete =DerivationReceipt= with =RulePackId=,
 input generation and facts, caller-assigned derived =FactId=s and =DerivationId=s,
 complete closure status, and a digest bound to the pre-admission closure digest.

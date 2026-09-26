@@ -7,7 +7,8 @@ use std::{
 };
 
 use crate::{
-    BundleBoundClosure, CandidateIdentities, ClosureAdmissionError, ClosurePairComparisonError,
+    BundleBoundClosure, CandidateIdentities, ClosureAdmissionError,
+    ClosureCandidateComparisonError, ClosureCandidateRow, ClosurePairComparisonError,
     DeductionError, DeductionLimits, DeductionPlan, DerivationId, EntityId, EvidenceCompleteness,
     ExternalRevisionIdentity, Fact, FactId, FactProvenance, FactValidity, GenerationId,
     GenerationTransitionError, MrrEngine, ReasoningBundle, ReasoningBundleDeclaration,
@@ -185,6 +186,26 @@ fn identities(count: usize) -> Vec<CandidateIdentities> {
             CandidateIdentities::new(
                 id!(FactId, 1_000 + offset as u128),
                 id!(DerivationId, 2_000 + offset as u128),
+            )
+        })
+        .collect()
+}
+
+fn candidate_rows(evaluation: &BundleBoundClosure) -> Vec<ClosureCandidateRow> {
+    evaluation
+        .closure()
+        .candidates()
+        .iter()
+        .map(|candidate| {
+            let [Value::String(from), Value::String(to)] = candidate.values() else {
+                panic!("closure candidate has string endpoints")
+            };
+            ClosureCandidateRow::new(
+                from.clone(),
+                to.clone(),
+                candidate.support().len(),
+                candidate.rule(),
+                candidate.support().to_vec(),
             )
         })
         .collect()
@@ -378,7 +399,8 @@ fn live_scheme_shortest_support_matches_ascent_for_source_snapshots() {
             .collect();
         fact_ids.sort_unstable();
         let ranks: BTreeMap<_, _> = fact_ids
-            .into_iter()
+            .iter()
+            .copied()
             .enumerate()
             .map(|(rank, identity)| (identity, rank))
             .collect();
@@ -394,34 +416,26 @@ fn live_scheme_shortest_support_matches_ascent_for_source_snapshots() {
         let receipt = engine
             .derive(plan, &snapshot(generation), limits(16))
             .expect("complete Ascent result");
-        let mut expected: Vec<_> = receipt
-            .closure()
-            .candidates()
-            .iter()
-            .map(|candidate| {
-                let [Value::String(from), Value::String(to)] = candidate.values() else {
-                    panic!("closure candidate has string endpoints")
+        let actual: Vec<_> = scheme_support_rows(edges, &ranks)
+            .into_iter()
+            .map(|row| {
+                let rule = match row.rule.as_str() {
+                    "base" => id!(RuleId, 10),
+                    "transitive" => id!(RuleId, 11),
+                    other => panic!("unknown Scheme rule kind: {other}"),
                 };
-                let rule = if candidate.rule() == id!(RuleId, 10) {
-                    "base"
-                } else {
-                    assert_eq!(candidate.rule(), id!(RuleId, 11));
-                    "transitive"
-                };
-                SupportRow {
-                    from: from.clone(),
-                    to: to.clone(),
-                    distance: candidate.support().len(),
-                    rule: rule.to_owned(),
-                    support: candidate.support().iter().map(|fact| ranks[fact]).collect(),
-                }
+                ClosureCandidateRow::new(
+                    row.from,
+                    row.to,
+                    row.distance,
+                    rule,
+                    row.support.into_iter().map(|rank| fact_ids[rank]).collect(),
+                )
             })
             .collect();
-        let mut actual = scheme_support_rows(edges, &ranks);
-        expected.sort_by(|left, right| (&left.from, &left.to).cmp(&(&right.from, &right.to)));
-        actual.sort_by(|left, right| (&left.from, &left.to).cmp(&(&right.from, &right.to)));
         assert_eq!(
-            actual, expected,
+            engine.compare_closure_candidates(&receipt, &snapshot(generation), &actual),
+            Ok(()),
             "support mismatch at snapshot {snapshot_index}"
         );
     }
@@ -560,6 +574,79 @@ fn rejects_same_generation_from_another_source_revision() {
         ),
         Err(ClosureAdmissionError::SnapshotMismatch { expected, actual })
     );
+}
+
+#[test]
+fn compares_complete_candidate_evidence_and_rejects_forged_fields() {
+    let (bundle, plan) = fixture();
+    let generation = id!(GenerationId, 51);
+    let snapshot = snapshot(generation);
+    let engine = MrrEngine::builder().with_bundle(bundle).build().unwrap();
+    let evaluation = engine.derive(plan, &snapshot, limits(16)).unwrap();
+    let mut rows = candidate_rows(&evaluation);
+    rows.reverse();
+    assert_eq!(
+        engine.compare_closure_candidates(&evaluation, &snapshot, &rows),
+        Ok(())
+    );
+
+    let expected = &evaluation.closure().candidates()[0];
+    let [Value::String(from), Value::String(to)] = expected.values() else {
+        panic!("closure candidate has string endpoints")
+    };
+    let index = rows.len() - 1;
+    let baseline = rows[index].clone();
+    rows[index] = ClosureCandidateRow::new(
+        from.clone(),
+        to.clone(),
+        expected.support().len() + 1,
+        expected.rule(),
+        expected.support().to_vec(),
+    );
+    assert!(matches!(
+        engine.compare_closure_candidates(&evaluation, &snapshot, &rows),
+        Err(ClosureCandidateComparisonError::DistanceMismatch { .. })
+    ));
+    rows[index] = ClosureCandidateRow::new(
+        from.clone(),
+        to.clone(),
+        expected.support().len(),
+        id!(RuleId, 999),
+        expected.support().to_vec(),
+    );
+    assert!(matches!(
+        engine.compare_closure_candidates(&evaluation, &snapshot, &rows),
+        Err(ClosureCandidateComparisonError::RuleMismatch { .. })
+    ));
+    rows[index] = ClosureCandidateRow::new(
+        from.clone(),
+        to.clone(),
+        expected.support().len(),
+        expected.rule(),
+        vec![id!(FactId, 999)],
+    );
+    assert!(matches!(
+        engine.compare_closure_candidates(&evaluation, &snapshot, &rows),
+        Err(ClosureCandidateComparisonError::SupportMismatch { .. })
+    ));
+    rows[index] = rows[0].clone();
+    assert!(matches!(
+        engine.compare_closure_candidates(&evaluation, &snapshot, &rows),
+        Err(ClosureCandidateComparisonError::Pairs(
+            ClosurePairComparisonError::DuplicatePair(..)
+        ))
+    ));
+    rows[index] = baseline;
+    assert!(matches!(
+        engine.compare_closure_candidates(
+            &evaluation,
+            &snapshot_at_revision(generation, "different"),
+            &rows
+        ),
+        Err(ClosureCandidateComparisonError::Pairs(
+            ClosurePairComparisonError::SnapshotMismatch { .. }
+        ))
+    ));
 }
 
 #[test]

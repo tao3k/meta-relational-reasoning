@@ -1,10 +1,13 @@
 //! Atomic composition of evaluated closure candidates into canonical MRR objects.
 
-use std::{collections::BTreeSet, fmt};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    fmt,
+};
 
 use mrr_ascent::{ClosureReceipt, ClosureStatus, DerivationCandidate};
 use mrr_bundle::ReasoningBundle;
-use mrr_identity::{DerivationId, FactId, GenerationId, ReasoningBundleId, RulePackId};
+use mrr_identity::{DerivationId, FactId, GenerationId, ReasoningBundleId, RuleId, RulePackId};
 use mrr_lineage::{Derivation, LineageError};
 use mrr_relation::{
     EvidenceCompleteness, Fact, FactProvenance, FactValidity, RelationAuthority, RelationContext,
@@ -78,6 +81,67 @@ pub enum ClosurePairComparisonError {
     UnsupportedOracleValue,
 }
 
+/// One physical closure candidate projected into MRR-owned rule and fact identities.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ClosureCandidateRow {
+    from: String,
+    to: String,
+    distance: usize,
+    rule: RuleId,
+    support: Vec<FactId>,
+}
+
+impl ClosureCandidateRow {
+    #[must_use]
+    pub fn new(
+        from: impl Into<String>,
+        to: impl Into<String>,
+        distance: usize,
+        rule: RuleId,
+        support: Vec<FactId>,
+    ) -> Self {
+        Self {
+            from: from.into(),
+            to: to.into(),
+            distance,
+            rule,
+            support,
+        }
+    }
+}
+
+/// A complete physical candidate disagrees with MRR's bound Ascent result.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum ClosureCandidateComparisonError {
+    Pairs(ClosurePairComparisonError),
+    DistanceMismatch {
+        from: String,
+        to: String,
+        expected: usize,
+        actual: usize,
+    },
+    RuleMismatch {
+        from: String,
+        to: String,
+        expected: RuleId,
+        actual: RuleId,
+    },
+    SupportMismatch {
+        from: String,
+        to: String,
+        expected: Vec<FactId>,
+        actual: Vec<FactId>,
+    },
+}
+
+impl fmt::Display for ClosureCandidateComparisonError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(formatter, "{self:?}")
+    }
+}
+
+impl std::error::Error for ClosureCandidateComparisonError {}
+
 impl fmt::Display for ClosurePairComparisonError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(formatter, "{self:?}")
@@ -94,6 +158,36 @@ pub fn compare_closure_pairs(
     snapshot: &SemanticSnapshot,
     pairs: &[(String, String)],
 ) -> Result<(), ClosurePairComparisonError> {
+    let receipt = validate_closure_comparison(bundle, evaluation, snapshot, pairs.len())?;
+
+    let mut actual = BTreeSet::new();
+    for (from, to) in pairs {
+        if !actual.insert((from.as_str(), to.as_str())) {
+            return Err(ClosurePairComparisonError::DuplicatePair(
+                from.clone(),
+                to.clone(),
+            ));
+        }
+    }
+    let mut expected = BTreeSet::new();
+    for candidate in receipt.candidates() {
+        let [Value::String(from), Value::String(to)] = candidate.values() else {
+            return Err(ClosurePairComparisonError::UnsupportedOracleValue);
+        };
+        expected.insert((from.as_str(), to.as_str()));
+    }
+    if actual != expected {
+        return Err(ClosurePairComparisonError::PairSetMismatch);
+    }
+    Ok(())
+}
+
+fn validate_closure_comparison<'a>(
+    bundle: &ReasoningBundle,
+    evaluation: &'a BundleBoundClosure,
+    snapshot: &SemanticSnapshot,
+    candidate_count: usize,
+) -> Result<&'a ClosureReceipt, ClosurePairComparisonError> {
     if evaluation.source_bundle() != bundle.id() {
         return Err(ClosurePairComparisonError::SourceBundleMismatch {
             expected: bundle.id(),
@@ -117,31 +211,72 @@ pub fn compare_closure_pairs(
     if receipt.status() != ClosureStatus::Complete {
         return Err(ClosurePairComparisonError::IncompleteReceipt);
     }
-    if pairs.len() != receipt.candidates().len() {
+    if candidate_count != receipt.candidates().len() {
         return Err(ClosurePairComparisonError::PairCountMismatch {
             expected: receipt.candidates().len(),
-            actual: pairs.len(),
+            actual: candidate_count,
         });
     }
+    Ok(receipt)
+}
 
-    let mut actual = BTreeSet::new();
-    for (from, to) in pairs {
-        if !actual.insert((from.as_str(), to.as_str())) {
-            return Err(ClosurePairComparisonError::DuplicatePair(
-                from.clone(),
-                to.clone(),
+/// Checks exact distance, rule, and ordered source support after the bound pair set.
+/// This comparison does not admit lineage or publish a semantic result.
+pub fn compare_closure_candidates(
+    bundle: &ReasoningBundle,
+    evaluation: &BundleBoundClosure,
+    snapshot: &SemanticSnapshot,
+    candidates: &[ClosureCandidateRow],
+) -> Result<(), ClosureCandidateComparisonError> {
+    let receipt = validate_closure_comparison(bundle, evaluation, snapshot, candidates.len())
+        .map_err(ClosureCandidateComparisonError::Pairs)?;
+    let mut rows = BTreeMap::new();
+    for candidate in candidates {
+        if rows
+            .insert((candidate.from.as_str(), candidate.to.as_str()), candidate)
+            .is_some()
+        {
+            return Err(ClosureCandidateComparisonError::Pairs(
+                ClosurePairComparisonError::DuplicatePair(
+                    candidate.from.clone(),
+                    candidate.to.clone(),
+                ),
             ));
         }
     }
-    let mut expected = BTreeSet::new();
-    for candidate in receipt.candidates() {
-        let [Value::String(from), Value::String(to)] = candidate.values() else {
-            return Err(ClosurePairComparisonError::UnsupportedOracleValue);
+    for expected in receipt.candidates() {
+        let [Value::String(from), Value::String(to)] = expected.values() else {
+            return Err(ClosureCandidateComparisonError::Pairs(
+                ClosurePairComparisonError::UnsupportedOracleValue,
+            ));
         };
-        expected.insert((from.as_str(), to.as_str()));
-    }
-    if actual != expected {
-        return Err(ClosurePairComparisonError::PairSetMismatch);
+        let actual = rows.get(&(from.as_str(), to.as_str())).ok_or(
+            ClosureCandidateComparisonError::Pairs(ClosurePairComparisonError::PairSetMismatch),
+        )?;
+        if actual.distance != expected.support().len() {
+            return Err(ClosureCandidateComparisonError::DistanceMismatch {
+                from: from.clone(),
+                to: to.clone(),
+                expected: expected.support().len(),
+                actual: actual.distance,
+            });
+        }
+        if actual.rule != expected.rule() {
+            return Err(ClosureCandidateComparisonError::RuleMismatch {
+                from: from.clone(),
+                to: to.clone(),
+                expected: expected.rule(),
+                actual: actual.rule,
+            });
+        }
+        if actual.support != expected.support() {
+            return Err(ClosureCandidateComparisonError::SupportMismatch {
+                from: from.clone(),
+                to: to.clone(),
+                expected: expected.support().to_vec(),
+                actual: actual.support.clone(),
+            });
+        }
     }
     Ok(())
 }

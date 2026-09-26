@@ -5,8 +5,10 @@ use core::num::NonZeroUsize;
 use mrr_ascent::{ClosureConfig, ClosureLimits, evaluate_transitive_closure};
 
 use crate::{
-    BundleBoundClosure, CandidateIdentities, ClosureAdmissionError, ClosurePairComparisonError,
-    MaterializedClosure, admit_closure_candidates, compare_closure_pairs,
+    BundleBoundClosure, CandidateIdentities, ClosureAdmissionError,
+    ClosureCandidateComparisonError, ClosureCandidateRow, ClosurePairComparisonError,
+    MaterializedClosure, admit_closure_candidates, compare_closure_candidates,
+    compare_closure_pairs,
 };
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -176,6 +178,16 @@ impl MrrEngine {
         pairs: &[(String, String)],
     ) -> Result<(), ClosurePairComparisonError> {
         compare_closure_pairs(&self.bundle, evaluation, snapshot, pairs)
+    }
+
+    /// Compares a physical candidate set with the exact bounded Ascent evidence.
+    pub fn compare_closure_candidates(
+        &self,
+        evaluation: &BundleBoundClosure,
+        snapshot: &mrr_revision::SemanticSnapshot,
+        candidates: &[ClosureCandidateRow],
+    ) -> Result<(), ClosureCandidateComparisonError> {
+        compare_closure_candidates(&self.bundle, evaluation, snapshot, candidates)
     }
 
     pub fn why(
