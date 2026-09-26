@@ -149,6 +149,14 @@ allocated by its caller, while the existing owners retain their authority:
 =mrr-lineage= validates every derivation and =mrr-transition= validates the
 whole immutable semantic-generation delta.  The facade returns =MaterializedClosure= only
 after all validations succeed; it owns no live publication or partial commit.
+The facade also requires the existing =SemanticSnapshot= at evaluation,
+physical-pair comparison, and materialization.  Its in-process
+=BundleBoundClosure= retains the source bundle identity and snapshot digest;
+both boundaries reject another revision even if its generation matches.  Every
+bundle fact must carry the snapshot generation.  The existing V1 closure and
+materialization receipt formats remain unchanged.  This binding assumes the
+caller supplies a source-owned revision; independently authenticating a remote
+provider revision remains an upstream source-admission obligation.
 That value includes an identity-complete =DerivationReceipt= with =RulePackId=,
 input generation and facts, caller-assigned derived =FactId=s and =DerivationId=s,
 complete closure status, and a digest bound to the pre-admission closure digest.

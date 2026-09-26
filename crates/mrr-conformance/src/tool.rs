@@ -5,11 +5,13 @@ use std::{error::Error, fmt};
 
 use meta_relational_reasoning::{
     Atom, CandidateIdentities, ClosureStatus, DeductionLimits, DeductionPlan, DerivationId,
-    EntityId, EvidenceCompleteness, Fact, FactId, FactProvenance, FactValidity, GenerationId,
-    MaterializedClosure, MrrEngine, ReasoningBundle, ReasoningBundleDeclaration, RelationAuthority,
-    RelationContext, RelationField, RelationId, RelationSchema, Rule, RuleId, RulePack, RulePackId,
-    Term, Value, ValueSchema, Variable,
+    EntityId, EvidenceCompleteness, ExternalRevisionIdentity, Fact, FactId, FactProvenance,
+    FactValidity, GenerationId, MaterializedClosure, MrrEngine, ReasoningBundle,
+    ReasoningBundleDeclaration, RelationAuthority, RelationContext, RelationField, RelationId,
+    RelationSchema, RevisionBinding, Rule, RuleId, RulePack, RulePackId, SemanticSnapshot, Term,
+    Value, ValueSchema, Variable,
 };
+use sha2::{Digest, Sha256};
 
 /// Provider-normalized graph closure request.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -89,6 +91,29 @@ fn execute_closure_tool(input: &ClosureToolInput) -> Result<ClosureToolReceipt, 
     let transitive = live_id!(RuleId, "rule", "transitive");
     let rule_pack = live_id!(RulePackId, "rule-pack", "closure");
     let authority = live_id!(EntityId, "authority", "live-tool");
+    let mut source_edges = input.edges.clone();
+    source_edges.sort();
+    let mut source_digest = Sha256::new();
+    for (from, to) in &source_edges {
+        for value in [from, to] {
+            source_digest.update((value.len() as u64).to_be_bytes());
+            source_digest.update(value.as_bytes());
+        }
+    }
+    let revision = format!("{:x}", source_digest.finalize());
+    let snapshot = SemanticSnapshot::admit(
+        generation,
+        vec![
+            RevisionBinding::admit(
+                ExternalRevisionIdentity::new("inline", "closure-edges", revision).map_err(
+                    |error| ClosureToolError(format!("invalid source revision: {error:?}")),
+                )?,
+                generation,
+            )
+            .map_err(|error| ClosureToolError(format!("invalid revision binding: {error:?}")))?,
+        ],
+    )
+    .map_err(|error| ClosureToolError(format!("invalid semantic snapshot: {error:?}")))?;
     let facts = input
         .edges
         .iter()
@@ -140,7 +165,7 @@ fn execute_closure_tool(input: &ClosureToolInput) -> Result<ClosureToolReceipt, 
     let closure = engine
         .derive(
             DeductionPlan::transitive_closure(edge, reachable, rule_pack, base, transitive),
-            generation,
+            &snapshot,
             DeductionLimits::new(
                 NonZeroUsize::new(64).expect("constant is non-zero"),
                 NonZeroUsize::new(4096).expect("constant is non-zero"),
@@ -172,7 +197,7 @@ fn execute_closure_tool(input: &ClosureToolInput) -> Result<ClosureToolReceipt, 
         .collect::<Result<Vec<_>, ClosureToolError>>()?;
     let from = live_id!(GenerationId, "generation", 0);
     let materialized = engine
-        .materialize(&closure, from, generation, &identities)
+        .materialize(&closure, from, &snapshot, &identities)
         .map_err(|error| ClosureToolError(format!("materialization failed: {error:?}")))?;
     Ok(ClosureToolReceipt {
         reachable: result_is_reachable,

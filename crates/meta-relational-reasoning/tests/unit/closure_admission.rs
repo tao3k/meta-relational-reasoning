@@ -9,10 +9,11 @@ use std::{
 use crate::{
     BundleBoundClosure, CandidateIdentities, ClosureAdmissionError, ClosurePairComparisonError,
     DeductionError, DeductionLimits, DeductionPlan, DerivationId, EntityId, EvidenceCompleteness,
-    Fact, FactId, FactProvenance, FactValidity, GenerationId, GenerationTransitionError, MrrEngine,
-    ReasoningBundle, ReasoningBundleDeclaration, RelationAuthority, RelationContext, RelationField,
-    RelationId, RelationSchema, Rule, RuleId, RulePack, RulePackId, Term, Value, ValueSchema,
-    Variable, admit_closure_candidates,
+    ExternalRevisionIdentity, Fact, FactId, FactProvenance, FactValidity, GenerationId,
+    GenerationTransitionError, MrrEngine, ReasoningBundle, ReasoningBundleDeclaration,
+    RelationAuthority, RelationContext, RelationField, RelationId, RelationSchema, RevisionBinding,
+    Rule, RuleId, RulePack, RulePackId, SemanticSnapshot, Term, Value, ValueSchema, Variable,
+    admit_closure_candidates,
 };
 use mrr_lineage::LineageError;
 use mrr_query::Atom;
@@ -100,6 +101,24 @@ fn source_snapshot_at(facts: &[Fact], generation: GenerationId) -> Vec<Fact> {
         .collect()
 }
 
+fn snapshot(generation: GenerationId) -> SemanticSnapshot {
+    snapshot_at_revision(generation, "fixture")
+}
+
+fn snapshot_at_revision(generation: GenerationId, revision: &str) -> SemanticSnapshot {
+    SemanticSnapshot::admit(
+        generation,
+        vec![
+            RevisionBinding::admit(
+                ExternalRevisionIdentity::new("test", "closure-source", revision).unwrap(),
+                generation,
+            )
+            .unwrap(),
+        ],
+    )
+    .unwrap()
+}
+
 fn fixture() -> (ReasoningBundle, DeductionPlan) {
     let edge = id!(RelationId, 1);
     let reachable = id!(RelationId, 2);
@@ -157,7 +176,7 @@ fn evaluate_transitive_closure(
         .with_bundle(bundle.clone())
         .build()
         .expect("engine")
-        .derive(plan, generation, limits)
+        .derive(plan, &snapshot(generation), limits)
 }
 
 fn identities(count: usize) -> Vec<CandidateIdentities> {
@@ -263,17 +282,17 @@ fn live_scheme_pairs_match_ascent_for_source_snapshots() {
             .build()
             .expect("MRR engine");
         let result = engine
-            .derive(plan, generation, limits(16))
+            .derive(plan, &snapshot(generation), limits(16))
             .expect("complete Ascent result");
         let pairs = scheme_closure_pairs(edges);
         assert_eq!(
-            engine.compare_closure_pairs(&result, generation, &pairs),
+            engine.compare_closure_pairs(&result, &snapshot(generation), &pairs),
             Ok(()),
             "Scheme/Ascent mismatch at source snapshot {snapshot_index}"
         );
         if let Some(old) = prior.take() {
             assert!(matches!(
-                engine.compare_closure_pairs(&old.result, old.generation, &old.pairs),
+                engine.compare_closure_pairs(&old.result, &snapshot(old.generation), &old.pairs),
                 Err(ClosurePairComparisonError::SourceBundleMismatch { .. })
             ));
         }
@@ -373,7 +392,7 @@ fn live_scheme_shortest_support_matches_ascent_for_source_snapshots() {
             .build()
             .expect("MRR engine");
         let receipt = engine
-            .derive(plan, generation, limits(16))
+            .derive(plan, &snapshot(generation), limits(16))
             .expect("complete Ascent result");
         let mut expected: Vec<_> = receipt
             .closure()
@@ -417,7 +436,7 @@ fn compares_external_pairs_only_against_the_exact_complete_bundle_generation() {
         .build()
         .expect("engine");
     let complete = engine
-        .derive(plan, generation, limits(16))
+        .derive(plan, &snapshot(generation), limits(16))
         .expect("complete Ascent result");
     let pairs = vec![
         ("Bob".into(), "Cy".into()),
@@ -425,19 +444,19 @@ fn compares_external_pairs_only_against_the_exact_complete_bundle_generation() {
         ("Ada".into(), "Bob".into()),
     ];
     assert_eq!(
-        engine.compare_closure_pairs(&complete, generation, &pairs),
+        engine.compare_closure_pairs(&complete, &snapshot(generation), &pairs),
         Ok(())
     );
 
     assert_eq!(
-        engine.compare_closure_pairs(&complete, id!(GenerationId, 52), &pairs),
+        engine.compare_closure_pairs(&complete, &snapshot(id!(GenerationId, 52)), &pairs),
         Err(ClosurePairComparisonError::GenerationMismatch {
             expected: id!(GenerationId, 52),
             actual: generation,
         })
     );
     assert_eq!(
-        engine.compare_closure_pairs(&complete, generation, &pairs[..2]),
+        engine.compare_closure_pairs(&complete, &snapshot(generation), &pairs[..2]),
         Err(ClosurePairComparisonError::PairCountMismatch {
             expected: 3,
             actual: 2,
@@ -446,7 +465,7 @@ fn compares_external_pairs_only_against_the_exact_complete_bundle_generation() {
     assert_eq!(
         engine.compare_closure_pairs(
             &complete,
-            generation,
+            &snapshot(generation),
             &[pairs[0].clone(), pairs[0].clone(), pairs[2].clone()],
         ),
         Err(ClosurePairComparisonError::DuplicatePair(
@@ -457,7 +476,7 @@ fn compares_external_pairs_only_against_the_exact_complete_bundle_generation() {
     assert_eq!(
         engine.compare_closure_pairs(
             &complete,
-            generation,
+            &snapshot(generation),
             &[
                 pairs[0].clone(),
                 pairs[1].clone(),
@@ -468,10 +487,10 @@ fn compares_external_pairs_only_against_the_exact_complete_bundle_generation() {
     );
 
     let truncated = engine
-        .derive(plan, generation, limits(1))
+        .derive(plan, &snapshot(generation), limits(1))
         .expect("bounded output");
     assert_eq!(
-        engine.compare_closure_pairs(&truncated, generation, &pairs),
+        engine.compare_closure_pairs(&truncated, &snapshot(generation), &pairs),
         Err(ClosurePairComparisonError::IncompleteReceipt)
     );
 
@@ -486,7 +505,7 @@ fn compares_external_pairs_only_against_the_exact_complete_bundle_generation() {
         .build()
         .expect("changed engine");
     assert_eq!(
-        changed.compare_closure_pairs(&complete, generation, &pairs),
+        changed.compare_closure_pairs(&complete, &snapshot(generation), &pairs),
         Err(ClosurePairComparisonError::SourceBundleMismatch {
             expected: changed.bundle().id(),
             actual: bundle.id(),
@@ -501,17 +520,71 @@ fn compares_external_pairs_only_against_the_exact_complete_bundle_generation() {
         .expect("empty engine");
     let empty_generation = id!(GenerationId, 53);
     let empty = empty_engine
-        .derive(plan, empty_generation, limits(16))
+        .derive(plan, &snapshot(empty_generation), limits(16))
         .expect("complete empty closure");
     assert_eq!(
-        empty_engine.compare_closure_pairs(&empty, empty_generation, &[]),
+        empty_engine.compare_closure_pairs(&empty, &snapshot(empty_generation), &[]),
         Ok(())
     );
     assert_eq!(
-        empty_engine.compare_closure_pairs(&empty, generation, &[]),
+        empty_engine.compare_closure_pairs(&empty, &snapshot(generation), &[]),
         Err(ClosurePairComparisonError::GenerationMismatch {
             expected: generation,
             actual: empty_generation,
+        })
+    );
+}
+
+#[test]
+fn rejects_same_generation_from_another_source_revision() {
+    let (bundle, plan) = fixture();
+    let generation = id!(GenerationId, 51);
+    let engine = MrrEngine::builder().with_bundle(bundle).build().unwrap();
+    let original = snapshot_at_revision(generation, "source-a");
+    let revised = snapshot_at_revision(generation, "source-b");
+    let result = engine.derive(plan, &original, limits(16)).unwrap();
+    assert_eq!(result.snapshot_digest(), original.digest());
+    assert_ne!(original.digest(), revised.digest());
+    let expected = *revised.digest();
+    let actual = *original.digest();
+    assert_eq!(
+        engine.compare_closure_pairs(&result, &revised, &[]),
+        Err(ClosurePairComparisonError::SnapshotMismatch { expected, actual })
+    );
+    assert_eq!(
+        engine.materialize(
+            &result,
+            id!(GenerationId, 50),
+            &revised,
+            &identities(result.closure().candidates().len()),
+        ),
+        Err(ClosureAdmissionError::SnapshotMismatch { expected, actual })
+    );
+}
+
+#[test]
+fn rejects_unrelated_bundle_fact_from_another_snapshot_generation() {
+    let (bundle, plan) = fixture();
+    let mut declaration = bundle.declaration().clone();
+    let other = id!(RelationId, 3);
+    declaration.relations.push(binary_schema(other, "other"));
+    declaration.facts.push(source_fact_at(
+        102,
+        other,
+        "Ada",
+        "Bob",
+        id!(GenerationId, 50),
+    ));
+    let engine = MrrEngine::builder()
+        .with_bundle(ReasoningBundle::admit(declaration).unwrap())
+        .build()
+        .unwrap();
+    assert_eq!(
+        engine.derive(plan, &snapshot(id!(GenerationId, 51)), limits(16)),
+        Err(DeductionError::BundleGenerationMismatch {
+            fact: id!(FactId, 102),
+            expected: id!(GenerationId, 51),
+            actual: id!(GenerationId, 50),
         })
     );
 }
@@ -534,7 +607,7 @@ fn compares_the_poo_cyclic_closure_and_withdrawn_snapshot() {
         .expect("cyclic engine");
     let first_generation = id!(GenerationId, 51);
     let first = engine
-        .derive(plan, first_generation, limits(16))
+        .derive(plan, &snapshot(first_generation), limits(16))
         .expect("complete cyclic closure");
     let pairs = vec![
         ("1".into(), "2".into()),
@@ -551,7 +624,7 @@ fn compares_the_poo_cyclic_closure_and_withdrawn_snapshot() {
         ("4".into(), "4".into()),
     ];
     assert_eq!(
-        engine.compare_closure_pairs(&first, first_generation, &pairs),
+        engine.compare_closure_pairs(&first, &snapshot(first_generation), &pairs),
         Ok(())
     );
 
@@ -565,7 +638,7 @@ fn compares_the_poo_cyclic_closure_and_withdrawn_snapshot() {
         .expect("withdrawn engine");
     let next_generation = id!(GenerationId, 52);
     let second = withdrawn
-        .derive(plan, next_generation, limits(16))
+        .derive(plan, &snapshot(next_generation), limits(16))
         .expect("complete closure after withdrawal");
     let remaining = vec![
         ("1".into(), "2".into()),
@@ -576,11 +649,11 @@ fn compares_the_poo_cyclic_closure_and_withdrawn_snapshot() {
         ("3".into(), "4".into()),
     ];
     assert_eq!(
-        withdrawn.compare_closure_pairs(&second, next_generation, &remaining),
+        withdrawn.compare_closure_pairs(&second, &snapshot(next_generation), &remaining),
         Ok(())
     );
     assert_eq!(
-        withdrawn.compare_closure_pairs(&first, first_generation, &pairs),
+        withdrawn.compare_closure_pairs(&first, &snapshot(first_generation), &pairs),
         Err(ClosurePairComparisonError::SourceBundleMismatch {
             expected: withdrawn.bundle().id(),
             actual: engine.bundle().id(),
@@ -597,7 +670,7 @@ fn admits_complete_candidates_into_exact_lineage_and_transition_outputs() {
         evaluate_transitive_closure(&bundle, config, to, limits(16)).expect("closure evaluation");
     let assigned = identities(receipt.closure().candidates().len());
 
-    let materialized = admit_closure_candidates(&bundle, &receipt, from, to, &assigned)
+    let materialized = admit_closure_candidates(&bundle, &receipt, from, &snapshot(to), &assigned)
         .expect("complete receipt admission");
 
     assert_eq!(materialized.transition().from(), from);
@@ -676,7 +749,13 @@ fn rejects_a_receipt_from_another_bundle_with_the_same_fact_ids() {
     let assigned = identities(receipt.closure().candidates().len());
 
     assert_eq!(
-        admit_closure_candidates(&changed, &receipt, id!(GenerationId, 50), to, &assigned),
+        admit_closure_candidates(
+            &changed,
+            &receipt,
+            id!(GenerationId, 50),
+            &snapshot(to),
+            &assigned
+        ),
         Err(error.clone())
     );
     let engine = MrrEngine::builder()
@@ -684,7 +763,7 @@ fn rejects_a_receipt_from_another_bundle_with_the_same_fact_ids() {
         .build()
         .expect("changed engine");
     assert_eq!(
-        engine.materialize(&receipt, id!(GenerationId, 50), to, &assigned),
+        engine.materialize(&receipt, id!(GenerationId, 50), &snapshot(to), &assigned),
         Err(error)
     );
 }
@@ -702,7 +781,13 @@ fn rejects_an_empty_closure_receipt_for_another_generation() {
     assert!(receipt.closure().candidates().is_empty());
 
     assert_eq!(
-        admit_closure_candidates(&empty, &receipt, id!(GenerationId, 50), requested, &[]),
+        admit_closure_candidates(
+            &empty,
+            &receipt,
+            id!(GenerationId, 50),
+            &snapshot(requested),
+            &[]
+        ),
         Err(ClosureAdmissionError::GenerationMismatch {
             expected: requested,
             actual: evaluated,
@@ -722,7 +807,7 @@ fn rejects_truncated_or_cross_generation_receipts_before_materialization() {
             &bundle,
             &truncated,
             from,
-            evaluated_generation,
+            &snapshot(evaluated_generation),
             &identities(1)
         ),
         Err(ClosureAdmissionError::IncompleteReceipt)
@@ -736,7 +821,7 @@ fn rejects_truncated_or_cross_generation_receipts_before_materialization() {
             &bundle,
             &complete,
             from,
-            wrong_target,
+            &snapshot(wrong_target),
             &identities(complete.closure().candidates().len()),
         ),
         Err(ClosureAdmissionError::GenerationMismatch {
@@ -755,7 +840,7 @@ fn rejects_identity_cardinality_duplicates_and_self_support() {
         .expect("complete closure evaluation");
 
     assert_eq!(
-        admit_closure_candidates(&bundle, &receipt, from, to, &[]),
+        admit_closure_candidates(&bundle, &receipt, from, &snapshot(to), &[]),
         Err(ClosureAdmissionError::IdentityCountMismatch {
             candidates: receipt.closure().candidates().len(),
             identities: 0,
@@ -765,14 +850,14 @@ fn rejects_identity_cardinality_duplicates_and_self_support() {
     let mut duplicate = identities(receipt.closure().candidates().len());
     duplicate[1] = CandidateIdentities::new(duplicate[0].fact(), duplicate[1].derivation());
     assert_eq!(
-        admit_closure_candidates(&bundle, &receipt, from, to, &duplicate),
+        admit_closure_candidates(&bundle, &receipt, from, &snapshot(to), &duplicate),
         Err(ClosureAdmissionError::DuplicateFactId(duplicate[0].fact()))
     );
 
     let mut duplicate = identities(receipt.closure().candidates().len());
     duplicate[1] = CandidateIdentities::new(duplicate[1].fact(), duplicate[0].derivation());
     assert_eq!(
-        admit_closure_candidates(&bundle, &receipt, from, to, &duplicate),
+        admit_closure_candidates(&bundle, &receipt, from, &snapshot(to), &duplicate),
         Err(ClosureAdmissionError::DuplicateDerivationId(
             duplicate[0].derivation()
         ))
@@ -783,7 +868,7 @@ fn rejects_identity_cardinality_duplicates_and_self_support() {
             &bundle,
             &receipt,
             to,
-            to,
+            &snapshot(to),
             &identities(receipt.closure().candidates().len())
         ),
         Err(ClosureAdmissionError::Transition(
@@ -797,7 +882,7 @@ fn rejects_identity_cardinality_duplicates_and_self_support() {
         self_support[0].derivation(),
     );
     assert_eq!(
-        admit_closure_candidates(&bundle, &receipt, from, to, &self_support),
+        admit_closure_candidates(&bundle, &receipt, from, &snapshot(to), &self_support),
         Err(ClosureAdmissionError::Lineage(LineageError::SelfSupport))
     );
 }

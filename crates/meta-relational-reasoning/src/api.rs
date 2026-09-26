@@ -140,21 +140,31 @@ impl MrrEngine {
     pub fn derive(
         &self,
         plan: DeductionPlan,
-        generation: mrr_identity::GenerationId,
+        snapshot: &mrr_revision::SemanticSnapshot,
         limits: DeductionLimits,
     ) -> Result<BundleBoundClosure, mrr_ascent::ClosureError> {
-        evaluate_transitive_closure(&self.bundle, plan.0, generation, limits.0)
-            .map(|receipt| BundleBoundClosure::bind(self.bundle.id(), receipt))
+        for fact in self.bundle.facts() {
+            let actual = fact.context().generation();
+            if actual != snapshot.generation() {
+                return Err(mrr_ascent::ClosureError::BundleGenerationMismatch {
+                    fact: fact.id(),
+                    expected: snapshot.generation(),
+                    actual,
+                });
+            }
+        }
+        evaluate_transitive_closure(&self.bundle, plan.0, snapshot.generation(), limits.0)
+            .map(|receipt| BundleBoundClosure::bind(self.bundle.id(), *snapshot.digest(), receipt))
     }
 
     pub fn materialize(
         &self,
         receipt: &BundleBoundClosure,
         from: mrr_identity::GenerationId,
-        to: mrr_identity::GenerationId,
+        snapshot: &mrr_revision::SemanticSnapshot,
         identities: &[CandidateIdentities],
     ) -> Result<MaterializedClosure, ClosureAdmissionError> {
-        admit_closure_candidates(&self.bundle, receipt, from, to, identities)
+        admit_closure_candidates(&self.bundle, receipt, from, snapshot, identities)
     }
 
     /// Compares physical closure pairs with this engine's complete Ascent
@@ -162,10 +172,10 @@ impl MrrEngine {
     pub fn compare_closure_pairs(
         &self,
         evaluation: &BundleBoundClosure,
-        generation: mrr_identity::GenerationId,
+        snapshot: &mrr_revision::SemanticSnapshot,
         pairs: &[(String, String)],
     ) -> Result<(), ClosurePairComparisonError> {
-        compare_closure_pairs(&self.bundle, evaluation, generation, pairs)
+        compare_closure_pairs(&self.bundle, evaluation, snapshot, pairs)
     }
 
     pub fn why(

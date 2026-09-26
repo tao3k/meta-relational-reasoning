@@ -10,6 +10,7 @@ use mrr_relation::{
     EvidenceCompleteness, Fact, FactProvenance, FactValidity, RelationAuthority, RelationContext,
     RelationContextError, Value,
 };
+use mrr_revision::SemanticSnapshot;
 use mrr_transition::{Transition, TransitionError};
 use sha2::{Digest, Sha256};
 
@@ -19,13 +20,19 @@ const DERIVATION_RECEIPT_SCHEMA: &[u8] = b"mrr.materialized-derivation-receipt.v
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct BundleBoundClosure {
     source_bundle: ReasoningBundleId,
+    snapshot_digest: [u8; 32],
     closure: ClosureReceipt,
 }
 
 impl BundleBoundClosure {
-    pub(crate) const fn bind(source_bundle: ReasoningBundleId, closure: ClosureReceipt) -> Self {
+    pub(crate) const fn bind(
+        source_bundle: ReasoningBundleId,
+        snapshot_digest: [u8; 32],
+        closure: ClosureReceipt,
+    ) -> Self {
         Self {
             source_bundle,
+            snapshot_digest,
             closure,
         }
     }
@@ -33,6 +40,11 @@ impl BundleBoundClosure {
     #[must_use]
     pub const fn source_bundle(&self) -> ReasoningBundleId {
         self.source_bundle
+    }
+
+    #[must_use]
+    pub const fn snapshot_digest(&self) -> &[u8; 32] {
+        &self.snapshot_digest
     }
 
     #[must_use]
@@ -51,6 +63,10 @@ pub enum ClosurePairComparisonError {
     GenerationMismatch {
         expected: GenerationId,
         actual: GenerationId,
+    },
+    SnapshotMismatch {
+        expected: [u8; 32],
+        actual: [u8; 32],
     },
     IncompleteReceipt,
     PairCountMismatch {
@@ -75,7 +91,7 @@ impl std::error::Error for ClosurePairComparisonError {}
 pub fn compare_closure_pairs(
     bundle: &ReasoningBundle,
     evaluation: &BundleBoundClosure,
-    generation: GenerationId,
+    snapshot: &SemanticSnapshot,
     pairs: &[(String, String)],
 ) -> Result<(), ClosurePairComparisonError> {
     if evaluation.source_bundle() != bundle.id() {
@@ -85,10 +101,17 @@ pub fn compare_closure_pairs(
         });
     }
     let receipt = evaluation.closure();
+    let generation = snapshot.generation();
     if receipt.input_generation() != generation {
         return Err(ClosurePairComparisonError::GenerationMismatch {
             expected: generation,
             actual: receipt.input_generation(),
+        });
+    }
+    if evaluation.snapshot_digest() != snapshot.digest() {
+        return Err(ClosurePairComparisonError::SnapshotMismatch {
+            expected: *snapshot.digest(),
+            actual: *evaluation.snapshot_digest(),
         });
     }
     if receipt.status() != ClosureStatus::Complete {
@@ -157,6 +180,10 @@ pub enum ClosureAdmissionError {
     SourceBundleMismatch {
         expected: ReasoningBundleId,
         actual: ReasoningBundleId,
+    },
+    SnapshotMismatch {
+        expected: [u8; 32],
+        actual: [u8; 32],
     },
     /// A truncated receipt cannot define a complete semantic-generation delta.
     IncompleteReceipt,
@@ -276,10 +303,11 @@ pub fn admit_closure_candidates(
     bundle: &ReasoningBundle,
     evaluation: &BundleBoundClosure,
     from: GenerationId,
-    to: GenerationId,
+    snapshot: &SemanticSnapshot,
     identities: &[CandidateIdentities],
 ) -> Result<MaterializedClosure, ClosureAdmissionError> {
-    validate_receipt_binding(bundle, evaluation, to, identities)?;
+    let to = snapshot.generation();
+    validate_receipt_binding(bundle, evaluation, snapshot, identities)?;
     let receipt = evaluation.closure();
     let derivations = build_derivations(receipt.candidates(), to, identities)?;
     let insertions = derivations
@@ -339,7 +367,7 @@ fn hash_field(hasher: &mut Sha256, bytes: &[u8]) {
 fn validate_receipt_binding(
     bundle: &ReasoningBundle,
     evaluation: &BundleBoundClosure,
-    to: GenerationId,
+    snapshot: &SemanticSnapshot,
     identities: &[CandidateIdentities],
 ) -> Result<(), ClosureAdmissionError> {
     if bundle.id() != evaluation.source_bundle() {
@@ -349,10 +377,17 @@ fn validate_receipt_binding(
         });
     }
     let receipt = evaluation.closure();
+    let to = snapshot.generation();
     if receipt.input_generation() != to {
         return Err(ClosureAdmissionError::GenerationMismatch {
             expected: to,
             actual: receipt.input_generation(),
+        });
+    }
+    if evaluation.snapshot_digest() != snapshot.digest() {
+        return Err(ClosureAdmissionError::SnapshotMismatch {
+            expected: *snapshot.digest(),
+            actual: *evaluation.snapshot_digest(),
         });
     }
     if receipt.status() != ClosureStatus::Complete {

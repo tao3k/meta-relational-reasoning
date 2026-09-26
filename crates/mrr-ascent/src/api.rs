@@ -105,6 +105,12 @@ pub enum ClosureError {
         expected: GenerationId,
         actual: GenerationId,
     },
+    /// A facade-bound bundle fact belongs to another semantic snapshot generation.
+    BundleGenerationMismatch {
+        fact: FactId,
+        expected: GenerationId,
+        actual: GenerationId,
+    },
     /// This narrow adapter cannot ignore seeded facts in its derived relation.
     SeededDerivedRelationUnsupported { fact: FactId },
     /// The independent deterministic witness reconstruction disagreed with `Ascent`.
