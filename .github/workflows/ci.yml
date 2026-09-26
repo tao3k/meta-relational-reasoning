@@ -103,8 +103,12 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: tao3k/poo-flow
-          ref: 3aedc1d2869e378ebb79ea3c04762258fd88d474
+          ref: 3bc0b290b62e98157b0f815ca2c83414c4763343
           path: .ci/poo-flow
+
+      - name: Install POO Flow test launcher
+        if: runner.os == 'Linux'
+        run: cargo install just --version 1.56.0 --locked
 
       - name: Compare live Scheme closure with MRR Ascent
         if: runner.os == 'Linux'

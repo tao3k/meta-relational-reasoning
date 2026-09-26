@@ -1,5 +1,9 @@
 use core::num::NonZeroUsize;
-use std::{path::PathBuf, process::Command};
+use std::{
+    io::Write,
+    path::PathBuf,
+    process::{Command, Stdio},
+};
 
 use crate::{
     BundleBoundClosure, CandidateIdentities, ClosureAdmissionError, ClosurePairComparisonError,
@@ -137,14 +141,22 @@ fn identities(count: usize) -> Vec<CandidateIdentities> {
 fn scheme_closure_pairs(edges: &[(&str, &str)]) -> Vec<(String, String)> {
     let root =
         PathBuf::from(std::env::var_os("MRR_POO_FLOW_ROOT").expect("POO Flow checkout path"));
-    let mut command = Command::new("gxi");
+    let mut command = Command::new("just");
     command
         .current_dir(&root)
-        .arg("t/qualification/ascent-binary-program-pairs.ss")
-        .arg("8");
+        .arg("ascent-pairs")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    let mut request = String::from("(8");
     for &(from, to) in edges {
-        command.arg(from).arg(to);
+        assert!(from.parse::<u32>().is_ok() && to.parse::<u32>().is_ok());
+        request.push(' ');
+        request.push_str(from);
+        request.push(' ');
+        request.push_str(to);
     }
+    request.push_str(")\n");
     let mut loadpath = format!("{}:{}", root.display(), root.join(".gerbil/lib").display());
     if let Some(extra) = std::env::var_os("MRR_POO_FLOW_EXTRA_LOADPATH") {
         loadpath.push(':');
@@ -152,7 +164,16 @@ fn scheme_closure_pairs(edges: &[(&str, &str)]) -> Vec<(String, String)> {
     }
     command.env("GERBIL_PATH", root.join(".gerbil"));
     command.env("GERBIL_LOADPATH", loadpath);
-    let output = command.output().expect("launch POO Flow Scheme evaluator");
+    let mut child = command.spawn().expect("launch POO Flow Scheme evaluator");
+    child
+        .stdin
+        .take()
+        .expect("Scheme fixture stdin")
+        .write_all(request.as_bytes())
+        .expect("write source edges to Scheme evaluator");
+    let output = child
+        .wait_with_output()
+        .expect("collect Scheme pair output");
     assert!(
         output.status.success(),
         "Scheme evaluator failed: {}",
