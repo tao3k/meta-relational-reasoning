@@ -139,9 +139,12 @@ result pass as external candidates; an old result fails against the new Bundle.
 The operation neither changes the V1 receipt/digest nor grants lineage or
 effect admission.  Mapping POO's local encoded pair domain to MRR's source
 values, transporting it, and binding an external source snapshot to the
-requested generation remain separate obligations.  The MRR comparison test
-currently supplies the corresponding pair lists as test data; it does not
-execute Scheme or compare a live POO output.
+requested generation remain separate obligations.  An additional Linux
+cross-repository gate runs the POO Flow Scheme binary-program evaluator for
+five source snapshots and passes its actual canonical pairs to this MRR
+comparison.  The ordinary unit test retains literal pairs for typed rejection
+cases.  Live parity still does not bind an external source owner's snapshot to
+the requested generation or admit a POO receipt.
 
 * Agent problem and value hypothesis
 
