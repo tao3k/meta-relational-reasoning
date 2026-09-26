@@ -202,6 +202,23 @@ oracle.
 
 * Priority research questions
 
+The [[https://github.com/tao3k/gerbil-ascent/blob/main/docs/related-work-matrix.org][gerbil-ascent related-work matrix]] is the shared bibliography for the
+Ascent, BYODS, Soufflé, differential-dataflow, DBSP, materialisation
+maintenance, Datafun, egglog, Formulog, and recursive-provenance papers.
+This MRR document owns the Agent scenarios and semantic acceptance questions;
+the independent Scheme package owns executable kernel and performance parity.
+
+| Literature lane | MRR question | Required scenario receipt |
+|-----------------+--------------+---------------------------|
+| Ascent / BYODS / Soufflé | Can a faster physical plan preserve every admitted fact and required support? | Same frozen rule pack and source generation across plans; identical canonical semantic receipt, measured time and memory |
+| Differential dataflow / DBSP / DRed hybrids | Which previous Agent judgments must be reconsidered after insertion, deletion or revocation? | Diamond, cycle and alternate-support update trace; full-recompute equality at every generation and explicit invalidation |
+| Datafun / egglog / Formulog | Which higher-order rules, rewrites and constraints are safe to admit? | Typed rejection and independent equivalence or solver oracle before any candidate is admitted |
+| Provenance semirings / recursive provenance | What is a finite and faithful explanation for a cyclic or multiply supported claim? | Chosen semantics, bounded witness graph, source withdrawal, truncation and uncertainty kept separate from authority |
+
+These rows are research hypotheses, not claims that the Scheme evaluator has
+implemented the referenced algorithms.  Jev or another decision model consumes
+the admitted state projection; model probabilities remain external judgments.
+
 ** 1. Exact maintenance under insertion and retraction
 
 Compare [[https://ojs.aaai.org/index.php/AAAI/article/view/11554][DRed,
