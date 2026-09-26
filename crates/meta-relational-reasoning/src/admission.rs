@@ -355,12 +355,53 @@ impl std::error::Error for ClosureAdmissionError {}
 /// Fully validated lineage and transition outputs from one admission attempt.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct MaterializedClosure {
+    source_bundle: ReasoningBundleId,
+    snapshot_digest: [u8; 32],
     transition: Transition,
     derivations: Vec<Derivation>,
     receipt: DerivationReceipt,
 }
 
 impl MaterializedClosure {
+    /// Returns the exact admitted source bundle.
+    #[must_use]
+    pub const fn source_bundle(&self) -> ReasoningBundleId {
+        self.source_bundle
+    }
+
+    /// Returns the exact admitted semantic snapshot digest.
+    #[must_use]
+    pub const fn snapshot_digest(&self) -> &[u8; 32] {
+        &self.snapshot_digest
+    }
+
+    /// Checks the source identities again before this materialization is reused.
+    pub fn check_source(
+        &self,
+        bundle: &ReasoningBundle,
+        snapshot: &SemanticSnapshot,
+    ) -> Result<(), ClosureAdmissionError> {
+        if bundle.id() != self.source_bundle {
+            return Err(ClosureAdmissionError::SourceBundleMismatch {
+                expected: bundle.id(),
+                actual: self.source_bundle,
+            });
+        }
+        if snapshot.generation() != self.receipt.input_generation() {
+            return Err(ClosureAdmissionError::GenerationMismatch {
+                expected: snapshot.generation(),
+                actual: self.receipt.input_generation(),
+            });
+        }
+        if snapshot.digest() != &self.snapshot_digest {
+            return Err(ClosureAdmissionError::SnapshotMismatch {
+                expected: *snapshot.digest(),
+                actual: self.snapshot_digest,
+            });
+        }
+        Ok(())
+    }
+
     /// Returns the canonical immutable semantic-generation delta.
     #[must_use]
     pub const fn transition(&self) -> &Transition {
@@ -453,6 +494,8 @@ pub fn admit_closure_candidates(
         .map_err(ClosureAdmissionError::Transition)?;
     let receipt = materialized_receipt(receipt, identities);
     Ok(MaterializedClosure {
+        source_bundle: evaluation.source_bundle(),
+        snapshot_digest: *evaluation.snapshot_digest(),
         transition,
         derivations,
         receipt,

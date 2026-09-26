@@ -157,6 +157,11 @@ bundle fact must carry the snapshot generation.  The existing V1 closure and
 materialization receipt formats remain unchanged.  This binding assumes the
 caller supplies a source-owned revision; independently authenticating a remote
 provider revision remains an upstream source-admission obligation.
+After atomic materialization, the in-process =MaterializedClosure= retains the
+checked bundle identity and snapshot digest and can reject reuse against a
+different bundle, generation, or same-generation source revision.  Its inner
+V1 =DerivationReceipt= digest alone does not certify the source snapshot.
+Persistent transport of this binding needs a separately governed format.
 The read-only physical comparison also accepts complete candidate rows with
 caller-projected =RuleId= and ordered source =FactId= support.  It checks the
 exact pair set, shortest distance, rule, and support against the bound Ascent
