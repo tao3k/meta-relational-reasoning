@@ -260,6 +260,22 @@ fn stale_source_generation_is_rejected_before_ascent() {
 }
 
 #[test]
+fn seeded_derived_fact_is_rejected_instead_of_silently_ignored() {
+    let (bundle, config) = fixture_bundle();
+    let mut declaration = bundle.declaration().clone();
+    declaration
+        .facts
+        .push(source_fact(200, id!(RelationId, 2), "Ada", "Unconnected"));
+    let seeded = ReasoningBundle::admit(declaration).expect("seeded bundle");
+    assert_eq!(
+        evaluate_transitive_closure(&seeded, config, id!(GenerationId, 900), limits(16, 64, 64)),
+        Err(ClosureError::SeededDerivedRelationUnsupported {
+            fact: id!(FactId, 200),
+        })
+    );
+}
+
+#[test]
 fn cyclic_frontier_fixture_matches_the_poo_relation_pairs() {
     // The POO relation-expression fixture encodes the same five edges with
     // radix eight. Its three explicit frontier steps yield these 12 pairs.

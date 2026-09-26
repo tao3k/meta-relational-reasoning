@@ -130,8 +130,10 @@ fixed point, and truncation is explicit as =ClosureStatus::OutputTruncated=.
 * Failure and admission boundary
 
 Bundle validation, missing or non-binary schemas, rule-shape mismatch, non-string
-source facts, source facts from another requested generation, input capacity,
-and pair capacity are checked before evaluation.
+source facts, source facts from another requested generation, seeded facts in
+the derived relation, input capacity, and pair capacity are checked before
+evaluation.  Seeded derived facts fail closed until this adapter evaluates
+their recursive consequences rather than silently omitting them.
 Bundles containing transitions are rejected until an upstream owner materializes an
 exact semantic generation.  Evaluation returns =DerivationCandidate= values containing the
 derived relation, values, rule, generation, and ordered supporting =FactId=s.  A later

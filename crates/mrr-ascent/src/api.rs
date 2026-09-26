@@ -105,6 +105,8 @@ pub enum ClosureError {
         expected: GenerationId,
         actual: GenerationId,
     },
+    /// This narrow adapter cannot ignore seeded facts in its derived relation.
+    SeededDerivedRelationUnsupported { fact: FactId },
     /// The independent deterministic witness reconstruction disagreed with `Ascent`.
     InternalWitnessMismatch,
 }
@@ -270,6 +272,13 @@ fn validate_execution_contract(
     validate_relation(bundle, config.source_relation)?;
     validate_relation(bundle, config.derived_relation)?;
     validate_rules(bundle, config)?;
+    if let Some(fact) = bundle
+        .facts()
+        .iter()
+        .find(|fact| fact.relation() == config.derived_relation)
+    {
+        return Err(ClosureError::SeededDerivedRelationUnsupported { fact: fact.id() });
+    }
     Ok(())
 }
 
