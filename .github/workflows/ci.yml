@@ -98,29 +98,6 @@ jobs:
       - name: Test Rust workspace in the Gerbil package environment
         run: gerbil env cargo test --workspace --locked
 
-      - name: Check out exact POO Flow Scheme evaluator
-        if: runner.os == 'Linux'
-        uses: actions/checkout@v4
-        with:
-          repository: tao3k/poo-flow
-          ref: 1edeef5bc4c6d215c945dfea9239fa6a71528a69
-          path: .ci/poo-flow
-
-      - name: Install POO Flow test launcher
-        if: runner.os == 'Linux'
-        run: cargo install just --version 1.56.0 --locked
-
-      - name: Compare live Scheme rules with MRR Ascent
-        if: runner.os == 'Linux'
-        shell: bash
-        run: |
-          (cd .ci/poo-flow && gerbil deps --install && gerbil build)
-          export MRR_POO_FLOW_ROOT="$GITHUB_WORKSPACE/.ci/poo-flow"
-          gerbil env cargo test -p meta-relational-reasoning --lib \
-            live_scheme_ -- --ignored --nocapture
-          gerbil env cargo test -p mrr-ascent --test scheme_rule_parity \
-            live_scheme_ -- --ignored --nocapture
-
       - name: Lint Rust workspace
         run: gerbil env cargo clippy --all-targets --locked -- -D warnings
 

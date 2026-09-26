@@ -204,9 +204,6 @@ fn candidate_rows(evaluation: &BundleBoundClosure) -> Vec<ClosureCandidateRow> {
         .collect()
 }
 
-#[path = "closure_scheme_parity.rs"]
-mod scheme_parity;
-
 #[test]
 fn compares_external_pairs_only_against_the_exact_complete_bundle_generation() {
     let (bundle, plan) = fixture();

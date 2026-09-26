@@ -9,19 +9,19 @@ and independently admitted reasoning for Agent systems?  MRR owns relation and
 rule semantics, identities, generations, lineage, transitions, and admission.
 Ascent and future physical evaluators produce candidates.  POO Flow composes
 policy, capability, resource strategy, and runtime handoff.  The corresponding
-[[https://github.com/tao3k/poo-flow/blob/main/docs/10-19-design/10.06-poo-module-system/ascent-mrr-research-program.org][POO Flow research program]]
+[[https://github.com/tao3k/gerbil-ascent/blob/main/docs/research-program.org][gerbil-ascent research program]]
 owns the first control-plane slice.  This note does not change the accepted
 [[file:../docs/architecture/0003-mrr-ascent-evaluation.org][bounded Ascent RFC]] or
 [[file:../docs/architecture/0025-poo-flow-mrr-agent-assurance.org][assurance boundary]].
 
 The first experiment maps a bounded binary relation query to POO prototypes,
-C4 inheritance, persistent sets, and an indexed right-hand join.  POO Flow
+C4 inheritance, persistent sets, and an indexed right-hand join.  gerbil-ascent
 exposes an explicit frontier step and a demanded full closure for the selected
 positive binary transitive rule.  Its focused fixture checks multiple
 derivations, a cycle, an empty final frontier, source withdrawal, and the
 complete 12-pair set.  A paired MRR/Ascent fixture checks the same five-edge
 graph.  This is set-level parity for one bounded rule, not general Datalog,
-or an admissible MRR receipt.  POO Flow has since added a Scheme
+or an admissible MRR receipt.  gerbil-ascent has since added a Scheme
 =Dual<usize>= minimum-distance projection and deterministic shortest support
 selection for caller-labelled source facts.  Its diamond, cycle, withdrawal,
 and bounded-result tests reuse the current MRR/Ascent fixtures.  The next
@@ -87,7 +87,7 @@ new receipts have distinct digests.  This is from-scratch support reselection
 across separately admitted snapshots; incremental deletion maintenance and a
 validated source-snapshot-to-generation binding remain open.
 The inspected POO library has no general relational join, least-closure
-evaluator, or shortest-support operation.  POO Flow's Scheme qualification
+evaluator, or shortest-support operation.  gerbil-ascent Scheme qualification
 code now implements the selected binary rule on top of that library; it does
 not add another generic fixed-point driver.  The bounded POO table expression
 composes binary pairs from a =UIntTrieSet= source through a private adjacency
@@ -107,7 +107,7 @@ distance and support candidates on the 20-node chain at local optimized p95
 306us.  These labels are not MRR's semantic =FactId=s; POO does not produce an
 admissible support receipt or bind the external source generation.
 
-POO Flow now also has a Scheme evaluator for POO-declared positive binary
+gerbil-ascent now has a Scheme evaluator for POO-declared positive binary
 =copy=, guarded =filter=, and =join= rules across multiple named relations.
 The guarded rule uses a Scheme predicate over decoded binary endpoints and
 repeats the [[https://github.com/s-arash/ascent/blob/master/ascent/examples/ascent_if_clause.rs][Ascent =if= example]] as even/odd branches before joining a
@@ -134,20 +134,17 @@ physical evaluator's string-valued binary relation.  It compares a complete
 pair set against the existing =BundleBoundClosure= from the exact admitted
 =ReasoningBundleId= and requested =GenerationId=.  Wrong Bundle or generation,
 truncation, count mismatch, duplicates, and incorrect pairs are typed
-rejections.  The POO five-edge cyclic result and its six-pair withdrawal
+rejections.  The Scheme five-edge cyclic result and its six-pair withdrawal
 result pass as external candidates; an old result fails against the new Bundle.
 The operation neither changes the V1 receipt/digest nor grants lineage or
-effect admission.  Mapping POO's local encoded pair domain to MRR's source
+effect admission.  Mapping the Scheme package's local encoded pair domain to MRR's source
 values, transporting it, and binding an external source snapshot to the
-requested generation remain separate obligations.  An additional Linux
-cross-repository gate runs the POO Flow Scheme binary-program evaluator for
-five source snapshots and passes its actual canonical pairs to this MRR
-comparison.  The same gate compares Scheme shortest-distance and support
-candidates with MRR's independent Ascent result.  Scheme source labels are
-ranked by canonical FactId order for equal-length witness ties.  The ordinary
-unit test retains literal pairs for typed rejection cases.  Live parity still
-does not bind an external source owner's snapshot to
-the requested generation or admit a POO receipt.  The closure evaluator now
+requested generation remain separate obligations.  The Scheme rule and candidate differential tests now run in gerbil-ascent,
+which depends on POO Flow Foundation and is pinned as a POO Flow submodule.
+MRR CI tests only its semantic comparison and admission contracts. Complete
+source-owner snapshot binding and an MRR-admissible external candidate receipt
+remain open.
+The closure evaluator now
 rejects a source fact whose context generation differs from the requested
 generation before running Ascent; external revision authentication remains open.
 

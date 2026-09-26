@@ -167,14 +167,11 @@ caller-projected =RuleId= and ordered source =FactId= support.  It checks the
 exact pair set, shortest distance, rule, and support against the bound Ascent
 evaluation.  This comparison is evidence of parity for supplied rows, not a
 source-owner attestation or a lineage admission.
-The live pair gate exercises both the selected Scheme transitive fast path and
-a staged, multi-relation copy/join program that forces the composable Scheme
-semi-naive evaluator.  The same five source snapshots are checked against this
-MRR Ascent oracle; this does not extend MRR's admitted rule shape.
-A separate test-only Ascent program also checks POO Flow's guarded positive
-binary =filter=, =copy=, and =join= fragment across source withdrawal and a
-self-cycle.  It compares all three derived relations and leaves the production
-=mrr-ascent= Bundle rule admission unchanged.
+The independent [[https://github.com/tao3k/gerbil-ascent][gerbil-ascent]] repository owns Scheme rule
+qualification and its Rust Ascent differential oracle. MRR's own tests exercise
+the read-only, exact-Bundle comparison with literal candidate rows; MRR CI does
+not install or pin the Scheme package. External source attestation and lineage
+admission remain separate obligations.
 That value includes an identity-complete =DerivationReceipt= with =RulePackId=,
 input generation and facts, caller-assigned derived =FactId=s and =DerivationId=s,
 complete closure status, and a digest bound to the pre-admission closure digest.
