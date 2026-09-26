@@ -171,6 +171,10 @@ The live pair gate exercises both the selected Scheme transitive fast path and
 a staged, multi-relation copy/join program that forces the composable Scheme
 semi-naive evaluator.  The same five source snapshots are checked against this
 MRR Ascent oracle; this does not extend MRR's admitted rule shape.
+A separate test-only Ascent program also checks POO Flow's guarded positive
+binary =filter=, =copy=, and =join= fragment across source withdrawal and a
+self-cycle.  It compares all three derived relations and leaves the production
+=mrr-ascent= Bundle rule admission unchanged.
 That value includes an identity-complete =DerivationReceipt= with =RulePackId=,
 input generation and facts, caller-assigned derived =FactId=s and =DerivationId=s,
 complete closure status, and a digest bound to the pre-admission closure digest.
