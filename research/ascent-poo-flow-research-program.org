@@ -108,7 +108,10 @@ distance and support candidates on the 20-node chain at local optimized p95
 admissible support receipt or bind the external source generation.
 
 POO Flow now also has a Scheme evaluator for POO-declared positive binary
-=copy= and =join= rules across multiple named relations.  It performs
+=copy=, guarded =filter=, and =join= rules across multiple named relations.
+The guarded rule uses a Scheme predicate over decoded binary endpoints and
+repeats the [[https://github.com/s-arash/ascent/blob/master/ascent/examples/ascent_if_clause.rs][Ascent =if= example]] as even/odd branches before joining a
+derived branch with another relation.  It performs
 simultaneous semi-naive rounds with private dense or sparse indexes and
 publishes complete canonical pair lists; official persistent sets are available
 by a separate on-demand conversion.  Its tests repeat the three Rust Ascent
