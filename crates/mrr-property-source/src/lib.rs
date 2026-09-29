@@ -2,18 +2,18 @@
 //!
 //! The caller supplies catalogs and a semantic snapshot. Physical storage,
 //! transfer, and query execution remain outside MRR.
+#![forbid(unsafe_code)]
 
 use std::fmt;
 
-use mrr_frontends::{
-    ParserLanguage, ParserOwnedCompilation, ParserOwnedCompilationReceipt, QueryFrontend,
-};
+pub use mrr_frontends::ParserOwnedCompilationReceipt;
+use mrr_frontends::{ParserLanguage, ParserOwnedCompilation, QueryFrontend};
 
-use crate::{
-    CandidateQueryResult, CatalogBoundQuery, EntityCatalog, QueryResultAdmissionError,
-    QueryResultAdmissionReceipt, QueryResultLimits, QueryTemplate, ReasoningBundle,
-    ReasoningBundleDeclaration, RelationCatalog, SemanticSnapshot, admit_query_result_candidate,
-    bind_query_to_catalog,
+use meta_relational_reasoning::{
+    BundleError, CandidateQueryResult, CatalogBoundQuery, EntityCatalog, MetaQueryIr,
+    QueryCatalogBindingError, QueryResultAdmissionError, QueryResultAdmissionReceipt,
+    QueryResultLimits, QueryTemplate, ReasoningBundle, ReasoningBundleDeclaration, RelationCatalog,
+    SemanticSnapshot, admit_query_result_candidate, bind_query_to_catalog,
 };
 
 /// A parser-owned source compiled before any physical snapshot is read.
@@ -32,8 +32,8 @@ pub struct BoundPropertySourceQuery {
 pub enum PropertySourceQueryError {
     Parser(String),
     SourceDigestMismatch,
-    Bundle(crate::BundleError),
-    Binding(crate::QueryCatalogBindingError),
+    Bundle(BundleError),
+    Binding(QueryCatalogBindingError),
     Admission(QueryResultAdmissionError),
 }
 
@@ -72,7 +72,7 @@ pub fn compile_property_source_query(
 impl CompiledPropertySourceQuery {
     /// Parsed source query, before binding to a semantic snapshot.
     #[must_use]
-    pub const fn query(&self) -> &crate::MetaQueryIr {
+    pub const fn query(&self) -> &MetaQueryIr {
         &self.0.query
     }
 

@@ -7,17 +7,12 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 
-[features]
-default = []
-property-source = ["dep:mrr-frontends"]
-
 [dependencies]
 ciborium.workspace = true
 mrr-bundle.workspace = true
 mrr-ascent.workspace = true
 mrr-identity.workspace = true
 mrr-intent.workspace = true
-mrr-frontends = { workspace = true, optional = true }
 mrr-lineage.workspace = true
 mrr-logic.workspace = true
 mrr-query.workspace = true

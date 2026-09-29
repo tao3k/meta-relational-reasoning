@@ -51,6 +51,10 @@ const MRR_DEPENDENCY_POLICY: &[(&str, &[&str])] = &[
     ),
     ("mrr-frontends", &["mrr-gerbil", "mrr-query"]),
     (
+        "mrr-property-source",
+        &["meta-relational-reasoning", "mrr-frontends"],
+    ),
+    (
         "meta-relational-reasoning",
         &[
             "mrr-ascent",

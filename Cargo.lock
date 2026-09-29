@@ -953,7 +953,6 @@ dependencies = [
  "mrr-ascent",
  "mrr-asp-rust-build-support",
  "mrr-bundle",
- "mrr-frontends",
  "mrr-identity",
  "mrr-intent",
  "mrr-lineage",
@@ -1099,6 +1098,15 @@ dependencies = [
  "mrr-query",
  "mrr-relation",
  "serde",
+]
+
+[[package]]
+name = "mrr-property-source"
+version = "0.1.0"
+dependencies = [
+ "meta-relational-reasoning",
+ "mrr-asp-rust-build-support",
+ "mrr-frontends",
 ]
 
 [[package]]
