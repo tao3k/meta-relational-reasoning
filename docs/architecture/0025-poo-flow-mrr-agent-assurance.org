@@ -170,6 +170,15 @@ result is complete, identity-bound, lineage-valid, and transition-valid.  The
 runtime performs admitted external work.  No layer may fabricate the receipt
 owned by another layer.
 
+For an original GQL property query, the optional
+=meta-relational-reasoning/property-source= interface compiles and checks the
+exact source digest before any physical read. It binds that query to the
+caller-owned catalogs and semantic snapshot, then admits the physical result
+candidate against the same bound query. MRR Data implements verified local/S3
+snapshot restore and bounded physical execution behind this interface. A POO
+Flow resource selects the source, generation, root, and execution scope; it
+does not create a second GQL parser or result-admission rule.
+
 * Why TLA+ crosses both layers
 
 Agent safety properties commonly span more than one component.  Delegation,

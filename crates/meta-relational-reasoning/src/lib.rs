@@ -5,6 +5,8 @@ mod api;
 mod binding;
 mod counterexample;
 mod query_result;
+#[cfg(feature = "property-source")]
+mod source_query;
 mod truth;
 mod typing;
 pub use admission::{
@@ -31,6 +33,8 @@ pub use mrr_bundle::{
     RelationCatalog, RelationCatalogDigest, RelationCatalogError, RulePack,
     TransitionSystem as BundleTransitionSystem, ValidationProfile,
 };
+#[cfg(feature = "property-source")]
+pub use mrr_frontends::ParserOwnedCompilationReceipt;
 pub use mrr_identity::{
     ActionId, DerivationId, EntityId, FactId, GenerationId, LineageEdgeId, LineageNodeId, QueryId,
     QueryOperatorId, ReasoningBundleId, RelationId, RevisionId, RuleId, RulePackId, StateId,
@@ -78,6 +82,11 @@ pub use query_result::{
     CandidateQueryResult, QueryResultAdmissionError, QueryResultAdmissionReceipt,
     QueryResultBinding, QueryResultLimits, QueryResultValue, QueryResultValueKind,
     admit_query_result_candidate,
+};
+#[cfg(feature = "property-source")]
+pub use source_query::{
+    BoundPropertySourceQuery, CompiledPropertySourceQuery, PropertySourceQueryError,
+    compile_property_source_query,
 };
 pub use truth::{TruthStatus, conflict_truth, intent_binding_truth, safety_truth, why_not_truth};
 pub use typing::{ExpressionType, ParameterType, QueryType, ResultField, StaticQueryTyping};

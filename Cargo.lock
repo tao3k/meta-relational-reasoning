@@ -953,6 +953,7 @@ dependencies = [
  "mrr-ascent",
  "mrr-asp-rust-build-support",
  "mrr-bundle",
+ "mrr-frontends",
  "mrr-identity",
  "mrr-intent",
  "mrr-lineage",
