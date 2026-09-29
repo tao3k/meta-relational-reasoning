@@ -87,21 +87,19 @@ struct Executor {
 impl PropertyQueryExecutor for Executor {
     type Error = &'static str;
 
-    fn execute<'a>(
+    async fn execute<'a>(
         &'a self,
         query: &'a CatalogBoundQuery,
-    ) -> impl Future<Output = Result<CandidateQueryResult, Self::Error>> + 'a {
-        async move {
-            self.calls.set(self.calls.get() + 1);
-            if self.fail {
-                return Err("backend failed");
-            }
-            Ok(CandidateQueryResult::new(
-                QueryResultBinding::for_query(query),
-                Vec::new(),
-                Vec::new(),
-            ))
+    ) -> Result<CandidateQueryResult, Self::Error> {
+        self.calls.set(self.calls.get() + 1);
+        if self.fail {
+            return Err("backend failed");
         }
+        Ok(CandidateQueryResult::new(
+            QueryResultBinding::for_query(query),
+            Vec::new(),
+            Vec::new(),
+        ))
     }
 }
 
