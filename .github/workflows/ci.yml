@@ -96,8 +96,14 @@ jobs:
       - name: Test Rust workspace in the Gerbil package environment
         run: gerbil env cargo test --workspace --locked
 
+      - name: Test source-bound property query integration
+        run: gerbil env cargo test -p mrr-property-source --locked
+
       - name: Lint Rust workspace
         run: gerbil env cargo clippy --all-targets --locked -- -D warnings
+
+      - name: Lint source-bound property query integration
+        run: gerbil env cargo clippy -p mrr-property-source --all-targets --locked -- -D warnings
 
       - name: Test Python evidence projects
         run: |

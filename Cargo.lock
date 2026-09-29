@@ -1101,6 +1101,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "mrr-property-source"
+version = "0.1.0"
+dependencies = [
+ "meta-relational-reasoning",
+ "mrr-asp-rust-build-support",
+ "mrr-frontends",
+]
+
+[[package]]
 name = "mrr-query"
 version = "0.1.0"
 dependencies = [

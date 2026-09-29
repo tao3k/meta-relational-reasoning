@@ -1,0 +1,18 @@
+[package]
+name = "mrr-property-source"
+description = "MRR-owned source-bound property query integration for physical executors"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+meta-relational-reasoning.workspace = true
+mrr-frontends.workspace = true
+
+[dev-dependencies]
+mrr-asp-rust-build-support.workspace = true
+
+[lints]
+workspace = true

@@ -24,6 +24,7 @@ const MRR_WORKSPACE_MEMBER_POLICIES: &[MrrAspRustMemberPolicy] = &[
     workspace_member_policy!("mrr-search", "crates/mrr-search"),
     workspace_member_policy!("mrr-query", "crates/mrr-query"),
     workspace_member_policy!("mrr-frontends", "crates/mrr-frontends"),
+    workspace_member_policy!("mrr-property-source", "crates/mrr-property-source"),
     workspace_member_policy!("mrr-logic", "crates/mrr-logic"),
     workspace_member_policy!("mrr-conformance", "crates/mrr-conformance"),
     workspace_member_policy!("mrr-lineage", "crates/mrr-lineage"),
