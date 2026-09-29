@@ -5,7 +5,8 @@ mod source_query;
 
 pub use mrr_frontends::ParserOwnedCompilationReceipt;
 pub use source_query::{
-    BoundPropertySourceQuery, CompiledPropertySourceQuery, PropertySourceQueryError,
+    BoundPropertySourceQuery, CompiledPropertySourceQuery, ExecutedPropertySourceQuery,
+    PropertyQueryExecutor, PropertySourceExecutionError, PropertySourceQueryError,
     compile_property_source_query,
 };
 

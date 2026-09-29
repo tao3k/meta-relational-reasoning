@@ -3,7 +3,7 @@
 //! The caller supplies catalogs and a semantic snapshot. Physical storage,
 //! transfer, and query execution remain outside MRR.
 
-use std::fmt;
+use std::{fmt, future::Future};
 
 use mrr_frontends::{
     ParserLanguage, ParserOwnedCompilation, ParserOwnedCompilationReceipt, QueryFrontend,
@@ -26,6 +26,43 @@ pub struct BoundPropertySourceQuery {
     compilation: ParserOwnedCompilationReceipt,
     query: CatalogBoundQuery,
 }
+
+/// Physical execution supplied by a caller without transferring query authority.
+pub trait PropertyQueryExecutor {
+    type Error;
+
+    /// Execute the exact catalog-bound query against caller-owned physical data.
+    fn execute<'a>(
+        &'a self,
+        query: &'a CatalogBoundQuery,
+    ) -> impl Future<Output = Result<CandidateQueryResult, Self::Error>> + 'a;
+}
+
+/// MRR-admitted result of one source-bound physical query.
+#[derive(Debug)]
+pub struct ExecutedPropertySourceQuery {
+    pub compilation: ParserOwnedCompilationReceipt,
+    pub candidate: CandidateQueryResult,
+    pub admission: QueryResultAdmissionReceipt,
+}
+
+/// Semantic rejection or a caller-owned physical executor failure.
+#[derive(Debug)]
+pub enum PropertySourceExecutionError<E> {
+    Semantic(PropertySourceQueryError),
+    Physical(E),
+}
+
+impl<E: fmt::Display> fmt::Display for PropertySourceExecutionError<E> {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Semantic(error) => write!(formatter, "{error}"),
+            Self::Physical(error) => write!(formatter, "physical query execution: {error}"),
+        }
+    }
+}
+
+impl<E: std::error::Error + 'static> std::error::Error for PropertySourceExecutionError<E> {}
 
 /// Rejection at the MRR-owned source, catalog, or candidate boundary.
 #[derive(Debug)]
@@ -106,6 +143,38 @@ impl CompiledPropertySourceQuery {
         Ok(BoundPropertySourceQuery {
             compilation: receipt,
             query,
+        })
+    }
+
+    /// Bind, physically execute, and admit the result under MRR authority.
+    ///
+    /// The caller compiles the original source before physical I/O, then supplies
+    /// an executor backed by a verified snapshot with this exact identity.
+    ///
+    /// # Errors
+    /// Rejects semantic binding or admission failures and preserves backend errors.
+    pub async fn execute_with<B: PropertyQueryExecutor>(
+        self,
+        relation_catalog: &RelationCatalog,
+        entity_catalog: &EntityCatalog,
+        semantic_snapshot: &SemanticSnapshot,
+        executor: &B,
+        limits: QueryResultLimits,
+    ) -> Result<ExecutedPropertySourceQuery, PropertySourceExecutionError<B::Error>> {
+        let bound = self
+            .bind(relation_catalog, entity_catalog, semantic_snapshot)
+            .map_err(PropertySourceExecutionError::Semantic)?;
+        let candidate = executor
+            .execute(bound.query())
+            .await
+            .map_err(PropertySourceExecutionError::Physical)?;
+        let admission = bound
+            .admit(&candidate, limits)
+            .map_err(PropertySourceExecutionError::Semantic)?;
+        Ok(ExecutedPropertySourceQuery {
+            compilation: bound.compilation().clone(),
+            candidate,
+            admission,
         })
     }
 }
