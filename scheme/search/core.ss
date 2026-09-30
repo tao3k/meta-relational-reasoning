@@ -12,7 +12,7 @@
                  flow-output-contract
                  flow-then)
         (only-in :poo-flow/src/core/plan flow->dag-receipt)
-        (only-in :poo-flow/src/modules/temporal-causality/interface
+        (only-in :poo-flow/modules/temporal-causality/interface
                  poo-flow-causal-event
                  poo-flow-causal-event-graph
                  poo-flow-causal-trajectory-assess

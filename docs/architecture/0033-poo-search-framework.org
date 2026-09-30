@@ -3,8 +3,11 @@
 
 * Decision
 
-MRR owns a backend-neutral POO Search framework.  It does not own the ASP
-Search Playbook language.
+MRR owns a backend-neutral *semantic Search module* built from POO Flow's
+POO/Flow composition primitives.  It does not own the ASP Search Playbook
+language or a second general-purpose Flow engine.  The Scheme package
+distributes MRR declarations and reusable composition contracts; the native
+MRR crates evaluate and admit semantic results.
 
 The framework provides C3-composable factor roles, typed stage boundaries,
 sequential and parallel composition, explicit merge composition, strategy
@@ -14,9 +17,11 @@ deliberately has no knowledge of
 =rg=, Tantivy, Topology, workspace scope, provider registries, Scheme source
 syntax, Runtime generations, indexes, or result projection packets.
 
-ASP owns all of those concrete concerns.  Its V1 Playbook parser lowers an
-already validated ASP program into MRR Search objects.  This direction is
-one-way:
+ASP owns all of those concrete concerns.  The intended integration lowers an
+already validated ASP Playbook into MRR Search objects and binds the resulting
+factor observations to an immutable ASP search generation.  This is a proposed
+integration boundary, not an assertion that the current ASP runtime already
+invokes =scheme/search/core.ss= or =mrr-search=:
 
 #+begin_src mermaid
 flowchart LR
@@ -30,8 +35,38 @@ flowchart LR
 #+end_src
 
 MRR must never reconstruct the Playbook from strings or publish a second
-operator registry.  ASP must never replace the generic POO object model with a
-private positional plan representation.
+operator registry.  ASP keeps its existing parser, concrete execution, graph
+generation, and public packet authority while adopting the reusable MRR
+semantic contracts where they add evidence.
+
+* Module and package boundary
+
+POO Flow Core supplies the POO object model, Flow composition, and graph/DAG
+receipts.  POO Flow =modules/query= supplies a common Scheme Query declaration,
+admission, selection, and Provider-binding entry point.  Its
+=modules/temporal-causality= supplies inert structural Impact, causal event
+graphs, temporal classification, and trajectory assessment.  Its
+=modules/reverse-inference= is a separate, bounded candidate engine: it uses
+GQL selection and Scheme Ascent to compare source-labelled hypotheses, but
+does not authenticate sources or authorize actions.
+
+MRR Scheme packages MRR-specific grammar projections, ReasoningBundle
+declarations, bounded resource sequencing, and Search factor composition.  It
+specializes POO Flow contracts without copying Core, Query, causal algorithms,
+or the ASP Playbook.  MRR native crates own typed relations/rules, bounded
+Ascent candidate evaluation, identity, lineage, Impact, and fail-closed semantic
+admission.  A =lambda-*= library supplies domain Query/Case modules; Cargo
+features may select optional domain and physical libraries at build time.
+An application backend such as Marlin performs runtime work and returns
+candidates.  Package dependency is one-way: MRR's =gerbil.pkg= directly pins
+POO Flow; POO Flow owns the transitive parser edge and tracks Core as a
+subtree.
+
+The public bridge must carry exact source/query identity, semantic generation,
+bounded result contract, provenance, and execution candidate/receipt.  The
+Scheme declaration is inert until the owning backend executes it; MRR then
+checks semantic admission.  Neither a compile-time feature nor an Ascent or
+causal candidate grants runtime authority.
 
 * POO object model
 
@@ -54,6 +89,11 @@ observations with a candidate identity, logical position, provenance identity,
 and causal parents.  MRR delegates causal event-graph construction, trajectory
 assessment, temporal cuts, and structural Impact to POO Flow's existing
 =temporal-causality= module; it does not duplicate those algorithms.
+For competing explanations, a consumer may separately call POO Flow's
+=reverse-inference= Case with source-labelled claims and explicit opposing
+branches.  Its =supported= status is hypothetical fit, not a semantic admission
+receipt or evidence authentication.  MRR may attach its output as a candidate
+with lineage only after the relevant source and generation checks.
 
 A composition is either sequential, parallel, or an explicit merge of a
 parallel composition.  Sequential edges are admitted only when the preceding
