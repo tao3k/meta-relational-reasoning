@@ -102,14 +102,35 @@ one input domain.  A merge is an ordinary typed stage; therefore conjunction,
 ranking joins, union, or any other aggregation semantics remain explicit and
 consumer-owned.
 
-A strategy binds one root composition to policy metadata.  It is declarative:
-the execution owner remains the consumer runtime.
+A strategy binds one root composition, a nonempty generation canonical input,
+and policy metadata.  It is declarative: the execution owner remains the
+consumer runtime.  Stage names must be distinct stable ASCII identifiers
+(lowercase letters, digits, and hyphens).  The Scheme strategy projects rows
+of =(factor canonical input, role name)= and directed edges between factor
+canonical inputs.  Sequential and explicit merge composition produce edges;
+parallel branches do not acquire edges merely by sharing an input.
+
+The factor canonical input is the UTF-8 byte sequence
+=mrr.search.factor.v1:<strategy-name>:<stage-name>=.  A Rust consumer derives
+each =QueryOperatorId= from those exact bytes with
+=SearchFactor::from_canonical_input=, maps the projected role name to its
+=SearchFactorRole=, and derives the =GenerationId= from the strategy's
+generation canonical input with =GenerationId::from_canonical_bytes=.  It
+resolves projected edge endpoints through the resulting factor IDs.  The
+generation input is supplied by the execution owner; MRR does not invent a
+runtime generation.  The Scheme observation constructor requires both a
+member stage of that strategy and the same generation input.  Native
+=SearchObservation= stores a typed generation and =evaluate_search_factors=
+rejects any observation from another generation before Ascent inference.
+The cross-language projection remains an explicit consumer binding contract;
+there is no live Scheme-to-Rust adapter in ASP yet.
 
 * Ascent and lineage integration
 
 =mrr-search= is the native, backend-neutral reasoning adapter.  Downstream
 systems register factor identities and roles, directed factor edges, and
-generation-bound observations.  The adapter first rejects duplicate or unknown
+generation-bound observations.  The adapter first rejects generation mismatch,
+duplicate or unknown
 factors, cyclic factor graphs, missing causal parents, temporal inversions,
 causal-parent edges that disagree with the factor graph, and budget overflow.
 
@@ -180,4 +201,6 @@ mismatched sequential, parallel, or merge edge.
 - every published influence has reusable MRR lineage and Impact;
 - mismatched sequential domains and parallel branch domains fail closed;
 - a merge cannot run unless its input equals the parallel product domain;
+- factor identity inputs and edges are stable, and cross-generation
+  observations fail before native factor inference;
 - generated DAG receipts remain declarations and do not claim runtime work.

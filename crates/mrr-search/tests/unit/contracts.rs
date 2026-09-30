@@ -42,6 +42,70 @@ fn limits() -> SearchFrameworkLimits {
     )
 }
 
+fn observation(
+    event: FactId,
+    candidate: FactId,
+    factor: QueryOperatorId,
+    logical_position: u64,
+    causal_parents: Vec<FactId>,
+) -> SearchObservation {
+    SearchObservation::new(
+        event,
+        candidate,
+        factor,
+        id::<GenerationId>("generation:one"),
+        logical_position,
+        causal_parents,
+    )
+}
+
+#[test]
+fn scheme_factor_canonical_input_is_strategy_scoped() {
+    let source = SearchFactor::from_canonical_input(
+        "mrr.search.factor.v1:fixture-search:source",
+        SearchFactorRole::Acquisition,
+    )
+    .expect("Scheme factor canonical input");
+    let another_strategy = SearchFactor::from_canonical_input(
+        "mrr.search.factor.v1:other-search:source",
+        SearchFactorRole::Acquisition,
+    )
+    .expect("other Scheme strategy");
+    assert_ne!(source.id(), another_strategy.id());
+    assert_eq!(source.role(), SearchFactorRole::Acquisition);
+    assert!(SearchFactor::from_canonical_input("", SearchFactorRole::Acquisition).is_err());
+}
+
+#[test]
+fn rejects_cross_generation_observation_before_factor_reasoning() {
+    let generation = id::<GenerationId>("generation:one");
+    let stale_generation = id::<GenerationId>("generation:two");
+    let factor = id::<QueryOperatorId>("factor:acquire");
+    let event = id::<FactId>("event:acquired");
+    let stale = SearchObservation::new(
+        event,
+        id::<FactId>("candidate:one"),
+        factor,
+        stale_generation,
+        1,
+        vec![],
+    );
+    assert_eq!(
+        evaluate_search_factors(
+            generation,
+            &[SearchFactor::new(factor, SearchFactorRole::Acquisition)],
+            &[],
+            &[stale],
+            limits(),
+        ),
+        Err(SearchFrameworkError::ObservationGenerationMismatch {
+            observation: event,
+            expected: generation,
+            actual: stale_generation,
+        }),
+    );
+}
+
 #[test]
 fn derives_factor_influence_trajectory_and_reusable_impact() {
     let acquire = id::<QueryOperatorId>("factor:acquire");
@@ -60,8 +124,8 @@ fn derives_factor_influence_trajectory_and_reusable_impact() {
         SearchFactorEdge::new(refine, reason),
     ];
     let observations = [
-        SearchObservation::new(acquired, candidate, acquire, 1, vec![]),
-        SearchObservation::new(refined, candidate, refine, 2, vec![acquired]),
+        observation(acquired, candidate, acquire, 1, vec![]),
+        observation(refined, candidate, refine, 2, vec![acquired]),
     ];
 
     let receipt = evaluate_search_factors(
@@ -100,7 +164,7 @@ fn derives_factor_influence_trajectory_and_reusable_impact() {
         &edges,
         &[
             observations[0].clone(),
-            SearchObservation::new(refined, candidate, refine, 3, vec![acquired]),
+            observation(refined, candidate, refine, 3, vec![acquired]),
         ],
         limits(),
     )
@@ -123,13 +187,7 @@ fn rejects_missing_temporal_parent_and_factor_edge() {
         id::<GenerationId>("generation:one"),
         &factors,
         &[SearchFactorEdge::new(acquire, refine)],
-        &[SearchObservation::new(
-            refined,
-            candidate,
-            refine,
-            2,
-            vec![missing],
-        )],
+        &[observation(refined, candidate, refine, 2, vec![missing])],
         limits(),
     )
     .expect_err("missing temporal parent must fail");
@@ -147,8 +205,8 @@ fn rejects_missing_temporal_parent_and_factor_edge() {
         &factors,
         &[],
         &[
-            SearchObservation::new(acquired, candidate, acquire, 1, vec![]),
-            SearchObservation::new(refined, candidate, refine, 2, vec![acquired]),
+            observation(acquired, candidate, acquire, 1, vec![]),
+            observation(refined, candidate, refine, 2, vec![acquired]),
         ],
         limits(),
     )
@@ -195,7 +253,7 @@ fn bounds_inference_before_execution_and_marks_publication_truncation() {
         SearchFactor::new(refine, SearchFactorRole::Refinement),
     ];
     let edges = [SearchFactorEdge::new(acquire, refine)];
-    let observations = [SearchObservation::new(event, candidate, acquire, 1, vec![])];
+    let observations = [observation(event, candidate, acquire, 1, vec![])];
     let truncated = SearchFrameworkLimits::new(
         NonZeroUsize::new(2).unwrap(),
         NonZeroUsize::new(1).unwrap(),

@@ -47,6 +47,9 @@
         search-node-output-domain
         search-node-flow
         search-strategy-root
+        search-strategy-generation-canonical-input
+        search-strategy-factor-rows
+        search-strategy-factor-edges
         search-strategy-policy
         search-strategy-dag-receipt)
 
@@ -116,6 +119,9 @@
            (kind 'search-strategy)
            (name #f)
            (root #f)
+           (generation-canonical-input #f)
+           (factor-rows '())
+           (factor-edges '())
            (policy '())
            (dag-receipt #f)
            (metadata '())))
@@ -252,24 +258,115 @@
    (flow-then name (search-node-flow parallel) (search-node-flow merge-stage))
    (if (null? maybe-metadata) '() (car maybe-metadata))))
 
-(def (make-search-strategy name root policy . maybe-metadata)
-  (unless (and (symbol? name) (search-node? root) (list? policy))
-    (error "invalid POO Search strategy" name root policy))
-  (poo-core-role-object
-   (slots ((name name)
-           (root root)
-           (policy policy)
-           (dag-receipt (flow->dag-receipt (search-node-flow root)))
-           (metadata (if (null? maybe-metadata) '() (car maybe-metadata)))))
-   (supers search-strategy-prototype)))
+(def (stable-search-name? name)
+  (and (symbol? name)
+       (let (characters (string->list (symbol->string name)))
+         (and (pair? characters)
+              (let loop ((remaining characters))
+                (or (null? remaining)
+                    (let (code (char->integer (car remaining)))
+                      (and (or (and (>= code 97) (<= code 122))
+                               (and (>= code 48) (<= code 57))
+                               (= code 45))
+                           (loop (cdr remaining))))))))))
+
+(def (search-node-stages node)
+  (if (search-stage? node)
+    (list node)
+    (apply append (map search-node-stages (.ref node 'children)))))
+
+(def (search-node-sources node)
+  (if (search-stage? node)
+    (list node)
+    (let (children (.ref node 'children))
+      (if (eq? (.ref node 'mode) 'parallel)
+        (apply append (map search-node-sources children))
+        (search-node-sources (car children))))))
+
+(def (search-node-sinks node)
+  (if (search-stage? node)
+    (list node)
+    (let (children (.ref node 'children))
+      (if (eq? (.ref node 'mode) 'parallel)
+        (apply append (map search-node-sinks children))
+        (search-node-sinks (car (reverse children)))))))
+
+(def (search-factor-canonical-input strategy-name stage)
+  (string-append "mrr.search.factor.v1:"
+                 (symbol->string strategy-name) ":"
+                 (symbol->string (.ref stage 'name))))
+
+(def (distinct-search-names? names)
+  (or (null? names)
+      (and (not (memq (car names) (cdr names)))
+           (distinct-search-names? (cdr names)))))
+
+(def (search-node-factor-edges strategy-name node)
+  (if (search-stage? node)
+    '()
+    (let* ((children (.ref node 'children))
+           (nested (apply append
+                          (map (lambda (child)
+                                 (search-node-factor-edges strategy-name child))
+                               children))))
+      (if (eq? (.ref node 'mode) 'parallel)
+        nested
+        (let loop ((remaining children) (edge-batches '()))
+          (if (or (null? remaining) (null? (cdr remaining)))
+            (append nested (apply append (reverse edge-batches)))
+            (let* ((left-sinks (search-node-sinks (car remaining)))
+                   (right-sources (search-node-sources (cadr remaining)))
+                   (links
+                    (apply append
+                           (map (lambda (left)
+                                  (map (lambda (right)
+                                         (list (search-factor-canonical-input strategy-name left)
+                                               (search-factor-canonical-input strategy-name right)))
+                                       right-sources))
+                                left-sinks))))
+              (loop (cdr remaining) (cons links edge-batches)))))))))
+
+(def (make-search-strategy name root generation-canonical-input policy
+                           . maybe-metadata)
+  (unless (and (stable-search-name? name)
+               (search-node? root)
+               (string? generation-canonical-input)
+               (> (string-length generation-canonical-input) 0)
+               (list? policy))
+    (error "invalid POO Search strategy" name root generation-canonical-input))
+  (let* ((stages (search-node-stages root))
+         (stage-names (map (lambda (stage) (.ref stage 'name)) stages)))
+    (unless (and (every stable-search-name? stage-names)
+                 (distinct-search-names? stage-names))
+      (error "Search strategy requires distinct stable factor names" stage-names))
+    (poo-core-role-object
+     (slots ((name name)
+             (root root)
+             (generation-canonical-input generation-canonical-input)
+             (factor-rows
+              (map (lambda (stage)
+                     (list (search-factor-canonical-input name stage)
+                           (symbol->string (.ref stage 'search/stage-role))))
+                   stages))
+             (factor-edges (search-node-factor-edges name root))
+             (policy policy)
+             (dag-receipt (flow->dag-receipt (search-node-flow root)))
+             (metadata (if (null? maybe-metadata) '() (car maybe-metadata)))))
+     (supers search-strategy-prototype))))
 
 ;;; Search observations reuse POO Flow's temporal-causality authority.  The
 ;;; factor name is the event kind; the candidate identity is the payload.
 (def (make-search-factor-observation
-      identity subject factor candidate-identity logical-position
-      provenance-identity causal-parent-identities modality committed?)
-  (unless (search-stage? factor)
-    (error "Search factor observation requires a POO Search stage" factor))
+      strategy observed-generation identity subject factor candidate-identity
+      logical-position provenance-identity causal-parent-identities modality
+      committed?)
+  (unless (and (search-strategy? strategy)
+               (search-stage? factor)
+               (memq factor (search-node-stages (search-strategy-root strategy)))
+               (equal? observed-generation
+                       (search-strategy-generation-canonical-input strategy)))
+    (error "Search observation is outside its strategy or generation"
+           identity observed-generation))
   (let (observation
         (poo-flow-temporal-observation
          (string-append identity ":observation")
@@ -308,6 +405,21 @@
   (unless (search-strategy? strategy)
     (error "expected a POO Search strategy" strategy))
   (.ref strategy 'root))
+
+(def (search-strategy-generation-canonical-input strategy)
+  (unless (search-strategy? strategy)
+    (error "expected a POO Search strategy" strategy))
+  (.ref strategy 'generation-canonical-input))
+
+(def (search-strategy-factor-rows strategy)
+  (unless (search-strategy? strategy)
+    (error "expected a POO Search strategy" strategy))
+  (.ref strategy 'factor-rows))
+
+(def (search-strategy-factor-edges strategy)
+  (unless (search-strategy? strategy)
+    (error "expected a POO Search strategy" strategy))
+  (.ref strategy 'factor-edges))
 
 (def (search-strategy-policy strategy)
   (unless (search-strategy? strategy)
