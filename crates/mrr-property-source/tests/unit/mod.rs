@@ -1,2 +1,2 @@
 mod asp_rust_gate;
-mod query_execution;
+mod query_binding;

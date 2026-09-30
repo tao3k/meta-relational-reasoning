@@ -172,14 +172,15 @@ owned by another layer.
 
 For an original GQL property query, the optional
 =mrr-property-source= integration crate compiles and checks the
-exact source digest before any physical read. Its =execute_with= entry point
-binds that query to caller-owned catalogs and a semantic snapshot, invokes a
-caller-supplied =PropertyQueryExecutor= with the exact bound query, and admits
-the resulting candidate against that same binding. MRR owns this Query
-sequence. MRR Data supplies verified local/S3 snapshot restore and bounded
-physical execution without a POO Flow-specific Query entry point. The POO
-Flow caller selects the source, generation, root, and execution scope; it does
-not create a second GQL parser or result-admission rule.
+exact source digest. =CompiledPropertySourceQuery.bind= binds the source to
+caller-owned catalogs and a semantic snapshot. The caller passes the resulting
+=CatalogBoundQuery= to its physical library, then passes the candidate back to
+=BoundPropertySourceQuery.admit=. MRR owns source semantics and result admission,
+but does not schedule the physical call or define an executor trait. MRR Data
+supplies verified local/S3 snapshot restore and bounded physical execution
+without a POO Flow-specific Query entry point. A POO Flow/Lambda Module owns
+its projection, source, generation, root, and execution scope; neither MRR
+library imports a User Interface Case or invents a second GQL parser.
 
 * Why TLA+ crosses both layers
 

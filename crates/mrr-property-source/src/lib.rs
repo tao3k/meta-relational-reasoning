@@ -1,12 +1,11 @@
-//! MRR-owned source-bound property query integration for physical executors.
+//! MRR-owned source compilation, catalog binding, and result admission.
 #![forbid(unsafe_code)]
 
 mod source_query;
 
 pub use mrr_frontends::ParserOwnedCompilationReceipt;
 pub use source_query::{
-    BoundPropertySourceQuery, CompiledPropertySourceQuery, ExecutedPropertySourceQuery,
-    PropertyQueryExecutor, PropertySourceExecutionError, PropertySourceQueryError,
+    BoundPropertySourceQuery, CompiledPropertySourceQuery, PropertySourceQueryError,
     compile_property_source_query,
 };
 
