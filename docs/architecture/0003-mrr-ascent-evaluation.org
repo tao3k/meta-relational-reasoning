@@ -130,7 +130,10 @@ fixed point, and truncation is explicit as =ClosureStatus::OutputTruncated=.
 * Failure and admission boundary
 
 Bundle validation, missing or non-binary schemas, rule-shape mismatch, non-string
-source facts, input capacity, and pair capacity are checked before evaluation.
+source facts, source facts from another requested generation, seeded facts in
+the derived relation, input capacity, and pair capacity are checked before
+evaluation.  Seeded derived facts fail closed until this adapter evaluates
+their recursive consequences rather than silently omitting them.
 Bundles containing transitions are rejected until an upstream owner materializes an
 exact semantic generation.  Evaluation returns =DerivationCandidate= values containing the
 derived relation, values, rule, generation, and ordered supporting =FactId=s.  A later
@@ -146,6 +149,29 @@ allocated by its caller, while the existing owners retain their authority:
 =mrr-lineage= validates every derivation and =mrr-transition= validates the
 whole immutable semantic-generation delta.  The facade returns =MaterializedClosure= only
 after all validations succeed; it owns no live publication or partial commit.
+The facade also requires the existing =SemanticSnapshot= at evaluation,
+physical-pair comparison, and materialization.  Its in-process
+=BundleBoundClosure= retains the source bundle identity and snapshot digest;
+both boundaries reject another revision even if its generation matches.  Every
+bundle fact must carry the snapshot generation.  The existing V1 closure and
+materialization receipt formats remain unchanged.  This binding assumes the
+caller supplies a source-owned revision; independently authenticating a remote
+provider revision remains an upstream source-admission obligation.
+After atomic materialization, the in-process =MaterializedClosure= retains the
+checked bundle identity and snapshot digest and can reject reuse against a
+different bundle, generation, or same-generation source revision.  Its inner
+V1 =DerivationReceipt= digest alone does not certify the source snapshot.
+Persistent transport of this binding needs a separately governed format.
+The read-only physical comparison also accepts complete candidate rows with
+caller-projected =RuleId= and ordered source =FactId= support.  It checks the
+exact pair set, shortest distance, rule, and support against the bound Ascent
+evaluation.  This comparison is evidence of parity for supplied rows, not a
+source-owner attestation or a lineage admission.
+The independent [[https://github.com/tao3k/gerbil-ascent][gerbil-ascent]] repository owns Scheme rule
+qualification and its Rust Ascent differential oracle. MRR's own tests exercise
+the read-only, exact-Bundle comparison with literal candidate rows; MRR CI does
+not install or pin the Scheme package. External source attestation and lineage
+admission remain separate obligations.
 That value includes an identity-complete =DerivationReceipt= with =RulePackId=,
 input generation and facts, caller-assigned derived =FactId=s and =DerivationId=s,
 complete closure status, and a digest bound to the pre-admission closure digest.

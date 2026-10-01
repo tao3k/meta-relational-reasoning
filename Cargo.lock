@@ -1017,6 +1017,7 @@ dependencies = [
  "mrr-asp-rust-build-support",
  "mrr-intent",
  "mrr-revision",
+ "sha2 0.10.9",
 ]
 
 [[package]]

@@ -11,6 +11,7 @@ repository.workspace = true
 meta-relational-reasoning.workspace = true
 mrr-intent.workspace = true
 mrr-revision.workspace = true
+sha2.workspace = true
 
 [dev-dependencies]
 criterion.workspace = true

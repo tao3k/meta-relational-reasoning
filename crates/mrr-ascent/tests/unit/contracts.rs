@@ -1,7 +1,8 @@
 use core::num::NonZeroUsize;
 
 use mrr_ascent::{
-    ClosureConfig, ClosureError, ClosureLimits, ClosureStatus, evaluate_transitive_closure,
+    ClosureConfig, ClosureError, ClosureLimits, ClosureReceipt, ClosureStatus, DerivationCandidate,
+    evaluate_transitive_closure,
 };
 use mrr_bundle::{ReasoningBundle, ReasoningBundleDeclaration, RulePack};
 use mrr_identity::{EntityId, FactId, GenerationId, RelationId, RuleId, RulePackId};
@@ -61,6 +62,28 @@ fn source_fact(identity: u128, relation: RelationId, from: &str, to: &str) -> Fa
         )
         .expect("source context"),
     )
+}
+
+fn source_snapshot_at(facts: &[Fact], generation: GenerationId) -> Vec<Fact> {
+    facts
+        .iter()
+        .map(|fact| {
+            let context = fact.context();
+            Fact::new(
+                fact.id(),
+                fact.relation(),
+                fact.values().to_vec(),
+                RelationContext::new(
+                    generation,
+                    context.authority(),
+                    context.provenance(),
+                    context.completeness(),
+                    context.validity(),
+                )
+                .expect("source snapshot context"),
+            )
+        })
+        .collect()
 }
 
 fn admitted_bundle(
@@ -128,6 +151,12 @@ fn limits(input: usize, pairs: usize, results: usize) -> ClosureLimits {
     )
 }
 
+fn ada_to_cy(receipt: &ClosureReceipt) -> Option<&DerivationCandidate> {
+    receipt.candidates().iter().find(|candidate| {
+        *candidate.values() == [Value::String("Ada".into()), Value::String("Cy".into())]
+    })
+}
+
 #[test]
 fn derives_deterministic_shortest_lineage_candidates_from_a_validated_bundle() {
     let (bundle, config) = fixture_bundle();
@@ -166,6 +195,227 @@ fn derives_deterministic_shortest_lineage_candidates_from_a_validated_bundle() {
             [id!(FactId, 100), id!(FactId, 101)],
         )
     );
+}
+
+#[test]
+fn source_snapshots_match_expected_ascent_closure() {
+    let (bundle, config) = fixture_bundle();
+    let expected = [
+        vec![
+            ("Ada", "Bob"),
+            ("Ada", "Cy"),
+            ("Ada", "Dan"),
+            ("Bob", "Cy"),
+            ("Dan", "Cy"),
+        ],
+        vec![("Ada", "Bob"), ("Ada", "Cy"), ("Ada", "Dan"), ("Dan", "Cy")],
+        vec![("Ada", "Bob"), ("Ada", "Dan")],
+    ];
+
+    for (withdrawn, expected_pairs) in expected.into_iter().enumerate() {
+        let generation = id!(GenerationId, 900 + withdrawn);
+        let mut declaration = bundle.declaration().clone();
+        declaration
+            .facts
+            .retain(|fact| fact.id() != id!(FactId, 101) || withdrawn == 0);
+        declaration
+            .facts
+            .retain(|fact| fact.id() != id!(FactId, 103) || withdrawn < 2);
+        declaration.facts = source_snapshot_at(&declaration.facts, generation);
+        let snapshot = ReasoningBundle::admit(declaration).expect("snapshot admission");
+        let receipt =
+            evaluate_transitive_closure(&snapshot, config, generation, limits(16, 64, 64))
+                .expect("bounded closure");
+
+        assert_eq!(receipt.status(), ClosureStatus::Complete);
+        assert_eq!(receipt.input_fact_count(), 4 - withdrawn);
+        let pairs: Vec<_> = receipt
+            .candidates()
+            .iter()
+            .map(|candidate| match candidate.values() {
+                [Value::String(from), Value::String(to)] => (from.as_str(), to.as_str()),
+                _ => panic!("binary closure must contain strings"),
+            })
+            .collect();
+        assert_eq!(pairs, expected_pairs);
+    }
+}
+
+#[test]
+fn stale_source_generation_is_rejected_before_ascent() {
+    let (bundle, config) = fixture_bundle();
+    assert!(matches!(
+        evaluate_transitive_closure(
+            &bundle,
+            config,
+            id!(GenerationId, 901),
+            limits(16, 64, 64),
+        ),
+        Err(ClosureError::SourceGenerationMismatch {
+            expected,
+            actual,
+            ..
+        }) if expected == id!(GenerationId, 901) && actual == id!(GenerationId, 900)
+    ));
+}
+
+#[test]
+fn seeded_derived_fact_is_rejected_instead_of_silently_ignored() {
+    let (bundle, config) = fixture_bundle();
+    let mut declaration = bundle.declaration().clone();
+    declaration
+        .facts
+        .push(source_fact(200, id!(RelationId, 2), "Ada", "Unconnected"));
+    let seeded = ReasoningBundle::admit(declaration).expect("seeded bundle");
+    assert_eq!(
+        evaluate_transitive_closure(&seeded, config, id!(GenerationId, 900), limits(16, 64, 64)),
+        Err(ClosureError::SeededDerivedRelationUnsupported {
+            fact: id!(FactId, 200),
+        })
+    );
+}
+
+#[test]
+fn cyclic_frontier_fixture_matches_the_poo_relation_pairs() {
+    // The POO relation-expression fixture encodes the same five edges with
+    // radix eight. Its three explicit frontier steps yield these 12 pairs.
+    let (bundle, config) = fixture_bundle();
+    let edge = id!(RelationId, 1);
+    let mut declaration = bundle.declaration().clone();
+    declaration.facts = vec![
+        source_fact(100, edge, "1", "2"),
+        source_fact(101, edge, "2", "3"),
+        source_fact(102, edge, "3", "4"),
+        source_fact(103, edge, "4", "2"),
+        source_fact(104, edge, "1", "3"),
+    ];
+    let snapshot = ReasoningBundle::admit(declaration).expect("cyclic source snapshot");
+    let receipt =
+        evaluate_transitive_closure(&snapshot, config, id!(GenerationId, 900), limits(5, 16, 16))
+            .expect("bounded cyclic closure");
+    assert_eq!(receipt.status(), ClosureStatus::Complete);
+
+    let mut pairs: Vec<_> = receipt
+        .candidates()
+        .iter()
+        .map(|candidate| match candidate.values() {
+            [Value::String(from), Value::String(to)] => (from.as_str(), to.as_str()),
+            _ => panic!("binary closure must contain strings"),
+        })
+        .collect();
+    pairs.sort_unstable();
+    assert_eq!(
+        pairs,
+        [
+            ("1", "2"),
+            ("1", "3"),
+            ("1", "4"),
+            ("2", "2"),
+            ("2", "3"),
+            ("2", "4"),
+            ("3", "2"),
+            ("3", "3"),
+            ("3", "4"),
+            ("4", "2"),
+            ("4", "3"),
+            ("4", "4"),
+        ]
+    );
+
+    let mut withdrawn = snapshot.declaration().clone();
+    withdrawn.facts.retain(|fact| fact.id() != id!(FactId, 103));
+    withdrawn.facts = source_snapshot_at(&withdrawn.facts, id!(GenerationId, 901));
+    let without_cycle = ReasoningBundle::admit(withdrawn).expect("withdrawn source snapshot");
+    let after_withdrawal = evaluate_transitive_closure(
+        &without_cycle,
+        config,
+        id!(GenerationId, 901),
+        limits(5, 16, 16),
+    )
+    .expect("complete closure after withdrawal");
+    assert_eq!(after_withdrawal.status(), ClosureStatus::Complete);
+    let mut remaining: Vec<_> = after_withdrawal
+        .candidates()
+        .iter()
+        .map(|candidate| match candidate.values() {
+            [Value::String(from), Value::String(to)] => (from.as_str(), to.as_str()),
+            _ => panic!("binary closure must contain strings"),
+        })
+        .collect();
+    remaining.sort_unstable();
+    assert_eq!(
+        remaining,
+        [
+            ("1", "2"),
+            ("1", "3"),
+            ("1", "4"),
+            ("2", "3"),
+            ("2", "4"),
+            ("3", "4"),
+        ]
+    );
+}
+
+#[test]
+fn withdrawing_the_selected_support_reselects_the_surviving_path() {
+    let (bundle, config) = fixture_bundle();
+    let initial =
+        evaluate_transitive_closure(&bundle, config, id!(GenerationId, 900), limits(16, 64, 64))
+            .expect("initial complete closure");
+    let selected = ada_to_cy(&initial).expect("two supported paths").support();
+    let via_bob = [id!(FactId, 100), id!(FactId, 101)];
+    let via_dan = [id!(FactId, 99), id!(FactId, 103)];
+    assert!(selected == via_bob || selected == via_dan);
+
+    let withdrawn = if selected == via_bob {
+        id!(FactId, 101)
+    } else {
+        id!(FactId, 103)
+    };
+    let surviving = if selected == via_bob {
+        via_dan
+    } else {
+        via_bob
+    };
+    let mut declaration = bundle.declaration().clone();
+    declaration.facts.retain(|fact| fact.id() != withdrawn);
+    declaration.facts = source_snapshot_at(&declaration.facts, id!(GenerationId, 901));
+    let snapshot = ReasoningBundle::admit(declaration.clone()).expect("surviving source snapshot");
+    let after_one = evaluate_transitive_closure(
+        &snapshot,
+        config,
+        id!(GenerationId, 901),
+        limits(16, 64, 64),
+    )
+    .expect("alternative path remains complete");
+    assert_eq!(after_one.status(), ClosureStatus::Complete);
+    assert_eq!(after_one.input_generation(), id!(GenerationId, 901));
+    assert_eq!(
+        ada_to_cy(&after_one).expect("alternative path").support(),
+        surviving
+    );
+    assert!(
+        after_one
+            .candidates()
+            .iter()
+            .all(|candidate| candidate.generation() == id!(GenerationId, 901))
+    );
+    assert_ne!(initial.digest(), after_one.digest());
+
+    declaration.facts.retain(|fact| fact.id() != surviving[1]);
+    declaration.facts = source_snapshot_at(&declaration.facts, id!(GenerationId, 902));
+    let snapshot = ReasoningBundle::admit(declaration).expect("disconnected source snapshot");
+    let after_both = evaluate_transitive_closure(
+        &snapshot,
+        config,
+        id!(GenerationId, 902),
+        limits(16, 64, 64),
+    )
+    .expect("disconnected complete closure");
+    assert_eq!(after_both.status(), ClosureStatus::Complete);
+    assert_eq!(after_both.input_generation(), id!(GenerationId, 902));
+    assert!(ada_to_cy(&after_both).is_none());
+    assert_ne!(after_one.digest(), after_both.digest());
 }
 
 #[test]

@@ -99,6 +99,20 @@ pub enum ClosureError {
     DerivedPairBudgetExceeded { required: usize, limit: usize },
     /// A source fact is not a pair of strings.
     UnsupportedSourceFact { fact: FactId },
+    /// A source fact belongs to another semantic generation.
+    SourceGenerationMismatch {
+        fact: FactId,
+        expected: GenerationId,
+        actual: GenerationId,
+    },
+    /// A facade-bound bundle fact belongs to another semantic snapshot generation.
+    BundleGenerationMismatch {
+        fact: FactId,
+        expected: GenerationId,
+        actual: GenerationId,
+    },
+    /// This narrow adapter cannot ignore seeded facts in its derived relation.
+    SeededDerivedRelationUnsupported { fact: FactId },
     /// The independent deterministic witness reconstruction disagreed with `Ascent`.
     InternalWitnessMismatch,
 }
@@ -242,7 +256,7 @@ pub fn evaluate_transitive_closure(
     limits: ClosureLimits,
 ) -> Result<ClosureReceipt, ClosureError> {
     validate_execution_contract(bundle, config)?;
-    let prepared = prepare_source_graph(bundle, config, limits)?;
+    let prepared = prepare_source_graph(bundle, config, generation, limits)?;
     let paths = run_ascent(prepared.edges.clone());
     build_receipt(paths, prepared, config, generation, limits)
 }
@@ -264,12 +278,20 @@ fn validate_execution_contract(
     validate_relation(bundle, config.source_relation)?;
     validate_relation(bundle, config.derived_relation)?;
     validate_rules(bundle, config)?;
+    if let Some(fact) = bundle
+        .facts()
+        .iter()
+        .find(|fact| fact.relation() == config.derived_relation)
+    {
+        return Err(ClosureError::SeededDerivedRelationUnsupported { fact: fact.id() });
+    }
     Ok(())
 }
 
 fn prepare_source_graph(
     bundle: &ReasoningBundle,
     config: ClosureConfig,
+    generation: GenerationId,
     limits: ClosureLimits,
 ) -> Result<PreparedSourceGraph, ClosureError> {
     let source_facts: Vec<_> = bundle
@@ -289,6 +311,14 @@ fn prepare_source_graph(
     let mut edges = Vec::with_capacity(source_facts.len());
     let mut adjacency: BTreeMap<String, Vec<Edge>> = BTreeMap::new();
     for fact in source_facts {
+        let actual = fact.context().generation();
+        if actual != generation {
+            return Err(ClosureError::SourceGenerationMismatch {
+                fact: fact.id(),
+                expected: generation,
+                actual,
+            });
+        }
         let [Value::String(from), Value::String(to)] = fact.values() else {
             return Err(ClosureError::UnsupportedSourceFact { fact: fact.id() });
         };
