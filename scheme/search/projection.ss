@@ -1,3 +1,8 @@
+;;; -*- Gerbil -*-
+;;; SPDX-FileCopyrightText: 2026 tao3k team and Contributors
+;;;
+;;; SPDX-License-Identifier: Apache-2.0 AND LGPL-2.1-or-later
+
 ;;; MRR factor identities projected from a POO Flow Search strategy.
 ;;; The POO Flow strategy remains the authority for typed composition.
 
