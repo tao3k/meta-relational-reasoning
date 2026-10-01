@@ -62,7 +62,18 @@ semantics.
 | =t/mrr-query-provider-test.ss= | =MODULE-OK=, =HARNESS-OK=, =OK= | Valid projection, stale generation, wrong snapshot, forged digest, unsupported scalar checker |
 | =t/temporal-candidate-exchange-test.ss= | =MODULE-OK=, =HARNESS-OK=, =OK= | Incomplete required receipt remains pending |
 
-The next MRR owner slice must carry the native receipt through a versioned byte
-transport, verify it against the actual MRR bound query and materialized
-rows, and establish the crosswalk to POO Query and Temporal cut.  The current
-projection is useful for fail-closed handoff tests but is not that exporter.
+The native facade now exports =mrr.query-result-transport.v1= JSON under an
+explicit byte limit.  It carries exact binding identities, ordered columns and
+typed rows, row count and native result digest.  Its verifier checks the
+version and all five binding identities against an independently supplied
+=CatalogBoundQuery=, re-runs native row/type/budget admission and recomputes
+the receipt digest.  Edited rows, identity, count, version, truncation and
+oversized bytes fail closed in the focused Rust test.  Transport bytes alone
+remain untrusted; the caller must supply the authentic bound query.  The
+verified Rust value is still in-process evidence, not a cross-language call.
+
+The remaining owner slice is a host-mediated Rust-to-Scheme handoff of that
+verified value and a checked crosswalk to the original POO Query and Temporal
+cut.  A Scheme caller cannot authenticate the native result by parsing this
+JSON or by constructing =MrrResultAdmissionProjection= itself.  Completeness
+of the physical answer also remains independent of typed result admission.

@@ -78,8 +78,9 @@ pub use mrr_transition::{
 };
 pub use query_result::{
     CandidateQueryResult, QueryResultAdmissionError, QueryResultAdmissionReceipt,
-    QueryResultBinding, QueryResultLimits, QueryResultValue, QueryResultValueKind,
-    admit_query_result_candidate,
+    QueryResultBinding, QueryResultLimits, QueryResultTransportError, QueryResultValue,
+    QueryResultValueKind, VerifiedQueryResultTransport, admit_query_result_candidate,
+    export_query_result_transport, verify_query_result_transport,
 };
 pub use truth::{TruthStatus, conflict_truth, intent_binding_truth, safety_truth, why_not_truth};
 pub use typing::{ExpressionType, ParameterType, QueryType, ResultField, StaticQueryTyping};

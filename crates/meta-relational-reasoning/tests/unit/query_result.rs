@@ -5,9 +5,10 @@ use crate::{
     EntityId, EntitySchema, Expression, ExternalRevisionIdentity, GenerationId, GraphPattern,
     MrrEngine, NodePattern, PageValue, PathPattern, PathSegment, Projection, PropertyKey, QueryId,
     QueryOperatorId, QueryResult, QueryResultAdmissionError, QueryResultBinding, QueryResultLimits,
-    QueryResultValue, QueryTemplate, ReasoningBundle, ReasoningBundleDeclaration, RelationField,
-    RelationId, RelationPattern, RelationSchema, RevisionBinding, SemanticSnapshot, SetQuantifier,
-    Value, ValueSchema,
+    QueryResultTransportError, QueryResultValue, QueryTemplate, ReasoningBundle,
+    ReasoningBundleDeclaration, RelationField, RelationId, RelationPattern, RelationSchema,
+    RevisionBinding, SemanticSnapshot, SetQuantifier, Value, ValueSchema,
+    export_query_result_transport, verify_query_result_transport,
 };
 
 enum TestResult {
@@ -298,6 +299,85 @@ fn query_result_admission_is_exact_bounded_and_deterministic() {
         bound.entity_catalog_digest()
     );
     assert_eq!(first.binding().snapshot_digest(), bound.snapshot_digest());
+}
+
+#[test]
+fn transported_result_rechecks_exact_binding_rows_and_digest() {
+    let bound = bound_query("transport", ValueSchema::String, false, false);
+    let result = candidate(
+        &bound,
+        vec![Binding::new("name").unwrap()],
+        vec![vec![QueryResultValue::scalar(
+            ValueSchema::String,
+            Value::String("compiler".into()),
+        )]],
+    );
+    let max_bytes = NonZeroUsize::new(16_384).unwrap();
+    let bytes = export_query_result_transport(&bound, &result, limits(10, 10), max_bytes).unwrap();
+    let verified =
+        verify_query_result_transport(&bound, &bytes, limits(10, 10), max_bytes).unwrap();
+    assert_eq!(verified.candidate(), &result);
+    assert_eq!(
+        *verified.receipt(),
+        crate::admit_query_result_candidate(&bound, &result, limits(10, 10)).unwrap()
+    );
+
+    let altered_rows = String::from_utf8(bytes.clone())
+        .unwrap()
+        .replace("compiler", "analyzer");
+    assert_eq!(
+        verify_query_result_transport(&bound, altered_rows.as_bytes(), limits(10, 10), max_bytes,),
+        Err(QueryResultTransportError::DigestMismatch)
+    );
+    let other = bound_query("other-transport", ValueSchema::String, false, false);
+    assert_eq!(
+        verify_query_result_transport(&other, &bytes, limits(10, 10), max_bytes),
+        Err(QueryResultTransportError::BindingMismatch)
+    );
+    let mut altered_count: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+    altered_count["row_count"] = serde_json::json!(2);
+    assert_eq!(
+        verify_query_result_transport(
+            &bound,
+            &serde_json::to_vec(&altered_count).unwrap(),
+            limits(10, 10),
+            max_bytes,
+        ),
+        Err(QueryResultTransportError::RowCountMismatch)
+    );
+    let mut altered_schema: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+    altered_schema["schema"] = serde_json::json!("mrr.query-result-transport.v2");
+    assert_eq!(
+        verify_query_result_transport(
+            &bound,
+            &serde_json::to_vec(&altered_schema).unwrap(),
+            limits(10, 10),
+            max_bytes,
+        ),
+        Err(QueryResultTransportError::SchemaMismatch)
+    );
+    assert!(matches!(
+        verify_query_result_transport(
+            &bound,
+            &bytes,
+            limits(10, 10),
+            NonZeroUsize::new(bytes.len() - 1).unwrap(),
+        ),
+        Err(QueryResultTransportError::TooLarge { .. })
+    ));
+    assert!(matches!(
+        export_query_result_transport(
+            &bound,
+            &result,
+            limits(10, 10),
+            NonZeroUsize::new(bytes.len() - 1).unwrap(),
+        ),
+        Err(QueryResultTransportError::TooLarge { .. })
+    ));
+    assert!(matches!(
+        verify_query_result_transport(&bound, &bytes[..bytes.len() - 1], limits(10, 10), max_bytes,),
+        Err(QueryResultTransportError::Encoding(_))
+    ));
 }
 
 #[test]

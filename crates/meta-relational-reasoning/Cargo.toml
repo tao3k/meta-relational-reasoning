@@ -22,6 +22,7 @@ mrr-search.workspace = true
 mrr-transition.workspace = true
 sha2.workspace = true
 serde.workspace = true
+serde_json.workspace = true
 
 [dev-dependencies]
 criterion.workspace = true
