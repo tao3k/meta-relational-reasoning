@@ -1,6 +1,8 @@
 //! Public facade for the language-neutral MRR contract graph.
 #![forbid(unsafe_code)]
 mod admission;
+#[cfg(feature = "agentic-ai-context")]
+mod agentic_ai_context;
 mod api;
 mod binding;
 mod counterexample;
@@ -13,6 +15,22 @@ pub use admission::{
     DerivationReceipt, MaterializedClosure, admit_closure_candidates, compare_closure_candidates,
     compare_closure_pairs,
 };
+#[cfg(feature = "agentic-ai-context")]
+pub use agentic_ai_context::{
+    AGENTIC_AI_CONTEXT_MANIFEST_SCHEMA, AdmittedAgenticAiContext,
+    AdmittedAgenticAiContextMaterialization, AgenticAiContextAdmissionError,
+    AgenticAiContextAdmissionRequest, AgenticAiContextComposedMaterializationRequest,
+    AgenticAiContextCompositionError, AgenticAiContextCompositionReceipt,
+    AgenticAiContextCompositionRequest, AgenticAiContextManifest, AgenticAiContextManifestRecord,
+    AgenticAiContextMaterializationRequest, AgenticAiContextRestoreRequest,
+    AgenticAiContextRevisionReceipt, AgenticAiContextRevisionRequest, admit_agentic_ai_context,
+    compare_agentic_ai_context_revision, restore_agentic_ai_context,
+};
+#[cfg(feature = "agentic-ai-context-tokens")]
+pub use agentic_ai_context::{
+    AgenticAiContextTokenBindingRequest, AgenticAiContextTokenizationError,
+    AgenticAiContextTokenizationRequest, SourceBoundAgenticAiContextTokens,
+};
 pub use api::{
     DeductionLimits, DeductionPlan, EngineBuildError, EngineQueryError, MrrEngine, MrrEngineBuilder,
 };
@@ -22,6 +40,21 @@ pub use binding::{
 pub use counterexample::{
     CounterexampleFactIdentity, CounterexampleLineageError, CounterexampleLineageIdentities,
     counterexample_lineage,
+};
+#[cfg(feature = "agentic-ai-context")]
+pub use mrr_agentic_ai_context::{
+    AgenticAiContextClosure, AgenticAiContextComposer, AgenticAiContextComposition,
+    AgenticAiContextCompositionGraph, AgenticAiContextCompositionGraphInput,
+    AgenticAiContextCompositionNode, AgenticAiContextCompositionProducer, AgenticAiContextContract,
+    AgenticAiContextElement, AgenticAiContextError, AgenticAiContextLimits,
+    AgenticAiContextMaterialization, AgenticAiContextQuery, AgenticAiContextRenderedElement,
+    AgenticAiContextRevision, AgenticAiContextSpan, AgenticAiContextState,
+    AgenticAiContextStateInput, SemanticReuseCertificate,
+};
+#[cfg(feature = "agentic-ai-context-tokens")]
+pub use mrr_agentic_ai_context::{
+    AgenticAiContextComputationalIdentity, AgenticAiContextReuseEligibility,
+    AgenticAiContextTokenLayout, AgenticAiContextTokenizer,
 };
 pub use mrr_ascent::{
     ClosureError as DeductionError, ClosureReceipt, ClosureStatus, DerivationCandidate,

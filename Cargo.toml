@@ -8,6 +8,7 @@ default-members = [
   "build-support/mrr-asp-rust-project-policy",
   "build-support/mrr-gerbil-native-build",
   "crates/meta-relational-reasoning",
+  "crates/mrr-agentic-ai-context",
   "crates/mrr-ascent",
   "crates/mrr-bundle",
   "crates/mrr-conformance",
@@ -34,6 +35,7 @@ license = "Apache-2.0"
 repository = "https://github.com/tao3k/meta-relational-reasoning"
 
 [workspace.dependencies]
+mrr-agentic-ai-context = { path = "crates/mrr-agentic-ai-context", version = "0.1.0", default-features = false }
 blake3 = "1.8"
 ascent = "0.8.0"
 asp-rust-build-support = { git = "https://github.com/tao3k/asp-rust", rev = "2419414ee5379bad89506496e3eaab928df68daf", version = "0.1.0" }

@@ -29,6 +29,10 @@ flowchart TD
     relation --> transition
     identity --> bundle[mrr-bundle]
     relation --> bundle
+    identity --> context[mrr-agentic-ai-context]
+    relation --> context
+    revision[mrr-revision] --> context
+    context --> facade
     logic --> bundle
     transition --> bundle
     bundle --> facade[meta-relational-reasoning]
@@ -51,6 +55,13 @@ terms, atoms, and conjunctive query shape. =mrr-logic= owns safe rules.
 =mrr-bundle= is the validated transport and persistence admission boundary.
 The =meta-relational-reasoning= crate is the public facade and owns no
 duplicate semantics.
+
+=mrr-agentic-ai-context= owns the Agentic AI Context domain; its facade
+admission consumes existing bundle/catalog authority. The
+[[file:agentic-ai-context.org][Agentic AI Context System authority]] defines selection,
+revision, materialization, and computational reuse premises. =mrr-data= remains
+the downstream generic persistence owner. =lean-poo= supplies pure C4
+mathematics to the independent =MRR.AgenticAIContext= proof project.
 
 * Language adapters
 

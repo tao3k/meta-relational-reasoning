@@ -98,6 +98,18 @@ jobs:
       - name: Test Rust workspace in the Gerbil package environment
         run: gerbil env cargo test --workspace --locked
 
+      - name: Test optional Context feature boundaries
+        run: |
+          gerbil env python3 tools/check/context-features.py
+          gerbil env cargo test -p meta-relational-reasoning --lib --locked --no-default-features
+          gerbil env cargo test -p mrr-agentic-ai-context --locked --no-default-features
+          gerbil env cargo test -p mrr-agentic-ai-context --locked --no-default-features --features token-layout
+          gerbil env cargo test -p meta-relational-reasoning --lib --locked --no-default-features --features agentic-ai-context
+          gerbil env cargo test -p meta-relational-reasoning --lib --locked --no-default-features --features agentic-ai-context-tokens
+
+      - name: Lint optional Context features
+        run: gerbil env cargo clippy -p mrr-agentic-ai-context -p meta-relational-reasoning --all-targets --all-features --locked -- -D warnings
+
       - name: Test source-bound property query integration
         run: gerbil env cargo test -p mrr-property-source --locked
 
@@ -111,6 +123,30 @@ jobs:
         run: |
           uv --project proofs/MRRProof run pytest -q proofs/MRRProof/tests
           uv --project experiments/mrr-live run pytest -q experiments/mrr-live/tests
+
+  agentic-ai-context-proof:
+    name: Agentic AI Context proofs and shared C4 replay
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: leanprover/lean-action@v1
+        with:
+          lake-package-directory: proofs/MRRProof/AgenticAIContext
+          auto-config: false
+          build: false
+          test: false
+          lint: false
+          use-mathlib-cache: false
+      - name: Build kernel proofs
+        working-directory: proofs/MRRProof/AgenticAIContext
+        run: lake build MRR
+      - name: Replay actual C4 and shared Rust fixture
+        working-directory: proofs/MRRProof/AgenticAIContext
+        run: lake env lean --run Checks/Main.lean
+      - name: Audit all Context declarations for axioms
+        working-directory: proofs/MRRProof/AgenticAIContext
+        run: lake env lean Checks/Axioms.lean
 
   deepseek-live:
     if: github.event_name == 'workflow_dispatch' && inputs.run_deepseek_live

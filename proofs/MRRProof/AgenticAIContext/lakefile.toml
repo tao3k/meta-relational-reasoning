@@ -1,0 +1,16 @@
+name = "MRRAgenticAIContextProofs"
+version = "0.1.0"
+defaultTargets = ["MRR"]
+moreLeanArgs = ["-DautoImplicit=false", "-DwarningAsError=true"]
+
+[[require]]
+name = "LeanPoo"
+git = "https://github.com/tao3k/lean-poo.git"
+rev = "cb4623980056fb761f34601181bb7d8485af1dda"
+
+[[lean_lib]]
+name = "MRR"
+
+[[lean_exe]]
+name = "agentic-ai-context-check"
+root = "Checks.Main"

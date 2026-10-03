@@ -21,6 +21,16 @@ test-search:
     {{profile}} mrr-cargo test -p mrr-search --locked
     {{profile}} mrr-cargo test -p mrr-asp-rust-build-support --locked
 
+# Check explicit Context selection, source admission, shared C4 replay, and proofs.
+test-agentic-ai-context:
+    {{profile}} python3 tools/check/context-features.py
+    {{profile}} mrr-cargo test -p meta-relational-reasoning --lib --locked --no-default-features
+    {{profile}} mrr-cargo test -p mrr-agentic-ai-context --locked --no-default-features
+    {{profile}} mrr-cargo test -p mrr-agentic-ai-context --locked --no-default-features --features token-layout
+    {{profile}} mrr-cargo test -p meta-relational-reasoning --lib --locked --no-default-features --features agentic-ai-context
+    {{profile}} mrr-cargo test -p meta-relational-reasoning --lib --locked --no-default-features --features agentic-ai-context-tokens
+    {{profile}} bash -c 'cd proofs/MRRProof/AgenticAIContext && lake build MRR && lake env lean --run Checks/Main.lean && lake env lean Checks/Axioms.lean'
+
 
 # Enforce Rust lints after refreshing the Gerbil native inputs.
 lint:

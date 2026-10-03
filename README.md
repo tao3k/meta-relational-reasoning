@@ -200,6 +200,7 @@ The README defines the project. Detailed arguments and evidence remain with
 their owners:
 
 - [workspace and language-neutral ownership](docs/architecture/0001-mrr-workspace-ownership.org)
+- [Agentic AI Context System](docs/architecture/agentic-ai-context.org)
 - [bounded Ascent evaluation](docs/architecture/0003-mrr-ascent-evaluation.org)
 - [typed relation core](docs/architecture/0005-typed-relation-core.org)
 - [MetaQueryIr](docs/architecture/0006-meta-query-ir.org)
@@ -216,6 +217,14 @@ their owners:
 - [bounded query-result candidate admission](docs/architecture/0032-query-result-admission.org)
 
 ## Build and verify
+
+Agentic AI Context is opt-in on the `meta-relational-reasoning` crate:
+`agentic-ai-context` enables semantic selection, composition/revision receipts,
+and source-bound byte materialization;
+`agentic-ai-context-tokens` additionally enables the external tokenizer interface
+and token-prefix eligibility. Both are disabled by default. Storage, model assets
+and serving runtimes remain downstream adapter dependencies. Run
+`just test-agentic-ai-context` to check the feature matrix and Lean proofs.
 
 Use the repository environment so Cargo, Gerbil packages, native libraries,
 and proof tools resolve through one dependency graph. `just` refreshes the
