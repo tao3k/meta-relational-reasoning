@@ -357,7 +357,7 @@ and source-binding implementations are not claimed as Lean refinements.
 
 * Reusing the upstream mathematical basis
 
-Faré's [[https://fare.tunes.org/files/cs/poof.pdf][POOF paper]] supplies prototype composition, open recursion and
+Fare's [[https://fare.tunes.org/files/cs/poof.pdf][POOF paper]] supplies prototype composition, open recursion and
 instantiation semantics; that PDF illustrates C3 linearization. The separate
 [[https://github.com/fare/c4-mixins][C4-Mixins]] source adds suffix specifications. lean-poo owns their C4
 translation and the existing certified merge/suffix/node laws. MRR pins that

@@ -188,8 +188,8 @@ mismatched sequential, parallel, or merge edge.
 * Migration gate
 
 The former =scheme/search/core.ss= and its duplicate typed-composition test
-are removed.  POO Flow Search PR #33 owns the composition implementation and
-its focused executable test.  MRR's =scheme/search/projection.ss= retains the
+are removed.  POO Flow owns the composition implementation and its focused
+executable test; Search PR #33 is now incorporated into POO Flow PR #34.  MRR's =scheme/search/projection.ss= retains the
 MRR-specific canonical factor identity, generation binding, and edge relation;
 its test consumes POO Flow objects directly.  MRR pins the exact POO Flow
 revision containing =modules/search= before its package build can use this

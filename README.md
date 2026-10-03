@@ -231,7 +231,11 @@ and proof tools resolve through one dependency graph. `just` refreshes the
 Gerbil package through the SDK-sanitizing `mrr-gerbil` wrapper before Cargo can
 stage the native archive.
 
+On a fresh package cache, `just deps` fetches the declared POO Flow checkout
+and uses its native SHA prefetch helper before gxpkg installs the graph.
+
 ```bash
+./.devenv/devenv-profile-exec just deps
 ./.devenv/devenv-profile-exec just test
 ./.devenv/devenv-profile-exec just check
 ```

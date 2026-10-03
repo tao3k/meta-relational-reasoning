@@ -5,6 +5,11 @@ profile := "./.devenv/devenv-profile-exec"
 default:
     @just --list
 
+# Prefetch immutable upstream objects before gxpkg resolves and builds packages.
+deps:
+    {{profile}} python3 tools/ci/prepare-gerbil-dependencies.py
+    {{profile}} mrr-gerbil deps --install
+
 # Build the Gerbil package through the SDK-sanitizing repository wrapper first.
 build:
     {{profile}} mrr-gerbil build

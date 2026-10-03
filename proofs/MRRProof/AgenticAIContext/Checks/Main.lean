@@ -83,21 +83,21 @@ private def checkUpstreamCertificates : IO Unit := do
       [["a", "base"], ["b", "base"], ["a", "b"]] [["base"]] ["base"] with
   | .error error => throw (IO.userError s!"FAIL: upstream node certificate {repr error}")
   | .ok certificate =>
-    let identify := fun name : String => ((name, 7) : String × Nat)
-    let bound : CompositionBinding (String × Nat) "child"
+    let identify := fun name : String => ((name, 7) : Prod String Nat)
+    let bound : CompositionBinding (Prod String Nat) "child"
         [["a", "base"], ["b", "base"], ["a", "b"]] [["base"]] := {
       certificate := certificate, identify := identify,
       injective := fun _ _ equal => congrArg Prod.fst equal,
       selected := certificate.output.map identify, binding := rfl }
-    let selected : { values : List (String × Nat) // values.Nodup } :=
-      ⟨bound.selected, bound.selected_nodup⟩
+    let selected : { values : List (Prod String Nat) // values.Nodup } :=
+      Subtype.mk bound.selected bound.selected_nodup
     check "upstream certificate maps to unique MRR identities"
       (selected.val == [identify "child", identify "a", identify "b", identify "base"])
     check "mapped parent/local order retained"
       (decide ((["a", "base"].map identify).Sublist bound.selected))
     check "mapped parent suffix retained"
       (decide ((["base"].map identify).IsSuffix bound.selected))
-    let renderIdentity := fun pair : String × Nat => render pair.1
+    let renderIdentity := fun pair : Prod String Nat => render pair.1
     check "mapped parent-first materialization agrees"
       (bound.selected.reverse.flatMap renderIdentity ==
         materializeOrder (fun name => renderIdentity (identify name)) certificate.output)
