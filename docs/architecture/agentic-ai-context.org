@@ -50,9 +50,10 @@ compiles and tests each configuration independently, including the baseline.
 
 * Current selection profile
 
-This slice selects explicit existing facts for a catalog-bound query. It does
-not execute the query, compose arbitrary agent workflows, or admit an external
-query-result candidate. Existing MRR query/result admission remains authoritative.
+Context supports explicit fact roots and result-driven selection for a catalog-bound
+query. Result-driven selection calls existing MRR query/result admission, then
+selects existing source facts from one named relation-valued column. Candidate
+admission checks binding and types; it does not prove engine execution correctness.
 
 * Ownership and dependency direction
 
@@ -374,3 +375,36 @@ The upstream graph-traversal and cached-metadata proof boundary remains stated
 in lean-poo. MRR's checked execution invokes those upstream checks rather than
 adding a second algorithm. The Rust composer interface remains an external
 invocation seam; shared fixture replay is not a production Rust-to-Lean bridge.
+
+
+* Query-driven selection
+
+=select_agentic_ai_context_from_query= takes the exact bundle, current snapshot,
+catalog-bound query, result candidate, and a named selection request. It rebinds
+the query, calls =admit_query_result_candidate= with row/cell limits, and requires
+a relation-valued selection column. Every selected FactId must exist in the source
+bundle with the returned relation type. Null, scalar, node and list values are
+rejected in this column. Duplicate rows retain their result identity while roots
+are canonicalized. Empty rows produce an empty root set; mandatory contract facts
+and declared dependencies still use the existing bounded closure admission.
+
+=AdmittedAgenticAiContextQuerySelection= privately binds the admitted Context,
+complete ordered result receipt and selected column into a versioned digest.
+The nested Context retains source bundle, query/catalog, snapshot and generation
+binding. =check_source= rechecks the current bundle and snapshot. Persisted
+selection provenance must be reconstructed by this entrypoint with the result
+candidate; restoring only a Context manifest does not restore result provenance.
+
+Semantic revision uses the existing Context revision API. Different result rows
+with equal canonical roots may retain semantic reuse while their selection
+provenance digests differ. Actual query/catalog/snapshot drift invalidates reuse.
+Neither selection nor semantic reuse certifies renderer, token, policy or cache
+behavior. Physical execution and backend work remain with their existing owners.
+
+* Native test progress
+
+=MRR_NATIVE_PROGRESS= enables actual Rust native owner-thread initialization and
+operation start/return diagnostics on stderr. There is no periodic output.
+Five seconds without real output still fails qualification. Build preparation is
+performed separately before bounded test execution so compilation is not mistaken
+for a test result.

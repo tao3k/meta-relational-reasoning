@@ -7,6 +7,7 @@ mod error;
 mod manifest;
 mod restore;
 mod revision;
+mod selection;
 #[cfg(feature = "agentic-ai-context-tokens")]
 mod tokens;
 
@@ -34,4 +35,9 @@ pub use composition_receipt::AgenticAiContextCompositionReceipt;
 pub use revision::{
     AgenticAiContextRevisionReceipt, AgenticAiContextRevisionRequest,
     compare_agentic_ai_context_revision,
+};
+
+pub use selection::{
+    AdmittedAgenticAiContextQuerySelection, AgenticAiContextQuerySelectionRequest,
+    select_agentic_ai_context_from_query,
 };

@@ -18,13 +18,15 @@ pub use admission::{
 #[cfg(feature = "agentic-ai-context")]
 pub use agentic_ai_context::{
     AGENTIC_AI_CONTEXT_MANIFEST_SCHEMA, AdmittedAgenticAiContext,
-    AdmittedAgenticAiContextMaterialization, AgenticAiContextAdmissionError,
-    AgenticAiContextAdmissionRequest, AgenticAiContextComposedMaterializationRequest,
-    AgenticAiContextCompositionError, AgenticAiContextCompositionReceipt,
-    AgenticAiContextCompositionRequest, AgenticAiContextManifest, AgenticAiContextManifestRecord,
-    AgenticAiContextMaterializationRequest, AgenticAiContextRestoreRequest,
-    AgenticAiContextRevisionReceipt, AgenticAiContextRevisionRequest, admit_agentic_ai_context,
-    compare_agentic_ai_context_revision, restore_agentic_ai_context,
+    AdmittedAgenticAiContextMaterialization, AdmittedAgenticAiContextQuerySelection,
+    AgenticAiContextAdmissionError, AgenticAiContextAdmissionRequest,
+    AgenticAiContextComposedMaterializationRequest, AgenticAiContextCompositionError,
+    AgenticAiContextCompositionReceipt, AgenticAiContextCompositionRequest,
+    AgenticAiContextManifest, AgenticAiContextManifestRecord,
+    AgenticAiContextMaterializationRequest, AgenticAiContextQuerySelectionRequest,
+    AgenticAiContextRestoreRequest, AgenticAiContextRevisionReceipt,
+    AgenticAiContextRevisionRequest, admit_agentic_ai_context, compare_agentic_ai_context_revision,
+    restore_agentic_ai_context, select_agentic_ai_context_from_query,
 };
 #[cfg(feature = "agentic-ai-context-tokens")]
 pub use agentic_ai_context::{

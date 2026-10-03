@@ -11,3 +11,6 @@ mod query_result;
 
 #[cfg(feature = "agentic-ai-context")]
 mod agentic_ai_context_receipts;
+
+#[cfg(feature = "agentic-ai-context")]
+mod agentic_ai_context_selection;

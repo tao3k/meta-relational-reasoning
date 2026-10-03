@@ -244,7 +244,7 @@ Focused owner commands remain available for diagnosis:
 
 ```bash
 ./.devenv/devenv-profile-exec mrr-gerbil build
-./.devenv/devenv-profile-exec mrr-gerbil test
+./.devenv/devenv-profile-exec mrr-gerbil env python3 tools/check/native-tests.py scheme
 ./.devenv/devenv-profile-exec mrr-cargo test --workspace --locked
 ./.devenv/devenv-profile-exec mrr-cargo test -p mrr-conformance --all-targets
 ./.devenv/devenv-profile-exec env GQL_HARNESS_VERIFY=1 \
@@ -270,3 +270,9 @@ receipt.
 `cargo package` remains intentionally disabled while workspace crates retain
 local unpublished dependency edges. Packaging will be enabled only after the
 publication topology is closed.
+
+
+For bounded native qualification after dependency setup, run `just test-native`.
+This prepares native artifacts, then uses real import/evaluation/runtime progress
+with a five-second silence cutoff and explicit upstream gxtest exit propagation.
+The Scheme package build includes Query provider and Search projection modules.

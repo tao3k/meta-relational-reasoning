@@ -8,6 +8,10 @@ use std::fmt;
 pub enum AgenticAiContextAdmissionError {
     QueryBinding(QueryCatalogBindingError),
     QueryBindingMismatch,
+    QueryResult(crate::QueryResultAdmissionError),
+    SelectionColumn(crate::Binding),
+    SelectionValue { row: usize },
+    SelectionFactMismatch(crate::FactId),
     SourceBundleMismatch,
     Context(AgenticAiContextError),
     ManifestEncoding(String),

@@ -7,6 +7,14 @@ use gerbil_scheme_sys::GerbilStatus;
 
 use super::ffi;
 
+/// Opt-in diagnostics at completed/native execution boundaries; no timer output.
+fn progress(stage: &str) {
+    static ENABLED: OnceLock<bool> = OnceLock::new();
+    if *ENABLED.get_or_init(|| std::env::var_os("MRR_NATIVE_PROGRESS").is_some()) {
+        eprintln!("mrr-native: {stage}");
+    }
+}
+
 type NativeJob = Box<dyn FnOnce() + Send + 'static>;
 
 static NATIVE_RUNTIME: OnceLock<Result<mpsc::Sender<NativeJob>, NativeRuntimeError>> =
@@ -69,7 +77,9 @@ where
         thread::Builder::new()
             .name("mrr-gerbil-runtime".to_owned())
             .spawn(move || {
+                progress("runtime initialization started");
                 let status = ffi::runtime_init();
+                progress("runtime initialization returned");
                 if ready_sender.send(status).is_err() {
                     return;
                 }
@@ -77,7 +87,9 @@ where
                     return;
                 }
                 while let Ok(job) = receiver.recv() {
+                    progress("operation started on owner thread");
                     job();
+                    progress("operation returned on owner thread");
                 }
             })
             .map_err(|_| NativeRuntimeError::Unavailable)?;

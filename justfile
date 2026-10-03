@@ -18,8 +18,15 @@ build:
 # Run the complete local contract suite in canonical dependency order.
 test:
     {{profile}} mrr-gerbil build
-    {{profile}} mrr-gerbil test
+    {{profile}} mrr-gerbil env python3 tools/check/native-tests.py scheme
     {{profile}} mrr-cargo test --workspace --locked
+
+# Qualify native tests with real stage output and a five-second silence cutoff.
+test-native:
+    {{profile}} mrr-gerbil build
+    {{profile}} mrr-cargo test -p mrr-gerbil --tests --locked --offline --no-run
+    {{profile}} mrr-gerbil env python3 tools/check/native-tests.py scheme
+    {{profile}} gerbil env python3 tools/check/native-tests.py rust
 
 # Run the backend-neutral Search factor contracts independently.
 test-search:

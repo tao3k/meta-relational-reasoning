@@ -96,9 +96,11 @@ jobs:
         run: gerbil build
 
       - name: Test Gerbil package
-        run: gerbil test
+        run: gerbil env python3 tools/check/native-tests.py scheme
 
       - name: Test Rust workspace in the Gerbil package environment
+        env:
+          MRR_NATIVE_PROGRESS: "1"
         run: gerbil env cargo test --workspace --locked
 
       - name: Test optional Context feature boundaries

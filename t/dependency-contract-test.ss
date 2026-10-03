@@ -30,7 +30,7 @@
        (poo-flow-query-result-contract
         'mrr/result-fixture 'relation-row '(identity) 1))))
 
-(def dependency-contract-tests
+(def dependency-contract-test
   (test-suite "package dependency ownership"
     (test-case "POO Flow is the sole direct library dependency"
       (check (length dependencies) => 1)
@@ -52,4 +52,4 @@
         (check (.ref accepted 'runtime-executed?) => #f)
         (check (.ref stale 'accepted?) => #f)))))
 
-(export dependency-contract-tests)
+(export dependency-contract-test)
