@@ -2,6 +2,7 @@
 -- [mrr_agentic_ai_context]: type definitions
 module
 public import Aeneas
+public import Generated.TypesExternal
 @[expose] public section
 open Aeneas Aeneas.Std Result ControlFlow Error
 set_option linter.dupNamespace false
@@ -20,6 +21,23 @@ set_option maxRecDepth 2048
 local infixr:35 " ** " => Prod
 
 namespace MRR.ContextRust
+
+/-- Trait declaration: [core::alloc::AllocatorClone]
+    Source: '/rustc/library/core/src/alloc/mod.rs', lines 541:0-541:50
+    Name pattern: [core::alloc::AllocatorClone]
+    Visibility: public -/
+@[rust_trait "core::alloc::AllocatorClone"
+  (parentClauses := ["cloneCloneInst"])]
+structure core.alloc.AllocatorClone (Self : Type) where
+  cloneCloneInst : core.clone.Clone Self
+
+/-- Trait declaration: [core::borrow::Borrow]
+    Source: '/rustc/library/core/src/borrow.rs', lines 158:0-158:40
+    Name pattern: [core::borrow::Borrow]
+    Visibility: public -/
+@[rust_trait "core::borrow::Borrow"]
+structure core.borrow.Borrow (Self : Type) (Borrowed : Type) where
+  borrow : Self -> Result Borrowed
 
 /-- [mrr_identity::api::FactId]
     Source: 'crates/mrr-identity/src/api.rs', lines 174:8-174:45
@@ -197,6 +215,18 @@ inductive state.AgenticAiContextError where
 | CompositionCycle : state.AgenticAiContextError
 | CompositionOrderViolation : state.AgenticAiContextError
 | InvalidCompositionProducer : state.AgenticAiContextError
+
+/-- [mrr_agentic_ai_context::state::ClosureTraversal]
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 388:0-395:1 -/
+structure state.ClosureTraversal where
+  elements : alloc.collections.btree.map.BTreeMap mrr_identity.api.FactId
+    state.AgenticAiContextElement Global
+  require_complete : Bool
+  pending : alloc.vec.Vec mrr_identity.api.FactId
+  selected : alloc.collections.btree.set.BTreeSet mrr_identity.api.FactId
+    Global
+  coverage : mrr_relation.api.EvidenceCompleteness
+  error : Option state.AgenticAiContextError
 
 /-- Trait declaration: [mrr_agentic_ai_context::worklist::Worklist]
     Source: 'crates/mrr-agentic-ai-context/src/worklist.rs', lines 33:0-36:1 -/

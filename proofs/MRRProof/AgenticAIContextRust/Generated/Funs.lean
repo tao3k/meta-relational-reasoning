@@ -3,6 +3,7 @@
 module
 public import Aeneas
 public import Generated.Types
+public import Generated.FunsExternal
 @[expose] public section
 open Aeneas Aeneas.Std Result ControlFlow Error
 set_option linter.dupNamespace false
@@ -18,9 +19,38 @@ set_option maxHeartbeats 1000000
 /- You can set the `maxRecDepth` value with the `-max-recdepth` CLI option -/
 set_option maxRecDepth 2048
 
+/- You can remove the following line by using the CLI option `-all-computable`: -/
+noncomputable section
+
 local infixr:35 " ** " => Prod
 
 namespace MRR.ContextRust
+
+/-- [core::borrow::{impl core::borrow::Borrow<T> for T}::borrow]:
+    Source: '/rustc/library/core/src/borrow.rs', lines 214:4-214:26
+    Name pattern: [core::borrow::{core::borrow::Borrow<@T, @T>}::borrow]
+    Visibility: public -/
+@[rust_fun "core::borrow::{core::borrow::Borrow<@T, @T>}::borrow"]
+def core.borrow.Borrow.Blanket.borrow {T : Type} (self : T) : Result T := do
+  ok self
+
+/-- Trait implementation: [core::borrow::{impl core::borrow::Borrow<T> for T}]
+    Source: '/rustc/library/core/src/borrow.rs', lines 212:0-212:37
+    Name pattern: [core::borrow::Borrow<@T, @T>] -/
+@[reducible, rust_trait_impl "core::borrow::Borrow<@T, @T>"]
+def core.borrow.Borrow.Blanket (T : Type) : core.borrow.Borrow T T := {
+  borrow := core.borrow.Borrow.Blanket.borrow
+}
+
+/-- Trait implementation: [alloc::alloc::{impl core::alloc::AllocatorClone for alloc::alloc::Global}]
+    Source: '/rustc/library/alloc/src/alloc.rs', lines 62:0-62:50
+    Name pattern: [core::alloc::AllocatorClone<alloc::alloc::Global>] -/
+@[reducible, rust_trait_impl
+  "core::alloc::AllocatorClone<alloc::alloc::Global>"]
+def alloc.alloc.Global.Insts.CoreAllocAllocatorClone :
+  core.alloc.AllocatorClone Global := {
+  cloneCloneInst := core.core.clone.CloneGlobal
+}
 
 /-- [mrr_identity::api::{impl core::clone::Clone for mrr_identity::api::FactId}::clone]:
     Source: 'crates/mrr-identity/src/api.rs', lines 173:17-173:22
@@ -61,6 +91,75 @@ def mrr_identity.api.FactId.Insts.CoreCmpPartialEqFactId.eq
 def mrr_identity.api.FactId.Insts.CoreCmpPartialEqFactId : core.cmp.PartialEq
   mrr_identity.api.FactId mrr_identity.api.FactId := {
   eq := mrr_identity.api.FactId.Insts.CoreCmpPartialEqFactId.eq
+}
+
+/-- [mrr_identity::api::{impl core::cmp::Eq for mrr_identity::api::FactId}::assert_fields_are_eq]:
+    Source: 'crates/mrr-identity/src/api.rs', lines 173:30-173:32
+    Name pattern: [mrr_identity::api::{core::cmp::Eq<mrr_identity::api::FactId>}::assert_fields_are_eq]
+    Visibility: public -/
+@[rust_fun
+  "mrr_identity::api::{core::cmp::Eq<mrr_identity::api::FactId>}::assert_fields_are_eq"]
+def mrr_identity.api.FactId.Insts.CoreCmpEq.assert_fields_are_eq
+  (self : mrr_identity.api.FactId) : Result Unit := do
+  ok ()
+
+/-- Trait implementation: [mrr_identity::api::{impl core::cmp::Eq for mrr_identity::api::FactId}]
+    Source: 'crates/mrr-identity/src/api.rs', lines 173:30-173:32
+    Name pattern: [core::cmp::Eq<mrr_identity::api::FactId>] -/
+@[reducible, rust_trait_impl "core::cmp::Eq<mrr_identity::api::FactId>"]
+def mrr_identity.api.FactId.Insts.CoreCmpEq : core.cmp.Eq
+  mrr_identity.api.FactId := {
+  partialEqInst := mrr_identity.api.FactId.Insts.CoreCmpPartialEqFactId
+  assert_fields_are_eq :=
+    mrr_identity.api.FactId.Insts.CoreCmpEq.assert_fields_are_eq
+}
+
+/-- [mrr_identity::api::{impl core::cmp::Ord for mrr_identity::api::FactId}::cmp]:
+    Source: 'crates/mrr-identity/src/api.rs', lines 173:40-173:43
+    Name pattern: [mrr_identity::api::{core::cmp::Ord<mrr_identity::api::FactId>}::cmp]
+    Visibility: public -/
+@[rust_fun
+  "mrr_identity::api::{core::cmp::Ord<mrr_identity::api::FactId>}::cmp"]
+def mrr_identity.api.FactId.Insts.CoreCmpOrd.cmp
+  (self : mrr_identity.api.FactId) (other : mrr_identity.api.FactId) :
+  Result Ordering
+  := do
+  Array.Insts.CoreCmpOrd.cmp core.cmp.OrdU8 self other
+
+/-- [mrr_identity::api::{impl core::cmp::PartialOrd<mrr_identity::api::FactId> for mrr_identity::api::FactId}::partial_cmp]:
+    Source: 'crates/mrr-identity/src/api.rs', lines 173:56-173:66
+    Name pattern: [mrr_identity::api::{core::cmp::PartialOrd<mrr_identity::api::FactId, mrr_identity::api::FactId>}::partial_cmp]
+    Visibility: public -/
+@[rust_fun
+  "mrr_identity::api::{core::cmp::PartialOrd<mrr_identity::api::FactId, mrr_identity::api::FactId>}::partial_cmp"]
+def mrr_identity.api.FactId.Insts.CoreCmpPartialOrdFactId.partial_cmp
+  (self : mrr_identity.api.FactId) (other : mrr_identity.api.FactId) :
+  Result (Option Ordering)
+  := do
+  let o <- mrr_identity.api.FactId.Insts.CoreCmpOrd.cmp self other
+  ok (some o)
+
+/-- Trait implementation: [mrr_identity::api::{impl core::cmp::PartialOrd<mrr_identity::api::FactId> for mrr_identity::api::FactId}]
+    Source: 'crates/mrr-identity/src/api.rs', lines 173:56-173:66
+    Name pattern: [core::cmp::PartialOrd<mrr_identity::api::FactId, mrr_identity::api::FactId>] -/
+@[reducible, rust_trait_impl
+  "core::cmp::PartialOrd<mrr_identity::api::FactId, mrr_identity::api::FactId>"]
+def mrr_identity.api.FactId.Insts.CoreCmpPartialOrdFactId : core.cmp.PartialOrd
+  mrr_identity.api.FactId mrr_identity.api.FactId := {
+  partialEqInst := mrr_identity.api.FactId.Insts.CoreCmpPartialEqFactId
+  partial_cmp :=
+    mrr_identity.api.FactId.Insts.CoreCmpPartialOrdFactId.partial_cmp
+}
+
+/-- Trait implementation: [mrr_identity::api::{impl core::cmp::Ord for mrr_identity::api::FactId}]
+    Source: 'crates/mrr-identity/src/api.rs', lines 173:40-173:43
+    Name pattern: [core::cmp::Ord<mrr_identity::api::FactId>] -/
+@[reducible, rust_trait_impl "core::cmp::Ord<mrr_identity::api::FactId>"]
+def mrr_identity.api.FactId.Insts.CoreCmpOrd : core.cmp.Ord
+  mrr_identity.api.FactId := {
+  eqInst := mrr_identity.api.FactId.Insts.CoreCmpEq
+  partialOrdInst := mrr_identity.api.FactId.Insts.CoreCmpPartialOrdFactId
+  cmp := mrr_identity.api.FactId.Insts.CoreCmpOrd.cmp
 }
 
 /-- [mrr_relation::api::{impl core::cmp::PartialEq<mrr_relation::api::FactValidity> for mrr_relation::api::FactValidity}::eq]:
@@ -185,6 +284,54 @@ def evidence.merge_completeness
   | mrr_relation.api.EvidenceCompleteness.Unknown =>
     ok mrr_relation.api.EvidenceCompleteness.Unknown
 
+/-- [mrr_agentic_ai_context::worklist::run]: loop body 0:
+    Source: 'crates/mrr-agentic-ai-context/src/worklist.rs', lines 39:4-39:28 -/
+@[rust_loop_body]
+def worklist.run_loop.body
+  {W : Type} (WorklistInst : worklist.Worklist W) (state : W) :
+  Result (ControlFlow W W)
+  := do
+  let (b, state1) <- WorklistInst.advance state
+  if b
+  then ok (cont state1)
+  else ok (done state1)
+
+/-- [mrr_agentic_ai_context::worklist::run]: loop 0:
+    Source: 'crates/mrr-agentic-ai-context/src/worklist.rs', lines 39:4-39:28 -/
+@[rust_loop]
+def worklist.run_loop
+  {W : Type} (WorklistInst : worklist.Worklist W) (state : W) : Result W := do
+  loop
+    (fun state1 => worklist.run_loop.body WorklistInst state1)
+    state
+
+/-- [mrr_agentic_ai_context::worklist::run]:
+    Source: 'crates/mrr-agentic-ai-context/src/worklist.rs', lines 38:0-41:1 -/
+@[reducible]
+def worklist.run
+  {W : Type} (WorklistInst : worklist.Worklist W) (state : W) : Result W := do
+  worklist.run_loop WorklistInst state
+
+/-- [mrr_agentic_ai_context::worklist::pop_identity]:
+    Source: 'crates/mrr-agentic-ai-context/src/worklist.rs', lines 7:0-15:1 -/
+def worklist.pop_identity
+  (pending : alloc.vec.Vec mrr_identity.api.FactId) :
+  Result ((Option mrr_identity.api.FactId) ** (alloc.vec.Vec
+    mrr_identity.api.FactId))
+  := do
+  let length := alloc.vec.Vec.len pending
+  if length = 0#usize
+  then ok (none, pending)
+  else
+    let i <- length - 1#usize
+    let id <-
+      alloc.vec.Vec.index (core.slice.index.SliceIndexUsizeSlice
+        mrr_identity.api.FactId) pending i
+    let pending1 <-
+      alloc.vec.Vec.resize mrr_identity.api.FactId.Insts.CoreCloneClone pending
+        i id
+    ok (some id, pending1)
+
 /-- [mrr_agentic_ai_context::worklist::append_identities]:
     Source: 'crates/mrr-agentic-ai-context/src/worklist.rs', lines 17:0-19:1 -/
 def worklist.append_identities
@@ -196,7 +343,7 @@ def worklist.append_identities
     pending dependencies
 
 /-- [mrr_agentic_ai_context::state::expand_identity]:
-    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 416:0-442:1 -/
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 424:0-450:1 -/
 def state.expand_identity
   (id : mrr_identity.api.FactId)
   (element : Option state.AgenticAiContextElement) (require_complete : Bool)
@@ -228,25 +375,63 @@ def state.expand_identity
       ok (false, pending, coverage, some
         (state.AgenticAiContextError.IncompleteEvidence id))
 
-/-- [mrr_agentic_ai_context::worklist::pop_identity]:
-    Source: 'crates/mrr-agentic-ai-context/src/worklist.rs', lines 7:0-15:1 -/
-def worklist.pop_identity
-  (pending : alloc.vec.Vec mrr_identity.api.FactId) :
-  Result ((Option mrr_identity.api.FactId) ** (alloc.vec.Vec
-    mrr_identity.api.FactId))
+/-- [mrr_agentic_ai_context::state::advance_closure]:
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 407:0-422:1 -/
+def state.advance_closure
+  (traversal : state.ClosureTraversal) :
+  Result (Bool ** state.ClosureTraversal)
   := do
-  let length := alloc.vec.Vec.len pending
-  if length = 0#usize
-  then ok (none, pending)
-  else
-    let i <- length - 1#usize
-    let id <-
-      alloc.vec.Vec.index (core.slice.index.SliceIndexUsizeSlice
-        mrr_identity.api.FactId) pending i
-    let pending1 <-
-      alloc.vec.Vec.resize mrr_identity.api.FactId.Insts.CoreCloneClone pending
-        i id
-    ok (some id, pending1)
+  let (o, v) <- worklist.pop_identity traversal.pending
+  match o with
+  | none => ok (false, { traversal with pending := v })
+  | some id =>
+    let (b, bs) <-
+      alloc.collections.btree.set.BTreeSet.insert
+        alloc.alloc.Global.Insts.CoreAllocAllocatorClone
+        mrr_identity.api.FactId.Insts.CoreCmpOrd traversal.selected id
+    if b
+    then
+      let o1 <-
+        alloc.collections.btree.map.BTreeMap.get
+          alloc.alloc.Global.Insts.CoreAllocAllocatorClone
+          (core.borrow.Borrow.Blanket mrr_identity.api.FactId)
+          mrr_identity.api.FactId.Insts.CoreCmpOrd
+          mrr_identity.api.FactId.Insts.CoreCmpOrd traversal.elements id
+      let (b1, v1, ec, o2) <-
+        state.expand_identity id o1 traversal.require_complete v
+          traversal.coverage traversal.error
+      ok (b1,
+        {
+          traversal
+            with
+            pending := v1, selected := bs, coverage := ec, error := o2
+        })
+    else ok (true, { traversal with pending := v, selected := bs })
+
+/-- [mrr_agentic_ai_context::state::{impl mrr_agentic_ai_context::worklist::Worklist for mrr_agentic_ai_context::state::ClosureTraversal<'_0>}::advance]:
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 402:4-404:5 -/
+def state.ClosureTraversal.Insts.Mrr_agentic_ai_contextWorklistWorklist.advance
+  (self : state.ClosureTraversal) :
+  Result (Bool ** state.ClosureTraversal)
+  := do
+  state.advance_closure self
+
+/-- Trait implementation: [mrr_agentic_ai_context::state::{impl mrr_agentic_ai_context::worklist::Worklist for mrr_agentic_ai_context::state::ClosureTraversal<'_0>}]
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 401:0-405:1 -/
+@[reducible]
+def state.ClosureTraversal.Insts.Mrr_agentic_ai_contextWorklistWorklist :
+  worklist.Worklist state.ClosureTraversal := {
+  advance :=
+    state.ClosureTraversal.Insts.Mrr_agentic_ai_contextWorklistWorklist.advance
+}
+
+/-- [mrr_agentic_ai_context::state::run_closure]:
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 397:0-399:1 -/
+def state.run_closure
+  (traversal : state.ClosureTraversal) : Result state.ClosureTraversal := do
+  worklist.run
+    state.ClosureTraversal.Insts.Mrr_agentic_ai_contextWorklistWorklist
+    traversal
 
 /-- [mrr_agentic_ai_context::worklist::initial_pending]:
     Source: 'crates/mrr-agentic-ai-context/src/worklist.rs', lines 21:0-31:1 -/
@@ -261,33 +446,5 @@ def worklist.initial_pending
       roots
   let pending1 <- worklist.append_identities pending required
   worklist.append_identities pending1 temporal_receipts
-
-/-- [mrr_agentic_ai_context::worklist::run]: loop body 0:
-    Source: 'crates/mrr-agentic-ai-context/src/worklist.rs', lines 39:4-39:28 -/
-@[rust_loop_body]
-def worklist.run_loop.body
-  {W : Type} (WorklistInst : worklist.Worklist W) (state : W) :
-  Result (ControlFlow W W)
-  := do
-  let (b, state1) <- WorklistInst.advance state
-  if b
-  then ok (cont state1)
-  else ok (done state1)
-
-/-- [mrr_agentic_ai_context::worklist::run]: loop 0:
-    Source: 'crates/mrr-agentic-ai-context/src/worklist.rs', lines 39:4-39:28 -/
-@[rust_loop]
-def worklist.run_loop
-  {W : Type} (WorklistInst : worklist.Worklist W) (state : W) : Result W := do
-  loop
-    (fun state1 => worklist.run_loop.body WorklistInst state1)
-    state
-
-/-- [mrr_agentic_ai_context::worklist::run]:
-    Source: 'crates/mrr-agentic-ai-context/src/worklist.rs', lines 38:0-41:1 -/
-@[reducible]
-def worklist.run
-  {W : Type} (WorklistInst : worklist.Worklist W) (state : W) : Result W := do
-  worklist.run_loop WorklistInst state
 
 end MRR.ContextRust

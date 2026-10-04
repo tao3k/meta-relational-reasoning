@@ -3,6 +3,7 @@ import Driver
 import NativeFacts
 import Stack
 import Expansion
+import Forward
 import Lean.Util.CollectAxioms
 import Lean.Elab.Command
 
@@ -60,7 +61,17 @@ run_cmd do
     `MRR.ContextRustProofs.expansion_missing_stops,
     `MRR.ContextRustProofs.expansion_invalid_stops,
     `MRR.ContextRustProofs.expansion_incomplete_stops,
-    `MRR.ContextRustProofs.expansion_accepted_step]
+    `MRR.ContextRustProofs.expansion_accepted_step,
+    `MRR.ContextRustProofs.native_contains_exact,
+    `MRR.ContextRustProofs.native_set_insert_exact,
+    `MRR.ContextRustProofs.native_map_lookup_exact,
+    `MRR.ContextRustProofs.selected_model_member,
+    `MRR.ContextRustProofs.native_forward_empty,
+    `MRR.ContextRustProofs.native_forward_duplicate,
+    `MRR.ContextRustProofs.native_forward_accepted,
+    `MRR.ContextRustProofs.native_forward_step_refines_graph,
+    `MRR.ContextRustProofs.native_forward_advance_contract,
+    `MRR.ContextRustProofs.native_forward_run_exact]
   required.forM fun declarationName => do
     unless environment.contains declarationName do
       throwError "Missing source theorem: {declarationName}"

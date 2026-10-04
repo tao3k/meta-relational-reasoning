@@ -368,9 +368,9 @@ fn compute_required_closure(
         &contract.required,
         &contract.temporal_receipts,
     );
-    let traversal = worklist::run(ClosureTraversal {
+    let traversal = run_closure(ClosureTraversal {
         elements,
-        contract,
+        require_complete: contract.require_complete,
         pending,
         selected: BTreeSet::new(),
         coverage: EvidenceCompleteness::Complete,
@@ -387,30 +387,38 @@ fn compute_required_closure(
 
 struct ClosureTraversal<'a> {
     elements: &'a BTreeMap<FactId, AgenticAiContextElement>,
-    contract: &'a AgenticAiContextContract,
+    require_complete: bool,
     pending: Vec<FactId>,
     selected: BTreeSet<FactId>,
     coverage: EvidenceCompleteness,
     error: Option<AgenticAiContextError>,
 }
 
+fn run_closure(traversal: ClosureTraversal<'_>) -> ClosureTraversal<'_> {
+    worklist::run(traversal)
+}
+
 impl Worklist for ClosureTraversal<'_> {
     fn advance(&mut self) -> bool {
-        let Some(id) = worklist::pop_identity(&mut self.pending) else {
-            return false;
-        };
-        if !self.selected.insert(id) {
-            return true;
-        }
-        expand_identity(
-            id,
-            self.elements.get(&id),
-            self.contract.require_complete,
-            &mut self.pending,
-            &mut self.coverage,
-            &mut self.error,
-        )
+        advance_closure(self)
     }
+}
+
+fn advance_closure(traversal: &mut ClosureTraversal<'_>) -> bool {
+    let Some(id) = worklist::pop_identity(&mut traversal.pending) else {
+        return false;
+    };
+    if !traversal.selected.insert(id) {
+        return true;
+    }
+    expand_identity(
+        id,
+        traversal.elements.get(&id),
+        traversal.require_complete,
+        &mut traversal.pending,
+        &mut traversal.coverage,
+        &mut traversal.error,
+    )
 }
 
 fn expand_identity(

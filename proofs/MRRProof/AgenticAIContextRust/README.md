@@ -55,7 +55,8 @@ and temporal receipts. Three further source laws preserve their exact order and
 duplicates, project the complete combined root list, and establish the graph
 initial invariant. They retain an explicit total machine-size bound and the
 same Vec/Slice modeling boundary. Source extraction and the audit include these
-initialization laws; the audit now requires 49 declarations.
+initialization laws; the initialization slice brought the audit to 49 declarations.
+The forward slice below brings the current required audit to 59.
 
 `Expansion.lean` proves the actual `state::expand_identity`, called by forward
 traversal after map lookup and selected-set insertion. Missing facts, invalid
@@ -64,7 +65,7 @@ remaining pending identities and coverage. Accepted facts append their exact
 dependencies, aggregate coverage by maximum weakness rank and preserve the error
 slot. The accepted case has the same explicit machine-size premise as extension.
 The extracted driver also returns the exact mutated state immediately when an
-adapter reports stop. These facts do not prove the preceding BTree lookup and
+adapter reports stop. These helper facts alone do not prove the preceding BTree lookup and
 insertion, nor the complete native adapter contract.
 
 ## Reproduction
@@ -80,7 +81,7 @@ Install the pinned Rust toolchain. Then run through the repository profile:
 
 ```sh
 ./.devenv/devenv-profile-exec python3 tools/check/context-source-proof.py --toolchain-dir /path/to/aeneas
-./.devenv/devenv-profile-exec bash -c 'cd proofs/MRRProof/AgenticAIContextRust && MATHLIB_NO_CACHE_ON_UPDATE=1 lake update && lake exe cache get && lake build Evidence Driver NativeFacts Stack Expansion && lake env lean Axioms.lean'
+./.devenv/devenv-profile-exec bash -c 'cd proofs/MRRProof/AgenticAIContextRust && MATHLIB_NO_CACHE_ON_UPDATE=1 lake update && lake exe cache get && lake build Evidence Driver NativeFacts Stack Expansion Forward && lake env lean Axioms.lean'
 ```
 
 Use `--rustup-home` for an isolated compiler installation. `--update` deliberately
@@ -97,8 +98,8 @@ Handwritten proofs also use ASCII syntax; no policy exception is introduced.
 
 The ordinary pinned compiler sysroot is explicitly selected with `--sysroot
 default`. The evidence functions use Boolean branches and enum patterns; the
-driver uses an explicit generic trait parameter. The proved generated modules
-contain no undefined external-function stubs. This avoids implicit Miri sysroot
+driver uses an explicit generic trait parameter. The proved generated modules use the explicitly allowlisted library models
+and contain no imported external-template axioms. This avoids implicit Miri sysroot
 fallback and makes no claim about the ordinary sysroot's library implementation.
 
 ## Remaining boundary
@@ -115,10 +116,26 @@ emits no success receipt: external-function/type stubs have not been discharged.
 It cannot update the proved modules. Translation has a 60-second preparation cap.
 These diagnostic modules are not imported into the proved project.
 
-`AdvanceContract` and `GraphAdvanceRefinement` are explicit theorem premises.
-They have not been proved for `ClosureTraversal::advance` or
-`ImpactTraversal::advance`, the actual BTreeMap/BTreeSet adapters. The model
-instantiation does not discharge those native obligations. In particular, the
+`Forward.lean` now proves the actual extracted `advance_closure`, its trait
+instance, and `run_closure` under explicit standard-library value models. Its
+`native_forward_advance_contract` discharges the forward adapter contract;
+`native_forward_run_exact` proves termination without fuel, no error, and exact
+selected membership in the least required closure. Preconditions are a finite
+closed source graph, admitted facts agreeing with declared dependencies, the
+initial graph invariant, and a Usize capacity bound. Neither an assumed adapter
+step law nor an assumed stopping law is a premise.
+
+The generated forward surface exposes exactly two BTree types and three library
+functions. `Generated/TypesExternal.lean` and `Generated/FunsExternal.lean` supply
+computable, trusted models for extensional lookup/membership, insertion, and array
+comparison. The extraction gate rejects any different external interface and
+records these handwritten model hashes. No generated template axioms are imported.
+The models assume lawful key comparison and successful allocation; they do not
+establish sorted iteration, BTree balancing, unsafe memory correctness, or the
+Rust standard-library implementation. Axiom auditing checks Lean dependencies,
+not correspondence of these models to unsafe Rust code.
+
+The reverse `ImpactTraversal::advance` contract remains unproved. In particular, the
 revision adapter suppresses duplicate enqueues and needs an invariant over
 processed identities, rather than treating every scheduled identity as processed.
 `Scheduled.lean` now proves that invariant at the graph-model level: scheduled
@@ -130,9 +147,10 @@ premises of this model theorem. The extracted driver is instantiated with this
 model and has no fuel bound. Both Lean projects compile the same model file.
 Binding the native BTree operations and reverse-index union to it remains open.
 The identity-to-model mapping and native fact evidence policy now have universal
-proofs. Map lookup/insertion, binding the admitted Fact to that lookup, full adapter
-stopping/refinement laws, reverse-edge construction and processed versus
-scheduled invariants remain open. The latest full wrapper probe exposes 9 external
+proofs. Forward lookup/insertion and admitted-fact binding are now evaluated by the named
+models. Native reverse-edge construction and processed-versus-scheduled binding,
+wrapper initialization/projection, whole-run coverage aggregation, rejection
+integration, serialization refinement, and unsafe stdlib correctness remain open. The latest full wrapper probe exposes 9 external
 types and 16 external functions: BTreeMap/BTreeSet and their entry/iterator
 interfaces, byte-array ordering and unused nonzero types in source-limit fields.
 Vec pop/extension and the generic array/shared-Vec iteration stubs have been
@@ -161,10 +179,17 @@ On the pinned compiler/extractor the direct probe fails: Charon reports node
 allocation/deallocation translation limitations, and Aeneas rejects nested
 mutable borrows in the entry API and a NonNull-to-raw-pointer transmute in
 node.rs. This is an observed toolchain capability boundary, not a missing Lean
-lemma. Adding hand-written BTree semantics would add a trusted library model;
-it would not prove the unsafe Rust standard-library implementation. Complete
+lemma. The explicit BTree models used by the forward proof are trusted library models;
+they do not prove the unsafe Rust standard-library implementation. Complete
 source refinement therefore remains unproved with the current toolchain.
 
 Reproduce through the profile with the same pinned extractor arguments as above,
 adding `--probe-btree-source`. The nonzero result is expected diagnostic failure,
 not a passing proof or test.
+
+## Forward source slice
+
+The forward phase now audits 59 declarations, including ten additional universal
+container/projection/step/contract/run laws. This closes the native forward
+adapter obligation relative to the explicit library models. The full-wrapper
+probe remains diagnostic and the direct unsafe-library probe remains unproved.

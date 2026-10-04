@@ -8,7 +8,9 @@ use serde::{Serialize, de::DeserializeOwned, ser};
 use super::QueryResultTransportError as Error;
 
 const MAX_DEPTH: usize = 64;
-const MAX_NODES: usize = 262_144;
+// Every serialized/parsed datum consumes at least one input/output byte. The
+// caller's byte ceiling therefore also bounds nodes without a second, smaller
+// fixed ceiling that rejects otherwise admitted large result sets.
 
 impl ser::Error for Error {
     fn custom<T: std::fmt::Display>(message: T) -> Self {
@@ -87,7 +89,7 @@ impl Writer {
     }
     fn node(&mut self) -> Result<(), Error> {
         self.nodes += 1;
-        if self.depth > MAX_DEPTH || self.nodes > MAX_NODES {
+        if self.depth > MAX_DEPTH || self.nodes > self.limit {
             return Err(invalid());
         }
         Ok(())
@@ -368,7 +370,7 @@ impl Reader<'_> {
     }
     fn datum(&mut self, depth: usize) -> Result<Value, Error> {
         self.nodes += 1;
-        if depth > MAX_DEPTH || self.nodes > MAX_NODES {
+        if depth > MAX_DEPTH || self.nodes > self.input.len() {
             return Err(invalid());
         }
         self.space();

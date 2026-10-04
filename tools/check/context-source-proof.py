@@ -134,6 +134,8 @@ def main() -> int:
             "mrr_agentic_ai_context::worklist::initial_pending",
             "mrr_agentic_ai_context::evidence::admit_fact_evidence",
             "mrr_agentic_ai_context::state::expand_identity",
+            "mrr_agentic_ai_context::state::advance_closure",
+            "mrr_agentic_ai_context::state::run_closure",
         ]
     )
     context = tempfile.TemporaryDirectory(prefix="mrr-source-proof-")
@@ -247,12 +249,39 @@ def main() -> int:
             raise RuntimeError(
                 "native adapter translation is diagnostic only; external obligations are not discharged"
             )
-        if {path.name for path in emitted} != {"Types.lean", "Funs.lean"}:
+        expected = {
+            "Types.lean",
+            "Funs.lean",
+            "TypesExternal_Template.lean",
+            "FunsExternal_Template.lean",
+        }
+        if {path.name for path in emitted} != expected:
             raise RuntimeError(
                 "unexpected extraction surface or external-definition obligations"
             )
+        allowed = {
+            "TypesExternal_Template.lean": [
+                "alloc.collections.btree.map.BTreeMap",
+                "alloc.collections.btree.set.BTreeSet",
+            ],
+            "FunsExternal_Template.lean": [
+                "Array.Insts.CoreCmpOrd.cmp",
+                "alloc.collections.btree.map.BTreeMap.get",
+                "alloc.collections.btree.set.BTreeSet.insert",
+            ],
+        }
+        for filename, declarations in allowed.items():
+            actual = re.findall(
+                r"^axiom\s+([^\s({:]+)",
+                (output / "Generated" / filename).read_text(),
+                re.MULTILINE,
+            )
+            if actual != declarations:
+                raise RuntimeError(f"unmodeled library interface: {filename}: {actual}")
         hashes = {}
         for path in emitted:
+            if "External_Template" in path.name:
+                continue
             content = ascii_lean(path.read_text())
             hashes[path.name] = hashlib.sha256(content).hexdigest()
             target = PROJECT / "Generated" / path.name
@@ -269,6 +298,14 @@ def main() -> int:
                     "functions": functions,
                     "llbc_sha256": hashlib.sha256(llbc.read_bytes()).hexdigest(),
                     "generated_sha256": hashes,
+                    "library_model_sha256": {
+                        name: hashlib.sha256(
+                            (PROJECT / "Generated" / name).read_bytes()
+                        ).hexdigest()
+                        for name in ("TypesExternal.lean", "FunsExternal.lean")
+                    },
+                    "library_model_interfaces": allowed,
+                    "library_model_boundary": "trusted extensional BTree membership/lookup and lexicographic array ordering; no unsafe stdlib or sorted iteration proof",
                     "generated_format": "ASCII arrows and local Prod notation; unknown Unicode rejected",
                     "boundary": "extraction freshness; Lean theorem and axiom checks are separate gates",
                 },

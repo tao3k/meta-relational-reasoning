@@ -787,7 +787,7 @@ fn scheme_transport_preserves_native_scalar_schemas_and_values() {
         ),
         (
             ValueSchema::String,
-            Value::String("中文 λ \" \\ \n\r\t".into()),
+            Value::String("\u{4e2d}\u{6587} \u{03bb} \" \\ \n\r\t".into()),
         ),
         (
             ValueSchema::ByteString,
@@ -934,4 +934,37 @@ fn scheme_transport_preserves_empty_null_lists_and_graph_results() {
             &result
         );
     }
+}
+
+#[test]
+fn scheme_transport_large_results_follow_explicit_byte_budget() {
+    let bound = bound_query("large-scheme-transport", ValueSchema::String, false, false);
+    let row = vec![QueryResultValue::scalar(
+        ValueSchema::String,
+        Value::String("compiler".into()),
+    )];
+    let result = candidate(
+        &bound,
+        vec![Binding::new("name").unwrap()],
+        vec![row; 65_536],
+    );
+    let row_limits = limits(65_536, 65_536);
+    let cap = NonZeroUsize::new(32 * 1024 * 1024).unwrap();
+    let bytes = export_query_result_transport(&bound, &result, row_limits, cap).unwrap();
+    let exact = NonZeroUsize::new(bytes.len()).unwrap();
+    assert_eq!(
+        verify_query_result_transport(&bound, &bytes, row_limits, exact)
+            .unwrap()
+            .candidate(),
+        &result
+    );
+    let too_small = NonZeroUsize::new(bytes.len() - 1).unwrap();
+    assert!(matches!(
+        export_query_result_transport(&bound, &result, row_limits, too_small),
+        Err(QueryResultTransportError::TooLarge { .. })
+    ));
+    assert!(matches!(
+        verify_query_result_transport(&bound, &bytes, row_limits, too_small),
+        Err(QueryResultTransportError::TooLarge { .. })
+    ));
 }
