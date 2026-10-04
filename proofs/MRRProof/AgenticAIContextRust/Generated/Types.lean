@@ -61,13 +61,6 @@ inductive alloc.collections.btree.map.entry.Entry (K : Type) (V : Type) (A :
 @[reducible, rust_type "mrr_identity::api::FactId"]
 def mrr_identity.api.FactId := Array Std.U8 32#usize
 
-/-- [mrr_identity::api::RelationId]
-    Source: 'crates/mrr-identity/src/api.rs', lines 174:8-174:45
-    Name pattern: [mrr_identity::api::RelationId]
-    Visibility: public -/
-@[reducible, rust_type "mrr_identity::api::RelationId"]
-def mrr_identity.api.RelationId := Array Std.U8 32#usize
-
 /-- [mrr_identity::api::GenerationId]
     Source: 'crates/mrr-identity/src/api.rs', lines 174:8-174:45
     Name pattern: [mrr_identity::api::GenerationId]
@@ -95,6 +88,20 @@ def mrr_identity.api.EntityId := Array Std.U8 32#usize
     Visibility: public -/
 @[reducible, rust_type "mrr_identity::api::StateId"]
 def mrr_identity.api.StateId := Array Std.U8 32#usize
+
+/-- [mrr_identity::api::RevisionId]
+    Source: 'crates/mrr-identity/src/api.rs', lines 174:8-174:45
+    Name pattern: [mrr_identity::api::RevisionId]
+    Visibility: public -/
+@[reducible, rust_type "mrr_identity::api::RevisionId"]
+def mrr_identity.api.RevisionId := Array Std.U8 32#usize
+
+/-- [mrr_identity::api::RelationId]
+    Source: 'crates/mrr-identity/src/api.rs', lines 174:8-174:45
+    Name pattern: [mrr_identity::api::RelationId]
+    Visibility: public -/
+@[reducible, rust_type "mrr_identity::api::RelationId"]
+def mrr_identity.api.RelationId := Array Std.U8 32#usize
 
 /-- [mrr_identity::api::RuleId]
     Source: 'crates/mrr-identity/src/api.rs', lines 174:8-174:45
@@ -203,6 +210,36 @@ structure mrr_relation.api.Fact where
   values : alloc.vec.Vec mrr_relation.api.Value
   context : mrr_relation.api.RelationContext
 
+/-- [mrr_revision::api::ExternalRevisionIdentity]
+    Source: 'crates/mrr-revision/src/api.rs', lines 6:0-6:35
+    Name pattern: [mrr_revision::api::ExternalRevisionIdentity]
+    Visibility: public -/
+@[rust_type "mrr_revision::api::ExternalRevisionIdentity"]
+structure mrr_revision.api.ExternalRevisionIdentity where
+  provider : String
+  logical_change : String
+  content_revision : String
+
+/-- [mrr_revision::api::RevisionBinding]
+    Source: 'crates/mrr-revision/src/api.rs', lines 61:0-61:26
+    Name pattern: [mrr_revision::api::RevisionBinding]
+    Visibility: public -/
+@[rust_type "mrr_revision::api::RevisionBinding"]
+structure mrr_revision.api.RevisionBinding where
+  revision : mrr_identity.api.RevisionId
+  generation : mrr_identity.api.GenerationId
+  external : mrr_revision.api.ExternalRevisionIdentity
+
+/-- [mrr_revision::snapshot::SemanticSnapshot]
+    Source: 'crates/mrr-revision/src/snapshot.rs', lines 14:0-14:27
+    Name pattern: [mrr_revision::snapshot::SemanticSnapshot]
+    Visibility: public -/
+@[rust_type "mrr_revision::snapshot::SemanticSnapshot"]
+structure mrr_revision.snapshot.SemanticSnapshot where
+  generation : mrr_identity.api.GenerationId
+  revisions : alloc.vec.Vec mrr_revision.api.RevisionBinding
+  digest : Array Std.U8 32#usize
+
 /-- [mrr_agentic_ai_context::evidence::EvidenceAdmission]
     Source: 'crates/mrr-agentic-ai-context/src/evidence.rs', lines 5:0-9:1 -/
 @[discriminant isize]
@@ -276,7 +313,7 @@ structure worklist.Worklist (Self : Type) where
   advance : Self -> Result (Bool ** Self)
 
 /-- [mrr_agentic_ai_context::state::ClosureTraversal]
-    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 427:0-434:1 -/
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 443:0-450:1 -/
 structure state.ClosureTraversal where
   elements : alloc.collections.btree.map.BTreeMap mrr_identity.api.FactId
     state.AgenticAiContextElement Global
@@ -288,7 +325,7 @@ structure state.ClosureTraversal where
   error : Option state.AgenticAiContextError
 
 /-- [mrr_agentic_ai_context::state::ImpactTraversal]
-    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 546:0-550:1 -/
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 562:0-566:1 -/
 structure state.ImpactTraversal where
   reverse : alloc.collections.btree.map.BTreeMap mrr_identity.api.FactId
     (alloc.collections.btree.set.BTreeSet mrr_identity.api.FactId Global)

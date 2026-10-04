@@ -19,7 +19,8 @@ fast-forward; it does not supply new proof evidence.
 | Reverse old/new edge union and traversal | `native_reverse_index_exact`, `native_declared_impact_wrapper_exact` | Actual edge enumeration and entry restoration; explicit value models, source/changed-set and capacity premises. |
 | Revision old/new identity union | `native_revision_source_union` | Actual production helper; exact key union and uniqueness; no map/source validity premise. |
 | Revision selected intersection minus invalidation | `native_revision_reusable_exact` | Actual production helper; exact membership and uniqueness, arbitrary input duplicates; old-list Usize bound. Does not establish that its invalidated argument is correct. |
-| Revision global binding and element change classification | Unproved | Translate actual comparison/equality path; prove exact changed membership from actual snapshots, query, contract, payloads and dependencies. No assumed equality oracle. |
+| Revision global binding classification | `native_revision_bindings_changed_exact` | Actual production helper and derived snapshot/query/contract equality; exact force or field inequality. String/Vec value models are explicit; digest equality is byte equality, not collision freedom. |
+| Revision element change classification | Unproved | Prove actual recursive payload/element equality and exact changed membership from actual source maps. No assumed equality oracle. |
 | Complete revision assembly | Unproved | Connect actual changed construction to reverse impact and reusable helper, including global drift and removed/new dependencies. |
 | Source indexing and state validation/publication | Unproved as a whole Rust source theorem | Prove actual validation, budgets, duplicate/generation/dependency refusals and published-state invariant, then connect to selection/closure/revision. Existing model proofs and Rust tests are narrower evidence. |
 | Serialization and cryptographic implementation | Bounded Rust/Lean replay only | Universal encoder correspondence is separate from hash injectivity/collision assumptions. Exact-reference profile avoids treating equal digests as identical contents. |
@@ -28,14 +29,14 @@ fast-forward; it does not supply new proof evidence.
 
 ## Production projection refactor
 
-The public revision comparison calls the two proved helpers. All set construction
+The public revision comparison calls the three proved helpers. All set construction
 still uses Rust BTreeSet; actual sorted output ordering is preserved. The source
 proof's extensional list models establish membership and uniqueness, not sorted
 physical enumeration. Existing feature tests and fresh finite replay check the
 public result behavior separately.
 
-The extraction gate adds only `BTreeSet.contains` to its explicit external
-interface (seven types, seventeen functions). Its borrowed extensional membership
+The extraction gate includes `BTreeSet.contains` and exact String value equality in its explicit
+external interface (seven types, eighteen functions). Its borrowed extensional membership
 model is computable; the proof derives concrete FactId membership using actual
 identity equality and the included Borrow blanket implementation. No generated
 external-template axiom is imported. Unsafe implementation correctness remains
@@ -43,9 +44,9 @@ an open obligation.
 
 ## Next implementation sequence
 
-1. Finish actual revision comparison translation, first isolating the binding
-   comparison from shared-state borrow joins. The full-comparison diagnostic
-   must retain failures and must never emit proof success for partial Lean.
+1. Complete Lean compilation of actual revision comparison, including its
+   recursive payload equality. Full comparison now translates successfully;
+   extraction alone is not a proof receipt.
 2. Prove each actual equality/changed-construction effect and connect it to the
    already proved index, impact and reusable projections. Run the required
    source audit and source-extraction gate, then the existing Rust/replay gates.
@@ -60,10 +61,38 @@ replay case does not close a universal production refinement obligation.
 
 ## Retained comparison diagnostics
 
-The original adapter-signature blocker is avoided by direct production loops.
-A direct-loop extraction before helper separation retains `Could not match the
-contexts` at global binding comparison. Full comparison after helper separation
-hits the unchanged 60s translation cap after successful Charon extraction.
-An independent-boolean attempt also timed out and was reverted, preserving
-original short-circuit binding evaluation. These failures do not discharge
-comparison or assembly. Timeout reports now also hash their exact stage logs.
+The original adapter-signature and shared-state borrow-context blockers are
+superseded for extraction by direct production loops and a binding helper that
+preserves the original short-circuit evaluation. The retained final full
+comparison diagnostic has Charon exit 0 and Aeneas exit 0. Diagnostic mode still
+refuses to emit proof success; the generated complete function has not yet
+passed Lean compilation or a complete refinement theorem.
+
+The complete generated state includes two NonZero library types absent from
+the default proved scope. A separate isolated compiler diagnostic supplies
+computable nonzero-value candidates, retaining the nonzero constraint. These
+candidates are not part of the admitted seven-type/eighteen-function interface.
+With those isolated candidates, Lean reports unknown constant
+`MRR.ContextRust.mrr_relation.api.Value.Insts.CoreCmpPartialEqValue` at
+the generated recursive List/Record comparison branches: the function references
+the trait instance before its later declaration. The pinned extractor does not
+support mixed recursive function/trait groups. Generated source is not patched,
+and no recursive equality axiom is admitted. Resolve this compiler obligation
+before extending the default proof gate. Earlier context/timeout failures remain
+historical diagnostics, not the current extraction blocker.
+
+## Actual global binding equality
+
+`BindingEquality.lean` adds sixteen required declarations, bringing the source
+axiom audit to 141. It derives primitive identities, ordered vectors, external
+revision identities, revision bindings, complete snapshot fields, query fields
+and contract fields before proving the actual production binding helper. The
+final theorem has no equality oracle premise. It exactly characterizes forced
+change or unequal snapshot/query/contract; snapshot digest bytes are compared,
+without asserting digest construction correctness or collision freedom.
+
+The String external model is computable exact value equality. Vec equality
+uses the pinned library value model and actual derived element comparators.
+These proofs do not establish unsafe library storage/allocation, compilation,
+or complete revision assembly. Complete element classification, changed-set
+construction, state validation/publication and serialization remain open.

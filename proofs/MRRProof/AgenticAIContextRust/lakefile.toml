@@ -1,6 +1,6 @@
 name = "MRRContextRustProofs"
 version = "0.1.0"
-defaultTargets = ["Evidence", "Driver", "NativeFacts", "Stack", "Expansion", "Forward", "Reverse", "ReverseIndex", "ImpactWrapper", "Coverage", "Rejection", "ForwardWrapper", "GeneralForward", "GeneralWrapper", "DeclaredForward", "RevisionProjection"]
+defaultTargets = ["Evidence", "Driver", "NativeFacts", "Stack", "Expansion", "Forward", "Reverse", "ReverseIndex", "ImpactWrapper", "Coverage", "Rejection", "ForwardWrapper", "GeneralForward", "GeneralWrapper", "DeclaredForward", "RevisionProjection", "BindingEquality"]
 moreLeanArgs = ["-DautoImplicit=false", "-DwarningAsError=true"]
 
 [[require]]
@@ -64,3 +64,6 @@ name = "DeclaredForward"
 
 [[lean_lib]]
 name = "RevisionProjection"
+
+[[lean_lib]]
+name = "BindingEquality"

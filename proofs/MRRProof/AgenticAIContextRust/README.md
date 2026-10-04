@@ -81,7 +81,7 @@ Install the pinned Rust toolchain. Then run through the repository profile:
 
 ```sh
 ./.devenv/devenv-profile-exec python3 tools/check/context-source-proof.py --toolchain-dir /path/to/aeneas
-./.devenv/devenv-profile-exec bash -c 'cd proofs/MRRProof/AgenticAIContextRust && MATHLIB_NO_CACHE_ON_UPDATE=1 lake update && lake exe cache get && lake build Evidence Driver NativeFacts Stack Expansion Forward Reverse ReverseIndex ImpactWrapper Coverage Rejection ForwardWrapper GeneralForward GeneralWrapper DeclaredForward && lake env lean Axioms.lean'
+./.devenv/devenv-profile-exec bash -c 'cd proofs/MRRProof/AgenticAIContextRust && MATHLIB_NO_CACHE_ON_UPDATE=1 lake update && lake exe cache get && lake build Evidence Driver NativeFacts Stack Expansion Forward Reverse ReverseIndex ImpactWrapper Coverage Rejection ForwardWrapper GeneralForward GeneralWrapper DeclaredForward RevisionProjection BindingEquality && lake env lean Axioms.lean'
 ```
 
 Use `--rustup-home` for an isolated compiler installation. `--update` deliberately
@@ -349,20 +349,33 @@ not sorted unsafe enumeration or correctness of its invalidated argument.
 
 Nine additional audited laws derive borrowed FactId membership, finite iterator
 termination, exact insertion and filtering effects, and the two outer helpers.
-The strict external interface has seven types and seventeen functions, adding
-only the computable borrowed BTreeSet membership model. No independent
+The projection step used seven external types and seventeen functions, adding
+only the computable borrowed BTreeSet membership model; the binding step below
+extends that interface. No independent
 hand-written replacement of production comparison, assumed adapter law, fuel,
 or generated template axiom is used.
 
 The old Iterator method-binder failure is avoided by explicit production loops.
-Full revision comparison is still unproved. The earlier direct-loop diagnostic
-retains an Aeneas `Could not match the contexts` error at the short-circuit global
-binding comparison. The final full-comparison probe reaches the existing 60s
-translation cap (Charon exit 0, translation exit 124). A separate independent
-boolean-comparison attempt also timed out and was reverted; original Rust
-short-circuit binding behavior remains. These are failed diagnostics, not proof
-success. Timed-out diagnostics now retain the exact log hash as well as the log,
-command and failure code. Their timeout is not relaxed into success.
+`BindingEquality.lean` proves sixteen additional audited laws for the actual
+production `revision_bindings_changed` helper. Primitive identities, complete
+external revision and snapshot fields, ordered query roots, and every contract
+field have exact derived equality laws. The final result is exactly forced
+change or unequal snapshot/query/contract, without an equality oracle premise.
+Snapshot digest comparison is exact byte comparison; digest computation and
+collision freedom are separate obligations. The explicit String value equality
+model brings the strict external interface to seven types/eighteen functions.
+
+The production helper preserves the original short-circuit binding evaluation.
+Full actual `compare_revisions` extraction now succeeds (Charon 0, Aeneas 0),
+superseding the earlier context/timeout blockers for extraction. Diagnostic
+mode still emits no proof success: the complete generated function requires
+additional NonZero library models, recursive payload equality compilation and
+complete revision/changed-set proofs. Isolated candidates are kept outside the
+default admitted interface. With those candidates, Lean rejects two recursive
+Value equality branches because the generated trait instance is referenced
+before its definition (`lean.unknownIdentifier`). No generated-source patch or
+recursive equality axiom is admitted. All 141 required declarations are checked for
+custom axioms by `Axioms.lean`.
 
 See [CLOSURE-AUDIT.md](CLOSURE-AUDIT.md) for the obligation inventory, exact green
 starting head, remaining trust boundaries and acceptance conditions. Complete

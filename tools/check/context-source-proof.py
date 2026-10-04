@@ -152,6 +152,7 @@ def main() -> int:
             "mrr_agentic_ai_context::state::run_impact",
             "mrr_agentic_ai_context::state::build_reverse_index",
             "mrr_agentic_ai_context::state::declared_dependency_impact",
+            "mrr_agentic_ai_context::state::revision_bindings_changed",
             "mrr_agentic_ai_context::state::revision_source_ids",
             "mrr_agentic_ai_context::state::revision_reusable_ids",
             "mrr_agentic_ai_context::state::compute_required_closure",
@@ -316,6 +317,7 @@ def main() -> int:
                 "alloc.collections.btree.set.BTreeSetTGlobal.Insts.CoreDefaultDefault.default",
                 "alloc.collections.btree.set.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.next",
                 "alloc.collections.btree.set.IntoIter.Insts.CoreIterTraitsIteratorIterator.next",
+                "alloc.string.String.Insts.CoreCmpPartialEqString.eq",
             ],
         }
         for filename, declarations in allowed.items():
