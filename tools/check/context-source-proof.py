@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
-"""Regenerate production evidence functions with pinned Charon and Aeneas."""
+"""Regenerate production evidence policy and traversal control from Rust."""
 
 import argparse
 import hashlib
 import json
 import os
 from pathlib import Path
+import re
+import shutil
 import subprocess
 import tempfile
 
@@ -16,9 +18,9 @@ ROOT = Path(__file__).resolve().parents[2]
 PROJECT = ROOT / "proofs/MRRProof/AgenticAIContextRust"
 
 
-def run(command: list[str], environment: dict[str, str]) -> None:
+def run(command: list[str], environment: dict[str, str], timeout: int = 300) -> None:
     print("SOURCE-PREPARE:", " ".join(command), flush=True)
-    subprocess.run(command, cwd=ROOT, env=environment, check=True)
+    subprocess.run(command, cwd=ROOT, env=environment, check=True, timeout=timeout)
 
 
 def main() -> int:
@@ -31,6 +33,8 @@ def main() -> int:
     parser.add_argument("--update", action="store_true")
     parser.add_argument("--probe-worklists", action="store_true")
     args = parser.parse_args()
+    if args.probe_worklists and args.update:
+        parser.error("a native-adapter probe cannot replace proved generated modules")
     toolchain = args.toolchain_dir.resolve()
     environment = dict(os.environ)
     environment["PATH"] = f"{Path.home() / '.cargo/bin'}:{environment['PATH']}"
@@ -47,7 +51,7 @@ def main() -> int:
     sysroot = subprocess.check_output(
         [charon, "toolchain-path"], env=environment, text=True
     ).strip()
-    # These two functions import no standard-library function bodies. Pin the
+    # The selected pure functions import no standard-library function bodies. Pin the
     # ordinary compiler sysroot explicitly, avoiding Miri setup/fallback drift.
     environment["CHARON_MIRI_SYSROOTS"] = sysroot
     receipt = args.receipt.resolve()
@@ -57,7 +61,11 @@ def main() -> int:
     functions = (
         ["state::compute_required_closure", "state::reverse_dependency_impact"]
         if args.probe_worklists
-        else ["evidence::admit_evidence", "evidence::merge_completeness"]
+        else [
+            "evidence::admit_evidence",
+            "evidence::merge_completeness",
+            "worklist::run",
+        ]
     )
     with tempfile.TemporaryDirectory(prefix="mrr-source-proof-") as directory:
         output = Path(directory)
@@ -72,6 +80,8 @@ def main() -> int:
                 str(charon),
                 "cargo",
                 "--preset=aeneas",
+                "--sysroot",
+                "default",
                 *starts,
                 "--dest-file",
                 str(llbc),
@@ -100,8 +110,38 @@ def main() -> int:
                 str(llbc),
             ],
             environment,
+            timeout=60,
         )
         emitted = sorted((output / "Generated").glob("*.lean"))
+        if args.probe_worklists:
+            diagnostic = Path(
+                tempfile.mkdtemp(prefix="mrr-native-adapter-probe-", dir=receipt.parent)
+            )
+            shutil.copy2(llbc, diagnostic / llbc.name)
+            shutil.copytree(output / "Generated", diagnostic / "Generated")
+            obligations = {
+                path.name: re.findall(
+                    r"^axiom\s+([^\s({:]+)", path.read_text(), re.MULTILINE
+                )
+                for path in emitted
+                if "External" in path.name
+            }
+            (diagnostic / "obligations.json").write_text(
+                json.dumps(
+                    {
+                        "schema": "mrr.context.native-adapter-obligations.v1",
+                        "proven": False,
+                        "functions": functions,
+                        "obligations": obligations,
+                    },
+                    indent=2,
+                )
+                + "\n"
+            )
+            print(f"SOURCE-PROBE-DIAGNOSTICS: {diagnostic}", flush=True)
+            raise RuntimeError(
+                "native adapter translation is diagnostic only; external obligations are not discharged"
+            )
         if {path.name for path in emitted} != {"Types.lean", "Funs.lean"}:
             raise RuntimeError(
                 "unexpected extraction surface or external-definition obligations"
@@ -140,3 +180,9 @@ if __name__ == "__main__":
     except subprocess.CalledProcessError as error:
         print(f"SOURCE-EXTRACTION-FAILED: child exit {error.returncode}", flush=True)
         raise SystemExit(error.returncode) from None
+    except subprocess.TimeoutExpired:
+        print("SOURCE-EXTRACTION-FAILED: stage timeout", flush=True)
+        raise SystemExit(124) from None
+    except RuntimeError as error:
+        print(f"SOURCE-EXTRACTION-FAILED: {error}", flush=True)
+        raise SystemExit(65) from None

@@ -671,8 +671,38 @@ function obligations. This closes source-level evidence-policy refinement under
 the trusted Charon/Aeneas translation pipeline, rather than proving only a
 handwritten policy model.
 
-Full production worklist extraction remains open: Charon emitted both native
-loop call graphs, but Aeneas failed internally on the standard-library Iterator
-signature. Maps/sets, validity-to-Boolean adaptation, enclosing loops and
-serialization are not covered by the seven new source theorems. See the separate
-project README for immutable tool pins and the executable failure probe.
+** Extracted shared traversal driver
+
+Forward closure and reverse dependency impact now use the same generic Rust
+=worklist::run=. Their native one-pop adapters retain the existing BTreeMap,
+BTreeSet and Vec operations, source/evidence validation, dependency order and
+error propagation. The generic loop is extracted from actual source, with no
+undefined external-function stubs in the proved generated modules.
+
+Five additional universal laws connect that extracted driver to total correctness
+and the same graph model used by the system project. =AdvanceContract= requires
+one-step invariant preservation, a strictly decreasing natural rank on continue,
+and a stopping postcondition. Under those explicit premises the actual extracted
+loop terminates and preserves the invariant. A completed graph invariant implies
+the exact least closure. A stronger one-pop simulation and a concrete model
+instantiation also prove exact least closure for finite closed graphs with cycles,
+without a fuel bound. The invariant form permits forward pop-time suppression
+and reverse enqueue-time suppression to use different queue schedules.
+
+These graph proof sources are shared between Lean 4.31 and 4.34, without a model
+copy. Closure now depends only on Std; the system explicitly imports its selection
+contracts. Twelve source theorems pass the standard-axiom audit.
+
+Equivalent explicit stack initialization removed the earlier Iterator::copied
+translation error. Separating adapters from the generic loop then allowed the
+larger native wrapper call graph to generate Lean diagnostic code. That code still
+contains external library/type obligations. =--probe-worklists= retains its actual
+LLBC and generated diagnostics, returns failure and never emits a success receipt.
+
+The native =ClosureTraversal::advance= and =ImpactTraversal::advance= have not yet
+discharged the adapter contracts. Maps/sets, identity projection, processed versus
+scheduled identities, rejected evidence and reverse-edge construction remain
+formal obligations. The model instance does not prove those native laws. Source
+extraction tools/compiler and serialization libraries remain separate trusted or
+unverified boundaries. The new result closes source loop control under explicit
+step laws, not end-to-end native Context refinement.

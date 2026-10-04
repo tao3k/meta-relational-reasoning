@@ -13,6 +13,7 @@ mod materialization;
 #[cfg(feature = "token-layout")]
 mod reuse;
 mod state;
+mod worklist;
 
 pub use composition::{
     AgenticAiContextComposer, AgenticAiContextCompositionGraph,

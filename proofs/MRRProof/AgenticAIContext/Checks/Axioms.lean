@@ -11,6 +11,7 @@ run_cmd do
   let allowed := #[`propext, `Classical.choice, `Quot.sound]
   for required in #[
       `MRR.AgenticAIContext.worklist_refines_certificate,
+      `MRR.AgenticAIContext.worklist_finished_invariant_exact,
       `MRR.AgenticAIContext.finite_worklist_total_correctness,
       `MRR.AgenticAIContext.exact_restore_identity,
       `MRR.AgenticAIContext.exact_restore_collision_refused,

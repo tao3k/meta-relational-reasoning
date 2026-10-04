@@ -69,4 +69,32 @@ def evidence.merge_completeness
   | mrr_relation.api.EvidenceCompleteness.Unknown =>
     ok mrr_relation.api.EvidenceCompleteness.Unknown
 
+/-- [mrr_agentic_ai_context::worklist::run]: loop body 0:
+    Source: 'crates/mrr-agentic-ai-context/src/worklist.rs', lines 9:4-9:28 -/
+@[rust_loop_body]
+def worklist.run_loop.body
+  {W : Type} (WorklistInst : worklist.Worklist W) (state : W) :
+  Result (ControlFlow W W)
+  := do
+  let (b, state1) ← WorklistInst.advance state
+  if b
+  then ok (cont state1)
+  else ok (done state1)
+
+/-- [mrr_agentic_ai_context::worklist::run]: loop 0:
+    Source: 'crates/mrr-agentic-ai-context/src/worklist.rs', lines 9:4-9:28 -/
+@[rust_loop]
+def worklist.run_loop
+  {W : Type} (WorklistInst : worklist.Worklist W) (state : W) : Result W := do
+  loop
+    (fun state1 => worklist.run_loop.body WorklistInst state1)
+    state
+
+/-- [mrr_agentic_ai_context::worklist::run]:
+    Source: 'crates/mrr-agentic-ai-context/src/worklist.rs', lines 8:0-11:1 -/
+@[reducible]
+def worklist.run
+  {W : Type} (WorklistInst : worklist.Worklist W) (state : W) : Result W := do
+  worklist.run_loop WorklistInst state
+
 end MRR.ContextRust

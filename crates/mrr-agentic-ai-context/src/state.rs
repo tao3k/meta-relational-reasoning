@@ -12,6 +12,7 @@ use mrr_revision::SemanticSnapshot;
 use serde::{Deserialize, Serialize};
 
 use crate::evidence::{EvidenceAdmission, admit_evidence, merge_completeness};
+use crate::worklist::{self, Worklist};
 
 /// Exact source fact and all declared fact-level dependencies of this element.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -362,43 +363,67 @@ fn compute_required_closure(
     contract: &AgenticAiContextContract,
     elements: &BTreeMap<FactId, AgenticAiContextElement>,
 ) -> Result<AgenticAiContextClosure, AgenticAiContextError> {
-    let mut selected = BTreeSet::new();
-    let mut pending: Vec<_> = query
-        .roots
-        .iter()
-        .chain(&contract.required)
-        .chain(&contract.temporal_receipts)
-        .copied()
-        .collect();
-    let mut coverage = EvidenceCompleteness::Complete;
-    while let Some(id) = pending.pop() {
-        if !selected.insert(id) {
-            continue;
+    let mut pending = query.roots.clone();
+    pending.extend_from_slice(&contract.required);
+    pending.extend_from_slice(&contract.temporal_receipts);
+    let traversal = worklist::run(ClosureTraversal {
+        elements,
+        contract,
+        pending,
+        selected: BTreeSet::new(),
+        coverage: EvidenceCompleteness::Complete,
+        error: None,
+    });
+    if let Some(error) = traversal.error {
+        return Err(error);
+    }
+    Ok(AgenticAiContextClosure {
+        elements: traversal.selected.into_iter().collect(),
+        coverage: traversal.coverage,
+    })
+}
+
+struct ClosureTraversal<'a> {
+    elements: &'a BTreeMap<FactId, AgenticAiContextElement>,
+    contract: &'a AgenticAiContextContract,
+    pending: Vec<FactId>,
+    selected: BTreeSet<FactId>,
+    coverage: EvidenceCompleteness,
+    error: Option<AgenticAiContextError>,
+}
+
+impl Worklist for ClosureTraversal<'_> {
+    fn advance(&mut self) -> bool {
+        let Some(id) = self.pending.pop() else {
+            return false;
+        };
+        if !self.selected.insert(id) {
+            return true;
         }
-        let element = elements
-            .get(&id)
-            .ok_or(AgenticAiContextError::UnknownElement(id))?;
+        let Some(element) = self.elements.get(&id) else {
+            self.error = Some(AgenticAiContextError::UnknownElement(id));
+            return false;
+        };
         let context = element.fact.context();
         match admit_evidence(
             context.validity() == FactValidity::Valid,
             context.completeness(),
-            contract.require_complete,
+            self.contract.require_complete,
         ) {
             EvidenceAdmission::Accepted => {}
             EvidenceAdmission::Invalid => {
-                return Err(AgenticAiContextError::InvalidatedElement(id));
+                self.error = Some(AgenticAiContextError::InvalidatedElement(id));
+                return false;
             }
             EvidenceAdmission::Incomplete => {
-                return Err(AgenticAiContextError::IncompleteEvidence(id));
+                self.error = Some(AgenticAiContextError::IncompleteEvidence(id));
+                return false;
             }
         }
-        coverage = merge_completeness(coverage, context.completeness());
-        pending.extend(&element.dependencies);
+        self.coverage = merge_completeness(self.coverage, context.completeness());
+        self.pending.extend(&element.dependencies);
+        true
     }
-    Ok(AgenticAiContextClosure {
-        elements: selected.into_iter().collect(),
-        coverage,
-    })
 }
 
 fn reverse_dependency_impact(
@@ -414,16 +439,36 @@ fn reverse_dependency_impact(
             }
         }
     }
-    let mut invalidated = changed.clone();
-    let mut pending: Vec<_> = changed.iter().copied().collect();
-    while let Some(id) = pending.pop() {
-        if let Some(dependents) = reverse.get(&id) {
+    let mut pending = Vec::with_capacity(changed.len());
+    for id in changed {
+        pending.push(*id);
+    }
+    worklist::run(ImpactTraversal {
+        reverse,
+        invalidated: changed.clone(),
+        pending,
+    })
+    .invalidated
+}
+
+struct ImpactTraversal {
+    reverse: BTreeMap<FactId, BTreeSet<FactId>>,
+    invalidated: BTreeSet<FactId>,
+    pending: Vec<FactId>,
+}
+
+impl Worklist for ImpactTraversal {
+    fn advance(&mut self) -> bool {
+        let Some(id) = self.pending.pop() else {
+            return false;
+        };
+        if let Some(dependents) = self.reverse.get(&id) {
             for dependent in dependents {
-                if invalidated.insert(*dependent) {
-                    pending.push(*dependent);
+                if self.invalidated.insert(*dependent) {
+                    self.pending.push(*dependent);
                 }
             }
         }
+        true
     }
-    invalidated
 }

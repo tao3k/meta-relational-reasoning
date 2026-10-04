@@ -1,15 +1,29 @@
-# Production Rust evidence proofs
+# Production Rust Context proofs
 
 The native Context closure calls `evidence::admit_evidence` and
-`evidence::merge_completeness`. Charon extracts their actual compiler IR, and
-Aeneas generates `Generated/Types.lean` and `Generated/Funs.lean`. These files
-are machine output; do not edit them manually.
+`evidence::merge_completeness`. Forward closure and reverse revision impact both
+call `worklist::run`, a shared generic traversal driver. Charon extracts their
+actual compiler IR, and Aeneas generates `Generated/Types.lean` and
+`Generated/Funs.lean`. These files are machine output; do not edit them manually.
 
-`Evidence.lean` proves seven universal laws directly about those generated
+`Evidence.lean` proves seven universal laws directly about the generated evidence
 functions: exact acceptance policy, invalidity precedence, rejection of required
 incomplete evidence, merge refinement to maximum weakness rank, commutativity,
-associativity, and complete evidence as the identity. `Axioms.lean` audits their
-transitive axiom dependencies. No finite Rust replay is used to prove these laws.
+associativity, and complete evidence as the identity.
+
+`Driver.lean` proves five additional universal laws about the extracted while
+loop: termination under an adapter contract, preservation of its invariant,
+exact least closure from a completed graph invariant, refinement via a one-pop
+simulation, and total correctness instantiated with the existing shared graph
+model. The driver theorem has no fuel bound and applies to all state types. The
+model is compiled from the same `Closure`, `Worklist`, and `Termination` sources
+as the Lean 4.34 system project, rather than copied. Its foundation imports `Std`.
+
+The invariant-based graph theorem allows either pop-time duplicate suppression
+(forward closure) or enqueue-time suppression (reverse impact). A one-pop
+simulation is the stronger optional scheduling condition. `Axioms.lean` audits
+all twelve theorems' transitive axiom dependencies. No finite Rust replay proves
+these universal laws.
 
 ## Reproduction
 
@@ -24,32 +38,46 @@ Install the pinned Rust toolchain. Then run through the repository profile:
 
 ```sh
 ./.devenv/devenv-profile-exec python3 tools/check/context-source-proof.py --toolchain-dir /path/to/aeneas
-./.devenv/devenv-profile-exec bash -c 'cd proofs/MRRProof/AgenticAIContextRust && MATHLIB_NO_CACHE_ON_UPDATE=1 lake update && lake exe cache get && lake build Evidence && lake env lean Axioms.lean'
+./.devenv/devenv-profile-exec bash -c 'cd proofs/MRRProof/AgenticAIContextRust && MATHLIB_NO_CACHE_ON_UPDATE=1 lake update && lake exe cache get && lake build Evidence Driver && lake env lean Axioms.lean'
 ```
 
 Use `--rustup-home` for an isolated compiler installation. `--update` deliberately
-refreshes generated files; the default fails if fresh output differs. The CI job
+refreshes proved generated files; the default fails if fresh output differs. CI
 regenerates from the checked-out source before checking proofs, and uploads an
 extraction receipt with tool versions and output hashes. Extraction freshness
 and theorem checking are separate gates.
 
-The ordinary pinned compiler sysroot is selected explicitly. The two extracted
-functions use only Boolean branches and enum patterns, with no standard-library
-calls or external function obligations. This avoids an implicit Miri sysroot
-fallback. It is not a claim about the ordinary sysroot's library implementation.
+The ordinary pinned compiler sysroot is explicitly selected with `--sysroot
+default`. The evidence functions use Boolean branches and enum patterns; the
+driver uses an explicit generic trait parameter. The proved generated modules
+contain no undefined external-function stubs. This avoids implicit Miri sysroot
+fallback and makes no claim about the ordinary sysroot's library implementation.
 
 ## Remaining boundary
 
-Charon successfully extracted the production `compute_required_closure` and
-`reverse_dependency_impact` call graphs. The pinned Aeneas translator failed with
-an internal error in `SymbolicToPureTypes.translate_fun_sigs`, attributed to
-`core::iter::traits::iterator::Iterator`. Reproduce that probe with
-`--probe-worklists`; failures propagate and never produce a success receipt.
-The Rust standard-library maps/sets, wrappers mapping validity to a Boolean,
-whole-loop invariants, serialization libraries and compiler are still outside
-these source-derived proofs. Existing total-correctness worklist proofs and
-Rust/Lean replay remain separate evidence for those boundaries.
+The earlier full-call-graph probe failed on `Iterator::copied`'s associated-type
+constraint. Equivalent explicit stack initialization removed that first failure.
+Extracting whole container loops then made no bounded progress. Separating native
+one-pop adapters from the shared generic driver allowed the larger wrapper call
+graph to translate too, but it emits external library obligations.
+
+Run `--probe-worklists` to retain the actual LLBC and generated diagnostic modules
+in a fresh temporary directory. The probe deliberately returns failure and
+emits no success receipt: external-function/type stubs have not been discharged.
+It cannot update the proved modules. Translation has a 60-second preparation cap.
+These diagnostic modules are not imported into the proved project.
+
+`AdvanceContract` and `GraphAdvanceRefinement` are explicit theorem premises.
+They have not been proved for `ClosureTraversal::advance` or
+`ImpactTraversal::advance`, the actual BTreeMap/BTreeSet adapters. The model
+instantiation does not discharge those native obligations. In particular, the
+revision adapter suppresses duplicate enqueues and needs an invariant over
+processed identities, rather than treating every scheduled identity as processed.
+Native source admission, identity-to-model mapping, evidence errors, reverse-edge
+construction, maps/sets and their native invariants remain open. The new theorem
+covers loop control once those step obligations hold. Existing Rust/Lean replay
+is separate bounded evidence for the adapters.
 
 The source extraction tools and Lean kernel form the trusted verification
-pipeline. These seven laws do not establish verified Rust compilation or
-end-to-end Context-system refinement.
+pipeline. These twelve laws do not establish verified Rust compilation,
+serialization-library refinement or end-to-end Context-system refinement.

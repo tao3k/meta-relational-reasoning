@@ -1,4 +1,5 @@
 import Evidence
+import Driver
 import Lean.Util.CollectAxioms
 import Lean.Elab.Command
 
@@ -14,7 +15,12 @@ run_cmd do
     `MRR.ContextRustProofs.merge_refines_max,
     `MRR.ContextRustProofs.merge_commutative,
     `MRR.ContextRustProofs.merge_associative,
-    `MRR.ContextRustProofs.complete_is_identity]
+    `MRR.ContextRustProofs.complete_is_identity,
+    `MRR.ContextRustProofs.extracted_driver_total_correctness,
+    `MRR.ContextRustProofs.extracted_driver_preserves_invariant,
+    `MRR.ContextRustProofs.extracted_driver_graph_invariant_complete,
+    `MRR.ContextRustProofs.extracted_driver_refines_graph,
+    `MRR.ContextRustProofs.extracted_model_driver_total_correctness]
   required.forM fun declarationName => do
     unless environment.contains declarationName do
       throwError "Missing source theorem: {declarationName}"

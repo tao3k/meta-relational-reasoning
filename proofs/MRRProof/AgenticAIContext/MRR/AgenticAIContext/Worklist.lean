@@ -44,7 +44,7 @@ theorem worklist_step_coverage (deps : Nat -> List Nat) (state : ContextWorklist
       by_cases found : head inList visited
       case pos =>
         simp only [worklistCovered, List.mem_cons] at covered
-        simp only [worklistStep, ite_eq_left found, worklistCovered]
+        simp only [worklistStep, found, ite_true, worklistCovered]
         cases covered with
         | inl member => exact Or.inl member
         | inr member =>
@@ -53,7 +53,7 @@ theorem worklist_step_coverage (deps : Nat -> List Nat) (state : ContextWorklist
           | inr tail => exact Or.inr tail
       case neg =>
         simp only [worklistCovered, List.mem_cons] at covered
-        simp only [worklistStep, ite_eq_right found, worklistCovered, List.mem_cons, List.mem_append, List.mem_reverse]
+        simp only [worklistStep, found, ite_false, worklistCovered, List.mem_cons, List.mem_append, List.mem_reverse]
         cases covered with
         | inl member => exact Or.inl (Or.inr member)
         | inr member =>
@@ -72,7 +72,7 @@ theorem worklist_step_invariant (roots : List Nat) (deps : Nat -> List Nat)
     | cons head remaining =>
       by_cases found : head inList visited
       case pos =>
-        simp only [worklistStep, ite_eq_left found]
+        simp only [worklistStep, found, ite_true]
         refine WorklistInvariant.mk valid.nodup valid.visitedSound ?_ ?_ ?_
         case refine_1 =>
           intro id member
@@ -84,7 +84,7 @@ theorem worklist_step_invariant (roots : List Nat) (deps : Nat -> List Nat)
           intro parent member id edge
           simpa [worklistStep, found] using worklist_step_coverage deps _ id (valid.edgesCovered parent member id edge)
       case neg =>
-        simp only [worklistStep, ite_eq_right found]
+        simp only [worklistStep, found, ite_false]
         refine WorklistInvariant.mk (List.nodup_cons.mpr (And.intro found valid.nodup)) ?_ ?_ ?_ ?_
         case refine_1 =>
           intro id member
@@ -124,6 +124,22 @@ theorem worklist_initial_invariant (roots : List Nat) (deps : Nat -> List Nat) :
   case refine_2 => intro id member; exact Required.root (List.mem_reverse.mp member)
   case refine_3 => intro id member; exact Or.inr (List.mem_reverse.mpr member)
   case refine_4 => intro parent member; cases member
+
+/-- The final invariant suffices independently of a fuel-indexed model run. -/
+theorem worklist_finished_invariant_exact (roots : List Nat) (deps : Nat -> List Nat)
+    (state : ContextWorklist) (valid : WorklistInvariant roots deps state)
+    (finished : state.pending = []) (id : Nat) :
+    id inList state.visited <-> Required roots deps id := by
+  constructor
+  case mp => exact valid.visitedSound id
+  case mpr =>
+    apply closed_contains_required roots state.visited deps
+    case hasRoots =>
+      intro root member
+      simpa [worklistCovered, finished] using valid.rootsCovered root member
+    case closed =>
+      intro parent member dependency edge
+      simpa [worklistCovered, finished] using valid.edgesCovered parent member dependency edge
 
 /-- Any successful stack/set run computes exactly the least required closure,
 without relying on the separately checked certificate definition. -/

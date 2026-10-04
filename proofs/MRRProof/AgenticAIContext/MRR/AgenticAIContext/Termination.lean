@@ -71,7 +71,7 @@ theorem worklist_capacity_decreases (source : List Nat) (deps : Nat -> List Nat)
       case pos => simp [worklistCapacity, worklistStep, found]
       case neg =>
         have released := remaining_edges_fresh deps visited source head known found
-        simp only [worklistCapacity, worklistStep, ite_eq_right found,
+        simp only [worklistCapacity, worklistStep, found, ite_false,
           List.length_append, List.length_reverse, List.length_cons]
         omega
 

@@ -37,4 +37,9 @@ inductive evidence.EvidenceAdmission where
 | Invalid : evidence.EvidenceAdmission
 | Incomplete : evidence.EvidenceAdmission
 
+/-- Trait declaration: [mrr_agentic_ai_context::worklist::Worklist]
+    Source: 'crates/mrr-agentic-ai-context/src/worklist.rs', lines 3:0-6:1 -/
+structure worklist.Worklist (Self : Type) where
+  advance : Self → Result (Bool × Self)
+
 end MRR.ContextRust
