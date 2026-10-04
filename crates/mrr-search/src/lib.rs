@@ -6,9 +6,12 @@ mod reasoning;
 pub use reasoning::{
     SearchFactor, SearchFactorEdge, SearchFactorRole, SearchFrameworkError, SearchFrameworkLimits,
     SearchFrameworkReceipt, SearchFrameworkStatus, SearchInfluence, SearchObservation,
-    SearchReasoningDigest, evaluate_search_factors,
+    SearchReasoningDigest,
 };
 
-#[cfg(test)]
+#[cfg(all(test, feature = "native-inference"))]
 #[path = "../tests/unit/mod.rs"]
 mod tests;
+
+#[cfg(feature = "native-inference")]
+pub use reasoning::evaluate_search_factors;

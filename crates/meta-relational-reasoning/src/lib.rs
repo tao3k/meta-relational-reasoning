@@ -62,15 +62,15 @@ pub use mrr_agentic_ai_context::{
     AgenticAiContextComputationalIdentity, AgenticAiContextReuseEligibility,
     AgenticAiContextTokenLayout, AgenticAiContextTokenizer,
 };
-pub use mrr_ascent::{
-    ClosureError as DeductionError, ClosureReceipt, ClosureStatus, DerivationCandidate,
-    DerivationReceiptDigest,
-};
 pub use mrr_bundle::{
     BundleError, EntityCatalog, EntityCatalogDigest, EntityCatalogError, InverseGoal,
     LineagePolicy, ProjectionPolicy, QueryTemplate, ReasoningBundle, ReasoningBundleDeclaration,
     RelationCatalog, RelationCatalogDigest, RelationCatalogError, RulePack,
     TransitionSystem as BundleTransitionSystem, ValidationProfile,
+};
+pub use mrr_deduction::{
+    ClosureError as DeductionError, ClosureReceipt, ClosureStatus, DerivationCandidate,
+    DerivationReceiptDigest,
 };
 pub use mrr_identity::{
     ActionId, DerivationId, EntityId, FactId, GenerationId, LineageEdgeId, LineageNodeId, QueryId,
@@ -107,7 +107,7 @@ pub use mrr_revision::{
 pub use mrr_search::{
     SearchFactor, SearchFactorEdge, SearchFactorRole, SearchFrameworkError, SearchFrameworkLimits,
     SearchFrameworkReceipt, SearchFrameworkStatus, SearchInfluence, SearchObservation,
-    SearchReasoningDigest, evaluate_search_factors,
+    SearchReasoningDigest,
 };
 pub use mrr_transition::{
     Action, CounterexampleIr, Effect, InitialState, Invariant, Precondition, SafetyCheckReceipt,
@@ -126,3 +126,12 @@ pub use typing::{ExpressionType, ParameterType, QueryType, ResultField, StaticQu
 #[cfg(test)]
 #[path = "../tests/unit/mod.rs"]
 mod tests;
+
+#[cfg(feature = "native-inference")]
+pub use mrr_search::evaluate_search_factors;
+
+mod property_execution;
+pub use property_execution::{
+    AdmittedPropertyExecution, PropertyExecutionCandidate, PropertyExecutionError,
+    PropertyQueryBackend,
+};

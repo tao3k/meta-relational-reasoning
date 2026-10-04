@@ -2,7 +2,9 @@
 
 use core::num::NonZeroUsize;
 
-use mrr_ascent::{ClosureConfig, ClosureLimits, evaluate_transitive_closure};
+#[cfg(feature = "native-inference")]
+use mrr_deduction::evaluate_transitive_closure;
+use mrr_deduction::{ClosureConfig, ClosureLimits};
 
 use crate::{
     BundleBoundClosure, CandidateIdentities, ClosureAdmissionError,
@@ -15,6 +17,11 @@ use crate::{
 pub struct DeductionPlan(ClosureConfig);
 
 impl DeductionPlan {
+    #[must_use]
+    pub const fn closure_config(self) -> ClosureConfig {
+        self.0
+    }
+
     #[must_use]
     pub const fn transitive_closure(
         source_relation: mrr_identity::RelationId,
@@ -37,6 +44,11 @@ impl DeductionPlan {
 pub struct DeductionLimits(ClosureLimits);
 
 impl DeductionLimits {
+    #[must_use]
+    pub const fn closure_limits(self) -> ClosureLimits {
+        self.0
+    }
+
     #[must_use]
     pub const fn new(
         max_input_facts: NonZeroUsize,
@@ -139,16 +151,17 @@ impl MrrEngine {
         crate::admit_query_result_candidate(query, candidate, limits)
     }
 
+    #[cfg(feature = "native-inference")]
     pub fn derive(
         &self,
         plan: DeductionPlan,
         snapshot: &mrr_revision::SemanticSnapshot,
         limits: DeductionLimits,
-    ) -> Result<BundleBoundClosure, mrr_ascent::ClosureError> {
+    ) -> Result<BundleBoundClosure, mrr_deduction::ClosureError> {
         for fact in self.bundle.facts() {
             let actual = fact.context().generation();
             if actual != snapshot.generation() {
-                return Err(mrr_ascent::ClosureError::BundleGenerationMismatch {
+                return Err(mrr_deduction::ClosureError::BundleGenerationMismatch {
                     fact: fact.id(),
                     expected: snapshot.generation(),
                     actual,

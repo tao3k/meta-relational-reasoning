@@ -181,8 +181,8 @@ $ A => B $
         babel = org_babel.validate_org_babel_contract(cli.ROOT)
         self.assertIn("mrr-bundle", graph)
         ascent_blocks = org_babel.extract_org_babel_blocks(
-            cli.ROOT / "docs/architecture/0003-mrr-ascent-evaluation.org",
-            (cli.ROOT / "docs/architecture/0003-mrr-ascent-evaluation.org").read_text(),
+            cli.ROOT / "docs/architecture/0003-mrr-deduction-evaluation.org",
+            (cli.ROOT / "docs/architecture/0003-mrr-deduction-evaluation.org").read_text(),
         )
         self.assertEqual(
             [block.language for block in ascent_blocks],

@@ -1,10 +1,10 @@
-#+title: RFC 0003 - Bounded MRR Ascent Evaluation
+#+title: RFC 0003 - Bounded MRR Deduction with Scheme ASCENT
 #+status: accepted
 
 * Context
 
 The MRR core owns identities, relation schemas, facts, queries, rules, transitions,
-lineage, and bundle validation.  =mrr-ascent= is a downstream execution adapter.  It
+lineage, and bundle validation.  =mrr-deduction= is a downstream execution adapter.  It
 must not invent identifiers, publish facts, admit lineage, reinterpret transitions,
 or become a second semantic authority.
 
@@ -12,7 +12,7 @@ or become a second semantic authority.
 
 #+begin_src mermaid
 flowchart LR
-  B[mrr-bundle<br/>validated relations/facts/rules] --> A[mrr-ascent<br/>bounded evaluation]
+  B[mrr-bundle<br/>validated relations/facts/rules] --> A[mrr-deduction<br/>bounded evaluation]
   I[mrr-identity<br/>caller-owned IDs] --> B
   A --> C[ClosureReceipt<br/>pack + generation + inputs + digest]
   C --> L[mrr-lineage admission<br/>validates caller-assigned IDs]
@@ -34,7 +34,7 @@ approximated.
 ** Search-factor Ascent adapter
 
 =mrr-search= owns a second, equally narrow Ascent program for the POO Search
-framework.  It does not extend =mrr-ascent='s validated ReasoningBundle rule
+framework.  It does not extend =mrr-deduction='s validated ReasoningBundle rule
 shape and does not pretend consumer factors are MRR bundle rules.  Its only
 relations are declared factor edges, generation-bound factor observations,
 shortest factor reachability, and candidate influence.  POO Flow owns temporal
@@ -42,59 +42,38 @@ causal traces; =mrr-lineage= owns the resulting explanation graph and Impact.
 
 This vertical adapter is separate so text retrieval, scoring, tokenization,
 parser facts, and consumer-specific operators cannot leak into the general MRR
-closure engine.  Both adapters use Ascent as a maintained fixed-point substrate,
+closure engine.  Both adapters use Scheme ASCENT as a maintained fixed-point substrate,
 apply finite pre-execution budgets, reconstruct deterministic witnesses, and
 return inert receipts rather than publishing state.
 
-* Why Ascent
+* Scheme ASCENT execution ownership
 
-MRR needs a maintained fixed-point implementation, not another hand-written
-closure engine.  Ascent is embedded in Rust, accepts ordinary typed Rust values,
-and expresses Datalog-style forward inference without adding a service, a second
-runtime, or an FFI boundary to the public facade.  That makes it suitable for the
-narrow execution responsibility above while the MRR crates retain ownership of
-identity, evidence, lineage, transitions, and publication.
+The canonical POO request and finite programs live in
+=scheme/reasoning/finite.ss=. Rust projects request-local node coordinates
+through =mrr-gerbil='s typed native boundary; the entire staging, execution,
+result read and release occur on the unique Gambit owner thread. No JSON,
+dynamic source evaluation, subprocess inference or Rust ASCENT fallback is
+part of this boundary.
 
-This is a boundary decision, not a claim that Ascent is the semantic model or
-that it is universally faster than every alternative.  The
-[[https://s-arash.github.io/ascent/cc22main-p95-seamless-deductive-inference-via-macros.pdf][Ascent paper]]
-describes the macro-based integration of deductive inference with Rust.  MRR
-uses that maintained evaluation substrate and independently checks its output;
-the =ClosureReceipt=, deterministic witness reconstruction, admission rules, and
-public identities remain MRR contracts.
+The adapter composes the maintained
+=gerbil-ascent-table-expression-prototype= with an immutable =UIntTrieSet=
+source. ASCENT's bounded closure and unit-weight shortest-distance lattice
+must publish the same canonical pair inventory. Observation influence is a
+functional Scheme value projection over that stabilized lattice; intermediate
+distances never become final influence candidates. MRR adds no fixed-point
+algorithm. The general rule/session engine is unnecessary for these two
+already restricted program shapes and adds unrelated contract initialization.
 
-The evaluated alternatives are:
+Input and theoretical pair limits remain checked before execution. Finite
+work bounds do not establish a latency or cancellation guarantee. Native
+initialization, queueing and result transport remain part of operation cost;
+the qualification watchdog rejects five seconds without genuine progress.
 
-- a hand-written graph or closure loop would duplicate fixed-point, join, and
-  indexing machinery and would couple one current rule shape to the engine;
-- [[https://github.com/souffle-lang/souffle][Souffle]] is a strong compiled Datalog
-  implementation and research reference, but its generated C++ pipeline would
-  add a separate build and language boundary to this Rust facade;
-- direct graph traversal is appropriate for isolated graph algorithms, but is
-  not the intended abstraction for typed relations and multiple rule packs.
-
-The choice must be revisited if Ascent cannot preserve deterministic bounded
-receipts, cannot meet the measured scale envelope, or prevents a required
-deployment target.  Such a replacement may change the proposal engine; it must
-not weaken or bypass admission.
-
-** BYODS as a representation optimization seam
-
-[[https://doi.org/10.1145/3622840][Bring Your Own Data Structures to Datalog
-(BYODS)]] shows that a Datalog program can retain declarative rule semantics
-while compiled joins operate over a user-provided relation representation.  It
-targets cases where generic B-trees or hash maps impose algorithmic overhead
-that a domain structure such as union-find or a lattice can avoid.  The work is
-in the same Rust-embedded Datalog research line as Ascent and is relevant to
-large Content Graph closures.
-
-MRR does not currently implement BYODS.  If profiling identifies
-representation-imposed cost, a future evaluator may adopt a specialized
-relation only after an A/B scenario proves semantic parity, deterministic
-receipt parity, and material scale improvement.  The optimization may change
-candidate computation; it may not change source identities, rule meaning,
-generation binding, witness requirements, or the all-or-nothing admission
-boundary.
+=mrr-deduction= retains bundle/rule/generation/budget validation, deterministic
+witness reconstruction and the typed receipt. =mrr-search= retains factor,
+observation, generation and lineage validation. Both invoke the same maintained
+Scheme solver rather than implementing another Rust fixed point. Native failures
+are typed errors and never select an alternative evaluator.
 
 * Bounds and deterministic evidence
 
@@ -142,7 +121,7 @@ committing lineage.  Cancellation or failure therefore cannot partially mutate l
 relation state.
 * Atomic closure admission at the facade boundary
 
-=mrr-ascent= ends at a deterministic =ClosureReceipt= containing ordered
+=mrr-deduction= ends at a deterministic =ClosureReceipt= containing ordered
 =DerivationCandidate= values but no allocated output identities.
 The =meta-relational-reasoning= facade composes that receipt with identities
 allocated by its caller, while the existing owners retain their authority:
@@ -169,8 +148,9 @@ evaluation.  This comparison is evidence of parity for supplied rows, not a
 source-owner attestation or a lineage admission.
 The independent [[https://github.com/tao3k/gerbil-ascent][gerbil-ascent]] repository owns Scheme rule
 qualification and its Rust Ascent differential oracle. MRR's own tests exercise
-the read-only, exact-Bundle comparison with literal candidate rows; MRR CI does
-not install or pin the Scheme package. External source attestation and lineage
+the native solver and read-only exact-Bundle comparison. Scheme ASCENT is
+acquired through the sole POO Flow library dependency and included in the AOT
+execution closure. External source attestation and lineage
 admission remain separate obligations.
 That value includes an identity-complete =DerivationReceipt= with =RulePackId=,
 input generation and facts, caller-assigned derived =FactId=s and =DerivationId=s,
@@ -178,7 +158,7 @@ complete closure status, and a digest bound to the pre-admission closure digest.
 
 #+begin_src mermaid
 flowchart LR
-  B[Validated MRR Bundle] --> A[mrr-ascent candidates]
+  B[Validated MRR Bundle] --> A[mrr-deduction candidates]
   I[Caller-assigned FactId and DerivationId] --> F[Facade atomic admission]
   A --> F
   F --> L[mrr-lineage validation]
@@ -225,7 +205,7 @@ produces no `MaterializedClosure`.
 The executable contract rejects truncated receipts, candidate/identity count
 mismatches, duplicate fact or derivation identities, cross-generation candidates,
 self-support rejected by =mrr-lineage=, and invalid generation transitions rejected
-by =mrr-transition=.  Candidate sorting remains owned by =mrr-ascent=; identity
+by =mrr-transition=.  Candidate sorting remains owned by =mrr-deduction=; identity
 allocation and live publication remain outside this pure admission function.
 
 =BundleAdmission.lean= kernel-checks this boundary with

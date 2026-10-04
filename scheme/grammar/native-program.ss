@@ -1,6 +1,7 @@
 ;;; Gerbil compiler-owned AOT root for the embedded MRR runtime.
 
 (import ./native
+        ../reasoning/finite-native
         :gerbil-parser/src/ffi/parse-artifact-v1-native)
 (export main)
 

@@ -4,12 +4,14 @@ mod driver;
 mod enhanced_query;
 #[allow(unsafe_code)]
 mod ffi;
+mod finite;
 mod model;
 pub(crate) mod parse_artifact;
 mod parser_cst;
 mod reasoning;
 mod runtime;
 
+pub use finite::{FiniteInferenceCandidate, FiniteInferenceError, evaluate_finite_relations};
 pub use runtime::NativeRuntimeStatus;
 
 pub use driver::{

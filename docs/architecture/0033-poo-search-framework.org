@@ -128,7 +128,7 @@ duplicate or unknown
 factors, cyclic factor graphs, missing causal parents, temporal inversions,
 causal-parent edges that disagree with the factor graph, and budget overflow.
 
-Only after admission does a small Ascent program derive the transitive factor
+Only after admission does a small native Scheme ASCENT program derive the transitive factor
 influence relation for each observed candidate.  A deterministic breadth-first
 reconstruction must reproduce Ascent's shortest distance; disagreement is an
 internal error, not a partial result.  The resulting factor trajectory is

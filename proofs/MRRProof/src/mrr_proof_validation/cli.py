@@ -28,7 +28,7 @@ CORE_CRATES = (
     "mrr-search",
     "mrr-transition",
     "mrr-bundle",
-    "mrr-ascent",
+    "mrr-deduction",
     "meta-relational-reasoning",
 )
 PROOF_OBLIGATIONS = {
@@ -50,7 +50,7 @@ PROOF_OBLIGATIONS = {
     "mrr-identity": {"identity_domain_separation"},
     "mrr-intent": {"identity_domain_separation"},
     "mrr-revision": {"identity_domain_separation"},
-    "mrr-ascent": {
+    "mrr-deduction": {
         "admitted_fact_ids_are_unique",
         "inserted_fact_has_admitted_schema",
         "admitted_rule_uses_only_admitted_relations",

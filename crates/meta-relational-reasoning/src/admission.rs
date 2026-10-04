@@ -5,8 +5,8 @@ use std::{
     fmt,
 };
 
-use mrr_ascent::{ClosureReceipt, ClosureStatus, DerivationCandidate};
 use mrr_bundle::ReasoningBundle;
+use mrr_deduction::{ClosureReceipt, ClosureStatus, DerivationCandidate};
 use mrr_identity::{DerivationId, FactId, GenerationId, ReasoningBundleId, RuleId, RulePackId};
 use mrr_lineage::{Derivation, LineageError};
 use mrr_relation::{
@@ -28,6 +28,7 @@ pub struct BundleBoundClosure {
 }
 
 impl BundleBoundClosure {
+    #[cfg(feature = "native-inference")]
     pub(crate) const fn bind(
         source_bundle: ReasoningBundleId,
         snapshot_digest: [u8; 32],

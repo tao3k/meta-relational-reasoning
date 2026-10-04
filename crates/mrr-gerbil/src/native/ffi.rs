@@ -16,6 +16,14 @@ pub(super) struct ParserNativeResult {
 }
 
 unsafe extern "C" {
+    fn mrr_finite_abi_version() -> u32;
+    fn mrr_finite_start(nodes: i64, edges: i64, observations: i64) -> i32;
+    fn mrr_finite_edge(from: i64, to: i64) -> i32;
+    fn mrr_finite_observe(factor: i64) -> i32;
+    fn mrr_finite_solve() -> i32;
+    fn mrr_finite_reset() -> i32;
+    fn mrr_finite_count(table: i32) -> i64;
+    fn mrr_finite_cell(table: i32, row: i64, column: i64) -> i64;
     #[link_name = "___LNK_mrr__grammar__linker"]
     fn mrr_grammar_linker(
         state: *mut gerbil_scheme_sys::GerbilGlobalState,
@@ -82,6 +90,33 @@ unsafe extern "C" {
         source: *const c_char,
         result: *mut GerbilParserResultV1,
     ) -> i32;
+}
+
+pub(super) fn finite_version() -> u32 {
+    unsafe { mrr_finite_abi_version() }
+}
+pub(super) fn finite_start(nodes: i64, edges: i64, observations: i64) -> i32 {
+    unsafe { mrr_finite_start(nodes, edges, observations) }
+}
+pub(super) fn finite_edge(from: i64, to: i64) -> i32 {
+    unsafe { mrr_finite_edge(from, to) }
+}
+pub(super) fn finite_observe(factor: i64) -> i32 {
+    unsafe { mrr_finite_observe(factor) }
+}
+pub(super) fn finite_solve() -> i32 {
+    unsafe { mrr_finite_solve() }
+}
+pub(super) fn finite_reset() {
+    unsafe {
+        mrr_finite_reset();
+    }
+}
+pub(super) fn finite_count(table: i32) -> i64 {
+    unsafe { mrr_finite_count(table) }
+}
+pub(super) fn finite_cell(table: i32, row: i64, column: i64) -> i64 {
+    unsafe { mrr_finite_cell(table, row, column) }
 }
 
 pub(super) fn runtime_init() -> i32 {

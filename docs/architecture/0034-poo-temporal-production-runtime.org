@@ -10,10 +10,12 @@ library and supplies typed admission, concurrency and durable runtime effects.
 The Scheme ASCENT library owns finite relational evaluation. Rust ASCENT is
 removed from the target runtime, including Search factor inference.
 
-This is the required architecture. The current implementation still executes
-Rust =ascent!= in =crates/mrr-ascent/src/api.rs= and
-=crates/mrr-search/src/reasoning.rs=. Neither a Scheme dependency nor the
-existing native grammar archive establishes replacement of those executions.
+The inference adapter now composes ASCENT's maintained native POO table
+expression in =scheme/reasoning/finite.ss=. =mrr-deduction= and =mrr-search=
+retain typed admission and independent witness checks; both execute the native
+Scheme candidate on the =mrr-gerbil= owner thread. Rust ASCENT execution and
+the former =mrr-ascent= package are removed. Full Temporal generation, correction,
+recovery and effect publication remain separate production obligations.
 The bounded read-only physical roundtrip qualifies only its exercised path.
 
 This decision supersedes the runtime restrictions in RFC 0001 and RFC 0020
@@ -49,6 +51,36 @@ Rust preserves identities and checks receipts; Scheme remains the executable
 owner of the POO algorithms. Reimplementing Temporal or finite inference in
 Rust creates a second semantic engine and does not satisfy this composition.
 MRR Data remains a physical adapter: it does not decide Temporal authority.
+
+* MRR to MRR Data execution boundary
+
+MRR dispatches an admitted, snapshot-bound operation to MRR Data. MRR Data
+owns the physical Backend and storage/transfer Protocol implementations;
+backend choice, credentials, retry and transfer behavior stay behind that
+boundary. MRR requests capabilities and retains semantic authority. It does
+not embed DataFusion, GraphAr or S3 implementations in its Scheme adaptation.
+
+The =meta_relational_reasoning::PropertyQueryBackend= contract dispatches
+through =CatalogBoundQuery::execute_with=. MRR retains backend-owned physical
+evidence alongside its own result admission. The higher MRR
+=BoundPropertySourceQuery= delegates to this port while retaining the original
+parser receipt. MRR Data depends only on the facade's contracts with default
+features disabled; its ordinary Backend build needs neither a parser nor a
+Scheme SDK. The MRR production facade enables =native-inference= by default,
+which composes the Scheme evaluator without a Rust fallback.
+
+MRR Data binds the original query to its immutable root and engine profile,
+verifies restored content and executes through the selected Backend. Its
+physical output is projected through =project_data_query_output= and checked
+by MRR-owned result admission. The existing Scheme result handoff preserves
+those identities for the Temporal consumer. Each implementation remains in
+its owning repository.
+
+Unavailable transport, permission denial, cancellation, corruption and
+confirmed absence retain their distinct protocol meanings. Backend execution
+success alone cannot authorize facts, establish source coverage or commit a
+Temporal effect. New production dispatch must compose these existing contracts
+and propagate their failures rather than create another physical query model.
 
 * One bound operation
 
@@ -155,3 +187,42 @@ initialization are included where the corresponding operation promises that
 deadline. A host timeout alone cannot interrupt or safely reuse an in-flight
 Gambit call: bounded native computation or an explicitly isolated worker
 lifecycle must establish cancellation and subsequent runtime health.
+
+* Native finite inference and dispatch acceptance slice — 2026-10-04
+
+Removed the Rust =ascent= workspace dependency, =mrr-ascent= package and its
+Criterion solver benchmark. =mrr-deduction= retains the original typed closure
+contracts and deterministic MRR witness reconstruction; native Scheme supplies
+the original finite closure and shortest distances. =mrr-search= delegates its
+finite relation/influence evaluation through the same fixed-width ABI.
+The maintained ASCENT POO table expression owns closure and shortest-path
+semantics. Original observation coordinates and request-local node mappings
+remain distinct from MRR fact identities and generations.
+
+The Scheme request eagerly owns input rows before constructing lazy POO slots.
+Native start/stage/solve/read/reset execute as one Gambit owner-thread operation.
+ABI, coordinate, relation-size, duplicate and distance checks fail closed.
+The candidate does not allocate authority or admit lineage. No Rust evaluator
+fallback or JSON semantic request is available.
+
+| Final local check | Result | Evidence boundary |
+|-------------------+--------+-------------------|
+| Scheme finite request tests | 4 passed | Owned inputs, bounded closure/distance, observation order and foreign coordinates |
+| Native Gerbil tests | 31 passed, 1.54s | Includes 3 finite ABI/state/concurrent-request controls |
+| Deduction tests | 14 passed, 0.82s | Existing closure/witness/budget/negative controls on Scheme execution |
+| Search tests | 7 passed, 0.98s | Original factor/observation/lineage contracts |
+| Semantic facade tests | 35 passed, 1.27s | Original admission/identity/query controls |
+| Source query tests | 4 passed, 1.09s | Original parser-owned compile/bind controls |
+| ASP workspace governance | 16 passed, 6.38s | Native ownership and file-backed module contracts |
+| Proof impact/CLI tests | 17 passed, 7.98s | Renamed owner and executable proof selection |
+| Clippy all features | Passed with =-D warnings= | Production inference graph |
+| Clippy facade without default features | Passed with =-D warnings= | Backend contract-only graph, no Scheme dependency |
+
+Every executed test batch retained five-second genuine-output and 45-second
+batch limits. The earlier parallel cold-process attempts and runs competing
+with native compilation failed the unchanged progress gate and remain failed.
+Initial governance checks also rejected inline/glob modules; final owned leaf
+modules pass without suppressions. Final serial success does not close cold
+p95, queue admission, interruptible cancellation or production startup under
+contention. This slice does not establish a new model score, Temporal current
+cut, correction/retraction, IFC publication or durable recovery.

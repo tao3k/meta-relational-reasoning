@@ -179,7 +179,7 @@ model. GraphQL is a separate API language.
 - `CatalogBoundQuery` binds property access to both catalogs and an exact
   semantic source snapshot, statically checks expressions and parameters, and
   publishes an ordered result row schema before execution planning.
-- `mrr-ascent` evaluates bounded fixed-point candidates.
+- `mrr-deduction` admits bounded candidates from the native Scheme ASCENT solver.
 - `mrr-lineage` and `mrr-transition` validate causal evidence and immutable
   generation deltas.
 - `mrr-revision` binds a generation to an unambiguous set of provider-neutral
@@ -202,7 +202,7 @@ their owners:
 - [workspace and language-neutral ownership](docs/architecture/0001-mrr-workspace-ownership.org)
 - [POO Flow Temporal production runtime and Scheme ASCENT ownership](docs/architecture/0034-poo-temporal-production-runtime.org)
 - [Agentic AI Context System](docs/architecture/agentic-ai-context.org)
-- [bounded Ascent evaluation](docs/architecture/0003-mrr-ascent-evaluation.org)
+- [bounded Ascent evaluation](docs/architecture/0003-mrr-deduction-evaluation.org)
 - [typed relation core](docs/architecture/0005-typed-relation-core.org)
 - [MetaQueryIr](docs/architecture/0006-meta-query-ir.org)
 - [unified lineage](docs/architecture/0009-unified-lineage-v1.org)

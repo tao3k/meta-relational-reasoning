@@ -17,6 +17,8 @@
     "scheme/grammar/cypher"
     "scheme/reasoning/core"
     "scheme/reasoning/default"
+    "scheme/reasoning/finite"
+    "scheme/reasoning/finite-native"
     "scheme/search/enhanced-tree-sitter-query"
     "scheme/search/projection"
     "scheme/query/provider/config"

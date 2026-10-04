@@ -17,6 +17,8 @@ use gerbil_scheme_native_build::{
 const REQUIRED_MODULES: &[&str] = &[
     "meta-relational-reasoning/scheme/grammar/native-program",
     "meta-relational-reasoning/scheme/grammar/native",
+    "meta-relational-reasoning/scheme/reasoning/finite-native",
+    "gerbil-ascent/table/expression",
     "gerbil-parser/src/ffi/parse-artifact-v1-native",
 ];
 

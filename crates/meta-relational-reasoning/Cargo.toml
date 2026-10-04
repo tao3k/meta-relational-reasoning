@@ -8,7 +8,8 @@ license.workspace = true
 repository.workspace = true
 
 [features]
-default = []
+default = ["native-inference"]
+native-inference = ["mrr-deduction/native-inference", "mrr-search/native-inference"]
 agentic-ai-context = ["dep:mrr-agentic-ai-context"]
 agentic-ai-context-tokens = ["agentic-ai-context", "mrr-agentic-ai-context/token-layout"]
 
@@ -16,7 +17,7 @@ agentic-ai-context-tokens = ["agentic-ai-context", "mrr-agentic-ai-context/token
 mrr-agentic-ai-context = { workspace = true, optional = true, default-features = false }
 ciborium.workspace = true
 mrr-bundle.workspace = true
-mrr-ascent.workspace = true
+mrr-deduction.workspace = true
 mrr-identity.workspace = true
 mrr-intent.workspace = true
 mrr-lineage.workspace = true

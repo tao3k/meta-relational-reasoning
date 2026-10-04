@@ -1,13 +1,17 @@
 [package]
-name = "mrr-ascent"
+name = "mrr-deduction"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "Bounded Ascent evaluation adapter for validated meta-relational bundles"
+description = "MRR closure admission over the native Scheme finite solver"
+
+[features]
+default = ["native-inference"]
+native-inference = ["dep:mrr-gerbil"]
 
 [dependencies]
-ascent.workspace = true
+mrr-gerbil = { workspace = true, optional = true }
 mrr-bundle.workspace = true
 mrr-identity.workspace = true
 mrr-logic.workspace = true
@@ -16,13 +20,10 @@ mrr-relation.workspace = true
 sha2.workspace = true
 
 [dev-dependencies]
-criterion.workspace = true
 mrr-asp-rust-build-support.workspace = true
 
 [[test]]
 name = "unit_test"
 path = "tests/unit_test.rs"
+required-features = ["native-inference"]
 
-[[bench]]
-name = "ascent_perf"
-harness = false

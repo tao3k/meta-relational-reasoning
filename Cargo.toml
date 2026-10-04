@@ -9,7 +9,7 @@ default-members = [
   "build-support/mrr-gerbil-native-build",
   "crates/meta-relational-reasoning",
   "crates/mrr-agentic-ai-context",
-  "crates/mrr-ascent",
+  "crates/mrr-deduction",
   "crates/mrr-bundle",
   "crates/mrr-conformance",
   "crates/mrr-frontends",
@@ -37,7 +37,6 @@ repository = "https://github.com/tao3k/meta-relational-reasoning"
 [workspace.dependencies]
 mrr-agentic-ai-context = { path = "crates/mrr-agentic-ai-context", version = "0.1.0", default-features = false }
 blake3 = "1.8"
-ascent = "0.8.0"
 asp-rust-build-support = { git = "https://github.com/tao3k/asp-rust", rev = "2419414ee5379bad89506496e3eaab928df68daf", version = "0.1.0" }
 criterion = "0.8.2"
 gerbil-scheme-sys = { git = "https://github.com/tao3k/gerbil-scheme-rust.git", rev = "6ccabe001f4f28af3e79de491e67c2ac9669b7cf", features = ["external-program"] }
@@ -48,7 +47,7 @@ mrr-identity = { path = "crates/mrr-identity", version = "0.1.0" }
 mrr-intent = { path = "crates/mrr-intent", version = "0.1.0" }
 mrr-relation = { path = "crates/mrr-relation", version = "0.1.0" }
 mrr-revision = { path = "crates/mrr-revision", version = "0.1.0" }
-mrr-search = { path = "crates/mrr-search", version = "0.1.0" }
+mrr-search = { path = "crates/mrr-search", version = "0.1.0", default-features = false }
 mrr-query = { path = "crates/mrr-query", version = "0.1.0" }
 mrr-property-source = { path = "crates/mrr-property-source", version = "0.1.0" }
 mrr-frontends = { path = "crates/mrr-frontends", version = "0.1.0" }
@@ -57,10 +56,10 @@ mrr-conformance = { path = "crates/mrr-conformance", version = "0.1.0" }
 mrr-lineage = { path = "crates/mrr-lineage", version = "0.1.0" }
 mrr-transition = { path = "crates/mrr-transition", version = "0.1.0" }
 mrr-bundle = { path = "crates/mrr-bundle", version = "0.1.0" }
-mrr-ascent = { path = "crates/mrr-ascent", version = "0.1.0" }
+mrr-deduction = { path = "crates/mrr-deduction", version = "0.1.0", default-features = false }
 mrr-gerbil = { path = "crates/mrr-gerbil", version = "0.1.0" }
 mrr-gerbil-native-build = { path = "build-support/mrr-gerbil-native-build", version = "0.1.0" }
-meta-relational-reasoning = { path = "crates/meta-relational-reasoning", version = "0.1.0" }
+meta-relational-reasoning = { path = "crates/meta-relational-reasoning", version = "0.1.0", default-features = false }
 sha2 = "0.10.9"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"

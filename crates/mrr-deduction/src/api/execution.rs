@@ -1,241 +1,18 @@
-//! Validates a narrow transitive-closure contract and evaluates it with `Ascent`.
+//! Executes native Scheme inference and retains MRR admission bindings.
 
-use std::collections::{BTreeMap, BTreeSet, VecDeque};
-use std::fmt;
-use std::num::NonZeroUsize;
-
-use ascent::{Dual, ascent};
-use mrr_bundle::ReasoningBundle;
+use super::{
+    ClosureConfig, ClosureError, ClosureLimits, ClosureReceipt, ClosureStatus, DerivationCandidate,
+    DerivationReceiptDigest,
+};
 use mrr_identity::{FactId, GenerationId, RelationId, RuleId, RulePackId};
-use mrr_query::{Atom, Term, Variable};
 use mrr_relation::Value;
+
+use mrr_bundle::ReasoningBundle;
+use mrr_gerbil::evaluate_finite_relations;
+use mrr_query::{Atom, Term, Variable};
 use sha2::{Digest, Sha256};
-
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
 const RECEIPT_SCHEMA: &[u8] = b"mrr.derivation-receipt.v1";
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-/// Binds the source/derived relations and the only two rule identities this adapter executes.
-pub struct ClosureConfig {
-    source_relation: RelationId,
-    derived_relation: RelationId,
-    rule_pack: RulePackId,
-    base_rule: RuleId,
-    transitive_rule: RuleId,
-}
-
-impl ClosureConfig {
-    #[must_use]
-    pub const fn new(
-        source_relation: RelationId,
-        derived_relation: RelationId,
-        rule_pack: RulePackId,
-        base_rule: RuleId,
-        transitive_rule: RuleId,
-    ) -> Self {
-        Self {
-            source_relation,
-            derived_relation,
-            rule_pack,
-            base_rule,
-            transitive_rule,
-        }
-    }
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-/// Hard limits checked before execution or before returning a receipt.
-pub struct ClosureLimits {
-    max_input_facts: NonZeroUsize,
-    max_derived_pairs: NonZeroUsize,
-    max_results: NonZeroUsize,
-}
-
-impl ClosureLimits {
-    #[must_use]
-    pub const fn new(
-        max_input_facts: NonZeroUsize,
-        max_derived_pairs: NonZeroUsize,
-        max_results: NonZeroUsize,
-    ) -> Self {
-        Self {
-            max_input_facts,
-            max_derived_pairs,
-            max_results,
-        }
-    }
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-/// Declares whether every derived candidate fit in the caller's output allowance.
-pub enum ClosureStatus {
-    /// Every derived candidate is present in the receipt.
-    Complete,
-    /// Evaluation completed, but the sorted receipt was truncated to `max_results`.
-    OutputTruncated,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-/// Fail-closed rejection reasons for unsupported or unbounded inputs.
-pub enum ClosureError {
-    /// The canonical MRR bundle validator rejected the input.
-    BundleRejected { reason: String },
-    /// Transitions require a separately materialized semantic generation before evaluation.
-    TransitionsRequireMaterializedSnapshot { count: usize },
-    /// A configured relation is absent from the bundle.
-    RelationMissing { relation: RelationId },
-    /// This adapter only owns binary transitive closure.
-    RelationMustBeBinary { relation: RelationId, arity: usize },
-    /// A configured rule identity is absent from the bundle.
-    RuleMissing { rule: RuleId },
-    /// The configured rule pack is absent from the bundle.
-    RulePackMissing { rule_pack: RulePackId },
-    /// A configured rule exists elsewhere but not in the selected authority unit.
-    RuleNotInPack { rule: RuleId, rule_pack: RulePackId },
-    /// The configured rule exists but does not encode the supported closure form.
-    RuleShapeMismatch { rule: RuleId },
-    /// Source facts exceed the pre-execution input limit.
-    InputFactBudgetExceeded { required: usize, limit: usize },
-    /// The finite node domain could exceed the configured pair capacity.
-    DerivedPairBudgetExceeded { required: usize, limit: usize },
-    /// A source fact is not a pair of strings.
-    UnsupportedSourceFact { fact: FactId },
-    /// A source fact belongs to another semantic generation.
-    SourceGenerationMismatch {
-        fact: FactId,
-        expected: GenerationId,
-        actual: GenerationId,
-    },
-    /// A facade-bound bundle fact belongs to another semantic snapshot generation.
-    BundleGenerationMismatch {
-        fact: FactId,
-        expected: GenerationId,
-        actual: GenerationId,
-    },
-    /// This narrow adapter cannot ignore seeded facts in its derived relation.
-    SeededDerivedRelationUnsupported { fact: FactId },
-    /// The independent deterministic witness reconstruction disagreed with `Ascent`.
-    InternalWitnessMismatch,
-}
-
-impl fmt::Display for ClosureError {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(formatter, "{self:?}")
-    }
-}
-
-impl std::error::Error for ClosureError {}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-/// A provenance-bearing result awaiting identity allocation and lineage admission upstream.
-pub struct DerivationCandidate {
-    relation: RelationId,
-    values: [Value; 2],
-    rule: RuleId,
-    generation: GenerationId,
-    support: Vec<FactId>,
-}
-
-#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
-/// Domain-framed SHA-256 digest of one complete or explicitly truncated closure receipt.
-pub struct DerivationReceiptDigest([u8; 32]);
-
-impl DerivationReceiptDigest {
-    #[must_use]
-    pub const fn as_bytes(&self) -> &[u8; 32] {
-        &self.0
-    }
-}
-
-impl fmt::Debug for DerivationReceiptDigest {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(self, formatter)
-    }
-}
-
-impl fmt::Display for DerivationReceiptDigest {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for byte in self.0 {
-            write!(formatter, "{byte:02x}")?;
-        }
-        Ok(())
-    }
-}
-
-impl DerivationCandidate {
-    #[must_use]
-    pub const fn relation(&self) -> RelationId {
-        self.relation
-    }
-
-    #[must_use]
-    pub fn values(&self) -> &[Value; 2] {
-        &self.values
-    }
-
-    #[must_use]
-    pub const fn rule(&self) -> RuleId {
-        self.rule
-    }
-
-    #[must_use]
-    pub const fn generation(&self) -> GenerationId {
-        self.generation
-    }
-
-    #[must_use]
-    pub fn support(&self) -> &[FactId] {
-        &self.support
-    }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-/// Typed result of one bounded evaluation request.
-pub struct ClosureReceipt {
-    rule_pack: RulePackId,
-    input_generation: GenerationId,
-    input_fact_ids: Vec<FactId>,
-    status: ClosureStatus,
-    candidates: Vec<DerivationCandidate>,
-    digest: DerivationReceiptDigest,
-}
-
-impl ClosureReceipt {
-    #[must_use]
-    pub const fn rule_pack(&self) -> RulePackId {
-        self.rule_pack
-    }
-
-    #[must_use]
-    pub const fn input_generation(&self) -> GenerationId {
-        self.input_generation
-    }
-
-    #[must_use]
-    pub fn input_fact_ids(&self) -> &[FactId] {
-        &self.input_fact_ids
-    }
-
-    #[must_use]
-    pub const fn status(&self) -> ClosureStatus {
-        self.status
-    }
-
-    #[must_use]
-    pub const fn input_fact_count(&self) -> usize {
-        self.input_fact_ids.len()
-    }
-
-    #[must_use]
-    pub fn candidates(&self) -> &[DerivationCandidate] {
-        &self.candidates
-    }
-
-    #[must_use]
-    pub const fn digest(&self) -> DerivationReceiptDigest {
-        self.digest
-    }
-}
-
 #[derive(Clone, Debug)]
 struct Edge {
     to: String,
@@ -257,7 +34,7 @@ pub fn evaluate_transitive_closure(
 ) -> Result<ClosureReceipt, ClosureError> {
     validate_execution_contract(bundle, config)?;
     let prepared = prepare_source_graph(bundle, config, generation, limits)?;
-    let paths = run_ascent(prepared.edges.clone());
+    let paths = run_native(&prepared.edges)?;
     build_receipt(paths, prepared, config, generation, limits)
 }
 
@@ -351,34 +128,42 @@ fn prepare_source_graph(
     })
 }
 
-fn run_ascent(edges: Vec<(String, String, FactId)>) -> Vec<(String, String, Dual<usize>)> {
-    ascent! {
-        relation edge(String, String, FactId);
-        lattice path(String, String, Dual<usize>);
-
-        path(from, to, Dual(1_usize)) <-- edge(from, to, _fact);
-        path(from, to, Dual(distance + 1)) <--
-            path(from, via, ?Dual(distance)),
-            edge(via, to, _fact);
-    }
-
-    let mut program = AscentProgram {
-        edge: edges,
-        ..AscentProgram::default()
-    };
-    program.run();
-    program.path
+fn run_native(
+    edges: &[(String, String, FactId)],
+) -> Result<Vec<(String, String, usize)>, ClosureError> {
+    let nodes: Vec<_> = edges
+        .iter()
+        .flat_map(|(from, to, _)| [from.clone(), to.clone()])
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .collect();
+    let index: BTreeMap<_, _> = nodes
+        .iter()
+        .enumerate()
+        .map(|(index, node)| (node, index))
+        .collect();
+    let projected = edges
+        .iter()
+        .map(|(from, to, _)| (index[from], index[to]))
+        .collect();
+    let candidate = evaluate_finite_relations(nodes.len(), projected, vec![])
+        .map_err(ClosureError::NativeInference)?;
+    Ok(candidate
+        .paths
+        .into_iter()
+        .map(|(from, to, distance)| (nodes[from].clone(), nodes[to].clone(), distance))
+        .collect())
 }
 
 fn build_receipt(
-    paths: Vec<(String, String, Dual<usize>)>,
+    paths: Vec<(String, String, usize)>,
     prepared: PreparedSourceGraph,
     config: ClosureConfig,
     generation: GenerationId,
     limits: ClosureLimits,
 ) -> Result<ClosureReceipt, ClosureError> {
     let mut candidates = Vec::with_capacity(paths.len());
-    for (from, to, Dual(distance)) in paths {
+    for (from, to, distance) in paths {
         let support = shortest_support(&prepared.adjacency, &from, &to)
             .ok_or(ClosureError::InternalWitnessMismatch)?;
         if support.len() != distance {

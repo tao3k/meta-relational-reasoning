@@ -50,7 +50,7 @@ flowchart TD
     transition --> facade
     facade --> gql[gql-* adapters]
     facade --> cypher[cypher-* adapters]
-    facade --> ascent[mrr-ascent adapter]
+    facade --> ascent[mrr-deduction adapter]
     facade --> gerbil[mrr-gerbil adapter]
 #+end_src
 
@@ -78,7 +78,7 @@ syntax-to-MRR contracts, not aliases, provider shims, or empty placeholders.
 
 * Runtime adapters
 
-=mrr-ascent= and =mrr-gerbil= are downstream adapters. They may execute or
+=mrr-deduction= and =mrr-gerbil= are downstream adapters. They may execute or
 transport validated MRR bundles, but they cannot redefine identity, relation,
 rule, transition, or lineage meaning. Gerbil compilation uses the reviewed
 =gerbil-scheme-rust= integration boundary; Scheme is not evaluated on Rust

@@ -1,10 +1,10 @@
 use core::num::NonZeroUsize;
 
-use mrr_ascent::{
+use mrr_bundle::{ReasoningBundle, ReasoningBundleDeclaration, RulePack};
+use mrr_deduction::{
     ClosureConfig, ClosureError, ClosureLimits, ClosureReceipt, ClosureStatus, DerivationCandidate,
     evaluate_transitive_closure,
 };
-use mrr_bundle::{ReasoningBundle, ReasoningBundleDeclaration, RulePack};
 use mrr_identity::{EntityId, FactId, GenerationId, RelationId, RuleId, RulePackId};
 use mrr_logic::Rule;
 use mrr_query::{Atom, Term, Variable};

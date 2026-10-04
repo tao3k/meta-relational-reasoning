@@ -22,6 +22,8 @@ const INPUT_PATHS: &[&str] = &[
     "scheme/reasoning/core.ss",
     "scheme/reasoning/declaration.ss",
     "scheme/reasoning/default.ss",
+    "scheme/reasoning/finite.ss",
+    "scheme/reasoning/finite-native.ss",
     "scheme/search/enhanced-tree-sitter-query-declaration.ss",
     "scheme/grammar/native.ss",
 ];

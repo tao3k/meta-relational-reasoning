@@ -9,10 +9,10 @@ def obligations_for(changed: list[str]) -> tuple[set[str], set[str], set[str]]:
     return seeds, impacted, obligations
 
 
-def test_mrr_ascent_changes_seed_the_proof_impact_graph() -> None:
-    seeds, impacted, obligations = obligations_for(["crates/mrr-ascent/src/api.rs"])
+def test_mrr_deduction_changes_seed_the_proof_impact_graph() -> None:
+    seeds, impacted, obligations = obligations_for(["crates/mrr-deduction/src/api/execution.rs"])
 
-    assert seeds == {"mrr-ascent"}
+    assert seeds == {"mrr-deduction"}
     assert "meta-relational-reasoning" in impacted
     assert "admitted_closure_binding_is_exact" in obligations
     assert "closure_admission_rejects_any_failed_owner" in obligations

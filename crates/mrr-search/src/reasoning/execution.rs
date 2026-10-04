@@ -1,340 +1,20 @@
-use std::collections::{BTreeMap, BTreeSet, VecDeque};
-use std::fmt;
-use std::num::NonZeroUsize;
+//! Executes native Scheme inference and retains MRR admission bindings.
 
-use ascent::{Dual, ascent};
-use mrr_identity::{
-    FactId, GenerationId, IdentityError, LineageEdgeId, LineageNodeId, QueryOperatorId,
+use super::{
+    SearchFactor, SearchFactorEdge, SearchFactorRole, SearchFrameworkError, SearchFrameworkLimits,
+    SearchFrameworkReceipt, SearchFrameworkStatus, SearchInfluence, SearchObservation,
+    SearchReasoningDigest,
 };
-use mrr_lineage::{
-    ImpactError, ImpactGraph, LineageEdge, LineageEdgeKind, LineageGraph, LineageGraphError,
-    LineageNode, LineageNodeKind, impact,
-};
+use mrr_identity::{FactId, GenerationId, QueryOperatorId};
+use mrr_lineage::LineageGraph;
+
+use mrr_gerbil::evaluate_finite_relations;
+use mrr_identity::{LineageEdgeId, LineageNodeId};
+use mrr_lineage::{LineageEdge, LineageEdgeKind, LineageNode, LineageNodeKind};
 use sha2::{Digest, Sha256};
-
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
 const RECEIPT_SCHEMA: &[u8] = b"mrr.search-reasoning-receipt.v1";
-
-/// Backend-neutral responsibility of one consumer-defined Search factor.
-#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
-pub enum SearchFactorRole {
-    Acquisition,
-    Refinement,
-    Reasoning,
-    Projection,
-}
-
-/// One factor registered by a downstream consumer.
-#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
-pub struct SearchFactor {
-    id: QueryOperatorId,
-    role: SearchFactorRole,
-}
-
-impl SearchFactor {
-    #[must_use]
-    pub const fn new(id: QueryOperatorId, role: SearchFactorRole) -> Self {
-        Self { id, role }
-    }
-
-    /// Derives the same typed identity from a Scheme Search factor's canonical input.
-    pub fn from_canonical_input(
-        canonical_input: &str,
-        role: SearchFactorRole,
-    ) -> Result<Self, IdentityError> {
-        QueryOperatorId::from_canonical_bytes(canonical_input).map(|id| Self { id, role })
-    }
-
-    #[must_use]
-    pub const fn id(&self) -> QueryOperatorId {
-        self.id
-    }
-
-    #[must_use]
-    pub const fn role(&self) -> SearchFactorRole {
-        self.role
-    }
-}
-
-/// Directed influence edge from an upstream factor to a downstream factor.
-#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
-pub struct SearchFactorEdge {
-    from: QueryOperatorId,
-    to: QueryOperatorId,
-}
-
-impl SearchFactorEdge {
-    #[must_use]
-    pub const fn new(from: QueryOperatorId, to: QueryOperatorId) -> Self {
-        Self { from, to }
-    }
-
-    #[must_use]
-    pub const fn from(&self) -> QueryOperatorId {
-        self.from
-    }
-
-    #[must_use]
-    pub const fn to(&self) -> QueryOperatorId {
-        self.to
-    }
-}
-
-/// One immutable factor observation supplied by the consumer runtime.
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct SearchObservation {
-    id: FactId,
-    candidate: FactId,
-    factor: QueryOperatorId,
-    generation: GenerationId,
-    logical_position: u64,
-    causal_parents: Vec<FactId>,
-}
-
-impl SearchObservation {
-    #[must_use]
-    pub fn new(
-        id: FactId,
-        candidate: FactId,
-        factor: QueryOperatorId,
-        generation: GenerationId,
-        logical_position: u64,
-        causal_parents: Vec<FactId>,
-    ) -> Self {
-        Self {
-            id,
-            candidate,
-            factor,
-            generation,
-            logical_position,
-            causal_parents,
-        }
-    }
-
-    #[must_use]
-    pub const fn id(&self) -> FactId {
-        self.id
-    }
-
-    #[must_use]
-    pub const fn candidate(&self) -> FactId {
-        self.candidate
-    }
-
-    #[must_use]
-    pub const fn factor(&self) -> QueryOperatorId {
-        self.factor
-    }
-
-    #[must_use]
-    pub const fn generation(&self) -> GenerationId {
-        self.generation
-    }
-
-    #[must_use]
-    pub const fn logical_position(&self) -> u64 {
-        self.logical_position
-    }
-
-    #[must_use]
-    pub fn causal_parents(&self) -> &[FactId] {
-        &self.causal_parents
-    }
-}
-
-/// Hard pre-execution and publication budgets.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct SearchFrameworkLimits {
-    max_factors: NonZeroUsize,
-    max_edges: NonZeroUsize,
-    max_observations: NonZeroUsize,
-    max_influences: NonZeroUsize,
-    max_results: NonZeroUsize,
-}
-
-impl SearchFrameworkLimits {
-    #[must_use]
-    pub const fn new(
-        max_factors: NonZeroUsize,
-        max_edges: NonZeroUsize,
-        max_observations: NonZeroUsize,
-        max_influences: NonZeroUsize,
-        max_results: NonZeroUsize,
-    ) -> Self {
-        Self {
-            max_factors,
-            max_edges,
-            max_observations,
-            max_influences,
-            max_results,
-        }
-    }
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum SearchFrameworkStatus {
-    Complete,
-    OutputTruncated,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum SearchFrameworkError {
-    EmptyFactors,
-    DuplicateFactor(QueryOperatorId),
-    DuplicateEdge(SearchFactorEdge),
-    UnknownFactor(QueryOperatorId),
-    SelfEdge(SearchFactorEdge),
-    FactorCycle,
-    DuplicateObservation(FactId),
-    ObservationGenerationMismatch {
-        observation: FactId,
-        expected: GenerationId,
-        actual: GenerationId,
-    },
-    DuplicateCausalParent {
-        observation: FactId,
-        parent: FactId,
-    },
-    MissingCausalParent {
-        observation: FactId,
-        parent: FactId,
-    },
-    TemporalOrderViolation {
-        observation: FactId,
-        parent: FactId,
-    },
-    CausalFactorEdgeMissing {
-        observation: FactId,
-        parent: FactId,
-    },
-    NonAcquisitionRoot(FactId),
-    BudgetExceeded {
-        resource: &'static str,
-        required: usize,
-        limit: usize,
-    },
-    Lineage(LineageGraphError),
-    InternalPathMismatch,
-}
-
-impl fmt::Display for SearchFrameworkError {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(formatter, "{self:?}")
-    }
-}
-
-impl std::error::Error for SearchFrameworkError {}
-
-/// One candidate's shortest causal influence trajectory to a factor.
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct SearchInfluence {
-    candidate: FactId,
-    factor: QueryOperatorId,
-    support_event: FactId,
-    factor_path: Vec<QueryOperatorId>,
-    result_fact: FactId,
-}
-
-impl SearchInfluence {
-    #[must_use]
-    pub const fn candidate(&self) -> FactId {
-        self.candidate
-    }
-
-    #[must_use]
-    pub const fn factor(&self) -> QueryOperatorId {
-        self.factor
-    }
-
-    #[must_use]
-    pub const fn support_event(&self) -> FactId {
-        self.support_event
-    }
-
-    #[must_use]
-    pub fn factor_path(&self) -> &[QueryOperatorId] {
-        &self.factor_path
-    }
-
-    #[must_use]
-    pub const fn result_fact(&self) -> FactId {
-        self.result_fact
-    }
-}
-
-#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct SearchReasoningDigest([u8; 32]);
-
-impl fmt::Debug for SearchReasoningDigest {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(self, formatter)
-    }
-}
-
-impl fmt::Display for SearchReasoningDigest {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for byte in self.0 {
-            write!(formatter, "{byte:02x}")?;
-        }
-        Ok(())
-    }
-}
-
-impl SearchReasoningDigest {
-    #[must_use]
-    pub const fn as_bytes(&self) -> &[u8; 32] {
-        &self.0
-    }
-}
-
-/// Complete bounded reasoning output plus a reusable MRR lineage graph.
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct SearchFrameworkReceipt {
-    generation: GenerationId,
-    status: SearchFrameworkStatus,
-    total_influence_count: usize,
-    influences: Vec<SearchInfluence>,
-    lineage: LineageGraph,
-    digest: SearchReasoningDigest,
-}
-
-impl SearchFrameworkReceipt {
-    #[must_use]
-    pub const fn generation(&self) -> GenerationId {
-        self.generation
-    }
-
-    #[must_use]
-    pub const fn status(&self) -> SearchFrameworkStatus {
-        self.status
-    }
-
-    #[must_use]
-    pub const fn total_influence_count(&self) -> usize {
-        self.total_influence_count
-    }
-
-    #[must_use]
-    pub fn influences(&self) -> &[SearchInfluence] {
-        &self.influences
-    }
-
-    #[must_use]
-    pub const fn lineage(&self) -> &LineageGraph {
-        &self.lineage
-    }
-
-    #[must_use]
-    pub const fn digest(&self) -> SearchReasoningDigest {
-        self.digest
-    }
-
-    pub fn impact(&self, observation: FactId) -> Result<ImpactGraph, ImpactError> {
-        impact(&self.lineage, observation)
-    }
-}
-
-/// Validates a finite causal factor graph, derives influence with Ascent, and
-/// materializes deterministic shortest trajectories and MRR lineage.
+/// Projects the native Scheme candidate and validates original factor lineage.
 pub fn evaluate_search_factors(
     generation: GenerationId,
     factors: &[SearchFactor],
@@ -367,7 +47,7 @@ pub fn evaluate_search_factors(
     let potential = observations.len().saturating_mul(factors.len());
     validate_budget("influences", potential, limits.max_influences.get())?;
 
-    let raw = run_ascent(edges, observations);
+    let raw = run_native(factors, edges, observations)?;
     let adjacency = adjacency(edges);
     let mut influences = Vec::with_capacity(raw.len());
     for (candidate, source, target, support_event, distance) in raw {
@@ -560,35 +240,46 @@ fn validate_observations(
 
 type RawInfluence = (FactId, QueryOperatorId, QueryOperatorId, FactId, usize);
 
-fn run_ascent(edges: &[SearchFactorEdge], observations: &[SearchObservation]) -> Vec<RawInfluence> {
-    ascent! {
-        relation factor_edge(QueryOperatorId, QueryOperatorId);
-        lattice factor_path(QueryOperatorId, QueryOperatorId, Dual<usize>);
-        relation observed(FactId, QueryOperatorId, FactId);
-        relation influenced(FactId, QueryOperatorId, QueryOperatorId, FactId, usize);
-
-        factor_path(from, to, Dual(1_usize)) <-- factor_edge(from, to);
-        factor_path(from, to, Dual(distance + 1)) <--
-            factor_path(from, via, ?Dual(distance)),
-            factor_edge(via, to);
-
-        influenced(candidate, factor, factor, event, 0_usize) <--
-            observed(candidate, factor, event);
-        influenced(candidate, source, target, event, distance) <--
-            observed(candidate, source, event),
-            factor_path(source, target, ?Dual(distance));
-    }
-
-    let mut program = AscentProgram {
-        factor_edge: edges.iter().map(|edge| (edge.from, edge.to)).collect(),
-        observed: observations
-            .iter()
-            .map(|observation| (observation.candidate, observation.factor, observation.id))
-            .collect(),
-        ..AscentProgram::default()
-    };
-    program.run();
-    program.influenced
+fn run_native(
+    factors: &[SearchFactor],
+    edges: &[SearchFactorEdge],
+    observations: &[SearchObservation],
+) -> Result<Vec<RawInfluence>, SearchFrameworkError> {
+    let nodes: Vec<_> = factors
+        .iter()
+        .map(|factor| factor.id)
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .collect();
+    let index: BTreeMap<_, _> = nodes
+        .iter()
+        .enumerate()
+        .map(|(index, node)| (*node, index))
+        .collect();
+    let projected = edges
+        .iter()
+        .map(|edge| (index[&edge.from], index[&edge.to]))
+        .collect();
+    let observed = observations
+        .iter()
+        .map(|observation| index[&observation.factor])
+        .collect();
+    let candidate = evaluate_finite_relations(nodes.len(), projected, observed)
+        .map_err(SearchFrameworkError::NativeInference)?;
+    Ok(candidate
+        .influences
+        .into_iter()
+        .map(|(index, from, to, distance)| {
+            let observation = &observations[index];
+            (
+                observation.candidate,
+                nodes[from],
+                nodes[to],
+                observation.id,
+                distance,
+            )
+        })
+        .collect())
 }
 
 fn adjacency(edges: &[SearchFactorEdge]) -> BTreeMap<QueryOperatorId, Vec<QueryOperatorId>> {

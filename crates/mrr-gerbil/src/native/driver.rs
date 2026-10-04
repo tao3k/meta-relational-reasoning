@@ -25,7 +25,7 @@ pub enum DriverPhase {
 pub enum DriverResource {
     /// Non-authoritative model proposal resource.
     ModelProposal = 0,
-    /// Authoritative Rust/Ascent closure resource.
+    /// MRR closure admission over the native Scheme inference candidate.
     MrrClosure = 1,
 }
 

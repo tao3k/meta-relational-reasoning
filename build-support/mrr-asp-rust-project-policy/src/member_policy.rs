@@ -31,7 +31,7 @@ const MRR_WORKSPACE_MEMBER_POLICIES: &[MrrAspRustMemberPolicy] = &[
     workspace_member_policy!("mrr-lineage", "crates/mrr-lineage"),
     workspace_member_policy!("mrr-transition", "crates/mrr-transition"),
     workspace_member_policy!("mrr-bundle", "crates/mrr-bundle"),
-    workspace_member_policy!("mrr-ascent", "crates/mrr-ascent"),
+    workspace_member_policy!("mrr-deduction", "crates/mrr-deduction"),
     workspace_member_policy!("mrr-gerbil", "crates/mrr-gerbil"),
     workspace_member_policy!(
         "meta-relational-reasoning",
