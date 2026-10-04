@@ -547,9 +547,10 @@ retry after uncertain commit, revocation between projection and action,
 resume after source change, fork isolation, cross-WorkTree transfer, and crash
 with a pending effect.
 Implementation replay must then connect the formal transitions to actual
-POO Flow, MRR, and runtime receipts.  The current design-level Lean Session
-model is hosted with MRR's cross-boundary proof fixtures; it is a proposed
-POO Flow contract mirror, not an MRR Session implementation.  It
+POO Flow, MRR, and runtime receipts.  The design-level Lean Session and
+WorkTree models now live in POO Flow's =packages/proofs/lean-poo/PooFlowSessionProof=,
+with the finite TLA+ models under =packages/proofs/tla/session-context=.
+The Session model
 proves terminal refusal, accepted begin key/revision/turn progression,
 exact query-use key/turn/cut binding and fresh resume guards.  A finite TLA+
 model checks two Session identities and two workers, including concurrent
@@ -559,7 +560,9 @@ design-level Lean model checks direct WorkTree scope and transfer guards.
 A finite TLA+ WorkTree model explores two WorkTrees, two Sessions and two
 workers; six disabled guards produce foreign read, unauthorized read,
 stale source/target import, inapplicable import and double-import
-counterexamples.  These models
+counterexamples.  These POO Flow models
 do not yet cover the full Project/Task/Session acceptance matrix, retries,
 forks, expiry, effect reconciliation or production adapter refinement.  See
-[[file:../../proofs/MRRProof/AgenticAIContextTLA/README.org][the formal-model evidence boundary]].
+POO Flow's =packages/proofs/tla/session-context/README.org= for their
+formal-model evidence boundary; the MRR proof project retains only its
+Query/Content/Context owned obligations.

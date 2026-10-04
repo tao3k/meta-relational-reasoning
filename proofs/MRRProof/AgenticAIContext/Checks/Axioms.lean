@@ -30,29 +30,13 @@ run_cmd do
       `MRR.AgenticAIContext.published_revision_gates,
       `MRR.AgenticAIContext.published_revision_dependency_safe,
       `MRR.AgenticAIContext.published_revision_impact_exact,
-      `MRR.AgenticAIContext.context_system_revision_render_tokens,
-      `POOFlow.Session.closed_session_cannot_begin,
-      `POOFlow.Session.expired_session_cannot_begin,
-      `POOFlow.Session.foreign_session_cannot_begin,
-      `POOFlow.Session.closed_session_cannot_resume,
-      `POOFlow.Session.accepted_begin_preserves_key_and_advances,
-      `POOFlow.Session.accepted_query_use_has_exact_session_turn_cut,
-      `POOFlow.Session.foreign_query_use_cannot_bind,
-      `POOFlow.Session.accepted_resume_is_fresh,
-      `MRR.AgenticAIContext.foreign_worktree_cannot_direct_read,
-      `MRR.AgenticAIContext.stale_worktree_cut_cannot_direct_read,
-      `MRR.AgenticAIContext.authorized_tasks_share_current_worktree_head,
-      `MRR.AgenticAIContext.foreign_target_cannot_transfer,
-      `MRR.AgenticAIContext.stale_target_cut_cannot_transfer,
-      `MRR.AgenticAIContext.refused_transfer_without_target_authority,
-      `MRR.AgenticAIContext.accepted_transfer_advances_only_target] do
+      `MRR.AgenticAIContext.context_system_revision_render_tokens] do
     unless environment.contains required do
       throwError "Required Context system theorem was not loaded: {required}"
   let mut count : Nat := 0
   let mut c4Count : Nat := 0
   for (name, _) in environment.constants.toList do
     if (`MRR.AgenticAIContext).isPrefixOf name ||
-        (`POOFlow.Session).isPrefixOf name ||
         (`LeanPoo.C4).isPrefixOf name then
       if (`LeanPoo.C4).isPrefixOf name then c4Count := c4Count + 1
       count := count + 1

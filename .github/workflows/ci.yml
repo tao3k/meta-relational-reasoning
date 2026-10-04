@@ -245,8 +245,6 @@ jobs:
         run: |
           python3 -m mrr_proof_validation.context_tla --tlc-jar .ci/tla/tla2tools.jar --lean-replay proofs/MRRProof/AgenticAIContext/.lake/build/bin/agentic-ai-context-tla-replay --receipt .ci/tla/receipt.json
           python3 -m mrr_proof_validation.meta_impact_tla --tlc-jar .ci/tla/tla2tools.jar --receipt .ci/tla/meta-impact-receipt.json
-          python3 -m mrr_proof_validation.context_session_tla --tlc-jar .ci/tla/tla2tools.jar --receipt .ci/tla/context-session-receipt.json
-          python3 -m mrr_proof_validation.worktree_context_tla --tlc-jar .ci/tla/tla2tools.jar --receipt .ci/tla/worktree-context-receipt.json
       - name: Save TLA receipt and actual TLC logs
         if: always()
         uses: actions/upload-artifact@v4
