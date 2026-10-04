@@ -292,3 +292,10 @@ See `proofs/MRRProof/AgenticAIContext/MRR/AgenticAIContext/System.lean`.
 and revision, then checks them against the terminating Lean worklist and an
 independent CBOR/SHA-256 model. The complete workflow uses exact retained
 source/query/result references for restoration, avoiding hash-only equality.
+
+`just context-source-proof /path/to/pinned-aeneas` re-extracts the production
+evidence admission and completeness merge functions with Charon/Aeneas before
+checking seven universal Lean laws and their axiom dependencies. The separate
+Lean 4.31 project pins the extractor; the existing system proofs use Lean 4.34.
+See [the source extraction boundary](proofs/MRRProof/AgenticAIContextRust/README.md)
+for setup and the still-open production worklist extraction error.

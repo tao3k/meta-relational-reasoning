@@ -8,6 +8,7 @@
 #![forbid(unsafe_code)]
 
 mod composition;
+mod evidence;
 mod materialization;
 #[cfg(feature = "token-layout")]
 mod reuse;

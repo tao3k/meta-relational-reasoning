@@ -654,3 +654,25 @@ for the Rust source, standard-library containers, compiler, =ciborium=, =serde_j
 or =sha2=. CBOR/SHA-256 executable conformance is distinct from a universal library
 refinement theorem or a proof of cryptographic collision resistance. The trusted
 native reference must still be retained independently of untrusted storage.
+
+** Production evidence source extraction
+
+The production closure now calls two pure evidence-policy functions in
+=crates/mrr-agentic-ai-context/src/evidence.rs=. Pinned Charon/Aeneas extract the
+actual compiler IR into =AgenticAIContextRust/Generated=. Seven universal Lean
+laws apply directly to these generated functions: the exact admission condition,
+invalidity precedence, complete-only rejection, worst-evidence rank, and the
+commutative/associative/identity laws of completeness aggregation. The proof
+project uses Lean 4.31 separately from the existing Lean 4.34 system project.
+
+=context-source-proof.py= regenerates current source and rejects stale generated
+output before the theorem and axiom gates. The two functions have no external
+function obligations. This closes source-level evidence-policy refinement under
+the trusted Charon/Aeneas translation pipeline, rather than proving only a
+handwritten policy model.
+
+Full production worklist extraction remains open: Charon emitted both native
+loop call graphs, but Aeneas failed internally on the standard-library Iterator
+signature. Maps/sets, validity-to-Boolean adaptation, enclosing loops and
+serialization are not covered by the seven new source theorems. See the separate
+project README for immutable tool pins and the executable failure probe.

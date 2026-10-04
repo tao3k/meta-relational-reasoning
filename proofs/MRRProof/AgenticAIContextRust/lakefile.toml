@@ -1,0 +1,16 @@
+name = "MRRContextRustProofs"
+version = "0.1.0"
+defaultTargets = ["Evidence"]
+moreLeanArgs = ["-DautoImplicit=false", "-DwarningAsError=true"]
+
+[[require]]
+name = "aeneas"
+git = "https://github.com/AeneasVerif/aeneas.git"
+subDir = "backends/lean"
+rev = "557eff83ecef5083b98a52a94ca7fae63d6c1dab"
+
+[[lean_lib]]
+name = "Generated"
+
+[[lean_lib]]
+name = "Evidence"

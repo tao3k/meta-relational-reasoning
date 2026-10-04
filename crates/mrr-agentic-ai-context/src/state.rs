@@ -11,6 +11,8 @@ use mrr_relation::{EvidenceCompleteness, Fact, FactValidity};
 use mrr_revision::SemanticSnapshot;
 use serde::{Deserialize, Serialize};
 
+use crate::evidence::{EvidenceAdmission, admit_evidence, merge_completeness};
+
 /// Exact source fact and all declared fact-level dependencies of this element.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct AgenticAiContextElement {
@@ -377,21 +379,20 @@ fn compute_required_closure(
             .get(&id)
             .ok_or(AgenticAiContextError::UnknownElement(id))?;
         let context = element.fact.context();
-        if context.validity() != FactValidity::Valid {
-            return Err(AgenticAiContextError::InvalidatedElement(id));
-        }
-        if contract.require_complete && context.completeness() != EvidenceCompleteness::Complete {
-            return Err(AgenticAiContextError::IncompleteEvidence(id));
-        }
-        coverage = match (coverage, context.completeness()) {
-            (EvidenceCompleteness::Unknown, _) | (_, EvidenceCompleteness::Unknown) => {
-                EvidenceCompleteness::Unknown
+        match admit_evidence(
+            context.validity() == FactValidity::Valid,
+            context.completeness(),
+            contract.require_complete,
+        ) {
+            EvidenceAdmission::Accepted => {}
+            EvidenceAdmission::Invalid => {
+                return Err(AgenticAiContextError::InvalidatedElement(id));
             }
-            (EvidenceCompleteness::Partial, _) | (_, EvidenceCompleteness::Partial) => {
-                EvidenceCompleteness::Partial
+            EvidenceAdmission::Incomplete => {
+                return Err(AgenticAiContextError::IncompleteEvidence(id));
             }
-            _ => EvidenceCompleteness::Complete,
-        };
+        }
+        coverage = merge_completeness(coverage, context.completeness());
         pending.extend(&element.dependencies);
     }
     Ok(AgenticAiContextClosure {

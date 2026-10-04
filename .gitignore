@@ -16,3 +16,4 @@ manifest.ss
 .env
 .devenv.flake.nix
 /proofs/MRRProof/AgenticAIContext/.lake/
+/proofs/MRRProof/AgenticAIContextRust/.lake/

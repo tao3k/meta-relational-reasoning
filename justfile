@@ -50,6 +50,11 @@ context-refinement:
     {{profile}} bash -c 'cd proofs/MRRProof/AgenticAIContext && lake build MRR'
     {{profile}} gerbil env python3 tools/check/context-refinement.py
 
+# Regenerate exact production functions before checking the extracted Lean laws.
+context-source-proof toolchain_dir:
+    {{profile}} python3 tools/check/context-source-proof.py --toolchain-dir {{toolchain_dir}}
+    {{profile}} bash -c 'cd proofs/MRRProof/AgenticAIContextRust && lake build Evidence && lake env lean Axioms.lean'
+
 # Record time, peak RSS, bounded rejection and actual declared reuse eligibility.
 context-scale:
     {{profile}} mrr-cargo build -p meta-relational-reasoning --example context_scale --locked --features agentic-ai-context-tokens
