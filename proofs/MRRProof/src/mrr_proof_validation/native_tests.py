@@ -79,6 +79,25 @@ def forward_output(chunk: bytes, deadline: float) -> bool:
     return True
 
 
+def signal_owned_group(child, signum):
+    """Reap an exited direct child before signalling its owned descendants."""
+    child.poll()
+    try:
+        os.killpg(child.pid, signum)
+    except ProcessLookupError:
+        pass
+    except PermissionError:
+        # Darwin can refuse signalling a zombie-only group. An exit may race
+        # the first poll; retry after reaping, retaining any live refusal.
+        if child.poll() is None:
+            raise
+        child.wait()
+        try:
+            os.killpg(child.pid, signum)
+        except ProcessLookupError:
+            pass
+
+
 def qualify(
     command: list[str], receipt: SchemeReceipt | None = None, *, cwd: str | None = None
 ) -> int:
@@ -115,10 +134,7 @@ def qualify(
                         flush=True,
                     )
                     # A descendant may retain the pipe after its parent exits.
-                    try:
-                        os.killpg(child.pid, signal.SIGTERM)
-                    except ProcessLookupError:
-                        pass
+                    signal_owned_group(child, signal.SIGTERM)
                     return 124
         status = child.wait()
         if status == 0 and receipt is not None and not receipt.valid():
@@ -130,11 +146,11 @@ def qualify(
         return status
     finally:
         if child.poll() is None:
-            os.killpg(child.pid, signal.SIGTERM)
+            signal_owned_group(child, signal.SIGTERM)
             try:
                 child.wait(timeout=1)
             except subprocess.TimeoutExpired:
-                os.killpg(child.pid, signal.SIGKILL)
+                signal_owned_group(child, signal.SIGKILL)
                 child.wait()
         child.stdout.close()
 

@@ -135,6 +135,17 @@ impl NativeBuild {
 
     fn package_command(&self, program: &Path) -> Command {
         let mut command = clean_command(program);
+        if program == self.gxi.as_path() && gerbil_build_verbose_level() > 0 {
+            // Gerbil's driver appends GSC options after -target, where runtime
+            // diagnostics are ignored. GAMBOPT reaches GXI and child GSC before
+            // argv parsing while retaining the selected SDK directory mappings.
+            let mut options = env::var_os("GAMBOPT").unwrap_or_default();
+            if !options.is_empty() {
+                options.push(",");
+            }
+            options.push("1n,2n,d5qQ");
+            command.env("GAMBOPT", options);
+        }
         command
             .current_dir(&self.workspace)
             .env("GERBIL_PATH", &self.package_prefix)

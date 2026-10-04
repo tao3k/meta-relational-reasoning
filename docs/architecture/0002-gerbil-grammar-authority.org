@@ -233,3 +233,40 @@ kind catalog, and Rowan projection. =mrr-frontends= then validates the admitted
 semantic slice, typed fail-closed gaps, exact source coverage, and lowering into
 =MetaQueryIr=. These are ownership-bound contracts, not duplicated sample
 counts.
+
+* Native build progress propagation (2026-10-04)
+
+Cargo's package preparation and archive compilation are separate stages.
+Verbose package preparation now preserves inherited SDK directory mappings in
+=GAMBOPT= and appends =1n,2n,d5qQ=. This affects only the spawned build tools;
+GXI and its GSC children report actual collector work without changing heap
+limits or inserting timed output. Quiet builds retain the inherited settings.
+Compiler diagnostic termination policy is not an embedded-host runtime policy.
+
+A direct owned GSC experiment showed that placing =-:= and =-verbose= after
+Gerbil's =-target C= causes both to be warned as improperly placed and ignored.
+The options must not be appended to PackageSpec's per-module GSC argument list.
+An equivalent call with diagnostics in =GAMBOPT= produced actual GC reports
+and exited successfully. The archive helper's direct GSC commands separately
+place runtime diagnostics before compiler arguments.
+
+The exact GSC revision =b20d209bc63fd6bfec00f5b69e5738971986daf1= preserves
+=-O2= and SDK ABI settings while excluding GCC load motion for generated
+module objects. The actual =clan/poo/trie= fixture passed idle30 in 51.43s;
+full downstream construction and target-specific release performance remain
+separate evidence. No compiler speedup or query speedup follows from progress.
+
+The production helper's current source passed direct strict Clippy-driver
+checking against dependency inputs from its successful earlier full-chain
+compilation. Full local Cargo test and production Cargo check still failed
+idle30 in Rust dependency compilation/checking; direct qualification does not
+replace those gates. A warm package run succeeded, but a fresh package run
+still failed idle30 and exposed =unable to execute tool 'ld'= on this host.
+These failures remain open, rather than being changed into successful builds.
+
+Exact GSC =b20d209= Ubuntu and macOS CI completed successfully. Exact MRR
+=f256c13= had two successful Ubuntu native jobs; one macOS native job failed
+idle5 after final =HARNESS-OK= and =OK= output. Its signal cleanup then hit a
+Darwin zombie-group permission race. Supervision now reaps before group signals
+and retries an exited-child race while retaining live permission refusals.
+This repair does not turn that idle failure into a pass or relax its budget.

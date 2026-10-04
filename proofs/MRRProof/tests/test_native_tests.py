@@ -5,12 +5,29 @@ import subprocess
 import sys
 import time
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from mrr_proof_validation import native_tests as native
 
 
 class OutputRegression(unittest.TestCase):
+    def test_exit_race_reaps_before_retrying_group_signal(self):
+        child = Mock(pid=123)
+        child.poll.side_effect = [None, 0]
+        with patch.object(native.os, "killpg", side_effect=[PermissionError(), ProcessLookupError()]) as kill:
+            native.signal_owned_group(child, native.signal.SIGTERM)
+        child.wait.assert_called_once_with()
+        self.assertEqual(kill.call_count, 2)
+
+    def test_live_group_permission_refusal_is_retained(self):
+        child = Mock(pid=123)
+        child.poll.return_value = None
+        with patch.object(native.os, "killpg", side_effect=PermissionError()):
+            with self.assertRaises(PermissionError):
+                native.signal_owned_group(child, native.signal.SIGTERM)
+        child.wait.assert_not_called()
+
+
     def test_short_writes_and_backpressure_preserve_exact_bytes(self):
         payload = b"MODULE x\nCASE-OK y\n\xff\nOK\n"
         forwarded = bytearray()
