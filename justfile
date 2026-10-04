@@ -53,7 +53,9 @@ context-refinement:
 # Regenerate exact production functions before checking the extracted Lean laws.
 context-source-proof toolchain_dir:
     {{profile}} python3 tools/check/context-source-proof.py --toolchain-dir {{toolchain_dir}}
+    {{profile}} python3 tools/check/context-source-proof.py --value-equality --toolchain-dir {{toolchain_dir}} --receipt /tmp/mrr-value-source-proof.json
     {{profile}} bash -c 'cd proofs/MRRProof/AgenticAIContextRust && lake build Evidence Driver NativeFacts Stack Expansion Forward Reverse ReverseIndex ImpactWrapper Coverage Rejection ForwardWrapper GeneralForward GeneralWrapper DeclaredForward RevisionProjection BindingEquality && lake env lean Axioms.lean'
+    {{profile}} bash -c 'cd proofs/MRRProof/AgenticAIContextValue && lake build ValueEquality && lake env lean Axioms.lean'
 
 # Check finite revision interleavings, fairness and required negative controls.
 context-tla receipt:

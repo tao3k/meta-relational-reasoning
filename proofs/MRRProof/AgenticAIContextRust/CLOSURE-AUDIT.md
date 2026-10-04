@@ -20,6 +20,7 @@ fast-forward; it does not supply new proof evidence.
 | Revision old/new identity union | `native_revision_source_union` | Actual production helper; exact key union and uniqueness; no map/source validity premise. |
 | Revision selected intersection minus invalidation | `native_revision_reusable_exact` | Actual production helper; exact membership and uniqueness, arbitrary input duplicates; old-list Usize bound. Does not establish that its invalidated argument is correct. |
 | Revision global binding classification | `native_revision_bindings_changed_exact` | Actual production helper and derived snapshot/query/contract equality; exact force or field inequality. String/Vec value models are explicit; digest equality is byte equality, not collision freedom. |
+| Atomic payload equality and recursion stop branches | `AgenticAIContextValue/ValueEquality.lean` | Independent actual-source scope; twelve atomic variants, constructor/key/length mismatches and exact stopped/empty loops. Nonempty nested equality remains open. |
 | Revision element change classification | Unproved | Prove actual recursive payload/element equality and exact changed membership from actual source maps. No assumed equality oracle. |
 | Complete revision assembly | Unproved | Connect actual changed construction to reverse impact and reusable helper, including global drift and removed/new dependencies. |
 | Source indexing and state validation/publication | Unproved as a whole Rust source theorem | Prove actual validation, budgets, duplicate/generation/dependency refusals and published-state invariant, then connect to selection/closure/revision. Existing model proofs and Rust tests are narrower evidence. |
@@ -66,8 +67,8 @@ The original adapter-signature and shared-state borrow-context blockers are
 superseded for extraction by direct production loops and a binding helper that
 preserves the original short-circuit evaluation. The retained final full
 comparison diagnostic has Charon exit 0 and Aeneas exit 0. Diagnostic mode still
-refuses to emit proof success; the generated complete function has not yet
-passed Lean compilation or a complete refinement theorem.
+refuses to emit proof success; the generated complete function passed isolated Lean compilation but has not
+yet passed a complete refinement theorem.
 
 The complete generated state includes two NonZero library types absent from
 the default proved scope. A separate isolated compiler diagnostic supplies
@@ -118,3 +119,19 @@ source equality/classification/assembly proof, prove a TLA-to-Lean translator,
 or establish universal lifecycle fairness or physical serving behavior. The CI
 gate retains five-second silence and 45-second qualification limits and exact
 model/config/log/Lean-binary hashes.
+
+## Recursive Value source scope
+
+`../AgenticAIContextValue` admits an independently extracted actual production
+Value equality scope with zero external type obligations and one exact String
+value-equality function. This avoids additional full-State/NonZero obligations
+and does not rewrite the existing 141-declaration control scope. The generated
+modules use `-loops-to-rec` and a separate Lean project to avoid global generated
+instance-name collisions. The source gate checks exact current generation.
+
+The first 29 audited declarations include 26 source branch laws and three library
+composition/byte-array laws. They close atomic values and exact short-circuit,
+empty, length-mismatch and loop-stop behavior. No theorem assumes an arbitrary
+final equality oracle. Total correctness for nonempty nested values, the exact
+changed set and complete revision assembly remain open. A successful source or
+axiom gate for this smaller scope does not close those obligations.
