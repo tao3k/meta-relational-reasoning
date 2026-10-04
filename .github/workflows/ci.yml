@@ -172,6 +172,7 @@ jobs:
         run: |
           cargo fetch --locked
           python3 tools/check/context-source-proof.py --toolchain-dir .ci/aeneas --receipt .ci/context-source-proof.json
+          python3 tools/check/context-source-proof.py --value-equality --toolchain-dir .ci/aeneas --receipt .ci/value-source-proof.json
       - name: Prepare pinned Lean source proof dependencies
         working-directory: proofs/MRRProof/AgenticAIContextRust
         env:
@@ -180,17 +181,25 @@ jobs:
           lake update
           modules=$(rg --no-filename '^(public )?import Mathlib' .lake/packages/aeneas/backends/lean/Aeneas .lake/packages/aeneas/backends/lean/AeneasMeta NativeFacts.lean -g '*.lean' | sed -E 's/^(public )?import ([A-Za-z0-9_.]+).*/\2/' | sort -u)
           lake exe cache get $modules
+          cd ../AgenticAIContextValue
+          lake update
+          lake exe cache get $modules
       - name: Prove generated production functions and audit axioms
         working-directory: proofs/MRRProof/AgenticAIContextRust
         run: |
           lake build Evidence Driver NativeFacts Stack Expansion Forward Reverse ReverseIndex ImpactWrapper Coverage Rejection ForwardWrapper GeneralForward GeneralWrapper DeclaredForward RevisionProjection BindingEquality
+          lake env lean Axioms.lean
+          cd ../AgenticAIContextValue
+          lake build ValueEquality
           lake env lean Axioms.lean
       - name: Save current source extraction receipt
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: context-source-proof-${{ github.event_name }}
-          path: .ci/context-source-proof.json
+          path: |
+            .ci/context-source-proof.json
+            .ci/value-source-proof.json
           if-no-files-found: error
 
   agentic-ai-context-tla:

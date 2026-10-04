@@ -32,6 +32,11 @@ def ascii_lean(content: str) -> bytes:
             'local infixr:35 " ** " => Prod\n\nnamespace MRR.ContextRust\n',
             1,
         )
+        content = content.replace(
+            "namespace MRR.ContextValue\n",
+            'local infixr:35 " ** " => Prod\n\nnamespace MRR.ContextValue\n',
+            1,
+        )
     content = content.translate(
         str.maketrans({"\u2192": "->", "\u2190": "<-", "\u00d7": "**"})
     )
@@ -99,7 +104,22 @@ def main() -> int:
         action="store_true",
         help="Retain a bounded diagnostic extracting actual unsafe BTree source",
     )
+    parser.add_argument(
+        "--value-equality",
+        action="store_true",
+        help="Extract actual recursive Value equality into its independent source scope",
+    )
     args = parser.parse_args()
+    if args.value_equality and (
+        args.probe_worklists or args.probe_revision or args.probe_btree_source
+    ):
+        parser.error("value equality cannot be combined with diagnostic scopes")
+    generated_dir = "ValueGenerated" if args.value_equality else "Generated"
+    project = (
+        ROOT / "proofs/MRRProof/AgenticAIContextValue"
+        if args.value_equality
+        else PROJECT
+    )
     if args.probe_btree_source or args.probe_revision:
         args.probe_worklists = True
     if args.probe_worklists and args.update:
@@ -130,7 +150,12 @@ def main() -> int:
     receipt.unlink(missing_ok=True)
     environment["CARGO_TARGET_DIR"] = str(receipt.parent / "mrr-source-proof-target")
     functions = (
-        ["mrr_agentic_ai_context::state::compare_revisions"]
+        [
+            "mrr_relation::api::equal_value_lists",
+            "mrr_relation::api::equal_value_records",
+        ]
+        if args.value_equality
+        else ["mrr_agentic_ai_context::state::compare_revisions"]
         if args.probe_revision
         else [
             "mrr_agentic_ai_context::state::compute_required_closure",
@@ -219,7 +244,7 @@ def main() -> int:
                 str(llbc),
                 "--",
                 "--package",
-                "mrr-agentic-ai-context",
+                "mrr-relation" if args.value_equality else "mrr-agentic-ai-context",
                 "--lib",
                 "--no-default-features",
                 "--locked",
@@ -235,12 +260,16 @@ def main() -> int:
                 "-dest",
                 str(output),
                 "-subdir",
-                "Generated",
+                generated_dir,
                 "-namespace",
-                "MRR.ContextRust",
+                "MRR.ContextValue" if args.value_equality else "MRR.ContextRust",
                 "-split-files",
                 "-filter-trait-methods",
-                *(["-loops-to-rec"] if args.probe_revision else []),
+                *(
+                    ["-loops-to-rec"]
+                    if args.probe_revision or args.value_equality
+                    else []
+                ),
                 str(llbc),
             ],
             environment,
@@ -250,7 +279,7 @@ def main() -> int:
             raise RuntimeError(
                 "library source translation is diagnostic only; no implementation proof"
             )
-        emitted = sorted((output / "Generated").glob("*.lean"))
+        emitted = sorted((output / generated_dir).glob("*.lean"))
         if args.probe_worklists:
             diagnostic = Path(
                 tempfile.mkdtemp(prefix="mrr-native-adapter-probe-", dir=receipt.parent)
@@ -286,6 +315,8 @@ def main() -> int:
             "TypesExternal_Template.lean",
             "FunsExternal_Template.lean",
         }
+        if args.value_equality:
+            expected.remove("TypesExternal_Template.lean")
         if {path.name for path in emitted} != expected:
             raise RuntimeError(
                 "unexpected extraction surface or external-definition obligations"
@@ -321,10 +352,16 @@ def main() -> int:
                 "alloc.string.String.Insts.CoreCmpPartialEqString.eq",
             ],
         }
+        if args.value_equality:
+            allowed = {
+                "FunsExternal_Template.lean": [
+                    "alloc.string.String.Insts.CoreCmpPartialEqString.eq"
+                ]
+            }
         for filename, declarations in allowed.items():
             actual = re.findall(
                 r"^axiom\s+([^\s({:]+)",
-                (output / "Generated" / filename).read_text(),
+                (output / generated_dir / filename).read_text(),
                 re.MULTILINE,
             )
             if actual != declarations:
@@ -335,7 +372,8 @@ def main() -> int:
                 continue
             content = ascii_lean(path.read_text())
             hashes[path.name] = hashlib.sha256(content).hexdigest()
-            target = PROJECT / "Generated" / path.name
+            target = project / generated_dir / path.name
+            target.parent.mkdir(parents=True, exist_ok=True)
             if args.update:
                 target.write_bytes(content)
             elif target.read_bytes() != content:
@@ -347,16 +385,25 @@ def main() -> int:
                     "aeneas": version.strip(),
                     "charon": charon_version.strip(),
                     "functions": functions,
+                    "scope": "recursive-value-equality"
+                    if args.value_equality
+                    else "context-control",
                     "llbc_sha256": hashlib.sha256(llbc.read_bytes()).hexdigest(),
                     "generated_sha256": hashes,
                     "library_model_sha256": {
                         name: hashlib.sha256(
-                            (PROJECT / "Generated" / name).read_bytes()
+                            (project / generated_dir / name).read_bytes()
                         ).hexdigest()
-                        for name in ("TypesExternal.lean", "FunsExternal.lean")
+                        for name in (
+                            ("FunsExternal.lean",)
+                            if args.value_equality
+                            else ("TypesExternal.lean", "FunsExternal.lean")
+                        )
                     },
                     "library_model_interfaces": allowed,
-                    "library_model_boundary": "trusted extensional BTree membership/lookup and entry restoration, map/set enumeration, element clone, checked lengths and lexicographic array ordering; no unsafe stdlib or sorted iteration proof",
+                    "library_model_boundary": "trusted exact string value equality; no unsafe stdlib proof"
+                    if args.value_equality
+                    else "trusted extensional BTree membership/lookup and entry restoration, map/set enumeration, element clone, checked lengths and lexicographic array ordering; no unsafe stdlib or sorted iteration proof",
                     "trait_model_filter": "-filter-trait-methods: retain only target Iterator fields; collect.default remains a modeled call",
                     "generated_format": "ASCII arrows and local Prod notation; unknown Unicode rejected",
                     "boundary": "extraction freshness; Lean theorem and axiom checks are separate gates",
