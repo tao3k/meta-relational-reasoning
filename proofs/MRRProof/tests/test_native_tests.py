@@ -1,19 +1,13 @@
 """Regression checks for qualification output under CI backpressure."""
 
-import importlib.util
 import os
-from pathlib import Path
 import subprocess
 import sys
 import time
 import unittest
 from unittest.mock import patch
 
-SOURCE = Path(__file__).with_name("native-tests.py")
-SPEC = importlib.util.spec_from_file_location("native_tests", SOURCE)
-assert SPEC is not None and SPEC.loader is not None
-native = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(native)
+from mrr_proof_validation import native_tests as native
 
 
 class OutputRegression(unittest.TestCase):
@@ -49,9 +43,7 @@ class OutputRegression(unittest.TestCase):
             f"import os; os.write(1, b'x' * {payload_size}); raise SystemExit(42)"
         )
         runner = (
-            "import importlib.util, sys; "
-            f"s=importlib.util.spec_from_file_location('native_tests', {str(SOURCE)!r}); "
-            "m=importlib.util.module_from_spec(s); s.loader.exec_module(m); "
+            "import sys; import mrr_proof_validation.native_tests as m; "
             f"raise SystemExit(m.qualify([sys.executable, '-c', {producer!r}]))"
         )
         child = subprocess.Popen([sys.executable, "-c", runner], stdout=write_fd)

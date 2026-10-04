@@ -79,28 +79,27 @@ private def checkUpstreamCertificates : IO Unit := do
     (match LeanPoo.C4.linearizeChecked inconsistent "child" with
      | .error .inconsistentOrder => true
      | _ => false)
-  match LeanPoo.C4.certifyNode "child"
-      [["a", "base"], ["b", "base"], ["a", "b"]] [["base"]] ["base"] with
-  | .error error => throw (IO.userError s!"FAIL: upstream node certificate {repr error}")
-  | .ok certificate =>
+  match LeanPoo.C4.linearizeVerified suffixGraph "child" with
+  | .error error => throw (IO.userError s!"FAIL: upstream verified graph {repr error}")
+  | .ok order =>
     let identify := fun name : String => ((name, 7) : Prod String Nat)
-    let bound : CompositionBinding (Prod String Nat) "child"
-        [["a", "base"], ["b", "base"], ["a", "b"]] [["base"]] := {
-      certificate := certificate, identify := identify,
+    let bound : CompositionBinding (Prod String Nat) suffixGraph "child" := {
+      order := order, identify := identify,
       injective := fun _ _ equal => congrArg Prod.fst equal,
-      selected := certificate.output.map identify, binding := rfl }
+      selected := order.output.map identify, binding := rfl }
     let selected : { values : List (Prod String Nat) // values.Nodup } :=
       Subtype.mk bound.selected bound.selected_nodup
-    check "upstream certificate maps to unique MRR identities"
+    check "upstream verified graph maps to unique MRR identities"
       (selected.val == [identify "child", identify "a", identify "b", identify "base"])
-    check "mapped parent/local order retained"
-      (decide ((["a", "base"].map identify).Sublist bound.selected))
-    check "mapped parent suffix retained"
+    check "upstream graph precedence query retained"
+      (order.precedes "a" "base" &&
+       decide (([identify "a", identify "base"]).Sublist bound.selected))
+    check "upstream graph ancestor suffix retained"
       (decide ((["base"].map identify).IsSuffix bound.selected))
     let renderIdentity := fun pair : Prod String Nat => render pair.1
     check "mapped parent-first materialization agrees"
       (bound.selected.reverse.flatMap renderIdentity ==
-        materializeOrder (fun name => renderIdentity (identify name)) certificate.output)
+        materializeOrder (fun name => renderIdentity (identify name)) order.output)
   check "upstream certificate rejects a foreign claimed suffix"
     (match LeanPoo.C4.certifyNode "child" [["base"]] [["base"]] ["foreign"] with
      | .error .incompatibleSuffixes => true

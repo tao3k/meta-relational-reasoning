@@ -9,7 +9,7 @@ from pathlib import Path
 
 
 def main() -> None:
-    root = Path(__file__).resolve().parents[2]
+    root = Path(__file__).resolve().parents[4]
     pins = re.findall(
         r'"(github\.com/tao3k/poo-flow)@([0-9a-f]{40})"',
         (root / "gerbil.pkg").read_text(),

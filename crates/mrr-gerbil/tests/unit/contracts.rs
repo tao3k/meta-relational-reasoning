@@ -48,9 +48,9 @@ fn stale_scheme_input_fails_closed() {
 fn rust_commands_inherit_the_canonical_gxpkg_environment() {
     let devenv = include_str!("../../../../devenv.nix");
     let justfile = include_str!("../../../../justfile");
-    let readme = include_str!("../../../../README.md");
+    let readme = include_str!("../../../../README.org");
     let ci = include_str!("../../../../.github/workflows/ci.yml");
-    let gerbil_release = include_str!("../../../../tools/ci/install-gerbil-release.sh");
+    let gerbil_release = include_str!("../../../../.github/scripts/install-gerbil-release.sh");
 
     assert!(devenv.contains("scripts.mrr-cargo.exec"));
     assert!(devenv.contains("exec gerbil env cargo \"$@\""));
@@ -67,8 +67,8 @@ fn rust_commands_inherit_the_canonical_gxpkg_environment() {
     assert!(ci.contains("Install declared Gerbil dependencies"));
     assert!(ci.contains("Build declared Gerbil package"));
     assert!(ci.contains("Install immutable Gerbil release"));
-    assert!(ci.contains("tools/ci/install-gerbil-release.sh"));
-    assert!(ci.contains("hashFiles('gerbil.pkg', 'tools/ci/install-gerbil-release.sh')"));
+    assert!(ci.contains(".github/scripts/install-gerbil-release.sh"));
+    assert!(ci.contains("hashFiles('gerbil.pkg', '.github/scripts/install-gerbil-release.sh')"));
     assert!(ci.contains("brew install gcc jq openssl pkg-config sqlite zlib"));
     assert!(ci.contains("PKG_CONFIG_PATH=$openssl_prefix/lib/pkgconfig"));
     assert!(ci.contains("macos_major=\"$(sw_vers -productVersion | cut -d. -f1)\""));

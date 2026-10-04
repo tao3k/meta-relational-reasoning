@@ -18,6 +18,9 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.event_name }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
+env:
+  PYTHONPATH: proofs/MRRProof/src
+
 jobs:
   test:
     name: Native Gerbil and Rust (${{ matrix.os }})
@@ -76,7 +79,7 @@ jobs:
 
       - name: Install immutable Gerbil release
         shell: bash
-        run: tools/ci/install-gerbil-release.sh "$GERBIL_PREFIX"
+        run: .github/scripts/install-gerbil-release.sh "$GERBIL_PREFIX"
 
       - name: Activate Gerbil build controls
         shell: bash
@@ -92,10 +95,10 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .gerbil
-          key: gxpkg-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('gerbil.pkg', 'tools/ci/install-gerbil-release.sh') }}
+          key: gxpkg-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('gerbil.pkg', '.github/scripts/install-gerbil-release.sh') }}
 
       - name: Prefetch declared native commit objects
-        run: python3 tools/ci/prepare-gerbil-dependencies.py
+        run: python3 -m mrr_proof_validation.prepare_gerbil_dependencies
 
       - name: Install declared Gerbil dependencies
         run: gerbil deps --install
@@ -105,11 +108,11 @@ jobs:
 
       - name: Verify native qualification rejects false success
         run: |
-          python3 -m unittest discover -s tools/check -p test_native_tests.py -v
-          gerbil env python3 tools/check/native-tests.py self-test
+          uv --project proofs/MRRProof run pytest -q proofs/MRRProof/tests/test_native_tests.py
+          gerbil env python3 -m mrr_proof_validation.native_tests self-test
 
       - name: Test Gerbil package
-        run: gerbil env python3 tools/check/native-tests.py scheme
+        run: gerbil env python3 -m mrr_proof_validation.native_tests scheme
 
       - name: Test Rust workspace in the Gerbil package environment
         env:
@@ -118,14 +121,14 @@ jobs:
 
       - name: Test optional Context feature boundaries
         run: |
-          gerbil env python3 tools/check/context-features.py
-          gerbil env python3 tools/check/context-qualify.py matrix
+          gerbil env python3 -m mrr_proof_validation.context_features
+          gerbil env python3 -m mrr_proof_validation.context_qualify matrix
 
       - name: Qualify complete Query Context workflow and scale
         run: |
           gerbil env cargo build -p meta-relational-reasoning --examples --features agentic-ai-context-tokens --locked
-          gerbil env python3 tools/check/context-qualify.py workflow
-          gerbil env python3 tools/check/context-scale.py --output .ci/context-scale
+          gerbil env python3 -m mrr_proof_validation.context_qualify workflow
+          gerbil env python3 -m mrr_proof_validation.context_scale --output .ci/context-scale
 
       - name: Save Context scale receipts
         if: always()
@@ -179,8 +182,8 @@ jobs:
       - name: Regenerate current Rust evidence, identities and driver
         run: |
           cargo fetch --locked
-          python3 tools/check/context-source-proof.py --toolchain-dir .ci/aeneas --receipt .ci/context-source-proof.json
-          python3 tools/check/context-source-proof.py --value-equality --toolchain-dir .ci/aeneas --receipt .ci/value-source-proof.json
+          python3 -m mrr_proof_validation.context_source_proof --toolchain-dir .ci/aeneas --receipt .ci/context-source-proof.json
+          python3 -m mrr_proof_validation.context_source_proof --value-equality --toolchain-dir .ci/aeneas --receipt .ci/value-source-proof.json
       - name: Prepare pinned Lean source proof dependencies
         working-directory: proofs/MRRProof/AgenticAIContextRust
         env:
@@ -235,11 +238,13 @@ jobs:
       - name: Build Lean publication laws and actual TLC-state replay
         working-directory: proofs/MRRProof/AgenticAIContext
         run: |
-          python3 ../../../tools/check/lean-dependency-pin.py .
+          python3 ../src/mrr_proof_validation/lean_dependency_pin.py .
           lake build MRR agentic-ai-context-tla-replay
           lake env lean Checks/Axioms.lean
       - name: Check safety, liveness, counterexamples and Lean state conformance
-        run: python3 tools/check/context-tla.py --tlc-jar .ci/tla/tla2tools.jar --lean-replay proofs/MRRProof/AgenticAIContext/.lake/build/bin/agentic-ai-context-tla-replay --receipt .ci/tla/receipt.json
+        run: |
+          python3 -m mrr_proof_validation.context_tla --tlc-jar .ci/tla/tla2tools.jar --lean-replay proofs/MRRProof/AgenticAIContext/.lake/build/bin/agentic-ai-context-tla-replay --receipt .ci/tla/receipt.json
+          python3 -m mrr_proof_validation.meta_impact_tla --tlc-jar .ci/tla/tla2tools.jar --receipt .ci/tla/meta-impact-receipt.json
       - name: Save TLA receipt and actual TLC logs
         if: always()
         uses: actions/upload-artifact@v4
@@ -268,7 +273,7 @@ jobs:
       - name: Build kernel proofs
         working-directory: proofs/MRRProof/AgenticAIContext
         run: |
-          python3 ../../../tools/check/lean-dependency-pin.py .
+          python3 ../src/mrr_proof_validation/lean_dependency_pin.py .
           lake build MRR agentic-ai-context-refinement
       - name: Replay actual C4 and shared Rust fixture
         working-directory: proofs/MRRProof/AgenticAIContext
@@ -276,7 +281,7 @@ jobs:
       - name: Build actual Rust Context refinement producer
         run: cargo build -p meta-relational-reasoning --example context_refinement --no-default-features --features agentic-ai-context-tokens --locked
       - name: Compare actual Rust algorithms and CBOR hashes with Lean
-        run: python3 tools/check/context-refinement.py --receipt .ci/context-refinement.json
+        run: python3 -m mrr_proof_validation.context_refinement --receipt .ci/context-refinement.json
       - name: Save actual Rust refinement receipts
         if: always()
         uses: actions/upload-artifact@v4

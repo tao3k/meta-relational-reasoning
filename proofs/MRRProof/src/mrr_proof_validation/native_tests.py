@@ -147,7 +147,7 @@ def scheme_command(paths: list[str]) -> list[str]:
     return [
         "gxi",
         "-e",
-        '(load "tools/check/native-test-progress.ss")',
+        '(load "proofs/MRRProof/fixtures/native-test-progress.ss")',
         "-e",
         f'(import :gerbil/tools/gxtest) (exit (main "-v" "5" {arguments}))',
     ]
@@ -160,7 +160,7 @@ def self_test() -> int:
         ("missing", 42),
         ("empty", 65),
     ]:
-        path = f"tools/check/fixtures/{name}-test.ss"
+        path = f"proofs/MRRProof/fixtures/native-qualification/{name}-test.ss"
         print(f"QUALIFICATION-PROBE: {name}", flush=True)
         actual = qualify(scheme_command([path]), SchemeReceipt([path]))
         if actual != expected:

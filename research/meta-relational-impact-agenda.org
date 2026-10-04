@@ -1,0 +1,128 @@
+#+title: Meta-Relational Impact: Research and Evaluation Agenda
+#+startup: overview
+
+* Research question and present baseline
+
+Can MRR use typed relations *about admitted relations and derivations* to
+compute a sound reevaluation frontier across semantic generations, retain
+conclusions with independent support, and selectively reuse Context without
+confusing graph reachability with temporal or causal impact?  [[file:../docs/architecture/0037-meta-relational-impact.org][RFC 0037]]
+proposes the contract.  The question is deliberately broader than the
+accepted [[file:../docs/architecture/0012-impact-projection.org][RFC 0012]] reverse lineage traversal.
+
+The executable baseline is narrow.  =mrr-lineage::impact= walks predecessor
+edges in an admitted acyclic graph; =mrr-agentic-ai-context= traverses the
+union of old/new declared dependencies and denies reuse for reached nodes.
+POO Flow separately implements structural Impact and exact descriptive or
+candidate Trajectory contrast.  None of these baselines proves general
+multi-support truth maintenance, closed-world absence, identified causal
+effect, or a live token/KV cache saving.  The current PR's RFC 0035 and RFC
+0036 propose Content authority and Context reuse; this agenda tests the
+Impact connection without treating those proposals as shipped behavior.
+
+* Competing models
+
+| Model | Useful property | Counterexample or cost |
+|-
+| Reverse reachability only | simple finite frontier with path witness | a reached conclusion can survive through another derivation; a new fact may defeat an absence result without an old edge |
+| Recompute everything | easy completeness story within a fixed closed inventory | expensive and hides which dependency or owner caused a change |
+| Typed positive support sets, alternative branches, and explicit negative coverage | separates reevaluation from semantic retraction | requires complete support inventory, proposition/scope equivalence, and delta admission |
+| Generic untyped graph of anything | easy to ingest arbitrary links | conflates evidence, policy, temporal possibility, and causal effect |
+
+The proposed third model is admissible only if its extra checks earn their
+cost.  Until then, conservative recomputation is the safe runtime behavior.
+Typed meta relations are a way to preserve the distinction between evidence
+levels, not a claim that every source graph should be loaded into MRR.
+
+* Hypotheses and falsifiers
+
+1. *Frontier coverage.* For every changed declared positive dependency in a
+   finite old/new graph, the dependent evaluator is reached.  Falsify with a
+   removed edge, new edge, changed rule/schema, or changed authority binding
+   omitted from the frontier.
+2. *Support preservation.* A proposition with two complete applicable
+   derivations remains eligible when only one loses an input, provided their
+   output-key equivalence and scopes are checked.  Falsify with an output
+   marked retracted while the second branch is current and admitted, or with
+   two merely equal =FactId=s accepted as equivalent without that check.
+3. *Retraction soundness.* Marking a proposition retracted requires a complete
+   relevant support inventory.  Falsify with an undiscovered branch or a
+   scope mismatch between branches.
+4. *Bounded absence.* An added matching fact can defeat a certified negative
+   premise, and a removed one can enable a result.  Falsify with a zero-row
+   query treated as complete without a coverage certificate, or an addition
+   invisible to the old reverse graph.
+5. *Authority separation.* A POO structural witness or candidate contrast
+   remains at its declared claim level after being related in MRR.  Falsify
+   with an MRR result or action guard treating that receipt as an identified
+   intervention effect or runtime authorization.
+6. *Reuse eligibility.* A revoked capability or revised contract denies
+   current semantic use even when Content bytes and rendered prompt bytes
+   agree.  Falsify with a cross-actor or post-revocation disclosure.
+
+These remain implementation hypotheses, not measured runtime results.  The
+[[file:../proofs/MRRProof/AgenticAIContext/MRR/AgenticAIContext/MetaImpact.lean][Lean model]] proves conditional support and absence laws; the
+[[file:../proofs/MRRProof/AgenticAIContextTLA/MetaImpact.tla][TLA+ model]] checks finite cases with explicit counterexample mutants.  An
+integration fixture must still show that actual producers and effect owners
+enforce the cut and authority checks.
+
+* Fixture matrix
+
+| Fixture | Old -> new change | Expected result |
+|-
+| Two derivations of =Q= | one support removed | =Q= reached, then revalidated through the other complete branch |
+| Last derivation | its final input removed | retracted only if support inventory is complete |
+| New policy prohibition | item inserted into a certified applicable domain | old absence result reevaluated; compliance owner decides the new verdict |
+| Incomplete query inventory | zero rows with partial coverage | absence remains unknown |
+| New relation edge | endpoint dependency added at =g1= | new dependent enters frontier even though no old path exists |
+| Authority revision | capability revoked, same source bytes | old Context/action receipt stale; byte equality gives no authorization |
+| POO structural Impact | relation inventory incomplete | MRR retains partial scope and cannot certify unaffected nodes |
+| POO trajectory revision | exact aligned series changes | POO refresh is recomputed or blocked according to its own scope/grid rules; MRR records receipt change only |
+
+The fixtures should preserve original Fact/Relation IDs, source revisions,
+generation cuts, old/new graph inventories, and producer receipts.  Each case
+must state whether the oracle checks frontier inclusion, semantic eligibility,
+Temporal classification, or an actual action guard.  A failure in one layer
+cannot be called a pass because another layer's receipt exists.
+
+* Evaluation plan
+
+Implement a fixed baseline of RFC 0012 traversal plus full recomputation for
+all reached outputs, then compare against typed selective reevaluation on the
+same graphs, rules, source changes, policy cuts, and hardware.  Report:
+
+- false negatives and false positives in the frontier against exhaustive
+  recomputation over a *declared complete* fixture inventory;
+- incorrect retraction, unsupported revalidation, missed addition, and stale
+  reuse as separate semantic errors;
+- number of reevaluated owners/derivations and receipt bytes;
+- CPU, wall time, peak memory, and end-to-end action latency separately;
+- source and Temporal producer cost separately from MRR traversal and
+  evaluator cost; and
+- for Context, selected nodes, serialized bytes/tokens, token-prefix
+  eligibility, actual serving-cache hits, and authorization denials separately.
+
+Control or record host contention and cache warm-up.  Use identical inputs,
+toolchain, budget, and verifier versions for A/B runs.  A performance claim
+requires measured improvement with no semantic regression.  Frontier
+soundness is conditional on declared dependency completeness; general-world
+unaffectedness and causal identification are outside this evaluation.
+
+* Sequence and open gates
+
+1. Specify tagged meta-reference and edge-role admission with negative tests.
+2. Implement positive, acyclic, two-generation support reevaluation and
+   migrate RFC 0012 callers directly to the new result and field names.
+3. Model alternative support and retraction conditions in the existing MRR
+   proof project; check old/new edge and authority changes.
+4. Add finite-domain negative-premise certificates and insertion/deletion
+   deltas; reject unbounded or uncertified absence.
+5. Import POO Flow owner receipts at their exact claim levels; test scope,
+   cut, producer, and digest mismatch.
+6. Connect typed Content and Context receipts to the actual action/reuse
+   owners, then run controlled A/B evaluation.
+
+The Temporal effect and counterfactual levels remain POO Flow research gates.
+The MRR proposal can be useful without implementing either one: it can say
+which evidence and projections must be reevaluated when a Temporal receipt
+changes, while leaving the Temporal verdict to its owner.

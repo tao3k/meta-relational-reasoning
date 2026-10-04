@@ -15,7 +15,7 @@ import tempfile
 
 AENEAS_VERSION = "nightly-2026.10.03-557eff8"
 CHARON_REVISION = "c8f15d7d658c86a95658f71ad99cddd4be002e04"
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[4]
 PROJECT = ROOT / "proofs/MRRProof/AgenticAIContextRust"
 
 
@@ -90,7 +90,7 @@ def main() -> int:
     parser.add_argument("--toolchain-dir", type=Path, required=True)
     parser.add_argument("--rustup-home", type=Path)
     parser.add_argument(
-        "--receipt", type=Path, default=Path("/tmp/mrr-source-proof.json")
+        "--receipt", type=Path, default=Path(".ci/mrr-source-proof.json")
     )
     parser.add_argument("--update", action="store_true")
     parser.add_argument("--probe-worklists", action="store_true")

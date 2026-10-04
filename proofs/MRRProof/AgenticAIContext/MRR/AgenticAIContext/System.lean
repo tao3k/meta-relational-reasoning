@@ -148,8 +148,8 @@ theorem context_system_revision_render_tokens {Payload : Type} [DecidableEq Payl
     (oldRecord newRecord : ContextSystemRecord)
     (oldAdmitted : checkContextSystem current source dependencies maxRows maxFacts fuel maxSelected oldRecord = true)
     (newAdmitted : checkContextSystem current source dependencies maxRows maxFacts fuel maxSelected newRecord = true)
-    (name : String) (orders tails : List (List String))
-    (composition : CompositionBinding Nat name orders tails)
+    (graph : LeanPoo.C4.Graph) (root : String)
+    (composition : CompositionBinding Nat graph root)
     (compositionBinding : composition.selected = oldRecord.closure)
     (oldState newState : Nat -> SemanticElement Payload)
     (changed invalidated : List Nat) (revisionFuel revisionLimit : Nat)
@@ -164,13 +164,13 @@ theorem context_system_revision_render_tokens {Payload : Type} [DecidableEq Payl
     (forall id, id inList oldRecord.closure <-> Required (systemRequired oldRecord)
       (declaredDependencies dependencies) id) /\
     materializeOrder (semanticRenderer encode (fun node => newState (composition.identify node)))
-      composition.certificate.output =
+      composition.order.output =
       materializeOrder (semanticRenderer encode (fun node => oldState (composition.identify node)))
-        composition.certificate.output /\
+        composition.order.output /\
     tokenize (materializeOrder (semanticRenderer encode (fun node => newState (composition.identify node)))
-      composition.certificate.output) =
+      composition.order.output) =
       tokenize (materializeOrder (semanticRenderer encode (fun node => oldState (composition.identify node)))
-        composition.certificate.output) := by
+        composition.order.output) := by
   have newSystem := context_system_sound current source dependencies maxRows maxFacts fuel maxSelected newRecord newAdmitted
   have system := context_system_sound current source dependencies maxRows maxFacts fuel maxSelected oldRecord oldAdmitted
   have parts := system_components current source dependencies maxRows maxFacts fuel maxSelected oldRecord oldAdmitted
@@ -185,7 +185,7 @@ theorem context_system_revision_render_tokens {Payload : Type} [DecidableEq Payl
   have changesOk := parts.1
   have impactOk := parts.2
   have frame := of_decide_eq_true frameCheck
-  have unchanged : SemanticUnchangedOn composition.certificate.output
+  have unchanged : SemanticUnchangedOn composition.order.output
       (fun node => oldState (composition.identify node))
       (fun node => newState (composition.identify node)) := by
     intro node member
@@ -200,7 +200,7 @@ theorem context_system_revision_render_tokens {Payload : Type} [DecidableEq Payl
       (composition.identify node) changesOk impactOk
       (by simpa only [sourceBound] using closureSource.2.2) sourceClosed (frame _ selected)
     exact (safe.2 _ (Required.root (by simp))).symm
-  have bytes := semanticStability_bytes composition.certificate.output _ _ encode unchanged
+  have bytes := semanticStability_bytes composition.order.output _ _ encode unchanged
   exact And.intro newSystem.1 (And.intro system.1 (And.intro system.2.2.1 (And.intro bytes (congrArg tokenize bytes))))
 
 end MRR.AgenticAIContext

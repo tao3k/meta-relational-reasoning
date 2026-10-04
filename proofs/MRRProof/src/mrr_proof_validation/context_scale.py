@@ -2,13 +2,14 @@
 """Run separate bounded scale cases and record per-process peak RSS."""
 
 import argparse
-import importlib.util
 import json
 import os
 from pathlib import Path
 import resource
 import subprocess
 import sys
+
+from . import native_tests
 
 CASES = {
     "small": [256, 1024, 16, 4, 3],
@@ -19,17 +20,11 @@ CASES = {
 
 
 def one_case(name: str, binary: str, output: Path) -> int:
-    spec = importlib.util.spec_from_file_location(
-        "native_tests", Path(__file__).with_name("native-tests.py")
-    )
-    assert spec is not None and spec.loader is not None
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
     output.mkdir(parents=True, exist_ok=True)
     path = output / f"{name}.json"
     path.unlink(missing_ok=True)
     os.environ["MRR_CONTEXT_SCALE_RECEIPT"] = str(path.resolve())
-    status = module.qualify([binary, *map(str, CASES[name])])
+    status = native_tests.qualify([binary, *map(str, CASES[name])])
     if status != 0:
         return status
     record = json.loads(path.read_text())
@@ -55,7 +50,7 @@ def one_case(name: str, binary: str, output: Path) -> int:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--binary", default="target/debug/examples/context_scale")
-    parser.add_argument("--output", default="/tmp/mrr-context-scale")
+    parser.add_argument("--output", default=".ci/mrr-context-scale")
     parser.add_argument("--case", choices=CASES)
     args = parser.parse_args()
     output = Path(args.output)
@@ -66,7 +61,8 @@ def main() -> int:
         status = subprocess.call(
             [
                 sys.executable,
-                __file__,
+                "-m",
+                "mrr_proof_validation.context_scale",
                 "--binary",
                 args.binary,
                 "--output",

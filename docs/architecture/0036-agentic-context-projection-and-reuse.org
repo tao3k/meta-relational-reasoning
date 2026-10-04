@@ -1,0 +1,268 @@
+#+title: RFC 0036: Content-Aware Context Projection and Reuse
+#+status: proposed
+#+options: toc:2
+#+property: header-args :eval never-export :exports code
+
+* Decision
+
+Agentic AI Context is an existing semantic MRR domain.  This RFC extends it
+with explicit authority classes built from admitted Content and
+typed, non-authoritative working material.  MRR owns identities, source
+anchors, required closure, lineage, invalidation, and *eligibility* for
+semantic reuse.  POO Flow owns task policy, C4-composed control-plane inputs,
+capability selection, attention budget, scheduling, and lifecycle.  A consumer
+serializer owns Org or prompt bytes; a model runtime owns actual tokenization
+and KV cache allocation.  MRR does not acquire their authority by naming
+their outputs.  The existing system-level boundary is RFC 0025, and Content
+authority and compliance are specified by RFC 0035.
+
+This revision already implements source-bound selection, declared closure
+and impact, composition receipts, versioned byte materialization, external
+token binding and bounded prefix eligibility, a semantic manifest, and
+source-checked restore.  These are specified by
+[[file:agentic-ai-context.org][Agentic AI Context System]], including their
+proof and qualification boundaries.  This RFC does not rename or discard
+those APIs.  It proposes the missing Content authority, working-hypothesis,
+obligation, and action-guard connections.  The core remains usable in memory
+without =mrr-data=; its existing manifest restore already re-admits a decoded
+candidate against the current source and expected digest.  Semantic Content
+authority and current actor authorization are additional future checks.
+
+* Two graph roles and three Context node classes
+
+Let =C[g]= be admitted Content at semantic generation =g=.  It holds exact
+source assertions, normative contracts, evidence, and derivations with typed
+authority.  Let =X[p,g]= be the Context Graph assembled for a projection scope
+=p=.  A scope binds actor, task, turn, capabilities, temporal cut receipt,
+effective-contract digest, query, projection-policy digest, budget, and expiry.
+The temporal cut is supplied by its owner (for example POO Flow); MRR checks
+its receipt and does not implement another time ontology.
+
+=X[p,g]= contains three disjoint node classes:
+
+| Class | Anchor | Permitted use |
+|-
+| =ContentRef= | Content identity and exact revision/generation | may carry admitted authority within its original scope |
+| =DerivedRef= | Content supports, query/rule, and MRR admission receipt | may carry only the bounded conclusion admitted by those supports |
+| =WorkingHypothesis= | local actor/task/turn identity, origin and expiry; no Content authority | may guide exploration, never satisfy an obligation or become canonical by serialization |
+
+This extends RFC 0025's admitted Content-anchored Context view with a
+disjoint, non-authoritative task-local overlay.  Its anchor invariant continues
+to apply to *authority-bearing* Context nodes and edges.
+Working hypotheses must be visibly tagged and isolated.  A summary or model
+claim can be retained as a working hypothesis, but publication into Content
+requires the source-owner and MRR admission path of RFC 0035.  A Context
+mutation never changes =C[g]=.  An inferred edge must name its rule/query,
+complete supports, generation, and admission receipt; a speculative edge is
+tagged as such and cannot be read as admitted lineage.
+
+#+begin_src text
+AuthorityView(p, g) = Project(Content[g], Query(p), Cut(p), EffectiveContract(p), Budget(p))
+Context(p, g) = AuthorityView(p, g) disjoint-union WorkingHypotheses(p)
+Authoritative(x) implies x is ContentRef or admitted DerivedRef
+WorkingHypothesis(x) implies not Authoritative(x)
+#+end_src
+
+No Context node may claim authority beyond its source: visibility is checked
+against the current actor/capabilities, source policy, and expiry.  Redaction
+must occur before a node reaches any serializer or cache.  A content digest
+alone is not an authorization token.
+
+* Construction and completeness
+
+POO Flow supplies projection policy, root query, temporal cut, and resource
+budget.  A composition owner supplies precedence under the existing Context
+adapter boundary and separate C4 evidence if it claims a C4 result.  MRR
+validates their typed identities, computes the required fact/dependency
+closure, binds the separately computed effective hard obligations, and admits
+a bounded Context candidate.  The existing
+Scheme ASCENT finite solver may propose relational closure through MRR's
+typed deduction boundary, but MRR reconstructs or verifies supports and
+publishes only complete, generation-bound results.  Optional candidates may
+be ranked or omitted by the policy owner.  A required semantic dependency
+cannot be removed from the admitted closure by compaction or low score.
+Blocking obligations remain in the out-of-band effective contract and action
+guard even if their full prose is omitted from a prompt.  If a projection
+policy requires their display, a byte-budget failure is explicit rather than
+an apparently complete, silently truncated presentation.
+
+Construction extends the existing semantic manifest with a linked
+=ContextProjectionReceipt= rather than inventing a second source or closure
+identity.  The receipt binds that manifest digest, exact Content generation and
+source cut, effective contract, selected and omitted optional identities with
+reasons, authorization decision, budget accounting, expiry, and completeness.
+The existing manifest remains the authority for query, source bundle,
+declared dependency graph, and required closure.
+If the required closure exceeds a budget, contains a conflict, is stale,
+cannot be authorized, or an evaluator stops at its bound, the result is typed
+=incomplete=, =conflict=, =stale=, or =denied= as appropriate.  It must not be
+published as a complete prompt by silently truncating required nodes.  A
+consumer can request a narrower task or larger authorized budget and obtain a
+new projection receipt.
+
+The projection is deterministic only relative to a fixed snapshot, typed
+inputs, registered ordering/tie-break rules, and exact budget profile.  Query
+and semantic generation identity do not alone determine bytes.  Selection
+policy may be adaptive, but a receipt must freeze the actual choice and its
+reason; probabilistic ranking does not grant Content authority.
+
+* Composition and materialization boundary
+
+MRR checks that effective obligations and Context references are coherent.
+POO Flow owns policy object composition; an identified composition producer
+supplies the precedence used for rendering.
+=Mandatory= and =Prohibition= remain inherited under RFC 0035; a more
+specific Context frame cannot suppress them.  Overrideable preferences may
+follow authorized precedence.  A policy conflict is explicit; no last-writer
+or last-prompt-wins fallback is permitted.
+
+An admitted semantic view may be serialized into Org, another structured
+document, or model input, but these are *different artifacts* with separate
+identities:
+
+#+begin_src mermaid
+flowchart LR
+  C[MRR-admitted Content] --> X[MRR Context projection receipt]
+  P[POO Flow policy, cut, capabilities] --> X
+  X --> O[Orgize or POO Flow Org serializer]
+  X --> T[Prompt serializer]
+  T --> K[Model runtime tokens and KV]
+  C --> D[mrr-data optional persistence]
+  X --> D
+#+end_src
+
+The current implementation already distinguishes semantic reuse, bytes, and
+token-prefix eligibility.  The following authority and authorization gates
+extend those stages; they do not replace the existing receipts or claim an
+observed serving-cache hit.
+
+Working hypotheses live in a distinct actor/task-local overlay, never in the
+existing selected =Fact= closure or source manifest as if they were admitted
+facts.  A renderer may display them with an explicit non-authoritative label
+under policy; it must bind that overlay to the materialization identity and
+prevent cross-actor reuse.  Promotion requires a new source-owned admission
+into Content, not a mutation of the overlay.
+
+The existing byte-materialization stage already binds a declared renderer
+identity, ordered segments, spans, and byte budget.  A future complete
+serializer receipt must additionally bind its version, ordering, encoding,
+whitespace, redaction, and included Context IDs to a =MaterializationReceipt=.
+An Org
+heading or =AGENTS.md= is an authoring or display surface, not MRR's core
+syntax.  Orgize may prove structural parsing; MRR must still admit the typed
+semantic contract.  Arbitrary prose cannot be automatically compiled into a
+blocking obligation.  Existing RFC 0017's bounded Org Intent vocabulary is
+not silently broadened by this RFC; a contract-source adapter needs its own
+explicit grammar and negative cases.
+
+* Invalidation and reuse ladder
+
+Changes propagate along recorded dependencies:
+
+#+begin_src text
+source / authority / contract / evidence revision
+  -> Content and compliance impact
+  -> Context projection impact
+  -> serialized region impact
+  -> token and KV eligibility decision
+#+end_src
+
+The proposed typed Impact extension in
+[[file:0037-meta-relational-impact.org][RFC 0037]] treats this chain as a
+reevaluation frontier across old and new generations.  A reached node may
+remain semantically eligible through another complete support branch; a new
+fact may defeat an earlier bounded-absence result.  Neither outcome is
+decided by reachability alone.  Existing Context revision impact remains a
+conservative declared-dependency traversal until that extension is admitted.
+
+There are four distinct reuse claims with different owners and evidence:
+
+1. *Semantic reuse*: the exact Content supports, source cut, authority,
+   contract, query, and projection policy still justify a Context node/region.
+2. *Serialized-region reuse*: identical serializer version, ordering,
+   redaction, encoding, and byte output for the identified region in the new
+   admitted view.  Semantic reuse is one way to establish stability, but an
+   old view may instead be only a historical byte basis.
+3. *Token-prefix reuse*: actual full-prompt token ID sequences have the same
+   prefix under compatible tokenizer, chat template, special-token rules, and
+   positional layout.  A byte prefix does not suffice because tokenization
+   may merge across the boundary.
+4. *KV reuse*: token-prefix eligibility for a fresh authorized new view plus
+   compatible model weights/configuration, attention and position semantics,
+   runtime cache format, and isolation policy.  The model runtime owns the
+   final decision and observed hit receipt.
+
+Semantic equivalence alone does *not* imply byte identity; byte identity alone
+does not imply token or KV compatibility.  A changed prefix may invalidate
+later positions even when a later region's own bytes are unchanged.  An old
+view can be a historical computational basis even when its facts are no longer
+current, provided the new view is freshly admitted and its prefix is checked.
+Current capability revocation or observation expiry denies disclosure/action
+even if a computational prefix comparison remains equal; the serving owner
+must enforce that authorization boundary.  The safe default is to recompute.
+This RFC makes no present speedup claim and does not require coupling MRR to
+vLLM, SGLang, or another runtime.
+
+* Persistence, concurrency, and failure
+
+=mrr-data= may persist exact Content artifacts, immutable projection receipts,
+and serialized outputs as physical objects.  It owns CID, snapshot, backend,
+and conditional head behavior.  It does not interpret Agent, contract,
+obligation, tokenizer, or KV semantics, and its successful restore does not
+make an expired projection usable.  MRR verifies the restored semantic
+identities against the current source cut; the POO Flow authorization owner
+supplies the current actor/capability decision, which the designated runtime
+enforces before display or action.
+
+Projection and action are separate operations.  A valid Context receipt at
+turn start does not authorize a later action after source, contract, or
+capability change.  The owning runtime must recheck RFC 0035's eligibility
+receipt at the action boundary.  Concurrent changes may invalidate a
+projection while it is being built; the system must compare its input cut
+before publication, and on mismatch return =stale= rather than publish a
+mixed-generation Context.
+
+* Proof obligations and acceptance
+
+New formal work under =proofs/MRRProof/AgenticAIContext= should model typed
+Context classes, source cuts, the required closure, and the
+projection-to-action gap.  Useful
+claims are:
+
+1. A working hypothesis cannot become an authoritative Content reference by
+   projection, serialization, persistence, or restore alone.
+2. For a fixed cut, every admitted authority-bearing Context node is anchored
+   to admissible Content, and every derived edge has a valid support receipt.
+3. Hard obligations remain in the effective contract under authorized policy
+   extension; budget exhaustion cannot produce a complete required view.
+4. Any changed dependency marks the affected semantic region ineligible for
+   reuse.  The converse needs an explicit complete-dependency assumption.
+5. A transition guarded at its current cut cannot be justified by a stale
+   projection or an old compliance receipt.
+
+Negative examples must include a model summary masquerading as a fact,
+expired or revoked access with identical bytes, a Scheme ASCENT budget stop, a
+required node lost in compaction, conflicting contracts, a mixed generation,
+same semantic content with different serialization, and a byte-identical
+prefix under different model/tokenizer configurations.  Rust contract tests,
+Lean model checks, and a real runtime integration scenario are distinct gates.
+
+Research evaluation should compare a fixed baseline and the proposed
+projection on the *same* source revisions, tasks, policy, model, tokenizer,
+hardware, and budget.  Report semantic validity and denied unsafe actions
+before performance.  Separately report Context bytes/tokens, required-closure
+coverage, invalidation false reuse, cache hit rate, CPU, wall time, and
+end-to-end latency.  Host contention and cache warm-up are controlled or
+recorded.  A token or KV saving is a measured result, not a consequence of
+this RFC's equations.
+
+The next implementation slice should add typed Content references, working
+hypotheses, effective obligations and authority-aware invalidation to the
+existing Context boundary.  It must preserve the present feature isolation,
+manifest restore checks and byte/token stage separation.  Real action guards
+and serving-cache integration require separate runtime evidence.  No new
+crate split or external model-runtime dependency is required by this RFC.
+
+The cross-layer hypotheses, alternative designs, and controlled evaluation
+protocol are recorded in
+[[file:../../research/content-context-compliance-agenda.org][Content, Context, and Compliance: Research Agenda]].

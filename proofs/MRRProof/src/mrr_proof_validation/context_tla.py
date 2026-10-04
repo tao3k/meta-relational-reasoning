@@ -3,13 +3,14 @@
 
 import argparse
 import hashlib
-import importlib.util
 import json
 from pathlib import Path
 import re
 import tempfile
 
-ROOT = Path(__file__).resolve().parents[2]
+from . import native_tests
+
+ROOT = Path(__file__).resolve().parents[4]
 MODEL = ROOT / "proofs/MRRProof/AgenticAIContextTLA"
 
 
@@ -117,12 +118,6 @@ def main() -> int:
         ]
     args.receipt.unlink(missing_ok=True)
     args.receipt.parent.mkdir(parents=True, exist_ok=True)
-    spec = importlib.util.spec_from_file_location(
-        "native_tests", Path(__file__).with_name("native-tests.py")
-    )
-    assert spec and spec.loader
-    native = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(native)
     cases = [
         (name, "none")
         for name in (
@@ -154,7 +149,7 @@ def main() -> int:
             log_path.unlink(missing_ok=True)
             observed = TLCReceipt(log_path)
             print(f"CONTEXT-TLA-QUALIFY: {name}", flush=True)
-            status = native.qualify(
+            status = native_tests.qualify(
                 [
                     *command,
                     "-workers",
@@ -222,7 +217,7 @@ def main() -> int:
     replay_log.unlink(missing_ok=True)
     lean = LeanReceipt(replay_log, len(all_states))
     if (
-        native.qualify(
+        native_tests.qualify(
             [str(args.lean_replay.resolve()), str(state_path.resolve())], lean
         )
         != 0

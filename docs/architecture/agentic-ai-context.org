@@ -11,6 +11,14 @@ and source admission. The first executable slice is
 operations within this system. The domain namespace is
 =MRR.AgenticAIContext=.
 
+The implemented boundary in this document remains the source-admitted,
+fact-based Context system.  [[file:0035-content-authority-and-compliance.org][RFC 0035]]
+proposes typed Content authority, obligations and compliance receipts;
+[[file:0036-agentic-context-projection-and-reuse.org][RFC 0036]] proposes their
+integration with Context, including a disjoint working-hypothesis overlay.
+Those proposals do not upgrade the existing =policy_digest= or fact-validity
+checks into enforcement, and they do not change the proof claims below.
+
 * Optional features and package isolation
 
 Context is an optional capability of the Meta-Relational Reasoning facade.
@@ -43,7 +51,7 @@ pull in tokenizer libraries, model weights, serving runtimes or network clients.
 A production tokenizer adapter can use those dependencies in its own package;
 the semantic packages do not load its assets or select a model implicitly.
 
-=tools/check/context-features.py= inspects the actual normal consumer dependency
+=mrr_proof_validation.context_features= inspects the actual normal consumer dependency
 graph under all three configurations. It rejects accidental Context activation,
 token-feature activation and storage/model/network dependency leakage. CI also
 compiles and tests each configuration independently, including the baseline.
@@ -130,12 +138,12 @@ KV reuse. No serving cache, cache hit receipt, or live authorization is provided
 * Proof boundary
 
 The independent Lake project is [[file:../../proofs/MRRProof/AgenticAIContext/lakefile.toml][AgenticAIContext]].
-It pins =lean-poo= to =cb4623980056fb761f34601181bb7d8485af1dda= and uses
+It pins =lean-poo= to =2abf644bb4a10871345b1e6c38f5a75f607d43b5= and uses
 Lean 4.34.0 without migrating the existing MRR admission proof project.
 
 | Established kernel theorem | Required premise or remaining boundary |
 |----------------------------+----------------------------------------|
-| Injective identity mapping preserves certified C4 order, uniqueness and parent suffixes | Caller-established identity and selected-domain binding to lean-poo's NodeCertified |
+| Injective identity mapping preserves graph-verified C4 order, uniqueness, reachable local precedence and flagged ancestor suffixes | Caller-established identity and selected-domain binding to lean-poo's VerifiedOrder |
 | Mapped element rendering agrees with upstream order rendering | Same renderer after the identity mapping |
 | Checked leaf extension yields the actual C4 order relation | Both C4 computations succeed and the checker accepts |
 | Parent-first leaf materialization appends bytes | Fixed renderer; equal old payloads and declared dependencies |
@@ -145,13 +153,19 @@ Lean 4.34.0 without migrating the existing MRR admission proof project.
 
 Counterexamples cover structural reordering, a token merge, a changing global
 header, and changed causal history despite an unchanged suffix. Actual pinned
-C4 computations use =LeanPoo.C4.linearizeChecked=. Each reachable node consumes
+C4 computations use =LeanPoo.C4.linearizeChecked=, and the composition proof
+consumes =LeanPoo.C4.linearizeVerified= and its graph derivation. Each reachable node consumes
 lean-poo's merge, suffix and complete-node certificates. Their established laws
 are reused directly; MRR does not reimplement or reprove C4. The general MRR
 identity-mapping and materialization bridges are conditional kernel proofs. No =sorry= or =native_decide= is admitted. The axiom
 audit scans every declaration in =MRR.AgenticAIContext= and imported =LeanPoo.C4=
 and permits only
 =propext=, =Classical.choice=, and =Quot.sound=.
+
+The pinned upstream revision also provides =VerifiedOrder.rename= for injective
+String-to-String graph relabeling under a global declaration-uniqueness premise.
+MRR's =CompositionBinding= maps String names to arbitrary semantic element
+identities and keeps its own injectivity and selected-domain premises explicit.
 
 Rust and Lean replay [[file:../../fixtures/agentic-ai-context/materialization.json][one shared fixture]].
 This establishes bounded replay parity, not general Rust/Lean refinement.
@@ -364,11 +378,12 @@ instantiation semantics; that PDF illustrates C3 linearization. The separate
 translation and the existing certified merge/suffix/node laws. MRR pins that
 implementation and adds the consumer binding, selection and rendering layers.
 
-=CompositionBinding= consumes =LeanPoo.C4.NodeCertified= with an explicit
-injective node-to-element mapping and exact selected-order equality. Its laws
-transfer upstream order preservation, no duplicates and parent suffixes into
-the consumer element representation, then relate that representation's
-parent-first rendering to =materializeOrder=. These premises do not establish
+=CompositionBinding= now consumes graph-derived =LeanPoo.C4.VerifiedOrder=
+with an explicit injective node-to-element mapping and exact selected-order
+equality. Its laws transfer upstream precedence queries, reachable local
+orders, no duplicates and flagged ancestor suffixes into the consumer element
+representation, then relate that representation's parent-first rendering to
+=materializeOrder=. These premises do not establish
 Rust FactId encoding, source admission or a Manifest digest automatically.
 
 The upstream graph-traversal and cached-metadata proof boundary remains stated
@@ -640,7 +655,7 @@ https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf
 The known answers are:
 https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA256.pdf
 
-=tools/check/context-refinement.py= runs the actual Rust producer followed by the
+=mrr_proof_validation.context_refinement= runs the actual Rust producer followed by the
 Lean replay, each under the existing five-second silence and 45-second runtime
 boundaries. Compilation is a separate preparation phase. CI generates receipts
 from the current checkout and uploads them; it never substitutes a frozen golden
@@ -666,7 +681,7 @@ invalidity precedence, complete-only rejection, worst-evidence rank, and the
 commutative/associative/identity laws of completeness aggregation. The proof
 project uses Lean 4.31 separately from the existing Lean 4.34 system project.
 
-=context-source-proof.py= regenerates current source and rejects stale generated
+=mrr_proof_validation.context_source_proof= regenerates current source and rejects stale generated
 output before the theorem and axiom gates. The two functions have no external
 function obligations. This closes source-level evidence-policy refinement under
 the trusted Charon/Aeneas translation pipeline, rather than proving only a

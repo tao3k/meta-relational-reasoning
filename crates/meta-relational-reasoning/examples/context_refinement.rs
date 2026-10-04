@@ -59,7 +59,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let output = PathBuf::from(
         env::args()
             .nth(1)
-            .unwrap_or_else(|| "/tmp/mrr-context-refinement.json".into()),
+            .unwrap_or_else(|| ".ci/mrr-context-refinement.json".into()),
     );
     let mut closures = vec![
         closure_case(

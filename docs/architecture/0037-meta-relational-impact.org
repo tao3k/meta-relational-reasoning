@@ -1,0 +1,270 @@
+#+title: RFC 0037: Meta-Relational Impact Across Semantic and Temporal Evidence
+#+status: proposed
+#+options: toc:2
+#+property: header-args :eval never-export :exports code
+
+* Decision
+
+MRR should extend =IMPACT= from a traversal over fact lineage into a typed,
+generation-bound analysis of *relations about relations*: which derivations,
+queries, contracts, Context projections, and receipts depend on a changed
+semantic object, and which conclusions remain justified after reevaluation.
+The extension must distinguish a possible dependency from loss of support,
+loss of current applicability, a changed result, and a causal effect.
+
+This is a proposed semantic contract, not an implemented API.  The accepted
+[[file:0005-typed-relation-core.org][typed relation core]] already admits n-ary facts with authority,
+provenance, completeness, and generation.  [[file:0012-impact-projection.org][RFC 0012]] and
+=mrr-lineage::impact= implement reverse reachability in one admitted, acyclic
+lineage graph.  =mrr-agentic-ai-context= separately traverses declared
+dependencies across old and new states to conservatively deny semantic reuse.
+Neither implementation checks alternative derivations, bounded absence, or
+the truth of every reached conclusion.  The current public names
+=directly_invalidated=/=transitively_invalidated= classify a *single-graph
+reevaluation frontier* (the old graph during a proposed transition); they are
+not a verdict that the associated propositions became false.  RFC 0037 is the
+proposed replacement semantic contract.  Its eventual implementation should
+migrate callers directly, remove the misleading field names, and leave no
+parallel compatibility API.
+
+POO Flow's =temporal-causality= owns two different Impact contracts:
+
+| POO Flow contract | Current result | Limit |
+|-
+| Structural =poo-flow-structural-impact-analyze= | bounded reachability through a selected relation inventory and a witness path; =snapshot-scoped-impact=, =partial-impact=, or =invalid-inventory= | its receipt explicitly sets temporal assessment, release authorization, and execution to false |
+| =impact/= over Trajectory | exact aligned-grid difference and rate, scoped intervention-window and negative-control audit, versioned refresh | =descriptive-contrast= or =candidate-contrast=; causal-impact admission remains false |
+
+POO Flow also owns finite temporal possibility classification.  Its
+=modules/temporal-causality/impact/research.org= separates structural path, temporal possibility,
+trajectory contrast, interventional effect, and counterfactual effect.  MRR
+may index and relate the resulting *owner-issued receipts*; it must not infer
+a temporal or causal verdict merely because a meta-relation path exists.  The
+POO Flow path refers to that repository; no source is copied into this RFC.
+
+* What is a meta relation here?
+
+A domain relation says, for example, =depends_on(service, library)=.  A meta
+relation says which *identified assertion, derivation, or evaluation* was
+used to produce another identified assertion or artifact.  Reification needs
+typed references, not an unrestricted string-valued =about= edge.  The
+minimal reference domain is:
+
+| Referent | Identity and version needed for impact |
+|-
+| Source or derived assertion | =FactId=, =RelationId=, semantic generation, source revision or derivation |
+| Relation schema/rule/query | its typed ID plus exact definition/version and binding profile |
+| Derivation or result | derivation ID or result identity, output proposition and complete support receipt |
+| Owner receipt | issuer, kind, digest, scope, cut, and verification profile |
+| Context or compliance artifact | projection/obligation identity, manifest or effective-contract digest, actor/action scope |
+
+These are proposed tagged reference profiles over the existing relation
+substrate.  The current =ValueSchema= must not be assumed to serialize every
+identity as a first-class value already; an adapter may carry canonical bytes
+only if admission reconstructs and checks the tagged type.  A meta relation
+has its own =FactId= and =RelationContext=, so its provenance and authority are
+no less important than the relation it describes.  A rule may inspect a
+meta-relation only under a declared stratum/bound: permitting arbitrary
+self-referential =about(about(...))= derivation would evade finite admission.
+
+Initial relation roles have different meanings and validators:
+
+| Role | Meaning | Allowed inference |
+|-
+| =requires= / =derived_from= | an exact positive input of one derivation or receipt | changed input places that *derivation* on the reevaluation frontier |
+| =alternative_support= | distinct complete derivations for the same output proposition and scope | loss of one branch does not alone retract the output |
+| =selected_by= / =materializes= | query or Context selection and its output artifact | reevaluate selection/region under the same query and current cut |
+| =governed_by= | applicable authority, contract, capability, or verifier profile | a revision can remove eligibility even when payload bytes agree |
+| =absence_depends_on= | negative condition under a finite, certified coverage domain | additions in that domain may invalidate an earlier absence result |
+| =temporal_receipt_for= | reference to a POO Flow receipt and its subject/cut | only the receipt's declared claim level may be propagated |
+
+A typed edge is a dependency *for a particular evaluator*.  It is not a
+generic causal arrow.  Endpoints, polarity, scope, owner, generation, and
+evaluator version must be checked when the edge is admitted.  An unknown edge
+role, unverified external receipt, incomplete support inventory, or mixed
+generation yields =unknown= or =incomplete=; it cannot silently become
+=unaffected=.  RFC 0035's Content roles and RFC 0036's Context references are
+consumers of this profile, not second graph ontologies.
+
+* Three stages of Impact
+
+** 1. Find a bounded reevaluation frontier
+
+An =ImpactRequest= identifies an old admitted generation =g0=, proposed new
+generation =g1=, change events, selected relation/evaluator profiles, source
+cut, and coverage claim.  Change events include addition, retraction,
+replacement, rule/schema/query revision, authority or capability revision,
+and external receipt revision.  The owner that observes a change supplies its
+identity and revision; MRR does not discover arbitrary changes by scanning
+unowned stores.
+
+Traverse reverse *declared* dependencies in the union of old and new graphs.
+This catches removed old edges and newly introduced dependencies.  A changed
+rule, schema, query, cut, or global policy binding is a seed for every receipt
+whose validator declares it as a dependency.  The result is a candidate set
+with witness paths, edge roles, and explicit inventory coverage.  Empty reach
+is a scoped statement about the admitted inventory, not proof that the world
+is unaffected.  This step subsumes the safe use of RFC 0012's traversal and
+the Context module's old/new reverse dependency worklist.
+
+** 2. Reevaluate each affected semantic owner
+
+The old graph tells us *where to look*.  At =g1=, the relevant source owner,
+MRR derivation verifier, query evaluator, compliance verifier, POO Flow
+Temporal owner, or renderer must check its own contract.  The verifier must
+record the exact input set, completeness, new cut, and outcome.  MRR may
+reconstruct source-bound rule/query candidates and admit their result; it may
+only validate POO Flow's declared receipt shape and provenance for temporal
+claims.  A POO Flow structural witness does not authorize promoting a
+trajectory contrast or a causal effect.
+
+For a positive derivation =d= with support set =S(d)=, all inputs in =S(d)=
+are conjunctive.  Different admitted derivations of the same proposition are
+alternative branches.  The *same proposition* relation needs a checked
+output key: relation schema, canonical values, subject/validity scope, and
+applicable authority profile.  Equal =FactId=s alone do not certify that two
+derivations can substitute for one another; unequal =FactId=s do not prove
+their propositions differ.  For output key =q= under one exact scope:
+
+#+begin_src text
+Eligible(q, g) = CurrentAdmittedSource(q, g) OR
+                 exists d in CompleteDerivations(q, g):
+                   Admitted(d, g) and every s in S(d) is eligible at g
+#+end_src
+
+This equation is about *admitted support*, not universal truth.  A source
+assertion can remain in history even when it is no longer currently
+applicable.  A derived output is retained only when at least one complete,
+current branch justifies the same proposition and scope.  Cycles or unbounded
+recursive support require a separately admitted fixed-point/stratification
+contract; the present =LineageGraph= is acyclic and cannot certify them.
+
+For a negative premise such as =no applicable prohibition=, the verifier must
+name a closed, finite domain and a completeness/cut certificate.  A newly
+added matching item can defeat that premise; deleting a matching item can
+enable a new result.  Without such a certificate, absence remains =unknown=.
+An empty GQL result, missing edge, or exhausted budget cannot close the
+world.  Negative dependencies therefore need both old-to-new and new-to-old
+delta handling; a fact-only reverse walk is insufficient.
+
+** 3. Publish a scoped outcome, then gate reuse or action
+
+The proposed =MetaImpactReceipt= records the two generation/source cuts,
+change identities, selected edge and evaluator profiles, frontier/witnesses,
+coverage, per-subject reevaluation receipts, and a canonical digest.  Its
+per-subject outcome vocabulary is deliberately narrower than causal claims:
+
+| Outcome | Meaning |
+|-
+| =candidate= | reached by a declared dependency; evaluator has not completed |
+| =revalidated= | fresh complete support establishes the same scoped proposition |
+| =changed= | new admitted value, membership, or scope differs |
+| =retracted= | no eligible support remains under a complete applicable inventory |
+| =added= | newly admitted proposition at =g1=, including one enabled by a checked negative premise |
+| =stale= | prior receipt is no longer applicable; current verdict is pending |
+| =unknown=/=incomplete=/=conflict= | evidence, bound, or authority is insufficient for a stronger result |
+
+The =candidate= set may include false positives; after complete reevaluation,
+=revalidated= is a legitimate outcome.  =retracted= needs an exhaustive
+relevant support inventory, and is not inferred from losing a single path.
+The immutable receipt never edits the =g0= graph.  A designated generation
+transition owner publishes =g1=; a designated action/runtime owner checks the
+current cut before effects.  Neither an Impact receipt nor an old Context
+prompt is an action authorization.
+
+* Worked examples and rejection cases
+
+** Alternative support
+
+Suppose =d1: A AND B -> Q= and =d2: C -> Q= are independently admitted for
+the same scoped proposition.  Retraction of =A= reaches =d1= and =Q=.  It
+invalidates =d1='s eligibility, but =d2= can revalidate =Q=.  A single-edge
+reverse traversal would classify =Q= as affected; reporting =Q= as false
+would be wrong.  If =d2= was recorded only as an incomplete candidate, the
+correct result is =unknown= until the support inventory is checked.
+
+** Query absence and policy
+
+A query result saying no applicable prohibition at cut =c0= is conditional on
+its certified policy inventory.  Adding a prohibition at =c1= may retract that
+result even when no old positive path points from the new policy to the old
+result.  The applicable contract set, issuer authority, scope, and cut must be
+declared dependencies.  If a capability is revoked while prompt bytes remain
+identical, Context reuse and action eligibility can become stale without any
+byte difference.  RFC 0035 owns the compliance verdict and effect guard;
+RFC 0036 owns semantic, byte, token, and KV reuse boundaries.
+
+** Temporal receipt
+
+A changed POO Graph node can yield a structural Impact witness.  MRR may
+attach that witness to a semantic reevaluation candidate only after graph,
+selected relation inventory, direction, and snapshot match.  A POO Trajectory
+revision may yield =reused=, =recomputed=, or =blocked= contrast refresh; MRR
+records the new receipt identity and downstream dependence.  It cannot turn
+the contrast into an identified intervention effect.  Even a POO finite
+temporal classification is relative to its declared family, clock, and bound.
+
+** Fail-closed cases
+
+- A path through an unselected relation is not covered by a structural receipt.
+- A =partial-impact= or =invalid-inventory= POO receipt cannot certify no reach.
+- Two alternative derivations with different proposition scopes cannot be
+  merged to keep one output alive.
+- A newly added row cannot be ignored just because it has no old lineage edge.
+- A historical source assertion is not erased when its current-use receipt
+  becomes stale.
+- A model-generated trajectory or self-reported test is a candidate, not an
+  owner-verified temporal or compliance receipt.
+- A digest, physical CID, or equal prompt prefix cannot repair revoked
+  authority or prove an effect.
+
+* Ownership and implementation sequence
+
+The [[file:../../proofs/MRRProof/AgenticAIContext/MRR/AgenticAIContext/MetaImpact.lean][Lean model]] formalizes conditional positive-branch eligibility, the
+complete-inventory premise for retraction, old/new direct support seeds,
+certified finite-domain absence, and preservation of a verified Temporal
+claim level.  The [[file:../../proofs/MRRProof/AgenticAIContextTLA/MetaImpact.tla][TLA+ model]] checks six finite scenarios and requires four named
+mutation counterexamples.  The =meta-impact= recipe runs both gates and emits
+local receipts.  They specify and test this RFC's boundary; neither is an
+implementation or source refinement of =MetaImpactReceipt=.
+
+| Component | Owns | MRR integration boundary |
+|-
+| POO Flow | Graph selection, Temporal model/cut, trajectory arithmetic, intervention hypotheses, policy/capabilities | verified owner receipt with exact scope; no MRR temporal interpreter |
+| MRR relation/identity/lineage/query | typed meta references, support alternatives, dependency profiles, semantic candidate evaluation and admission | =MetaImpactReceipt= at immutable generations |
+| Scheme ASCENT | bounded candidate fixed point where selected by MRR | proposal plus support identities; MRR admits or rejects |
+| MRR Content and Context | authority and effective obligations, projection dependency closure, semantic reuse eligibility | consume typed impact; retain separate verifier and runtime gates |
+| =mrr-data= | persistence, CIDs and conditional physical head | stores immutable receipts without deciding semantic truth |
+| Renderer/model runtime | bytes, tokens, cache state and observed hit | checks its own reuse conditions after current authorization |
+
+The first implementation slice should directly replace the current public
+Impact projection and migrate its callers in the same change.  The replacement
+starts with one positive, acyclic, two-generation dependency graph with
+checked output-key equivalence and alternative supports.  Start
+with one exact Content/Context scenario, one unchanged alternative branch,
+and one rule/authority revision.  Add certified negative premises only after
+the coverage contract and delta algorithm are specified; add POO receipt
+referencing without importing its algorithms.  A broad generic graph rewrite
+or new crate split is not a prerequisite.  Until that code change, RFC 0012
+describes the executable baseline and the new proof models are design checks.
+
+* Proof and evidence gates
+
+Formal work should state assumptions before proving: (1) a reachable node
+may revalidate through a complete alternative branch; (2) a retracted result
+has no eligible derivation in the declared complete inventory; (3) any changed
+declared dependency enters the frontier using old/new edges; (4) an
+uncertified negative premise cannot become true through an empty result;
+(5) no meta-relation or serialization step promotes a POO candidate/contrast
+into causal or action authority.  Model checking finite examples is a design
+check, not an end-to-end runtime guarantee.
+
+Executable acceptance needs typed endpoint/role rejection, old/new edge and
+addition/deletion fixtures, alternative-support survival, loss of all
+supports, bounded absence, incomplete inventory, revision/cut mismatch,
+POO receipt scope mismatch, and a revoked-authority action denial through
+the actual effect owner.  Report frontier soundness and overapproximation
+separately from semantic verdict soundness.  Measure CPU and wall time under
+controlled host conditions; no speedup follows from this design alone.
+
+The competing formulations, falsifiable hypotheses, and controlled evaluation
+plan are in [[file:../../research/meta-relational-impact-agenda.org][the research agenda]].

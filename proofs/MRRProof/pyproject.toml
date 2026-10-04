@@ -7,6 +7,15 @@ dependencies = []
 [project.scripts]
 mrr-proof-impact = "mrr_proof_validation.cli:impact_main"
 mrr-lean-validate = "mrr_proof_validation.cli:main"
+mrr-native-tests = "mrr_proof_validation.native_tests:main"
+mrr-context-features = "mrr_proof_validation.context_features:main"
+mrr-context-qualify = "mrr_proof_validation.context_qualify:main"
+mrr-context-refinement = "mrr_proof_validation.context_refinement:main"
+mrr-context-scale = "mrr_proof_validation.context_scale:main"
+mrr-context-tla = "mrr_proof_validation.context_tla:main"
+mrr-meta-impact-tla = "mrr_proof_validation.meta_impact_tla:main"
+mrr-context-source-proof = "mrr_proof_validation.context_source_proof:main"
+mrr-prepare-gerbil-dependencies = "mrr_proof_validation.prepare_gerbil_dependencies:main"
 
 [build-system]
 requires = ["hatchling"]

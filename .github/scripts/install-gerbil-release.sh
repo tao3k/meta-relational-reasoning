@@ -40,6 +40,7 @@ jq -e --arg revision "$revision" --arg os "$release_os" --arg arch "$release_arc
    .platform.os == $os and .platform.arch == $arch' \
   "$release_root/gerbil-toolchain-release.json" >/dev/null
 
+# shellcheck source=/dev/null
 source "$release_root/activate"
 echo "$GERBIL_PREFIX/bin" >> "${GITHUB_PATH:?}"
 {

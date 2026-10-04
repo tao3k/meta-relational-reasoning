@@ -2,21 +2,15 @@
 """Qualify prebuilt Context workflows or tests using the shared output boundary."""
 
 import argparse
-import importlib.util
-from pathlib import Path
 import subprocess
+
+from . import native_tests
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("target", choices=("workflow", "integration", "matrix"))
     args = parser.parse_args()
-    spec = importlib.util.spec_from_file_location(
-        "native_tests", Path(__file__).with_name("native-tests.py")
-    )
-    assert spec is not None and spec.loader is not None
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
     if args.target == "matrix":
         targets = [
             (
@@ -75,7 +69,7 @@ def main() -> int:
             if status != 0:
                 return status
             print(f"CONTEXT-QUALIFY: {name}", flush=True)
-            status = module.qualify([*command, "--", "--nocapture"])
+            status = native_tests.qualify([*command, "--", "--nocapture"])
             if status != 0:
                 return status
         print("CONTEXT-MATRIX-OK", flush=True)
@@ -98,7 +92,7 @@ def main() -> int:
             "--nocapture",
         ]
     )
-    return module.qualify(command)
+    return native_tests.qualify(command)
 
 
 if __name__ == "__main__":
