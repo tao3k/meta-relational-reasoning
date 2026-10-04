@@ -319,3 +319,12 @@ attributed to a missing linker. An observed retry of the existing PackageSpec
 prefix exited zero while reporting real GC work; an owned GXI sample showed
 hash-table, expander and collector activity. That retry reused the prefix and
 does not replace the failed fresh-prefix receipt or qualify a full cold build.
+
+GSC =3f1ba7aaf5957c774c4269dd9deb2a92b2ed637d= changes only the cache
+test fixture and its documentation from =9175ae2=. The Ubuntu aggregate had
+rejected a newly written executable with ETXTBSY; native Gerbil itself passed.
+The fixed fixture is a checked-in executable, preserving the cache assertions
+and default test parallelism. Its Cargo test build passed (1m11s), and eight
+default regressions passed (0.61s; four native fixtures ignored). MRR now pins
+that repair; production helper source is unchanged, and new-head CI remains
+a separate gate.
