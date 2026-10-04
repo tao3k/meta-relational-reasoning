@@ -809,3 +809,13 @@ bytes with short-write/backpressure handling and an existing deadline; it does
 not change descriptor flags or generate heartbeat output. Regression checks
 exercise exact bytes, expired budget and a real nonblocking pipe carrying a
 failing child's output. Original 5-second silence and 45-second batch gates remain.
+
+** Source-derived initial traversal stack
+
+The production forward wrapper now calls =worklist::initial_pending=. Its actual
+source appends query roots, mandatory dependencies and temporal receipts in that
+order. Three Lean laws prove exact order/duplicate preservation, the reversed
+Nat-model pending projection for the complete combined root list, and the
+initial graph invariant. The total length has an explicit machine-size ceiling
+under the same Vec/Slice model as stack operations. The source audit requires
+49 declarations. This closes initialization, not the native BTree adapter law.

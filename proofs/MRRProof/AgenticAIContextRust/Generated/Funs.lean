@@ -196,7 +196,7 @@ def worklist.append_identities
     pending dependencies
 
 /-- [mrr_agentic_ai_context::state::expand_identity]:
-    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 414:0-440:1 -/
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 416:0-442:1 -/
 def state.expand_identity
   (id : mrr_identity.api.FactId)
   (element : Option state.AgenticAiContextElement) (require_complete : Bool)
@@ -248,8 +248,22 @@ def worklist.pop_identity
         i id
     ok (some id, pending1)
 
+/-- [mrr_agentic_ai_context::worklist::initial_pending]:
+    Source: 'crates/mrr-agentic-ai-context/src/worklist.rs', lines 21:0-31:1 -/
+def worklist.initial_pending
+  (roots : Slice mrr_identity.api.FactId)
+  (required : Slice mrr_identity.api.FactId)
+  (temporal_receipts : Slice mrr_identity.api.FactId) :
+  Result (alloc.vec.Vec mrr_identity.api.FactId)
+  := do
+  let pending <-
+    worklist.append_identities (alloc.vec.Vec.new mrr_identity.api.FactId)
+      roots
+  let pending1 <- worklist.append_identities pending required
+  worklist.append_identities pending1 temporal_receipts
+
 /-- [mrr_agentic_ai_context::worklist::run]: loop body 0:
-    Source: 'crates/mrr-agentic-ai-context/src/worklist.rs', lines 27:4-27:28 -/
+    Source: 'crates/mrr-agentic-ai-context/src/worklist.rs', lines 39:4-39:28 -/
 @[rust_loop_body]
 def worklist.run_loop.body
   {W : Type} (WorklistInst : worklist.Worklist W) (state : W) :
@@ -261,7 +275,7 @@ def worklist.run_loop.body
   else ok (done state1)
 
 /-- [mrr_agentic_ai_context::worklist::run]: loop 0:
-    Source: 'crates/mrr-agentic-ai-context/src/worklist.rs', lines 27:4-27:28 -/
+    Source: 'crates/mrr-agentic-ai-context/src/worklist.rs', lines 39:4-39:28 -/
 @[rust_loop]
 def worklist.run_loop
   {W : Type} (WorklistInst : worklist.Worklist W) (state : W) : Result W := do
@@ -270,7 +284,7 @@ def worklist.run_loop
     state
 
 /-- [mrr_agentic_ai_context::worklist::run]:
-    Source: 'crates/mrr-agentic-ai-context/src/worklist.rs', lines 26:0-29:1 -/
+    Source: 'crates/mrr-agentic-ai-context/src/worklist.rs', lines 38:0-41:1 -/
 @[reducible]
 def worklist.run
   {W : Type} (WorklistInst : worklist.Worklist W) (state : W) : Result W := do

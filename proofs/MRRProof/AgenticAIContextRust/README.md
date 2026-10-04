@@ -50,6 +50,12 @@ nothing and does not invoke the fill-value clone. Extension has an explicit
 machine-size premise. These laws use Aeneas's existing Vec/Slice models; native
 allocation failure and source proof of stdlib primitives remain outside them.
 Neither operation is now an undefined external stub in the native traversal probe.
+The actual `initial_pending` call assembles query roots, mandatory dependencies
+and temporal receipts. Three further source laws preserve their exact order and
+duplicates, project the complete combined root list, and establish the graph
+initial invariant. They retain an explicit total machine-size bound and the
+same Vec/Slice modeling boundary. Source extraction and the audit include these
+initialization laws; the audit now requires 49 declarations.
 
 `Expansion.lean` proves the actual `state::expand_identity`, called by forward
 traversal after map lookup and selected-set insertion. Missing facts, invalid

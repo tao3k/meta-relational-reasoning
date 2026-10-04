@@ -363,9 +363,11 @@ fn compute_required_closure(
     contract: &AgenticAiContextContract,
     elements: &BTreeMap<FactId, AgenticAiContextElement>,
 ) -> Result<AgenticAiContextClosure, AgenticAiContextError> {
-    let mut pending = query.roots.clone();
-    pending.extend_from_slice(&contract.required);
-    pending.extend_from_slice(&contract.temporal_receipts);
+    let pending = worklist::initial_pending(
+        &query.roots,
+        &contract.required,
+        &contract.temporal_receipts,
+    );
     let traversal = worklist::run(ClosureTraversal {
         elements,
         contract,

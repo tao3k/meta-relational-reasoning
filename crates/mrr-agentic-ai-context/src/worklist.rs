@@ -18,6 +18,18 @@ pub(crate) fn append_identities(pending: &mut Vec<FactId>, dependencies: &[FactI
     pending.extend_from_slice(dependencies);
 }
 
+pub(crate) fn initial_pending(
+    roots: &[FactId],
+    required: &[FactId],
+    temporal_receipts: &[FactId],
+) -> Vec<FactId> {
+    let mut pending = Vec::new();
+    append_identities(&mut pending, roots);
+    append_identities(&mut pending, required);
+    append_identities(&mut pending, temporal_receipts);
+    pending
+}
+
 pub(crate) trait Worklist {
     /// Advance one pop. Return false when finished, including rejected evidence.
     fn advance(&mut self) -> bool;

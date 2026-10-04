@@ -199,7 +199,7 @@ inductive state.AgenticAiContextError where
 | InvalidCompositionProducer : state.AgenticAiContextError
 
 /-- Trait declaration: [mrr_agentic_ai_context::worklist::Worklist]
-    Source: 'crates/mrr-agentic-ai-context/src/worklist.rs', lines 21:0-24:1 -/
+    Source: 'crates/mrr-agentic-ai-context/src/worklist.rs', lines 33:0-36:1 -/
 structure worklist.Worklist (Self : Type) where
   advance : Self -> Result (Bool ** Self)
 
