@@ -44,9 +44,10 @@ an open obligation.
 
 ## Next implementation sequence
 
-1. Complete Lean compilation of actual revision comparison, including its
-   recursive payload equality. Full comparison now translates successfully;
-   extraction alone is not a proof receipt.
+1. Prove total and exact recursive payload equality, then exact changed-set
+   construction. Full comparison extraction and isolated Lean compilation now
+   pass; the extra computable library candidates still require explicit admission
+   into the strict full-source gate. Compilation is not a refinement theorem.
 2. Prove each actual equality/changed-construction effect and connect it to the
    already proved index, impact and reusable projections. Run the required
    source audit and source-extraction gate, then the existing Rust/replay gates.

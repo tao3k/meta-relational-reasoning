@@ -98,6 +98,7 @@ def main() -> int:
     parser.add_argument("--tlc-jar", type=Path)
     parser.add_argument("--lean-replay", type=Path, required=True)
     args = parser.parse_args()
+    args.receipt = args.receipt.resolve()
     command = ["tlc"]
     jar_hash = None
     if args.tlc_jar:
