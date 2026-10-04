@@ -30,7 +30,15 @@ run_cmd do
       `MRR.AgenticAIContext.published_revision_gates,
       `MRR.AgenticAIContext.published_revision_dependency_safe,
       `MRR.AgenticAIContext.published_revision_impact_exact,
-      `MRR.AgenticAIContext.context_system_revision_render_tokens] do
+      `MRR.AgenticAIContext.context_system_revision_render_tokens,
+      `MRR.AgenticAIContext.closed_session_cannot_begin,
+      `MRR.AgenticAIContext.expired_session_cannot_begin,
+      `MRR.AgenticAIContext.foreign_session_cannot_begin,
+      `MRR.AgenticAIContext.closed_session_cannot_resume,
+      `MRR.AgenticAIContext.accepted_begin_preserves_key_and_advances,
+      `MRR.AgenticAIContext.accepted_query_use_has_exact_session_turn_cut,
+      `MRR.AgenticAIContext.foreign_query_use_cannot_bind,
+      `MRR.AgenticAIContext.accepted_resume_is_fresh] do
     unless environment.contains required do
       throwError "Required Context system theorem was not loaded: {required}"
   let mut count : Nat := 0

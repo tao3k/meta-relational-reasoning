@@ -21,6 +21,12 @@ Context Session transition.  A POO Flow execution session can exist without
 the optional MRR Context feature; a Context-enabled session uses its existing
 identity and adds this semantic head.
 
+The intended production chain is Orgize source structure, POO Flow policy and
+verified C4 precedence, MRR Query/Content/Context admission, a Tokio-driven
+Marlin execution owner, and MRR Data physical artifacts.  The value of this
+chain depends on exact handoff receipts between these owners; merely placing
+their names in one diagram would not make the Session safe or distinctive.
+
 This RFC is a design for a new API.  The current
 [[file:agentic-ai-context.org][Context implementation]] has source-bound
 selection, query-result candidate admission, manifest/restore, declared
@@ -93,6 +99,117 @@ needs its own schema, source cut and result-admission profile; an index hit is
 never sufficient to resume or disclose a Session.  This keeps address lookup
 separate from semantic Query execution without creating a second Query
 language.
+
+* Orgize, C4, Tokio, and MRR Data handoff
+
+Orgize's opt-in AOT parser currently exposes a lossless Rowan syntax tree,
+source-backed Org Element records, and a generated named Element-query pack.
+Those queries select *Org structure*.  They are distinct from POO Flow's
+common Query authoring surface and MRR's =MetaQueryIr= and catalog-bound
+semantic queries.  An Org link, heading, property, or block is therefore an
+authoring candidate with a source span, not a Content assertion or an
+authorized Session policy.  The adapter must bind source bytes/revision,
+Orgize parser and query-pack versions, selected spans, and the reviewed
+lowering to typed policy or Content candidates.  Parse success alone is not
+admission.
+
+POO Flow composes the applicable session, context, capability and obligation
+policies.  Its adapter must declare the actual inheritance graph and root;
+Org heading depth is not a C4 parent edge.  =lean-poo= supplies the pure
+=linearizeVerified= C4 result and graph-derived order properties.  The
+present Rust Context crate checks a supplied precedence against selected
+membership and local order, while the Lean project has conditional bridges
+to the pinned C4 basis.  It does not yet establish that a production Rust
+composer emitted that exact verified C4 result.  The handoff must bind the
+graph, root, algorithm revision, verified order, and mapping from policy
+nodes to selected Context identities.  Policy resolution uses
+most-specific-first precedence; the existing byte materializer renders the
+selected order parent-first.  These are separate order contracts.
+
+The Context Session head then binds a turn to the existing MRR Query/result
+admission, required Content closure, source cut, effective policy and
+projection manifest.  A Tokio runtime such as Marlin can schedule queries,
+tools, cancellation and retries, but async execution does not confer MRR
+admission or exactly-once effects.  Before publication, the runtime must
+check the current capability/effect guard and conditionally replace the
+head.  In Marlin, =marlin-agent-sessions= already has session identity,
+runtime policy and event-storage adapters, and =marlin-agent-storage= has an
+artifact-pointer compare-and-swap operation.  A Context Session adapter
+connecting those APIs to MRR receipts remains to be built.
+
+MRR Data already owns physical snapshots, content identities and storage
+providers.  It does not currently expose a Context Session head transaction.
+The proposed durable protocol is: write immutable Context/session artifacts
+to MRR Data; verify their content identity and retrieval under the required
+availability profile; then publish a pointer to the validated head through a
+runtime conditional update.  An unsuccessful pointer update may leave an
+unreferenced immutable artifact for later garbage collection, but must not
+publish a partial head.  If the pointer store and MRR Data are separate,
+the adapter must prove that its pointer resolves to the exact MRR Data
+artifact; a string that merely resembles a CID is insufficient.  A future
+MRR Data conditional-head API could combine the physical steps, but this RFC
+does not assume it exists.
+
+#+begin_src mermaid
+flowchart LR
+  O[Orgize source-backed elements] --> L[Reviewed typed lowering]
+  L --> P[POO Flow policy graph]
+  P --> C[lean-poo C4 verified order]
+  C --> X[MRR Context composition admission]
+  Q[Existing MRR Query and Content cut] --> X
+  X --> S[Context Session transition receipt]
+  S --> T[Marlin Tokio execution and current guard]
+  T --> D[MRR Data immutable artifact]
+  D --> H[Runtime conditional Session-head publish]
+#+end_src
+
+The diagram is a target composition, not a current end-to-end execution
+receipt.  Each arrow needs a versioned input/output identity and an owner
+that rejects stale or mismatched inputs.  A later source, policy, query,
+capability, or parser-version change sends the affected projection to RFC
+0037's reevaluation frontier; it does not rewrite historical turns.
+
+| Handoff | Required bound identity | Rejection that must be visible |
+|-
+| Orgize to policy/Content | source digest, parser/query-pack revision, selected spans and lowering version | changed bytes or ambiguous lowering |
+| POO policy to C4/Context | graph/root digest, verified C4 order and injective policy-node mapping | wrong parent edge or priority override |
+| MRR Query to Session turn | catalog/snapshot, result and selection receipts, source cut, Session/turn/query-use IDs | stale row, mixed cut or foreign turn |
+| Tokio execution to MRR Data | validated head digest, immutable artifact identity and retrieval proof | artifact absent or digest/CID mismatch |
+| MRR Data to current head | predecessor revision/digest and runtime conditional update result | losing concurrent commit or partial publication |
+
+* Differentiation hypothesis and comparison boundary
+
+Session IDs, remembered conversation history, checkpoints, durable execution
+and storage adapters are already present in other systems.  For example,
+[[https://openai.github.io/openai-agents-python/sessions/][OpenAI Agents SDK Sessions]] manages turn history with several stores, and
+[[https://docs.langchain.com/oss/python/langgraph/persistence][LangGraph persistence]] distinguishes thread checkpoints from cross-thread
+stores.  [[https://www.langchain.com/blog/deep-agents-v0-7][Deep Agents v0.7 (July 29, 2026)]] focuses on leaner context input;
+[[https://www.langchain.com/blog/introducing-managed-deep-agents][Managed Deep Agents]] reports durable threads, checkpointing and a public
+beta update on August 7, 2026.  These selected sources do not describe all
+community systems.  The presence of Tokio, a database, a Session ID or
+compaction alone is therefore not a defensible uniqueness claim.
+
+The differentiating *design hypothesis* is the joined admission chain:
+source-backed Org structure; reviewed typed lowering; a graph-derived C4
+precedence with an explicit mapping; exact MRR query/result and Content
+provenance; a Session head that binds turn, cut and Context manifest; and a
+conditional physical publication after current-policy checks.  It should
+make unsafe reuse, mixed-generation projection, cross-Session leakage and
+unexplained priority overrides *detectable and rejectable* at identified
+handoffs.  The current repositories implement pieces of this chain, but no
+end-to-end adapter or controlled comparison yet establishes that combined
+property or a performance advantage.
+
+A meaningful A/B study must hold tasks, source revisions, policy, model,
+tokenizer, hardware and budget constant.  Compare a conventional
+history/checkpoint Context baseline with the admitted projection on stale
+source, revoked access, conflicting inherited policy, ambiguous Org
+lowering, missing query rows, concurrent Session commits, and normal turns.
+Report unsafe admissions/rejections, required-closure coverage, provenance
+completeness and user task success before token counts.  Measure CPU, wall
+time, storage I/O and cache hits separately; runtime scheduling and host
+contention must be recorded.  Only that evidence can support a claim of
+better correctness or efficiency relative to a named baseline.
 
 * Semantic head and projection relation
 
@@ -232,7 +349,7 @@ are unchanged.
 | POO Flow | preserve one Session ID and project-scoped parent/child lineage; supply policy, authorization, query orchestration and turn/effect decisions |
 | MRR Context | define typed Session key/head/transition receipts; bind existing Query, Context and Content identities; reject stale or cross-session transitions |
 | Runtime | atomically allocate keys and publish heads, enforce idempotency/effect reconciliation, persist and recover, check access at disclosure/effect |
-| MRR Data | optional generic byte/CID persistence only; no Session semantic or authorization decision |
+| MRR Data | physical immutable artifact/CID persistence for the integrated profile, with retrievability evidence; no Session semantic or authorization decision |
 
 Implement this as a direct extension of the existing Context feature, with no
 new query subsystem or legacy parallel Session API.  First agree on the
@@ -249,5 +366,12 @@ the exact Session/turn/cut.  TLA+ should explore two concurrent commits,
 retry after uncertain commit, revocation between projection and action,
 resume after source change, fork isolation, and crash with a pending effect.
 Implementation replay must then connect the formal transitions to actual
-POO Flow, MRR, and runtime receipts.  No theorem or model in the current
-checkout proves those properties yet.
+POO Flow, MRR, and runtime receipts.  The current design-level Lean model
+proves terminal refusal, accepted begin key/revision/turn progression,
+exact query-use key/turn/cut binding and fresh resume guards.  A finite TLA+
+model checks two Session identities and two workers, including concurrent
+proposals, revocation, source-cut drift and terminal-state refusal; four
+deliberately broken guards produce the expected counterexamples.  These
+models do not yet cover retries, forks, expiry, effect reconciliation or
+production adapter refinement.  See
+[[file:../../proofs/MRRProof/AgenticAIContextTLA/README.org][the formal-model evidence boundary]].

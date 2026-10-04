@@ -89,3 +89,29 @@ TLC needs a local RMI socket.  The receipt records exact model/config/log
 hashes, TLC identity, state counts, and the named mutation counterexamples.
 This gate does not assert that the proposed =MetaImpactReceipt= API or POO
 Flow receipt adapter has been implemented.
+
+** Context Session model
+
+[[file:ContextSession.tla][ContextSession.tla]] explores two Session identities, two workers, one turn per
+Session, two source cuts, and bounded revision states.  Its current invariants
+cover no duplicate commit from concurrent proposals, no commit after
+revocation, no mixed-cut commit, exact turn allocation, and no resume after
+close.  Four mutations must violate the corresponding named invariants:
+ignoring the conditional head check, current authorization, current source
+cut, or terminal state.  The model permits terminal deadlocks.
+
+[[file:../AgenticAIContext/MRR/AgenticAIContext/ContextSession.lean][ContextSession.lean]] proves pure design-level guards for begin, query-use binding,
+and resume, including terminal refusal, key/turn/cut agreement and revision
+advance.  The Lean and TLA models are not yet linked by a state replay or
+refined against production Rust, POO Flow, Marlin, or MRR Data code.  Neither
+model covers attempt idempotency, fork isolation, expiry, external effects, or
+crash reconciliation.  These remain implementation and proof gates.
+
+#+begin_src sh
+./.devenv/devenv-profile-exec bash -c 'cd proofs/MRRProof/AgenticAIContext && lake build MRR && lake env lean Checks/Axioms.lean'
+./.devenv/devenv-profile-exec env PYTHONPATH=proofs/MRRProof/src python3 -m mrr_proof_validation.context_session_tla --receipt .ci/tla/context-session-receipt.json
+#+end_src
+
+The qualifier enforces the existing five-second output-silence and 45-second
+per-case limits.  Its receipt records model/config/log hashes, state counts,
+and the exact invariant named by each mutation counterexample.

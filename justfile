@@ -68,6 +68,11 @@ meta-impact receipt:
     {{profile}} bash -c 'cd proofs/MRRProof/AgenticAIContext && lake build MRR && lake env lean Checks/Axioms.lean'
     {{profile}} {{proof_python}} mrr_proof_validation.meta_impact_tla --receipt {{receipt}}
 
+# Check the finite Context Session lifecycle and four required counterexamples.
+context-session receipt:
+    {{profile}} bash -c 'cd proofs/MRRProof/AgenticAIContext && lake build MRR && lake env lean Checks/Axioms.lean'
+    {{profile}} {{proof_python}} mrr_proof_validation.context_session_tla --receipt {{receipt}}
+
 # Record time, peak RSS, bounded rejection and actual declared reuse eligibility.
 context-scale:
     {{profile}} mrr-cargo build -p meta-relational-reasoning --example context_scale --locked --features agentic-ai-context-tokens
