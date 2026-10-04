@@ -68,6 +68,10 @@ flowchart LR
 tenant scope, and the opaque POO Flow session ID.  The POO adapter must
 encode its existing project and session symbols injectively and canonically;
 string formatting or an unscoped symbol is not sufficient across projects.
+The Session head separately binds one =WorktreeId=, =TaskRunId=, and exact
+=WorktreeSourceCut=.  A Session moving to another WorkTree forks to a new key
+with explicit lineage and Context re-admission; changing a path or branch
+label does not silently move its existing head.
 One registry allocates or accepts a key at creation with an atomic
 does-not-exist check.  A key is never recycled, including after close,
 expiration, or deletion of retained artifacts.  The key is an address, not a
@@ -77,7 +81,10 @@ queries and Context, and one session may use several queries.
 
 | Identity | Meaning | Stability rule |
 |-
-| =SessionKey= | one logical POO Flow/Context session in one issuer and project scope | immutable; never reused |
+| =WorktreeId= | one checkout lifecycle under a project, independent of path and branch label | immutable; a recreated checkout gets a new ID |
+| =ProjectTaskId= | logical task or issue under a Project | may have multiple WorkTree attempts |
+| =TaskRunId= | one assignment of a Project task to a WorkTree | immutable; another WorkTree or attempt gets a new ID |
+| =SessionKey= | one logical POO Flow/Context session in one issuer and project scope, bound to one WorkTree/task run in its head | immutable; never reused |
 | =SessionRevision= | accepted semantic-head transition number and predecessor digest | strictly advances under conditional commit |
 | =TurnId= | =SessionKey= plus a monotonically allocated turn ordinal | never reassigned after abandonment |
 | =AttemptId= | retry identity for one proposed operation | repeated identical request returns its prior decision; changed payload rejects |
@@ -89,6 +96,14 @@ to the parent's private overlay or capability scope; any transferred Context
 reference needs an explicit scoped admission receipt.  A retry remains within
 the same key and attempt identity.  These cases must not be conflated.
 
+The container relation =Project -> WorkTree -> Task -> Session= identifies
+where work runs and where a scoped Context is visible.  It is distinct from
+Git commit ancestry, parent/child Session lineage, Context provenance, and
+C4 policy inheritance.  A Project can have arbitrarily many WorkTrees and
+tasks over time.  Each admitted source cut and C4 evaluation still uses a
+*finite*, explicitly bounded graph; an unbounded family does not license
+infinite traversal during one projection.
+
 Direct lookup by =SessionKey= resolves an untrusted stored head through the
 runtime, then MRR validates the expected head identity and source bindings
 under the caller's current access decision.  The POO Flow registry receipt
@@ -99,6 +114,151 @@ needs its own schema, source cut and result-admission profile; an index hit is
 never sufficient to resume or disclose a Session.  This keeps address lookup
 separate from semantic Query execution without creating a second Query
 language.
+
+* Project, WorkTree, task, and Session Context
+
+The previous handoff description did not define the unit of sharing.  This is
+the target topology and the acceptance case for the integrated profile:
+
+#+begin_src text
+Project P
+  Project Context head P@r                 admitted project-wide references
+  WorkTree W_a @ source cut a
+    WorkTree Context head W_a@r            shared by tasks in W_a
+    Task T_a1 @ W_a                        task Context head T_a1@r
+      Sessions S_a1, S_a2                  separate private overlays and turns
+    Task T_a2 @ W_a                        task Context head T_a2@r
+      Session S_a3
+  WorkTree W_b @ source cut b
+    WorkTree Context head W_b@r            independent of W_a
+    Task T_b1 @ W_b
+      Session S_b1
+#+end_src
+
+A Git linked worktree shares repository objects and most refs but has its own
+=HEAD=, index, and working files; its path and branch label can change.
+[[https://git-scm.com/docs/git-worktree][Git's worktree documentation]] is the source for that physical model.
+=WorktreeId= is a runtime identity for one checkout lifecycle, not the Git
+path, branch name, commit, or a C4 class.  The WorkTree may start from a
+Project commit and later diverge, but that derivation is a source-version
+relation.  Neither common Git objects nor equal byte digests grant Context
+visibility.  The POO Flow Session graph already represents project and
+parent/child Session identities in report receipts; its current
+=modules/session/registry.ss= does not publish a live WorkTree Context head.
+
+=WorktreeSourceCut= must bind repository identity, =HEAD= commit/tree,
+index state, and a content-identified manifest of relevant unstaged and
+untracked sources.  An ignored source needed by the task must be named too.
+The runtime supplies a reproducible cut and watches for changes; if it cannot
+capture a relevant dirty source, source admission is =incomplete=.  A
+WorkTree's Context head references an exact cut and only admitted, scoped
+Content and projection receipts.  A branch pointer or path is a discovery
+hint, never the source cut.  Every task and Session head records the exact
+WorkTree Context revision it consumed.  A changed WorkTree head invalidates
+affected projections through RFC 0037's dependency frontier; it does not
+rewrite an earlier Session turn.
+
+| Scope | Sharing rule | Publication authority |
+|-
+| Project | explicit project-wide Content, policy, or reusable artifact with an applicability rule | source owner and project policy admit; each WorkTree checks applicability at its cut |
+| WorkTree | admitted source and Context references at one =WorktreeSourceCut=; shared among that WorkTree's tasks | WorkTree owner proposes, MRR validates, runtime conditionally publishes |
+| Task | task goal, selected roots, bounded task working state; visible to authorized Sessions of that task | task policy and current WorkTree head gate publication |
+| Session | turn history, private working overlay, query-use and effect receipts | one Session head; private state is not inherited by siblings |
+
+The four scopes are *reference and visibility scopes*.  They are not four
+copies of one prompt.  A task or Session materializes a bounded Context from
+the exact Project, WorkTree, and Task head revisions it is permitted to use,
+plus its own overlay.  Working hypotheses remain non-authoritative at every
+scope.  Sharing or summarizing them does not promote them into Content.
+Same-WorkTree tasks may reuse immutable admitted Content references and
+computation artifacts; they still evaluate task-specific Query, policy,
+authorization, mandatory closure, and budget independently.
+
+** C4 applies to policy objects, not container edges
+
+Orgize may author a Project declaration, WorkTree/task assignment, or an
+explicit policy parent list.  The adapter must distinguish these declaration
+kinds.  =Project contains WorkTree=, =WorkTree contains Task=, =Task runs
+Session=, =Git commit derives from commit=, and =policy inherits policy= have
+different types.  No rule converts Org heading depth, checkout creation, or
+Session parenthood into C4 parent edges.  A WorkTree-specific policy object
+may *explicitly* inherit =project/base= and mix in =review/sandbox=; then the
+declared finite policy graph is checked by =linearizeVerified=.  The resulting
+C4 precedence resolves policy slots.  It does not resolve conflicting
+source facts, Git merges, or memory promotion.  The potentially unbounded
+number of WorkTrees is handled by scoped indexing and finite per-request
+selection, not by asking C4 to linearize an infinite graph.
+
+** Interaction between WorkTrees
+
+Cross-WorkTree transfer is an explicit =propose -> publish -> validate -> import=
+protocol.  A Session in =W_a= may propose a claim, task result, or reusable
+artifact with its source cut, read-dependency set, query/Content receipts,
+scope and author.  That proposal is not immediately Project Context.  A
+project-authorized owner admits a shareable claim through a conditional
+Project Context-head update, or grants a targeted transfer without widening
+Project visibility.  Either outcome is versioned; Project publication and
+WorkTree import are separate conditional transactions.  The receiving =W_b=
+checks its own source cut, relevant dependency
+versions, effective policy, current authorization and required closure.  Its
+runtime then conditionally publishes a new WorkTree Context head.  Sessions in
+=W_b= see that revision only through a fresh projection at a later turn.
+The receipt binds source and target Worktree IDs/cuts, claim identity,
+promotion decision, target applicability result, and both head revisions.
+
+An ordinary peer message is a candidate or notification, not direct mutation
+of another WorkTree's head.  Git merge/rebase changes the source cut and
+triggers reevaluation; it does not merge semantic Context automatically.
+Two conflicting candidates remain separately attributed until the source
+owner or policy owner admits a resolution.  No last-writer-wins rule silently
+chooses a factual claim.  If the source cut, target cut, authorization, or
+head revision changes between validation and publication, the transfer
+rejects and is reevaluated.  Direct lookup by artifact or Session ID must
+enforce the same current scope checks as Query-based discovery.
+
+** Required acceptance case
+
+Construct Project =P= with =W_a= and =W_b= at different source cuts.  In
+=W_a=, Tasks =T_a1= and =T_a2= have Sessions =S_a1=, =S_a2=, and =S_a3=;
+=W_b= has Task =T_b1= and Session =S_b1=.  A project policy profile, a
+WorkTree-local Content reference =C_a=, a Task-local hypothesis =H_a1=, and
+Session-private history =H_s1= give four distinct scopes.
+
+| Probe | Required outcome |
+|-
+| =S_a1= and =S_a3= read =C_a= at the same =W_a= revision | allowed under their current task policies; each projection records that revision |
+| =S_a2= reads =H_a1=; =S_a3= or =S_b1= reads =H_s1= | task sharing follows explicit policy; private history is denied to other Sessions |
+| =S_b1= requests =C_a= by Query or direct ID before transfer | both deny; equal project or matching bytes do not grant access |
+| =W_a= proposes =C_a= for =W_b=, whose source lacks a required dependency | target admission returns =inapplicable= without changing =W_b= head |
+| reviewed claim with all target dependencies is imported to =W_b= | new =W_b= head revision is conditionally published; =S_b1= sees it after fresh projection |
+| =W_a= or =W_b= changes a dependency between validation and publication | stale transfer rejects; prior Session turns stay historical |
+| two workers publish from the same =W_b= head revision | one wins; loser rereads and reevaluates its candidate |
+| =W_a= and =W_b= propose contradictory claims or merge Git branches | retain both provenance chains and report conflict; no automatic Context overwrite |
+| =W_a= is removed and another checkout reuses its path or branch | new =WorktreeId=; old private heads and receipts do not attach to it |
+| Project has many WorkTrees/tasks, with a finite bounded query for one Session | only the applicable finite frontier is visited; budget exhaustion returns =incomplete= |
+
+These are target executable acceptance cases, not current passing integration
+tests.  The first production probe must capture the actual WorkTree source
+cut, POO policy/C4 graph, MRR admission, runtime conditional head, and MRR
+Data artifact identities in one replayable receipt.  The scale probe must
+separate CPU, wall time, I/O and host contention.
+
+** Research inputs and their limits
+
+| Primary paper | Evidence relevant to this design | Consequence and remaining gap |
+|-
+| [[https://arxiv.org/abs/2605.20563][STORM: Multi-agent Collaboration with State Management (May 2026)]] | Worktree isolation deferred conflicts to merge in its coding benchmarks; STORM rejects writes when files in an agent's observed read set changed. | Bind the dependencies actually read when promoting Context between WorkTrees. Its mediated file editor does not cover arbitrary shell writes or effects, so our runtime guard needs broader coverage. |
+| [[https://arxiv.org/abs/2408.09559][HiAgent (August 2024)]] | Long-horizon agent working memory is grouped by subgoal, with older action-observation material summarized as the active subgoal changes. | Use task/subgoal boundaries to select bounded working Context; the paper does not establish cross-Session sharing or WorkTree admission. |
+| [[https://arxiv.org/abs/2505.18279][Collaborative Memory (May 2025)]] | Private/shared memory fragments carry provenance and are filtered by time-varying, asymmetric read/write policies. | Separate Project, WorkTree, Task and Session visibility; reevaluate current permission at read and promotion time. Its experiments do not establish our WorkTree source-cut or C4 contract. |
+| [[https://arxiv.org/abs/2606.24535][Governed Shared Memory (June 2026)]] | A production study found a sub-tenant scope bypass on direct GET-by-id even though another access path applied scope checks; it also exposed deduplication before contradiction detection. | Apply the same authorization to direct ID lookup and Query access; preserve contradictory candidates until semantic resolution. The reported service and self-evaluation do not validate our adapters. |
+| [[https://arxiv.org/abs/2607.27773][ChronoMem (July/August 2026)]] | Whole-memory versions and post-exposure rollback improve historical consistency in its benchmarks; the implementation uses a linear history and does not implement branching/merging. | Bind Session reads to explicit Context head revisions and test stale-history contamination. Cross-WorkTree branches and merge admission remain our open research/implementation problem. |
+
+The papers give failure modes and experiment designs, not a ready-made proof
+of this pipeline.  A controlled comparison should include Git-worktree-only
+isolation, a shared-memory baseline with scope filtering, and this admitted
+WorkTree Context protocol on the same tasks, models, source cuts and budgets.
+Measure leak/incorrect-admission rate, stale-dependency rejection, conflict
+recovery, task success and cost.  No current result establishes superiority.
 
 * Orgize, C4, Tokio, and MRR Data handoff
 
@@ -114,8 +274,9 @@ lowering to typed policy or Content candidates.  Parse success alone is not
 admission.
 
 POO Flow composes the applicable session, context, capability and obligation
-policies.  Its adapter must declare the actual inheritance graph and root;
-Org heading depth is not a C4 parent edge.  =lean-poo= supplies the pure
+policies after selecting the Project, WorkTree, Task and Session scope.  Its
+adapter must declare the actual policy inheritance graph and root;
+Org heading depth and WorkTree ancestry are not C4 parent edges.  =lean-poo= supplies the pure
 =linearizeVerified= C4 result and graph-derived order properties.  The
 present Rust Context crate checks a supplied precedence against selected
 membership and local order, while the Lean project has conditional bridges
@@ -215,7 +376,9 @@ better correctness or efficiency relative to a named baseline.
 
 The immutable =ContextSessionHead= is the current semantic reference for a
 key.  A proposed head records schema version, key, owner/project scope,
-parent checkpoint if any, status, revision and predecessor digest, current
+=WorktreeId=, =TaskRunId=, =WorktreeSourceCut=, consumed Project/WorkTree/Task
+Context head revisions, parent checkpoint if any, status, revision and
+predecessor digest, current
 turn allocation, pending turn if any, the latest admitted Context manifest and
 query-selection receipt references, source generation/snapshot/cut, policy and
 capability decision references, expiry, and the digest of a bounded
@@ -253,9 +416,9 @@ commit is not a published head.
 
 | Operation | Guard and semantic effect | Rejection example |
 |-
-| create | authenticated issuer/project; key absent; record initial policy/capability and source scope; publish =active= head at first revision | duplicate or cross-project key |
+| create | authenticated issuer/project; key absent; bind one WorkTree/task and their current heads/cut; publish =active= head at first revision | duplicate key, foreign WorkTree or stale cut |
 | begin turn | =active=, no pending turn, current scope checked; allocate the next =TurnId= and bind an =AttemptId= | stale head or concurrent turn |
-| attach query use | pending turn matches; admit existing bound query, result candidate, source selection and projection at one cut; bind their exact receipt digests to =QueryUseId= | different session/turn, mixed generation, incomplete required closure |
+| attach query use | pending turn matches; admit existing bound query, result candidate, source selection and projection at one WorkTree cut; bind their exact receipt digests to =QueryUseId= | different WorkTree/session/turn, mixed generation, incomplete required closure |
 | commit turn | same pending turn and expected head; recheck source/capability/cut and required receipts; atomically publish new head and clear pending turn | old receipt, changed policy, losing conditional commit |
 | abandon or suspend | record a typed reason and stop new turns; resolve any pending turn as abandoned before suspension | unaccounted pending effect |
 | resume | only from =suspended=; reauthorize and re-admit current source/projection, then advance revision | expired grant or old manifest treated as current |
@@ -272,7 +435,8 @@ timestamp alone.  Retention and erasure are separate storage policies; neither
 reactivates a terminal Session.
 
 Every transition request carries =SessionKey=, expected revision and digest,
-=AttemptId=, actor/capability decision, exact source cut, and bounded inputs.
+=WorktreeId=, =TaskRunId=, consumed shared-head revisions, =AttemptId=,
+actor/capability decision, exact WorkTree source cut, and bounded inputs.
 The =ContextSessionTransitionReceipt= binds the old/new head digests,
 operation, query-use and Context receipt references, guard decisions,
 completeness, and a typed outcome.  It uses a versioned, domain-separated
@@ -346,10 +510,10 @@ are unchanged.
 
 | Owner | Proposed obligation |
 |-
-| POO Flow | preserve one Session ID and project-scoped parent/child lineage; supply policy, authorization, query orchestration and turn/effect decisions |
-| MRR Context | define typed Session key/head/transition receipts; bind existing Query, Context and Content identities; reject stale or cross-session transitions |
-| Runtime | atomically allocate keys and publish heads, enforce idempotency/effect reconciliation, persist and recover, check access at disclosure/effect |
-| MRR Data | physical immutable artifact/CID persistence for the integrated profile, with retrievability evidence; no Session semantic or authorization decision |
+| POO Flow | preserve one Session ID and project-scoped parent/child lineage; select explicit policy parents, sharing and promotion authority for Project/WorkTree/Task/Session |
+| MRR Context | define typed scoped heads/transition receipts; bind Query, Content, Context, WorkTree cut and provenance; reject stale or foreign transfers |
+| Runtime | allocate WorkTree/Session identities and conditionally publish their heads; capture source cuts, enforce idempotency/effect reconciliation, recover and check disclosure/effects |
+| MRR Data | physical immutable artifact/CID persistence for the integrated profile, with retrievability evidence; no scope, semantic or authorization decision |
 
 Implement this as a direct extension of the existing Context feature, with no
 new query subsystem or legacy parallel Session API.  First agree on the
@@ -362,16 +526,24 @@ typed key; a temporary second registry would obscure ownership.
 
 Lean should prove key separation, terminal-state non-resurrection,
 monotonic revision/turn allocation, and that a query-use receipt belongs to
-the exact Session/turn/cut.  TLA+ should explore two concurrent commits,
+the exact Session/turn/cut.  The WorkTree extension should additionally prove
+foreign direct-read denial, stale-cut transfer refusal, target-head identity
+preservation, and conditional publication.  TLA+ should explore two concurrent commits,
 retry after uncertain commit, revocation between projection and action,
-resume after source change, fork isolation, and crash with a pending effect.
+resume after source change, fork isolation, cross-WorkTree transfer, and crash
+with a pending effect.
 Implementation replay must then connect the formal transitions to actual
 POO Flow, MRR, and runtime receipts.  The current design-level Lean model
 proves terminal refusal, accepted begin key/revision/turn progression,
 exact query-use key/turn/cut binding and fresh resume guards.  A finite TLA+
 model checks two Session identities and two workers, including concurrent
 proposals, revocation, source-cut drift and terminal-state refusal; four
-deliberately broken guards produce the expected counterexamples.  These
-models do not yet cover retries, forks, expiry, effect reconciliation or
-production adapter refinement.  See
+deliberately broken guards produce the expected counterexamples.  A second
+design-level Lean model checks direct WorkTree scope and transfer guards.
+A finite TLA+ WorkTree model explores two WorkTrees, two Sessions and two
+workers; six disabled guards produce foreign read, unauthorized read,
+stale source/target import, inapplicable import and double-import
+counterexamples.  These models
+do not yet cover the full Project/Task/Session acceptance matrix, retries,
+forks, expiry, effect reconciliation or production adapter refinement.  See
 [[file:../../proofs/MRRProof/AgenticAIContextTLA/README.org][the formal-model evidence boundary]].

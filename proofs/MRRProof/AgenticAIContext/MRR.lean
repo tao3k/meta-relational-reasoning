@@ -16,3 +16,4 @@ import MRR.AgenticAIContext.Termination
 import MRR.AgenticAIContext.Scheduled
 import MRR.AgenticAIContext.MetaImpact
 import MRR.AgenticAIContext.ContextSession
+import MRR.AgenticAIContext.WorktreeContext

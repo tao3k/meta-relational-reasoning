@@ -73,6 +73,11 @@ context-session receipt:
     {{profile}} bash -c 'cd proofs/MRRProof/AgenticAIContext && lake build MRR && lake env lean Checks/Axioms.lean'
     {{profile}} {{proof_python}} mrr_proof_validation.context_session_tla --receipt {{receipt}}
 
+# Check the finite cross-WorkTree transfer and visibility guards.
+worktree-context receipt:
+    {{profile}} bash -c 'cd proofs/MRRProof/AgenticAIContext && lake build MRR && lake env lean Checks/Axioms.lean'
+    {{profile}} {{proof_python}} mrr_proof_validation.worktree_context_tla --receipt {{receipt}}
+
 # Record time, peak RSS, bounded rejection and actual declared reuse eligibility.
 context-scale:
     {{profile}} mrr-cargo build -p meta-relational-reasoning --example context_scale --locked --features agentic-ai-context-tokens

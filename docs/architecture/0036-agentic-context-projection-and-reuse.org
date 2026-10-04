@@ -36,9 +36,15 @@ authority.  Let =X[p,g]= be the Context Graph assembled for a projection scope
 =p=.  A scope binds actor, task, turn, capabilities, temporal cut receipt,
 effective-contract digest, query, projection-policy digest, budget, and expiry.
 RFC 0038 proposes that a Context-enabled scope also binds the shared
-=SessionKey=, expected =SessionRevision=, and =TurnId=.  Session identity is
+=SessionKey=, expected =SessionRevision=, =TurnId=, =WorktreeId=,
+=TaskRunId=, =WorktreeSourceCut= and the exact consumed Project/WorkTree/Task
+Context head revisions.  Session identity is
 not derived from =X[p,g]=, and a changed Context projection need not start a
 new Session.
+RFC 0038 also makes WorkTree sharing explicit: a WorkTree-local Context
+reference is available to authorized tasks at that WorkTree cut.  A different
+WorkTree must admit a scoped transfer against its own cut; equal bytes or a
+common Project ID do not make the old projection current there.
 The temporal cut is supplied by its owner (for example POO Flow); MRR checks
 its receipt and does not implement another time ontology.
 

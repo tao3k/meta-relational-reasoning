@@ -38,7 +38,14 @@ run_cmd do
       `MRR.AgenticAIContext.accepted_begin_preserves_key_and_advances,
       `MRR.AgenticAIContext.accepted_query_use_has_exact_session_turn_cut,
       `MRR.AgenticAIContext.foreign_query_use_cannot_bind,
-      `MRR.AgenticAIContext.accepted_resume_is_fresh] do
+      `MRR.AgenticAIContext.accepted_resume_is_fresh,
+      `MRR.AgenticAIContext.foreign_worktree_cannot_direct_read,
+      `MRR.AgenticAIContext.stale_worktree_cut_cannot_direct_read,
+      `MRR.AgenticAIContext.authorized_tasks_share_current_worktree_head,
+      `MRR.AgenticAIContext.foreign_target_cannot_transfer,
+      `MRR.AgenticAIContext.stale_target_cut_cannot_transfer,
+      `MRR.AgenticAIContext.refused_transfer_without_target_authority,
+      `MRR.AgenticAIContext.accepted_transfer_advances_only_target] do
     unless environment.contains required do
       throwError "Required Context system theorem was not loaded: {required}"
   let mut count : Nat := 0
