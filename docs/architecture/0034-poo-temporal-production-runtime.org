@@ -188,7 +188,7 @@ deadline. A host timeout alone cannot interrupt or safely reuse an in-flight
 Gambit call: bounded native computation or an explicitly isolated worker
 lifecycle must establish cancellation and subsequent runtime health.
 
-* Native finite inference and dispatch acceptance slice — 2026-10-04
+* Native finite inference and dispatch acceptance slice - 2026-10-04
 
 Removed the Rust =ascent= workspace dependency, =mrr-ascent= package and its
 Criterion solver benchmark. =mrr-deduction= retains the original typed closure
