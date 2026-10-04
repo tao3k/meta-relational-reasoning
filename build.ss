@@ -37,4 +37,22 @@
  (spec mrr-build-spec)
  (modules mrr-library-modules))
 
-(defbuild-script (mrr-build-spec))
+(def mrr-package-build-main
+  (let ()
+    (defbuild-script (mrr-build-spec))
+    main))
+
+(def (main . args)
+  (def progress?
+    (let* ((raw (getenv "GERBIL_BUILD_VERBOSE" #f))
+           (level (and raw (string->number raw))))
+      (and (real? level) (> level 0))))
+  (when progress?
+    (displayln "MRR-PACKAGE build-script entered " args)
+    (force-output))
+  (apply mrr-package-build-main args)
+  ;; Returning from make includes its pending compiler jobs, but not the
+  ;; interpreter's later dynamic-module cleanup. Exit status remains required.
+  (when progress?
+    (displayln "MRR-PACKAGE build-script returned " args)
+    (force-output)))

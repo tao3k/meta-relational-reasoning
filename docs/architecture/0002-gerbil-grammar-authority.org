@@ -286,6 +286,47 @@ dyld unload notifications. This explains a distinct process-exit risk; it does
 not establish the cause of every earlier idle5 batch refusal. Compilation,
 cleanup, exit and full downstream construction retain separate gates.
 
+=build.ss= retains first-party =defbuild-script= in a lexical delegate and
+wraps its invocation with two events when =GERBIL_BUILD_VERBOSE= is positive:
+=MRR-PACKAGE build-script entered= and =MRR-PACKAGE build-script returned=.
+They are actual function boundaries and are explicitly flushed. The returned
+event is emitted only after successful delegate return. The installed Gerbil
+v0.19 =std/make= waits for pending compiler jobs before returning; subsequent
+interpreter dynamic-module cleanup is still outside this boundary. A successful
+process exit remains required, with the original idle30 limit retained.
+
+The delegated =spec= invocation and a reused-prefix actual package build both
+exited zero under idle30. This qualifies the wrapper's real build invocation,
+not a fresh-prefix guarantee or the full Data construction gate. A fresh-prefix
+run is recorded separately, including its failures. The source-level Gambit
+and Apple dyld cleanup audit is in GSC's AoT/FFI performance RFC.
+
+The first new fresh-prefix run refused idle30 after 169.87s, without a returned
+event. Its optional sampler was denied =ps= by the local sandbox, so it did not
+qualify an owned call graph. The rejected =compile --unknown= invocation exited
+nonzero and emitted no returned event. These negative results are retained.
+
+A second owned fresh-prefix run refused idle30 after 148.75s, before the
+returned event. Its snapshots at 15.45s and 28.17s quiet showed GXI waiting with
+GSC, the configured GCC 16.2 compiler and the official Xcode assembler still
+alive. The actual =cc1= sample traversed DSE, DCE, CCP and dominator passes in
+=native~1.c=; GXI sampled in =select=, rather than dynamic unload. The C and
+Scheme files remained and no =native~1.o1= was admitted. This run localizes a
+package C-compilation quiet interval independently of earlier exit cleanup.
+It does not justify disabling those optimization passes or relaxing idle30.
+
+The next implementation seam is PackageSpec's first-party per-module C
+options: expose real configured-compiler diagnostics during this dynamic
+module build, as the archive stage already does. Keep Gambit's ABI/options
+and default parallelism. Compiler identity must come from the selected SDK;
+neither ambient =CC= nor a blanket GCC flag on other compilers is sufficient.
+
+At MRR =659aab5=, Ubuntu CI built and tested the Scheme package successfully,
+but its Rust workspace build rejected the GQL grammar native object. The job
+did not provide a complete typed final compiler cause, so the object failure
+is not classified as a proven timeout. Source-bound integration and Rust lint
+steps were skipped; the current native chain remains unqualified.
+
 The current MRR production helper passed strict direct Clippy/type checking
 against production-library metadata for the current GSC API and previously
 qualified remaining dependency inputs. The initial attempt incorrectly used
