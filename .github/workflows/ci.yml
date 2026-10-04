@@ -95,6 +95,9 @@ jobs:
       - name: Build declared Gerbil package
         run: gerbil build
 
+      - name: Verify native qualification rejects false success
+        run: gerbil env python3 tools/check/native-tests.py self-test
+
       - name: Test Gerbil package
         run: gerbil env python3 tools/check/native-tests.py scheme
 
@@ -106,11 +109,21 @@ jobs:
       - name: Test optional Context feature boundaries
         run: |
           gerbil env python3 tools/check/context-features.py
-          gerbil env cargo test -p meta-relational-reasoning --lib --locked --no-default-features
-          gerbil env cargo test -p mrr-agentic-ai-context --locked --no-default-features
-          gerbil env cargo test -p mrr-agentic-ai-context --locked --no-default-features --features token-layout
-          gerbil env cargo test -p meta-relational-reasoning --lib --locked --no-default-features --features agentic-ai-context
-          gerbil env cargo test -p meta-relational-reasoning --lib --locked --no-default-features --features agentic-ai-context-tokens
+          gerbil env python3 tools/check/context-qualify.py matrix
+
+      - name: Qualify complete Query Context workflow and scale
+        run: |
+          gerbil env cargo build -p meta-relational-reasoning --examples --features agentic-ai-context-tokens --locked
+          gerbil env python3 tools/check/context-qualify.py workflow
+          gerbil env python3 tools/check/context-scale.py --output .ci/context-scale
+
+      - name: Save Context scale receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: context-scale-${{ matrix.os }}-${{ github.event_name }}
+          path: .ci/context-scale/*.json
+          if-no-files-found: ignore
 
       - name: Lint optional Context features
         run: gerbil env cargo clippy -p mrr-agentic-ai-context -p meta-relational-reasoning --all-targets --all-features --locked -- -D warnings

@@ -39,3 +39,16 @@ harness = false
 
 [lints]
 workspace = true
+
+[[example]]
+name = "context_workflow"
+required-features = ["agentic-ai-context-tokens"]
+
+[[example]]
+name = "context_scale"
+required-features = ["agentic-ai-context-tokens"]
+
+[[test]]
+name = "context_workflow"
+path = "tests/integration_test.rs"
+required-features = ["agentic-ai-context-tokens"]

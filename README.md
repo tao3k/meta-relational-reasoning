@@ -276,3 +276,9 @@ For bounded native qualification after dependency setup, run `just test-native`.
 This prepares native artifacts, then uses real import/evaluation/runtime progress
 with a five-second silence cutoff and explicit upstream gxtest exit propagation.
 The Scheme package build includes Query provider and Search projection modules.
+
+The complete Query Context workflow and shared positive/negative fixtures are
+covered by `just test-agentic-ai-context`. `just context-scale` records bounded
+scale timing, per-process peak RSS and semantic/token reuse eligibility; CI saves
+these JSON receipts for each platform. See the [Context qualification and restore
+contract](docs/architecture/agentic-ai-context.org).

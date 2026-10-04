@@ -245,3 +245,36 @@ fn query_selection_empty_result_and_missing_column_are_explicit() {
         Err(AgenticAiContextAdmissionError::SelectionColumn(_))
     ));
 }
+
+#[test]
+fn query_selection_storage_round_trip_requires_no_token_feature() {
+    let (bundle, snapshot, query, fact, relation) = fixture();
+    let rows = candidate(&query, &[fact], relation);
+    let req = request();
+    let selected =
+        select_agentic_ai_context_from_query(&bundle, &snapshot, &query, &rows, req.clone())
+            .unwrap();
+    let record = selected
+        .export_record(
+            &query,
+            &rows,
+            req.result_limits,
+            NonZeroUsize::new(65536).unwrap(),
+        )
+        .unwrap();
+    let decoded: crate::AgenticAiContextQuerySelectionRecord =
+        serde_json::from_slice(&serde_json::to_vec(&record).unwrap()).unwrap();
+    let restored = crate::restore_agentic_ai_context_query_selection(
+        &bundle,
+        &snapshot,
+        crate::AgenticAiContextQuerySelectionRestoreRequest {
+            record: &decoded,
+            expected_digest: *selected.digest(),
+            limits: req.limits,
+            result_limits: req.result_limits,
+            max_result_bytes: NonZeroUsize::new(65536).unwrap(),
+        },
+    )
+    .unwrap();
+    assert_eq!(selected, restored);
+}

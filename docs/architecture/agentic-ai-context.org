@@ -408,3 +408,95 @@ operation start/return diagnostics on stderr. There is no periodic output.
 Five seconds without real output still fails qualification. Build preparation is
 performed separately before bounded test execution so compilation is not mistaken
 for a test result.
+
+* Complete Query Context qualification
+
+The five-stage consumer qualification is executable through the facade. Native
+qualification rejects assertion failure (42), missing imports (42), an
+undiscovered suite with zero cases (65), and a silent child (124). Success
+requires every expected module, at least one successful case per module, and
+upstream final =OK=. The upstream gxtest harness still owns discovery/execution;
+these are additional receipt conditions. =self-test= executes actual Gerbil
+positive and negative fixtures rather than matching a simulated transcript.
+
+** Result provenance restore
+
+=AdmittedAgenticAiContextQuerySelection.export_record= re-admits the supplied
+candidate and checks it is the exact selected result. The versioned
+=AgenticAiContextQuerySelectionRecord= contains a Context manifest, its digest,
+the selected column and existing Query V1 transport bytes. It adds no storage
+implementation or second result-row format.
+
+=restore_agentic_ai_context_query_selection= accepts a caller-trusted expected
+selection digest, Context ceilings, row/cell ceilings and transport byte limit.
+It refuses oversized result bytes before decoding, restores the source-bound
+Context through existing admission, verifies and re-admits transported results,
+reconstructs selection/closure, then checks exact Context and selection identity.
+A self-consistent replacement record cannot replace the trusted expected digest.
+The caller bounds outer storage decoding; this API operates on decoded records.
+The API is available with =agentic-ai-context= alone; token support is optional.
+
+** Shared complete example
+
+=fixtures/agentic-ai-context/selection.json= is shared by Rust integration checks,
+the runnable =context_workflow= example and Lean runtime checks. Ten vectors
+cover exact roots, duplicate rows, empty results, unknown facts, relation types,
+query/generation/catalog/snapshot drift and row/source limits. The complete
+workflow uses a three-fact dependency chain, a producer returning the fixture's
+precedence checked against pinned Lean POO C4, deterministic segment rendering,
+a full-prompt byte tokenizer, stored provenance restore and paired revision.
+
+The old prompt is =[65,66]= and the extended prompt is =[65,66,67]=. Changed roots
+cancel semantic reuse under the current Context basis contract. The actual byte
+tokenizer still yields a two-token common prefix and two eligible full-block
+tokens. These are deliberately separate receipts. The adapters are deterministic
+consumer fixtures, not production tokenizer assets or an authenticated composer.
+
+The Lean Selection model proves exact projected root membership, deduplication
+preserving that set, matching source FactId/relation membership, accepted binding,
+row/source bounds, binding-drift refusal, and root/binding drift canceling reuse.
+Runtime checks replay the same JSON cases and workflow orders through upstream
+checked C4. Labels abstract the exact Rust identities. This is a conditional
+model with shared examples, not a refinement proof of Rust, CBOR or SHA-256.
+
+** Scale receipt and evidence boundary
+
+=just context-scale= runs four separate processes with a five-second silence
+cutoff and 45-second per-case cap. Each repeats selection, exact result export,
+restore, revision, rendering and full-prompt token eligibility three times.
+A separate worker records each binary's own peak RSS, not a cumulative maximum
+across earlier scenarios. It rejects overflow at row, source-element,
+dependency-edge, result-transport-byte and rendered-byte ceilings.
+
+The committed =fixtures/agentic-ai-context/scale-baseline.json= records observed
+single-host dev-profile measurements on 2026-10-04. Phase timings are three-run
+means; source admission is one cold construction. RSS covers the whole binary.
+It is an observational baseline, not a cross-platform performance guarantee.
+
+| Scenario | Facts | Rows | Fanout | Selected | Select ms | Restore ms | Peak RSS MiB | Eligible tokens |
+|----------+-------+------+--------+----------+-----------+------------+--------------+-----------------|
+| small | 256 | 1024 | 4 | 16 | 3.28 | 6.42 | 5.61 | 16 |
+| large results | 4096 | 32768 | 64 | 256 | 109.32 | 210.29 | 154.94 | 256 |
+| high fanout | 4096 | 8192 | 2048 | 2049 | 30.23 | 64.92 | 29.97 | 2048 |
+| duplicate heavy | 4096 | 32768 | 32 | 33 | 83.69 | 237.37 | 154.39 | 32 |
+
+Identical restored semantics retain all selected facts. The declared byte
+encoding retains the full token prefix; eligible tokens are rounded down to
+16-token blocks. The receipt measures qualification cost and reusable scope.
+It does not measure an actual serving-cache hit, model inference acceleration,
+or backend query performance. Duplicate-heavy results still bind and transport
+all ordered rows, explaining why their cost does not shrink with root count.
+
+** Reproduction and CI
+
+After =just deps=:
+
+#+begin_src sh
+just test-native
+just test-agentic-ai-context
+just context-scale
+#+end_src
+
+CI runs positive/negative native qualification, the complete feature-gated
+integration test, the runnable workflow, scale scenarios, shared Lean replay
+and the axiom audit. Each platform uploads scale JSON receipts for inspection.

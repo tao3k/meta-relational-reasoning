@@ -18,6 +18,7 @@ build:
 # Run the complete local contract suite in canonical dependency order.
 test:
     {{profile}} mrr-gerbil build
+    {{profile}} mrr-gerbil env python3 tools/check/native-tests.py self-test
     {{profile}} mrr-gerbil env python3 tools/check/native-tests.py scheme
     {{profile}} mrr-cargo test --workspace --locked
 
@@ -25,6 +26,7 @@ test:
 test-native:
     {{profile}} mrr-gerbil build
     {{profile}} mrr-cargo test -p mrr-gerbil --tests --locked --offline --no-run
+    {{profile}} mrr-gerbil env python3 tools/check/native-tests.py self-test
     {{profile}} mrr-gerbil env python3 tools/check/native-tests.py scheme
     {{profile}} gerbil env python3 tools/check/native-tests.py rust
 
@@ -36,13 +38,16 @@ test-search:
 # Check explicit Context selection, source admission, shared C4 replay, and proofs.
 test-agentic-ai-context:
     {{profile}} python3 tools/check/context-features.py
-    {{profile}} mrr-cargo test -p meta-relational-reasoning --lib --locked --no-default-features
-    {{profile}} mrr-cargo test -p mrr-agentic-ai-context --locked --no-default-features
-    {{profile}} mrr-cargo test -p mrr-agentic-ai-context --locked --no-default-features --features token-layout
-    {{profile}} mrr-cargo test -p meta-relational-reasoning --lib --locked --no-default-features --features agentic-ai-context
-    {{profile}} mrr-cargo test -p meta-relational-reasoning --lib --locked --no-default-features --features agentic-ai-context-tokens
+    {{profile}} gerbil env python3 tools/check/context-qualify.py matrix
+    {{profile}} mrr-cargo build -p meta-relational-reasoning --examples --locked --features agentic-ai-context-tokens
+    {{profile}} python3 tools/check/context-qualify.py workflow
     {{profile}} bash -c 'cd proofs/MRRProof/AgenticAIContext && lake build MRR && lake env lean --run Checks/Main.lean && lake env lean Checks/Axioms.lean'
 
+
+# Record time, peak RSS, bounded rejection and actual declared reuse eligibility.
+context-scale:
+    {{profile}} mrr-cargo build -p meta-relational-reasoning --example context_scale --locked --features agentic-ai-context-tokens
+    {{profile}} python3 tools/check/context-scale.py
 
 # Enforce Rust lints after refreshing the Gerbil native inputs.
 lint:

@@ -17,16 +17,18 @@ pub use admission::{
 };
 #[cfg(feature = "agentic-ai-context")]
 pub use agentic_ai_context::{
-    AGENTIC_AI_CONTEXT_MANIFEST_SCHEMA, AdmittedAgenticAiContext,
-    AdmittedAgenticAiContextMaterialization, AdmittedAgenticAiContextQuerySelection,
-    AgenticAiContextAdmissionError, AgenticAiContextAdmissionRequest,
-    AgenticAiContextComposedMaterializationRequest, AgenticAiContextCompositionError,
-    AgenticAiContextCompositionReceipt, AgenticAiContextCompositionRequest,
-    AgenticAiContextManifest, AgenticAiContextManifestRecord,
-    AgenticAiContextMaterializationRequest, AgenticAiContextQuerySelectionRequest,
+    AGENTIC_AI_CONTEXT_MANIFEST_SCHEMA, AGENTIC_AI_CONTEXT_QUERY_SELECTION_SCHEMA,
+    AdmittedAgenticAiContext, AdmittedAgenticAiContextMaterialization,
+    AdmittedAgenticAiContextQuerySelection, AgenticAiContextAdmissionError,
+    AgenticAiContextAdmissionRequest, AgenticAiContextComposedMaterializationRequest,
+    AgenticAiContextCompositionError, AgenticAiContextCompositionReceipt,
+    AgenticAiContextCompositionRequest, AgenticAiContextManifest, AgenticAiContextManifestRecord,
+    AgenticAiContextMaterializationRequest, AgenticAiContextQuerySelectionRecord,
+    AgenticAiContextQuerySelectionRequest, AgenticAiContextQuerySelectionRestoreRequest,
     AgenticAiContextRestoreRequest, AgenticAiContextRevisionReceipt,
     AgenticAiContextRevisionRequest, admit_agentic_ai_context, compare_agentic_ai_context_revision,
-    restore_agentic_ai_context, select_agentic_ai_context_from_query,
+    restore_agentic_ai_context, restore_agentic_ai_context_query_selection,
+    select_agentic_ai_context_from_query,
 };
 #[cfg(feature = "agentic-ai-context-tokens")]
 pub use agentic_ai_context::{

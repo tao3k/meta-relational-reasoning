@@ -106,7 +106,64 @@ private def checkUpstreamCertificates : IO Unit := do
      | .error .incompatibleSuffixes => true
      | _ => false)
 
+private def fixtureRows (fixture : Lean.Json) (key : String) : IO (List SelectionRow) := do
+  let values <- jsonResult (<- jsonResult (fixture.getObjVal? key)).getArr?
+  values.toList.mapM fun value => do
+    let row <- jsonResult value.getArr?
+    if row.size != 2 then throw (IO.userError "selection fixture row width")
+    pure { fact := <- jsonResult row[0]!.getNat?, relation := <- jsonResult row[1]!.getNat? }
+
+private def fixtureBinding (fixture : Lean.Json) (key : String) : IO SelectionBinding := do
+  match <- fixtureNumbers fixture key with
+  | [query, generation, catalog, snapshot] => pure { query, generation, catalog, snapshot }
+  | _ => throw (IO.userError "selection fixture binding width")
+
+private def checkSelectionFixture : IO Unit := do
+  let path := "../../../fixtures/agentic-ai-context/selection.json"
+  let fixture <- jsonResult (Lean.Json.parse (<- IO.FS.readFile path))
+  let schema <- jsonResult (<- jsonResult (fixture.getObjVal? "schema")).getStr?
+  check "shared selection schema" (schema == "mrr.agentic-ai-context.selection-fixture.v1")
+  let facts <- fixtureRows fixture "facts"
+  let current <- fixtureBinding fixture "current_binding"
+  let cases <- jsonResult (<- jsonResult (fixture.getObjVal? "cases")).getArr?
+  for value in cases do
+    let name <- jsonResult (<- jsonResult (value.getObjVal? "name")).getStr?
+    let claimed <- fixtureBinding value "binding"
+    let rows <- fixtureRows value "rows"
+    let maxRows <- jsonResult (<- jsonResult (value.getObjVal? "max_rows")).getNat?
+    let maxFacts <- jsonResult (<- jsonResult (value.getObjVal? "max_facts")).getNat?
+    let accepted <- jsonResult (<- jsonResult (value.getObjVal? "accepted")).getBool?
+    let roots <- fixtureNumbers value "roots"
+    let result := admitSelection current claimed facts rows maxRows maxFacts
+    check s!"shared selection: {name}" (match result with
+      | .ok actual => accepted && actual == roots
+      | .error _ => !accepted)
+  check "selection root change cancels semantic reuse" (selectionReusable current current [2] [3] [1, 2] == [])
+  let workflow <- jsonResult (fixture.getObjVal? "workflow")
+  let graph : LeanPoo.C4.Graph := { nodes := [
+    { name := "n1" }, { name := "n2", parentOrders := [["n1"]] },
+    { name := "n3", parentOrders := [["n2"]] }] }
+  let renderSelection : SegmentRenderer := fun name =>
+    if name == "n1" then [65] else if name == "n2" then [66] else [67]
+  for (root, orderKey, bytesKey) in [("n2", "old_precedence", "old_bytes"),
+      ("n3", "new_precedence", "new_bytes")] do
+    let order <- fixtureNumbers workflow orderKey
+    let bytes <- fixtureNumbers workflow bytesKey
+    check s!"selection workflow checked C4: {orderKey}"
+      (isOk (LeanPoo.C4.linearizeChecked graph root) (order.map (fun id => s!"n{id}")))
+    check s!"selection workflow rendering: {bytesKey}" (match materialize graph root renderSelection with
+      | .ok actual => actual.map UInt8.toNat == bytes
+      | .error _ => false)
+  let oldTokens <- fixtureNumbers workflow "old_bytes"
+  let newTokens <- fixtureNumbers workflow "new_bytes"
+  let prefixLength <- jsonResult (<- jsonResult (workflow.getObjVal? "stable_prefix")).getNat?
+  let block <- jsonResult (<- jsonResult (workflow.getObjVal? "block_tokens")).getNat?
+  let eligible <- jsonResult (<- jsonResult (workflow.getObjVal? "eligible_tokens")).getNat?
+  check "selection workflow byte tokenizer prefix" ((stableTokenPrefix oldTokens newTokens).length == prefixLength)
+  check "selection workflow full-block eligibility" (eligibleFullBlockTokens block oldTokens newTokens == some eligible)
+
 def main (args : List String) : IO Unit := do
+  checkSelectionFixture
   checkUpstreamCertificates
   check "pinned C4 leaf-extension order"
     (isOk (checkLeafExtension oldGraph leafGraph "a" "child") true)

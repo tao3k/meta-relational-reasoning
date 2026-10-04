@@ -8,6 +8,7 @@ mod manifest;
 mod restore;
 mod revision;
 mod selection;
+mod selection_restore;
 #[cfg(feature = "agentic-ai-context-tokens")]
 mod tokens;
 
@@ -40,4 +41,9 @@ pub use revision::{
 pub use selection::{
     AdmittedAgenticAiContextQuerySelection, AgenticAiContextQuerySelectionRequest,
     select_agentic_ai_context_from_query,
+};
+
+pub use selection_restore::{
+    AGENTIC_AI_CONTEXT_QUERY_SELECTION_SCHEMA, AgenticAiContextQuerySelectionRecord,
+    AgenticAiContextQuerySelectionRestoreRequest, restore_agentic_ai_context_query_selection,
 };
