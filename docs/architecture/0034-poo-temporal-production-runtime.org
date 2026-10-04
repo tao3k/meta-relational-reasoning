@@ -245,3 +245,10 @@ passed on the host in 2.23s. Those environment-specific failed invocations
 remain failures. This comparison does not identify the denied syscall or
 qualify execution inside that sandbox. Local LLD runtime qualification is
 separate from remote exact-head CI, production recovery and latency gates.
+
+At =80c5420=, remote macOS setup failed before tests because the shared-linked
+Rust LLD could not load =@rpath/libLLVM.dylib=. The toolchain installation now
+includes =llvm-tools=, which supplies LLVM's library at the tool-relative
+location. The explicit linker version probe remains mandatory. The locally
+tested LLD had no LLVM dylib dependency, so that result did not qualify the
+remote distribution's packaging. Remote setup and test success remain required.
