@@ -20,8 +20,89 @@ set_option maxRecDepth 2048
 
 namespace MRR.ContextRust
 
+/-- [mrr_identity::api::{impl core::cmp::PartialEq<mrr_identity::api::FactId> for mrr_identity::api::FactId}::eq]:
+    Source: 'crates/mrr-identity/src/api.rs', lines 173:45-173:54
+    Name pattern: [mrr_identity::api::{core::cmp::PartialEq<mrr_identity::api::FactId, mrr_identity::api::FactId>}::eq]
+    Visibility: public -/
+@[rust_fun
+  "mrr_identity::api::{core::cmp::PartialEq<mrr_identity::api::FactId, mrr_identity::api::FactId>}::eq"]
+def mrr_identity.api.FactId.Insts.CoreCmpPartialEqFactId.eq
+  (self : mrr_identity.api.FactId) (other : mrr_identity.api.FactId) :
+  Result Bool
+  := do
+  core.array.equality.PartialEqArray.eq core.cmp.PartialEqU8 self other
+
+/-- Trait implementation: [mrr_identity::api::{impl core::cmp::PartialEq<mrr_identity::api::FactId> for mrr_identity::api::FactId}]
+    Source: 'crates/mrr-identity/src/api.rs', lines 173:45-173:54
+    Name pattern: [core::cmp::PartialEq<mrr_identity::api::FactId, mrr_identity::api::FactId>] -/
+@[reducible, rust_trait_impl
+  "core::cmp::PartialEq<mrr_identity::api::FactId, mrr_identity::api::FactId>"]
+def mrr_identity.api.FactId.Insts.CoreCmpPartialEqFactId : core.cmp.PartialEq
+  mrr_identity.api.FactId mrr_identity.api.FactId := {
+  eq := mrr_identity.api.FactId.Insts.CoreCmpPartialEqFactId.eq
+}
+
+/-- [mrr_relation::api::{impl core::cmp::PartialEq<mrr_relation::api::FactValidity> for mrr_relation::api::FactValidity}::eq]:
+    Source: 'crates/mrr-relation/src/api.rs', lines 267:52-267:61
+    Name pattern: [mrr_relation::api::{core::cmp::PartialEq<mrr_relation::api::FactValidity, mrr_relation::api::FactValidity>}::eq]
+    Visibility: public -/
+@[rust_fun
+  "mrr_relation::api::{core::cmp::PartialEq<mrr_relation::api::FactValidity, mrr_relation::api::FactValidity>}::eq"]
+def mrr_relation.api.FactValidity.Insts.CoreCmpPartialEqFactValidity.eq
+  (self : mrr_relation.api.FactValidity)
+  (other : mrr_relation.api.FactValidity) :
+  Result Bool
+  := do
+  let self1 := read_discriminant self
+  let other1 := read_discriminant other
+  if self1 = other1
+  then
+    match self with
+    | mrr_relation.api.FactValidity.Valid => ok true
+    | mrr_relation.api.FactValidity.InvalidatedBy __self_0 =>
+      match other with
+      | mrr_relation.api.FactValidity.Valid => ok true
+      | mrr_relation.api.FactValidity.InvalidatedBy __arg1_0 =>
+        mrr_identity.api.FactId.Insts.CoreCmpPartialEqFactId.eq __self_0
+          __arg1_0
+  else ok false
+
+/-- [mrr_relation::api::{mrr_relation::api::RelationContext}::completeness]:
+    Source: 'crates/mrr-relation/src/api.rs', lines 341:4-341:60
+    Name pattern: [mrr_relation::api::{mrr_relation::api::RelationContext}::completeness]
+    Visibility: public -/
+@[rust_fun
+  "mrr_relation::api::{mrr_relation::api::RelationContext}::completeness"]
+def mrr_relation.api.RelationContext.impl.completeness
+  (self : mrr_relation.api.RelationContext) :
+  Result mrr_relation.api.EvidenceCompleteness
+  := do
+  ok self.completeness
+
+/-- [mrr_relation::api::{mrr_relation::api::RelationContext}::validity]:
+    Source: 'crates/mrr-relation/src/api.rs', lines 346:4-346:48
+    Name pattern: [mrr_relation::api::{mrr_relation::api::RelationContext}::validity]
+    Visibility: public -/
+@[rust_fun "mrr_relation::api::{mrr_relation::api::RelationContext}::validity"]
+def mrr_relation.api.RelationContext.impl.validity
+  (self : mrr_relation.api.RelationContext) :
+  Result mrr_relation.api.FactValidity
+  := do
+  ok self.validity
+
+/-- [mrr_relation::api::{mrr_relation::api::Fact}::context]:
+    Source: 'crates/mrr-relation/src/api.rs', lines 391:4-391:51
+    Name pattern: [mrr_relation::api::{mrr_relation::api::Fact}::context]
+    Visibility: public -/
+@[rust_fun "mrr_relation::api::{mrr_relation::api::Fact}::context"]
+def mrr_relation.api.Fact.impl.context
+  (self : mrr_relation.api.Fact) :
+  Result mrr_relation.api.RelationContext
+  := do
+  ok self.context
+
 /-- [mrr_agentic_ai_context::evidence::admit_evidence]:
-    Source: 'crates/mrr-agentic-ai-context/src/evidence.rs', lines 11:0-29:1 -/
+    Source: 'crates/mrr-agentic-ai-context/src/evidence.rs', lines 22:0-40:1 -/
 def evidence.admit_evidence
   (valid : Bool) (coverage : mrr_relation.api.EvidenceCompleteness)
   (require_complete : Bool) :
@@ -42,8 +123,22 @@ def evidence.admit_evidence
       else ok evidence.EvidenceAdmission.Accepted
   else ok evidence.EvidenceAdmission.Invalid
 
+/-- [mrr_agentic_ai_context::evidence::admit_fact_evidence]:
+    Source: 'crates/mrr-agentic-ai-context/src/evidence.rs', lines 13:0-20:1 -/
+def evidence.admit_fact_evidence
+  (fact : mrr_relation.api.Fact) (require_complete : Bool) :
+  Result evidence.EvidenceAdmission
+  := do
+  let context <- mrr_relation.api.Fact.impl.context fact
+  let fv <- mrr_relation.api.RelationContext.impl.validity context
+  let b <-
+    mrr_relation.api.FactValidity.Insts.CoreCmpPartialEqFactValidity.eq fv
+      mrr_relation.api.FactValidity.Valid
+  let ec <- mrr_relation.api.RelationContext.impl.completeness context
+  evidence.admit_evidence b ec require_complete
+
 /-- [mrr_agentic_ai_context::evidence::merge_completeness]:
-    Source: 'crates/mrr-agentic-ai-context/src/evidence.rs', lines 31:0-44:1 -/
+    Source: 'crates/mrr-agentic-ai-context/src/evidence.rs', lines 42:0-55:1 -/
 def evidence.merge_completeness
   (left : mrr_relation.api.EvidenceCompleteness)
   (right : mrr_relation.api.EvidenceCompleteness) :
@@ -76,7 +171,7 @@ def worklist.run_loop.body
   {W : Type} (WorklistInst : worklist.Worklist W) (state : W) :
   Result (ControlFlow W W)
   := do
-  let (b, state1) ← WorklistInst.advance state
+  let (b, state1) <- WorklistInst.advance state
   if b
   then ok (cont state1)
   else ok (done state1)

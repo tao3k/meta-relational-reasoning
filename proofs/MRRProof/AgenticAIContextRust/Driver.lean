@@ -25,12 +25,21 @@ theorem extracted_driver_total_correctness {State : Type}
     exists final, worklist.run adapter initial = .ok final /\ post final := by
   have total : WP.spec (loop (worklist.run_loop.body adapter) initial) post := by
     apply loop.spec_decr_nat rank invariant post (worklist.run_loop.body adapter)
-    · intro state stateValid
-      obtain ⟨flag, next, advanced, nextValid, decreases, stopped⟩ := contract state stateValid
+    next =>
+      intro state stateValid
+      apply Exists.elim (contract state stateValid)
+      intro flag flagSpec
+      apply Exists.elim flagSpec
+      intro next nextSpec
+      have advanced := nextSpec.1
+      have nextValid := nextSpec.2.1
+      have decreases := nextSpec.2.2.1
+      have stopped := nextSpec.2.2.2
       cases flag <;> simp only [worklist.run_loop.body, advanced, bind_ok]
       case false => exact (WP.spec_ok _).mpr (stopped rfl)
       case true => exact (WP.spec_ok _).mpr (And.intro nextValid (decreases rfl))
-    · exact valid
+    next =>
+      exact valid
   simpa only [worklist.run, worklist.run_loop, WP.spec_equiv_exists] using total
 
 theorem extracted_driver_preserves_invariant {State : Type}
@@ -40,8 +49,13 @@ theorem extracted_driver_preserves_invariant {State : Type}
     exists final, worklist.run adapter initial = .ok final /\ invariant final /\ post final := by
   have stronger : AdvanceContract adapter invariant (fun state => invariant state /\ post state) rank := by
     intro state stateValid
-    obtain ⟨flag, next, advanced, nextValid, decreases, stopped⟩ := contract state stateValid
-    exact ⟨flag, next, advanced, nextValid, decreases, fun done => ⟨nextValid, stopped done⟩⟩
+    apply Exists.elim (contract state stateValid)
+    intro flag flagSpec
+    apply Exists.elim flagSpec
+    intro next nextSpec
+    exact Exists.intro flag (Exists.intro next (And.intro nextSpec.1
+      (And.intro nextSpec.2.1 (And.intro nextSpec.2.2.1
+        (fun done => And.intro nextSpec.2.1 (nextSpec.2.2.2 done))))))
   exact extracted_driver_total_correctness adapter invariant _ rank stronger initial valid
 
 /-- This form permits duplicate suppression at enqueue time, as used by reverse
@@ -58,10 +72,10 @@ theorem extracted_driver_graph_invariant_complete {State : Type}
     exists final, worklist.run adapter initial = .ok final /\
       (project final).pending = [] /\
       forall id, id inList (project final).visited <-> Required roots deps id := by
-  obtain ⟨final, output, finalValid, finished⟩ := extracted_driver_preserves_invariant
-    adapter _ _ _ contract initial valid
-  exact ⟨final, output, finished,
-    worklist_finished_invariant_exact roots deps _ finalValid finished⟩
+  apply Exists.elim (extracted_driver_preserves_invariant adapter _ _ _ contract initial valid)
+  intro final finalSpec
+  exact Exists.intro final (And.intro finalSpec.1 (And.intro finalSpec.2.2
+    (worklist_finished_invariant_exact roots deps _ finalSpec.2.1 finalSpec.2.2)))
 
 /-- Explicit missing seam: the native adapter must simulate one model pop. This
 is a universally quantified premise, rather than a replay-derived assumption. -/
@@ -92,31 +106,43 @@ theorem extracted_driver_refines_graph {State : Type}
   let rank := fun state => worklistCapacity source deps (project state)
   have contract : AdvanceContract adapter invariant post rank := by
     intro state stateValid
-    obtain ⟨flag, next, advanced, simulation⟩ := refinement state stateValid
-    refine ⟨flag, next, advanced, ?_⟩
+    apply Exists.elim (refinement state stateValid)
+    intro flag flagSpec
+    apply Exists.elim flagSpec
+    intro next nextSpec
+    have simulation := nextSpec.2
+    refine Exists.intro flag (Exists.intro next (And.intro nextSpec.1 ?_))
     cases flag
     case false =>
       simp only [Bool.false_eq_true, if_false] at simulation
-      obtain ⟨finished, equal⟩ := simulation
-      refine ⟨?_, ?_, ?_⟩
-      · simpa only [invariant, equal] using stateValid
-      · intro impossible; cases impossible
-      · intro _
+      have finished := simulation.1
+      have equal := simulation.2
+      refine And.intro ?_ (And.intro ?_ ?_)
+      next =>
+        simpa only [invariant, equal] using stateValid
+      next =>
+        intro impossible; cases impossible
+      next =>
+        intro _
         simp only [post, equal]
-        exact ⟨finished, worklist_finished_invariant_exact roots deps _ stateValid finished⟩
+        exact And.intro finished (worklist_finished_invariant_exact roots deps _ stateValid finished)
     case true =>
       simp only [if_true] at simulation
-      obtain ⟨nonempty, equal⟩ := simulation
-      refine ⟨?_, ?_, ?_⟩
-      · simpa only [invariant, equal] using worklist_step_invariant roots deps _ stateValid
-      · intro _
+      have nonempty := simulation.1
+      have equal := simulation.2
+      refine And.intro ?_ (And.intro ?_ ?_)
+      next =>
+        simpa only [invariant, equal] using worklist_step_invariant roots deps _ stateValid
+      next =>
+        intro _
         have pendingSource : forall id, id inList (project state).pending -> id inList source := by
           intro id member
           exact closed_contains_required roots source deps rootsSource sourceClosed id
             (stateValid.pendingSound id member)
         simpa only [rank, equal] using
           worklist_capacity_decreases source deps (project state) pendingSource nonempty
-      · intro impossible; cases impossible
+      next =>
+        intro impossible; cases impossible
   exact extracted_driver_total_correctness adapter invariant post rank contract initial valid
 
 def modelAdapter (deps : Nat -> List Nat) : worklist.Worklist ContextWorklist :=
@@ -139,9 +165,17 @@ theorem extracted_model_driver_total_correctness (source roots : List Nat)
     intro state _
     cases pendingEq : state.pending with
     | nil =>
-      exact ⟨false, state, by simp [modelAdapter, pendingEq], by simp [pendingEq]⟩
+      refine Exists.intro false (Exists.intro state (And.intro ?_ ?_))
+      next =>
+        simp [modelAdapter, pendingEq]
+      next =>
+        simp [pendingEq]
     | cons head remaining =>
-      exact ⟨true, worklistStep deps state, by simp [modelAdapter, pendingEq], by simp [pendingEq]⟩
+      refine Exists.intro true (Exists.intro (worklistStep deps state) (And.intro ?_ ?_))
+      next =>
+        simp [modelAdapter, pendingEq]
+      next =>
+        simp [pendingEq]
   exact extracted_driver_refines_graph (modelAdapter deps) id source roots deps
     rootsSource sourceClosed refinement _ (worklist_initial_invariant roots deps)
 

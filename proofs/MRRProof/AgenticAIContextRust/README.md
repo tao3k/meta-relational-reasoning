@@ -1,10 +1,13 @@
 # Production Rust Context proofs
 
-The native Context closure calls `evidence::admit_evidence` and
-`evidence::merge_completeness`. Forward closure and reverse revision impact both
+The native Context closure calls `evidence::admit_fact_evidence`, which reads the
+actual Fact/context/validity/completeness and calls `evidence::admit_evidence`,
+and calls `evidence::merge_completeness`. Forward closure and reverse revision impact both
 call `worklist::run`, a shared generic traversal driver. Charon extracts their
 actual compiler IR, and Aeneas generates `Generated/Types.lean` and
-`Generated/Funs.lean`. These files are machine output; do not edit them manually.
+`Generated/Funs.lean`. These files are machine output after the documented ASCII
+normalization; do not edit them manually. The extractor includes reachable MRR
+identity, relation and revision definitions instead of keeping private fields opaque.
 
 `Evidence.lean` proves seven universal laws directly about the generated evidence
 functions: exact acceptance policy, invalidity precedence, rejection of required
@@ -22,8 +25,21 @@ as the Lean 4.34 system project, rather than copied. Its foundation imports `Std
 The invariant-based graph theorem allows either pop-time duplicate suppression
 (forward closure) or enqueue-time suppression (reverse impact). A one-pop
 simulation is the stronger optional scheduling condition. `Axioms.lean` audits
-all twelve theorems' transitive axiom dependencies. No finite Rust replay proves
-these universal laws.
+the theorems' transitive axiom dependencies. No finite Rust replay proves these
+universal laws.
+
+`NativeFacts.lean` closes the source fact and identity seams: exact native field
+accessors, the actual validity comparison, acceptance/rejection of the actual
+Fact, the 32-byte FactId representation, and equality refinement. A proof-only
+injective numbering of the full identity bytes transports least dependency
+closure to and from the existing Nat graph model, for arbitrary dependency graphs.
+This numbering is not a hash, and assumes no SHA-256 collision resistance or
+injectivity from canonical inputs. FactId equality uses Aeneas's explicit
+byte-array library model; this is part of the library modeling trust boundary,
+not a source proof of Rust's standard-library byte comparison implementation.
+The generated tuple-newtype representation aliases identity domains to byte
+arrays. These theorems concern FactIds only and do not establish separation of
+all MRR identity domains within Lean.
 
 ## Reproduction
 
@@ -38,7 +54,7 @@ Install the pinned Rust toolchain. Then run through the repository profile:
 
 ```sh
 ./.devenv/devenv-profile-exec python3 tools/check/context-source-proof.py --toolchain-dir /path/to/aeneas
-./.devenv/devenv-profile-exec bash -c 'cd proofs/MRRProof/AgenticAIContextRust && MATHLIB_NO_CACHE_ON_UPDATE=1 lake update && lake exe cache get && lake build Evidence Driver && lake env lean Axioms.lean'
+./.devenv/devenv-profile-exec bash -c 'cd proofs/MRRProof/AgenticAIContextRust && MATHLIB_NO_CACHE_ON_UPDATE=1 lake update && lake exe cache get && lake build Evidence Driver NativeFacts && lake env lean Axioms.lean'
 ```
 
 Use `--rustup-home` for an isolated compiler installation. `--update` deliberately
@@ -46,6 +62,12 @@ refreshes proved generated files; the default fails if fresh output differs. CI
 regenerates from the checked-out source before checking proofs, and uploads an
 extraction receipt with tool versions and output hashes. Extraction freshness
 and theorem checking are separate gates.
+
+The repository requires ASCII-only source. The extraction script replaces arrows
+with Lean's native ASCII spellings and gives `Prod` a local `**` notation at the
+same precedence as product notation. The Lean kernel checks the normalized code,
+and fresh extraction compares those exact bytes. Unknown Unicode fails closed.
+Handwritten proofs also use ASCII syntax; no policy exception is introduced.
 
 The ordinary pinned compiler sysroot is explicitly selected with `--sysroot
 default`. The evidence functions use Boolean branches and enum patterns; the
@@ -73,11 +95,17 @@ They have not been proved for `ClosureTraversal::advance` or
 instantiation does not discharge those native obligations. In particular, the
 revision adapter suppresses duplicate enqueues and needs an invariant over
 processed identities, rather than treating every scheduled identity as processed.
-Native source admission, identity-to-model mapping, evidence errors, reverse-edge
-construction, maps/sets and their native invariants remain open. The new theorem
-covers loop control once those step obligations hold. Existing Rust/Lean replay
-is separate bounded evidence for the adapters.
+The identity-to-model mapping and native fact evidence policy now have universal
+proofs. Native source admission, map lookup/insertion, conversion of errors to
+the traversal's stopping state, reverse-edge construction and processed versus
+scheduled invariants remain open. The latest full wrapper probe exposes 10 external
+types and 22 external functions, including BTreeMap/BTreeSet, iterators, Vec pop
+and extension, and byte-array ordering. This inventory is a diagnostic, not a
+proof of library semantics or native adapter contracts. The driver theorem covers
+loop control once its step obligations hold. Existing Rust/Lean replay is separate
+bounded evidence for the adapters.
 
 The source extraction tools and Lean kernel form the trusted verification
-pipeline. These twelve laws do not establish verified Rust compilation,
+pipeline, alongside the explicitly modeled standard-library primitives. These
+laws do not establish verified Rust compilation,
 serialization-library refinement or end-to-end Context-system refinement.

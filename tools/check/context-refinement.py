@@ -22,7 +22,7 @@ def main() -> int:
     if status != 0:
         return status
     return module.qualify(
-        ["lake", "env", "lean", "--run", "Checks/Refinement.lean", str(receipt)],
+        [".lake/build/bin/agentic-ai-context-refinement", str(receipt)],
         cwd="proofs/MRRProof/AgenticAIContext",
     )
 

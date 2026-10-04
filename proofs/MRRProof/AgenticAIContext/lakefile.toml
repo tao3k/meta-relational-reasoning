@@ -14,3 +14,7 @@ name = "MRR"
 [[lean_exe]]
 name = "agentic-ai-context-check"
 root = "Checks.Main"
+
+[[lean_exe]]
+name = "agentic-ai-context-refinement"
+root = "Checks.Refinement"

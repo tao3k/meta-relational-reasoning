@@ -166,7 +166,7 @@ jobs:
           curl --fail --location --retry 3 https://github.com/AeneasVerif/aeneas/releases/download/nightly-2026.10.03-557eff8/aeneas-linux-x86_64.tar.gz -o .ci/aeneas.tar.gz
           echo 'e2ee0933cba4aa51f811ec7a0d1e99d2b345412875b1973dea16399c90c5f01f  .ci/aeneas.tar.gz' | sha256sum --check
           tar -xzf .ci/aeneas.tar.gz -C .ci/aeneas
-      - name: Regenerate current Rust evidence functions
+      - name: Regenerate current Rust evidence, identities and driver
         run: |
           cargo fetch --locked
           python3 tools/check/context-source-proof.py --toolchain-dir .ci/aeneas --receipt .ci/context-source-proof.json
@@ -176,12 +176,12 @@ jobs:
           MATHLIB_NO_CACHE_ON_UPDATE: "1"
         run: |
           lake update
-          modules=$(rg --no-filename '^(public )?import Mathlib' .lake/packages/aeneas/backends/lean/Aeneas .lake/packages/aeneas/backends/lean/AeneasMeta -g '*.lean' | sed -E 's/^(public )?import ([A-Za-z0-9_.]+).*/\2/' | sort -u)
+          modules=$(rg --no-filename '^(public )?import Mathlib' .lake/packages/aeneas/backends/lean/Aeneas .lake/packages/aeneas/backends/lean/AeneasMeta NativeFacts.lean -g '*.lean' | sed -E 's/^(public )?import ([A-Za-z0-9_.]+).*/\2/' | sort -u)
           lake exe cache get $modules
       - name: Prove generated production functions and audit axioms
         working-directory: proofs/MRRProof/AgenticAIContextRust
         run: |
-          lake build Evidence Driver
+          lake build Evidence Driver NativeFacts
           lake env lean Axioms.lean
       - name: Save current source extraction receipt
         if: always()
@@ -208,7 +208,7 @@ jobs:
           use-mathlib-cache: false
       - name: Build kernel proofs
         working-directory: proofs/MRRProof/AgenticAIContext
-        run: lake build MRR
+        run: lake build MRR agentic-ai-context-refinement
       - name: Replay actual C4 and shared Rust fixture
         working-directory: proofs/MRRProof/AgenticAIContext
         run: lake env lean --run Checks/Main.lean

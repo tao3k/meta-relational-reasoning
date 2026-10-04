@@ -294,10 +294,12 @@ independent CBOR/SHA-256 model. The complete workflow uses exact retained
 source/query/result references for restoration, avoiding hash-only equality.
 
 `just context-source-proof /path/to/pinned-aeneas` re-extracts the production
-evidence admission, completeness merge and shared traversal driver with
-Charon/Aeneas before checking twelve universal Lean laws and their axiom
-dependencies. The driver refines the shared closure model under explicit
-adapter invariant and progress laws. The separate
+fact-level evidence admission, completeness merge, identity comparisons and
+shared traversal driver with Charon/Aeneas before checking universal Lean laws
+and their axiom dependencies. The actual 32-byte FactId representation has an
+injective projection to the graph model, with closure transport in both
+directions. The driver refines that model under explicit adapter invariant and
+progress laws. The separate
 Lean 4.31 project pins the extractor; the existing system proofs use Lean 4.34.
 See [the source extraction boundary](proofs/MRRProof/AgenticAIContextRust/README.md)
 for setup and the remaining native container-adapter refinement obligations.

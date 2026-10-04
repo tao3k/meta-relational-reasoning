@@ -700,9 +700,39 @@ contains external library/type obligations. =--probe-worklists= retains its actu
 LLBC and generated diagnostics, returns failure and never emits a success receipt.
 
 The native =ClosureTraversal::advance= and =ImpactTraversal::advance= have not yet
-discharged the adapter contracts. Maps/sets, identity projection, processed versus
-scheduled identities, rejected evidence and reverse-edge construction remain
+discharged the adapter contracts. Maps/sets, processed versus
+scheduled identities, propagation of rejected evidence and reverse-edge construction remain
 formal obligations. The model instance does not prove those native laws. Source
 extraction tools/compiler and serialization libraries remain separate trusted or
 unverified boundaries. The new result closes source loop control under explicit
 step laws, not end-to-end native Context refinement.
+
+** Native fact admission and identity projection
+
+The production closure calls =admit_fact_evidence= on the actual source Fact.
+Extraction now includes reachable MRR identity/relation/revision definitions,
+including private fields, native validity comparison and field accessors. The
+fact-level acceptance theorem requires Valid evidence and the exact completeness
+policy. Every invalidation cause is rejected independently of its identity bytes.
+These are source-derived functions, not assumed Boolean inputs.
+
+=NativeFacts.lean= proves that the extracted FactId has exactly 32 bytes and has
+an injective proof-only numbering into Nat. It transports least dependency
+closure in both directions between actual FactIds and the existing graph model.
+No canonical-input hash injectivity is assumed. Derived FactId equality refines
+this projection using Aeneas's explicit byte-array comparison model. That library
+model remains a trusted semantic interface; Rust stdlib implementation refinement
+and byte-array ordering are not established. Tuple-newtype extraction aliases
+identity domains to byte arrays, so these FactId laws do not prove separation of
+all identity domains within Lean.
+
+The full wrapper probe now exposes 10 external types and 22 external functions.
+Their absence from the smaller proved surface must not be confused with proof of
+native BTree containers or the complete adapter contract. Scheduled-versus-processed
+invariants and reverse-index construction are still explicit obligations.
+
+CI's repository ASCII policy caught Unicode in the prior driver/generated files.
+Handwritten proofs now use ASCII syntax. The extraction script reproducibly
+normalizes arrows and uses a local ASCII spelling of Prod, rejecting all other
+Unicode. Lean checks the normalized code; fresh extraction compares its exact
+bytes. The policy remains enabled and has a dedicated local regression check.

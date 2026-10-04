@@ -1,6 +1,6 @@
 name = "MRRContextRustProofs"
 version = "0.1.0"
-defaultTargets = ["Evidence", "Driver"]
+defaultTargets = ["Evidence", "Driver", "NativeFacts"]
 moreLeanArgs = ["-DautoImplicit=false", "-DwarningAsError=true"]
 
 [[require]]
@@ -22,3 +22,6 @@ roots = ["MRR.AgenticAIContext.Closure", "MRR.AgenticAIContext.Worklist", "MRR.A
 
 [[lean_lib]]
 name = "Driver"
+
+[[lean_lib]]
+name = "NativeFacts"

@@ -7,11 +7,11 @@ use std::{
 };
 
 use mrr_identity::{EntityId, FactId, GenerationId, QueryId, StateId};
-use mrr_relation::{EvidenceCompleteness, Fact, FactValidity};
+use mrr_relation::{EvidenceCompleteness, Fact};
 use mrr_revision::SemanticSnapshot;
 use serde::{Deserialize, Serialize};
 
-use crate::evidence::{EvidenceAdmission, admit_evidence, merge_completeness};
+use crate::evidence::{EvidenceAdmission, admit_fact_evidence, merge_completeness};
 use crate::worklist::{self, Worklist};
 
 /// Exact source fact and all declared fact-level dependencies of this element.
@@ -405,11 +405,7 @@ impl Worklist for ClosureTraversal<'_> {
             return false;
         };
         let context = element.fact.context();
-        match admit_evidence(
-            context.validity() == FactValidity::Valid,
-            context.completeness(),
-            self.contract.require_complete,
-        ) {
+        match admit_fact_evidence(&element.fact, self.contract.require_complete) {
             EvidenceAdmission::Accepted => {}
             EvidenceAdmission::Invalid => {
                 self.error = Some(AgenticAiContextError::InvalidatedElement(id));

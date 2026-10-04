@@ -47,13 +47,13 @@ test-agentic-ai-context:
 # Compare production Rust worklists and exact CBOR/SHA-256 preimages with Lean.
 context-refinement:
     {{profile}} mrr-cargo build -p meta-relational-reasoning --example context_refinement --no-default-features --features agentic-ai-context-tokens --locked
-    {{profile}} bash -c 'cd proofs/MRRProof/AgenticAIContext && lake build MRR'
+    {{profile}} bash -c 'cd proofs/MRRProof/AgenticAIContext && lake build MRR agentic-ai-context-refinement'
     {{profile}} gerbil env python3 tools/check/context-refinement.py
 
 # Regenerate exact production functions before checking the extracted Lean laws.
 context-source-proof toolchain_dir:
     {{profile}} python3 tools/check/context-source-proof.py --toolchain-dir {{toolchain_dir}}
-    {{profile}} bash -c 'cd proofs/MRRProof/AgenticAIContextRust && lake build Evidence Driver && lake env lean Axioms.lean'
+    {{profile}} bash -c 'cd proofs/MRRProof/AgenticAIContextRust && lake build Evidence Driver NativeFacts && lake env lean Axioms.lean'
 
 # Record time, peak RSS, bounded rejection and actual declared reuse eligibility.
 context-scale:

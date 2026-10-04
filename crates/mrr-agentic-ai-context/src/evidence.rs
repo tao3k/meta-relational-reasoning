@@ -1,11 +1,22 @@
 //! Pure evidence policy shared by native admission and source extraction.
 
-use mrr_relation::EvidenceCompleteness;
+use mrr_relation::{EvidenceCompleteness, Fact, FactValidity};
 
 pub(crate) enum EvidenceAdmission {
     Accepted,
     Invalid,
     Incomplete,
+}
+
+/// Admit the actual source fact, keeping the validity/accessor seam in the
+/// source-extracted proof surface rather than assuming a caller supplied Boolean.
+pub(crate) fn admit_fact_evidence(fact: &Fact, require_complete: bool) -> EvidenceAdmission {
+    let context = fact.context();
+    admit_evidence(
+        context.validity() == FactValidity::Valid,
+        context.completeness(),
+        require_complete,
+    )
 }
 
 pub(crate) fn admit_evidence(

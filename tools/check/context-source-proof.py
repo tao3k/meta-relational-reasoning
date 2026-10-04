@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regenerate production evidence policy and traversal control from Rust."""
+"""Regenerate production evidence, identity and traversal control from Rust."""
 
 import argparse
 import hashlib
@@ -16,6 +16,25 @@ AENEAS_VERSION = "nightly-2026.10.03-557eff8"
 CHARON_REVISION = "c8f15d7d658c86a95658f71ad99cddd4be002e04"
 ROOT = Path(__file__).resolve().parents[2]
 PROJECT = ROOT / "proofs/MRRProof/AgenticAIContextRust"
+
+
+def ascii_lean(content: str) -> bytes:
+    """Keep extraction reproducible while respecting repository ASCII policy.
+
+    Arrows have native ASCII spellings. The sole added notation is a local ASCII
+    spelling of Prod, with the same precedence as Lean's product notation. Unknown
+    Unicode fails closed instead of being silently removed from generated code.
+    """
+    if "\u00d7" in content:
+        content = content.replace(
+            "namespace MRR.ContextRust\n",
+            'local infixr:35 " ** " => Prod\n\nnamespace MRR.ContextRust\n',
+            1,
+        )
+    content = content.translate(
+        str.maketrans({"\u2192": "->", "\u2190": "<-", "\u00d7": "**"})
+    )
+    return content.encode("ascii")
 
 
 def run(command: list[str], environment: dict[str, str], timeout: int = 300) -> None:
@@ -59,22 +78,22 @@ def main() -> int:
     receipt.unlink(missing_ok=True)
     environment["CARGO_TARGET_DIR"] = str(receipt.parent / "mrr-source-proof-target")
     functions = (
-        ["state::compute_required_closure", "state::reverse_dependency_impact"]
+        [
+            "mrr_agentic_ai_context::state::compute_required_closure",
+            "mrr_agentic_ai_context::state::reverse_dependency_impact",
+        ]
         if args.probe_worklists
         else [
-            "evidence::admit_evidence",
-            "evidence::merge_completeness",
-            "worklist::run",
+            "mrr_agentic_ai_context::evidence::admit_evidence",
+            "mrr_agentic_ai_context::evidence::merge_completeness",
+            "mrr_agentic_ai_context::worklist::run",
+            "mrr_agentic_ai_context::evidence::admit_fact_evidence",
         ]
     )
     with tempfile.TemporaryDirectory(prefix="mrr-source-proof-") as directory:
         output = Path(directory)
         llbc = output / "mrr_agentic_ai_context.llbc"
-        starts = [
-            argument
-            for name in functions
-            for argument in ["--start-from", f"mrr_agentic_ai_context::{name}"]
-        ]
+        starts = [argument for name in functions for argument in ["--start-from", name]]
         run(
             [
                 str(charon),
@@ -82,6 +101,12 @@ def main() -> int:
                 "--preset=aeneas",
                 "--sysroot",
                 "default",
+                "--include",
+                "mrr_identity",
+                "--include",
+                "mrr_relation",
+                "--include",
+                "mrr_revision",
                 *starts,
                 "--dest-file",
                 str(llbc),
@@ -148,7 +173,7 @@ def main() -> int:
             )
         hashes = {}
         for path in emitted:
-            content = path.read_bytes()
+            content = ascii_lean(path.read_text())
             hashes[path.name] = hashlib.sha256(content).hexdigest()
             target = PROJECT / "Generated" / path.name
             if args.update:
@@ -164,6 +189,7 @@ def main() -> int:
                     "functions": functions,
                     "llbc_sha256": hashlib.sha256(llbc.read_bytes()).hexdigest(),
                     "generated_sha256": hashes,
+                    "generated_format": "ASCII arrows and local Prod notation; unknown Unicode rejected",
                     "boundary": "extraction freshness; Lean theorem and axiom checks are separate gates",
                 },
                 indent=2,
