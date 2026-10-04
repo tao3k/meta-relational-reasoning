@@ -1,5 +1,6 @@
 import Generated.Funs
 import MRR.AgenticAIContext.Termination
+import MRR.AgenticAIContext.Scheduled
 
 open Aeneas.Std
 open MRR.ContextRust
@@ -198,5 +199,56 @@ theorem extracted_model_driver_total_correctness (source roots : List Nat)
         simp [pendingEq]
   exact extracted_driver_refines_graph (modelAdapter deps) id source roots deps
     rootsSource sourceClosed refinement _ (worklist_initial_invariant roots deps)
+
+
+def scheduledModelAdapter (deps : Nat -> List Nat) : worklist.Worklist ScheduledWorklist :=
+  { advance := fun state =>
+      if state.pending.isEmpty then .ok (false, state)
+      else .ok (true, scheduledStep deps state) }
+
+/-- Enqueue-time suppression discharges the actual extracted driver's loop laws
+for the scheduled/processed graph model. Binding native containers to this
+model remains a separate refinement obligation. -/
+theorem extracted_scheduled_driver_total_correctness (source roots : List Nat)
+    (deps : Nat -> List Nat) (rootsUnique : roots.Nodup)
+    (neighborsUnique : forall id, (deps id).Nodup)
+    (rootsSource : forall id, id inList roots -> id inList source)
+    (sourceClosed : forall parent, parent inList source ->
+      forall id, id inList deps parent -> id inList source) :
+    exists final, worklist.run (scheduledModelAdapter deps)
+      { processed := [], scheduled := roots, pending := roots.reverse } = .ok final /\
+      final.pending = [] /\
+      forall id, id inList final.scheduled <-> Required roots deps id := by
+  let invariant := ScheduledInvariant roots deps
+  let rank := fun state : ScheduledWorklist => worklistCapacity source deps state.project
+  let post := fun state : ScheduledWorklist => state.pending = []
+  have contract : AdvanceContract (scheduledModelAdapter deps) invariant post rank := by
+    intro state valid
+    cases pendingEq : state.pending with
+    | nil =>
+      refine Exists.intro false (Exists.intro state (And.intro ?_ (And.intro valid (And.intro ?_ ?_))))
+      next => simp [scheduledModelAdapter, pendingEq]
+      next => intro impossible; cases impossible
+      next => intro _; exact pendingEq
+    | cons head remaining =>
+      refine Exists.intro true (Exists.intro (scheduledStep deps state)
+        (And.intro ?_ (And.intro (scheduled_step_invariant roots deps neighborsUnique state valid)
+          (And.intro ?_ ?_))))
+      next => simp [scheduledModelAdapter, pendingEq]
+      next =>
+        intro _
+        have pendingSource : forall id, id inList state.pending -> id inList source := by
+          intro id member
+          exact closed_contains_required roots source deps rootsSource sourceClosed id
+            (valid.graph.pendingSound id member)
+        exact scheduled_capacity_decreases source roots deps state valid pendingSource
+          (by simp [pendingEq])
+      next => intro impossible; cases impossible
+  apply Exists.elim (extracted_driver_preserves_invariant
+    (scheduledModelAdapter deps) invariant post rank contract _
+    (scheduled_initial_invariant roots deps rootsUnique))
+  intro final finalSpec
+  exact Exists.intro final (And.intro finalSpec.1 (And.intro finalSpec.2.2
+    (scheduled_finished_exact roots deps final finalSpec.2.1 finalSpec.2.2)))
 
 end MRR.ContextRustProofs

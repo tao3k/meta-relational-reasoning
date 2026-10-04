@@ -775,3 +775,19 @@ stop, without requiring an invariant over that rejected state. The source
 axiom audit now requires 40 declarations with only standard Lean axioms.
 BTree lookup/selected-set binding and the full native adapter contract remain
 open; these helper laws do not discharge them or serialization-library refinement.
+
+** Enqueue-time reverse-impact invariant
+
+=Scheduled.lean= distinguishes processed identities from the scheduled native
+=invalidated= set. Scheduled membership is exactly processed-or-pending coverage;
+pending is duplicate-free and disjoint from processed. Neighbor and root list
+projections must be duplicate-free, as expected from the native BTreeSets.
+The model's actual step preserves these invariants and strictly decreases the
+finite worklist capacity, including cyclic dependency graphs. When pending is
+empty, the scheduled set equals the least required closure.
+
+The same source is compiled under Lean 4.31 and 4.34. The extracted generic Rust
+driver is instantiated with this model and proved to terminate with that exact
+closure without a fuel bound. The source proof gate now requires 46 declarations.
+This discharges the scheduling-model invariant, not the actual native BTree
+binding or reverse-index union construction; those native obligations remain.

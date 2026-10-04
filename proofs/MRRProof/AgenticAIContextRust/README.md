@@ -14,11 +14,11 @@ functions: exact acceptance policy, invalidity precedence, rejection of required
 incomplete evidence, merge refinement to maximum weakness rank, commutativity,
 associativity, and complete evidence as the identity.
 
-`Driver.lean` proves six additional universal laws about the extracted while
+`Driver.lean` proves seven additional universal laws about the extracted while
 loop: termination under an adapter contract, preservation of its invariant,
 exact least closure from a completed graph invariant, refinement via a one-pop
 simulation, immediate stopping with the mutated terminal state, and total correctness instantiated with the existing shared graph
-model. The driver theorem has no fuel bound and applies to all state types. The
+model and the enqueue-time suppression model. The driver theorem has no fuel bound and applies to all state types. The
 model is compiled from the same `Closure`, `Worklist`, and `Termination` sources
 as the Lean 4.34 system project, rather than copied. Its foundation imports `Std`.
 
@@ -115,6 +115,14 @@ They have not been proved for `ClosureTraversal::advance` or
 instantiation does not discharge those native obligations. In particular, the
 revision adapter suppresses duplicate enqueues and needs an invariant over
 processed identities, rather than treating every scheduled identity as processed.
+`Scheduled.lean` now proves that invariant at the graph-model level: scheduled
+membership equals processed-or-pending coverage, the pending list is duplicate
+free and disjoint from processed, each nonempty step decreases finite capacity,
+and a completed scheduled set is the exact least closure. Distinct initial roots
+and neighbor lists express the native BTreeSet projections; they are explicit
+premises of this model theorem. The extracted driver is instantiated with this
+model and has no fuel bound. Both Lean projects compile the same model file.
+Binding the native BTree operations and reverse-index union to it remains open.
 The identity-to-model mapping and native fact evidence policy now have universal
 proofs. Map lookup/insertion, binding the admitted Fact to that lookup, full adapter
 stopping/refinement laws, reverse-edge construction and processed versus

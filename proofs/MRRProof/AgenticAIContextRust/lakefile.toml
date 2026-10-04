@@ -18,7 +18,7 @@ name = "Evidence"
 [[lean_lib]]
 name = "MRR"
 srcDir = "../AgenticAIContext"
-roots = ["MRR.AgenticAIContext.Closure", "MRR.AgenticAIContext.Worklist", "MRR.AgenticAIContext.Termination"]
+roots = ["MRR.AgenticAIContext.Closure", "MRR.AgenticAIContext.Worklist", "MRR.AgenticAIContext.Termination", "MRR.AgenticAIContext.Scheduled"]
 
 [[lean_lib]]
 name = "Driver"
