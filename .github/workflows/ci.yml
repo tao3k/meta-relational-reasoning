@@ -234,7 +234,10 @@ jobs:
           lint: false
       - name: Build Lean publication laws and actual TLC-state replay
         working-directory: proofs/MRRProof/AgenticAIContext
-        run: lake build MRR agentic-ai-context-tla-replay && lake env lean Checks/Axioms.lean
+        run: |
+          python3 ../../../tools/check/lean-dependency-pin.py .
+          lake build MRR agentic-ai-context-tla-replay
+          lake env lean Checks/Axioms.lean
       - name: Check safety, liveness, counterexamples and Lean state conformance
         run: python3 tools/check/context-tla.py --tlc-jar .ci/tla/tla2tools.jar --lean-replay proofs/MRRProof/AgenticAIContext/.lake/build/bin/agentic-ai-context-tla-replay --receipt .ci/tla/receipt.json
       - name: Save TLA receipt and actual TLC logs
@@ -264,7 +267,9 @@ jobs:
           use-mathlib-cache: false
       - name: Build kernel proofs
         working-directory: proofs/MRRProof/AgenticAIContext
-        run: lake build MRR agentic-ai-context-refinement
+        run: |
+          python3 ../../../tools/check/lean-dependency-pin.py .
+          lake build MRR agentic-ai-context-refinement
       - name: Replay actual C4 and shared Rust fixture
         working-directory: proofs/MRRProof/AgenticAIContext
         run: lake env lean --run Checks/Main.lean

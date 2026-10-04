@@ -272,3 +272,12 @@ This verifies the Scheme solver/parser projections and their existing negative
 controls. It is not a cold-start benchmark, a downstream physical correction
 receipt or a new model score. The original downstream initialization failures
 remain failures until a coherent pinned MRR/Data/POO graph is requalified.
+
+At =17798b21=, Context proof CI could not check out the locked LeanPoo commit
+=cb4623980056fb761f34601181bb7d8485af1dda= after its topic branch was removed.
+Direct Git fetching of that exact SHA succeeds. The two affected CI jobs now
+bootstrap the declared full SHA and check its identity before invoking Lake.
+The original proof pin and source remain unchanged; no proof is skipped and
+the published default branch, whose C4 source differs, is not substituted.
+Local bootstrap qualification verifies the fetched and checked-out commit.
+Remote proof execution on the new CI commit remains a separate required gate.
