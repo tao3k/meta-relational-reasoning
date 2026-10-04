@@ -96,7 +96,9 @@ jobs:
         run: gerbil build
 
       - name: Verify native qualification rejects false success
-        run: gerbil env python3 tools/check/native-tests.py self-test
+        run: |
+          python3 -m unittest discover -s tools/check -p test_native_tests.py -v
+          gerbil env python3 tools/check/native-tests.py self-test
 
       - name: Test Gerbil package
         run: gerbil env python3 tools/check/native-tests.py scheme

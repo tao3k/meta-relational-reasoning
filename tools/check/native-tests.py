@@ -4,6 +4,7 @@
 import argparse
 import os
 import selectors
+import select
 import signal
 import subprocess
 import sys
@@ -52,6 +53,32 @@ class SchemeReceipt:
         )
 
 
+def forward_output(chunk: bytes, deadline: float) -> bool:
+    """Forward exactly once, including short writes to CI's nonblocking stdout.
+
+    Backpressure consumes the existing output/batch budget; it cannot create a
+    heartbeat or extend qualification. Do not change shared descriptor flags.
+    """
+    remaining = memoryview(chunk)
+    while remaining:
+        if time.monotonic() >= deadline:
+            return False
+        try:
+            written = os.write(sys.stdout.fileno(), remaining)
+        except BlockingIOError:
+            select.select(
+                [],
+                [sys.stdout.fileno()],
+                [],
+                min(0.1, max(0.0, deadline - time.monotonic())),
+            )
+            continue
+        if written == 0:
+            return False
+        remaining = remaining[written:]
+    return True
+
+
 def qualify(
     command: list[str], receipt: SchemeReceipt | None = None, *, cwd: str | None = None
 ) -> int:
@@ -76,11 +103,11 @@ def qualify(
                     if not chunk:
                         selector.unregister(child.stdout)
                         continue
-                    sys.stdout.buffer.write(chunk)
-                    sys.stdout.buffer.flush()
+                    last_output = time.monotonic()
+                    if not forward_output(chunk, min(last_output + 5, started + 45)):
+                        return 124
                     if receipt is not None:
                         receipt.observe(chunk)
-                    last_output = time.monotonic()
                 now = time.monotonic()
                 if now - last_output > 5 or now - started > 45:
                     print(

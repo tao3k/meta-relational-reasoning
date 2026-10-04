@@ -141,3 +141,24 @@ The source extraction tools and Lean kernel form the trusted verification
 pipeline, alongside the explicitly modeled standard-library primitives. These
 laws do not establish verified Rust compilation,
 serialization-library refinement or end-to-end Context-system refinement.
+
+## Direct standard-library source boundary
+
+`--probe-btree-source` attempts actual `alloc::collections::btree` source
+extraction, including its unsafe node operations, starting from both native
+wrappers. Each preparation stage has a 60-second cap. It retains LLBC and raw
+stage logs in a fresh temporary directory, with tool versions, exact commands,
+exit codes and log hashes in `library-source-probe.json`. That diagnostic always
+has `proven: false`; it cannot update proved modules or emit a success receipt.
+
+On the pinned compiler/extractor the direct probe fails: Charon reports node
+allocation/deallocation translation limitations, and Aeneas rejects nested
+mutable borrows in the entry API and a NonNull-to-raw-pointer transmute in
+node.rs. This is an observed toolchain capability boundary, not a missing Lean
+lemma. Adding hand-written BTree semantics would add a trusted library model;
+it would not prove the unsafe Rust standard-library implementation. Complete
+source refinement therefore remains unproved with the current toolchain.
+
+Reproduce through the profile with the same pinned extractor arguments as above,
+adding `--probe-btree-source`. The nonzero result is expected diagnostic failure,
+not a passing proof or test.

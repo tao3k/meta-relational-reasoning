@@ -791,3 +791,21 @@ driver is instantiated with this model and proved to terminate with that exact
 closure without a fuel bound. The source proof gate now requires 46 declarations.
 This discharges the scheduling-model invariant, not the actual native BTree
 binding or reverse-index union construction; those native obligations remain.
+
+** Direct BTree source extraction and CI qualification
+
+The source probe can now include actual =alloc::collections::btree= bodies,
+including unsafe node operations. Pinned Charon/Aeneas fail on node operations,
+nested mutable entry borrows and a NonNull-to-raw-pointer transmute. The bounded
+probe retains the LLBC, raw logs, exact commands and hashes; its diagnostic is
+always unproved and cannot replace the generated proved modules. This identifies
+a toolchain capability boundary for complete standard-library source refinement.
+A hand-written container model would retain a library-model trust assumption.
+
+The 709284d source-proof and model/replay CI jobs passed. Its macOS native job
+failed earlier in qualification self-test because stdout inherited nonblocking
+mode and buffered flush raised BlockingIOError. Qualification now forwards exact
+bytes with short-write/backpressure handling and an existing deadline; it does
+not change descriptor flags or generate heartbeat output. Regression checks
+exercise exact bytes, expired budget and a real nonblocking pipe carrying a
+failing child's output. Original 5-second silence and 45-second batch gates remain.

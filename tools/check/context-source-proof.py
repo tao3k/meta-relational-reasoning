@@ -2,6 +2,7 @@
 """Regenerate production evidence, identity and traversal control from Rust."""
 
 import argparse
+from contextlib import nullcontext
 import hashlib
 import json
 import os
@@ -39,7 +40,40 @@ def ascii_lean(content: str) -> bytes:
 
 def run(command: list[str], environment: dict[str, str], timeout: int = 300) -> None:
     print("SOURCE-PREPARE:", " ".join(command), flush=True)
-    subprocess.run(command, cwd=ROOT, env=environment, check=True, timeout=timeout)
+    diagnostic = environment.get("MRR_BTREE_SOURCE_PROBE_DIR")
+    if diagnostic is None:
+        subprocess.run(command, cwd=ROOT, env=environment, check=True, timeout=timeout)
+        return
+    directory = Path(diagnostic)
+    report_path = directory / "library-source-probe.json"
+    report = json.loads(report_path.read_text())
+    stage = {"command": command, "proven": False}
+    report["stages"].append(stage)
+    log_path = directory / f"stage-{len(report['stages'])}.log"
+    stage["log"] = str(log_path)
+    report_path.write_text(json.dumps(report, indent=2) + "\n")
+    with log_path.open("wb") as log:
+        try:
+            result = subprocess.run(
+                command,
+                cwd=ROOT,
+                env=environment,
+                stdout=log,
+                stderr=subprocess.STDOUT,
+                timeout=60,
+            )
+        except subprocess.TimeoutExpired:
+            stage["exit_code"] = 124
+            stage["reason"] = "preparation timeout"
+            report_path.write_text(json.dumps(report, indent=2) + "\n")
+            raise
+    stage["exit_code"] = result.returncode
+    stage["log_sha256"] = hashlib.sha256(log_path.read_bytes()).hexdigest()
+    report_path.write_text(json.dumps(report, indent=2) + "\n")
+    print(
+        f"SOURCE-LIBRARY-DIAGNOSTIC: {log_path}: exit {result.returncode}", flush=True
+    )
+    result.check_returncode()
 
 
 def main() -> int:
@@ -51,11 +85,19 @@ def main() -> int:
     )
     parser.add_argument("--update", action="store_true")
     parser.add_argument("--probe-worklists", action="store_true")
+    parser.add_argument(
+        "--probe-btree-source",
+        action="store_true",
+        help="Retain a bounded diagnostic extracting actual unsafe BTree source",
+    )
     args = parser.parse_args()
+    if args.probe_btree_source:
+        args.probe_worklists = True
     if args.probe_worklists and args.update:
         parser.error("a native-adapter probe cannot replace proved generated modules")
     toolchain = args.toolchain_dir.resolve()
     environment = dict(os.environ)
+    environment.pop("MRR_BTREE_SOURCE_PROBE_DIR", None)
     environment["PATH"] = f"{Path.home() / '.cargo/bin'}:{environment['PATH']}"
     if args.rustup_home:
         environment["RUSTUP_HOME"] = str(args.rustup_home.resolve())
@@ -93,7 +135,30 @@ def main() -> int:
             "mrr_agentic_ai_context::state::expand_identity",
         ]
     )
-    with tempfile.TemporaryDirectory(prefix="mrr-source-proof-") as directory:
+    context = tempfile.TemporaryDirectory(prefix="mrr-source-proof-")
+    if args.probe_btree_source:
+        diagnostic = Path(
+            tempfile.mkdtemp(prefix="mrr-btree-source-probe-", dir=receipt.parent)
+        )
+        environment["MRR_BTREE_SOURCE_PROBE_DIR"] = str(diagnostic)
+        (diagnostic / "library-source-probe.json").write_text(
+            json.dumps(
+                {
+                    "schema": "mrr.context.library-source-probe.v1",
+                    "proven": False,
+                    "aeneas": version.strip(),
+                    "charon": charon_version.strip(),
+                    "included_source": "alloc::collections::btree",
+                    "stages": [],
+                },
+                indent=2,
+            )
+            + "\n"
+        )
+        context.cleanup()
+        context = nullcontext(str(diagnostic))
+        print(f"SOURCE-LIBRARY-PROBE: {diagnostic}", flush=True)
+    with context as directory:
         output = Path(directory)
         llbc = output / "mrr_agentic_ai_context.llbc"
         starts = [argument for name in functions for argument in ["--start-from", name]]
@@ -112,6 +177,11 @@ def main() -> int:
                 "mrr_revision",
                 "--include",
                 "core::borrow",
+                *(
+                    ["--include", "alloc::collections::btree"]
+                    if args.probe_btree_source
+                    else []
+                ),
                 *starts,
                 "--dest-file",
                 str(llbc),
@@ -142,6 +212,10 @@ def main() -> int:
             environment,
             timeout=60,
         )
+        if args.probe_btree_source:
+            raise RuntimeError(
+                "library source translation is diagnostic only; no implementation proof"
+            )
         emitted = sorted((output / "Generated").glob("*.lean"))
         if args.probe_worklists:
             diagnostic = Path(
