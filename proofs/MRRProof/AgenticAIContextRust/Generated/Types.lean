@@ -39,6 +39,21 @@ structure core.alloc.AllocatorClone (Self : Type) where
 structure core.borrow.Borrow (Self : Type) (Borrowed : Type) where
   borrow : Self -> Result Borrowed
 
+/-- [alloc::collections::btree::map::entry::Entry]
+    Source: '/rustc/library/alloc/src/collections/btree/map/entry.rs', lines 19:0-24:1
+    Name pattern: [alloc::collections::btree::map::entry::Entry]
+    Visibility: public -/
+@[discriminant isize, rust_type "alloc::collections::btree::map::entry::Entry"
+  (mutRegions := #[0])]
+inductive alloc.collections.btree.map.entry.Entry (K : Type) (V : Type) (A :
+  Type) where
+| Vacant :
+  alloc.collections.btree.map.entry.VacantEntry K V A ->
+  alloc.collections.btree.map.entry.Entry K V A
+| Occupied :
+  alloc.collections.btree.map.entry.OccupiedEntry K V A ->
+  alloc.collections.btree.map.entry.Entry K V A
+
 /-- [mrr_identity::api::FactId]
     Source: 'crates/mrr-identity/src/api.rs', lines 174:8-174:45
     Name pattern: [mrr_identity::api::FactId]
@@ -234,7 +249,7 @@ structure worklist.Worklist (Self : Type) where
   advance : Self -> Result (Bool ** Self)
 
 /-- [mrr_agentic_ai_context::state::ImpactTraversal]
-    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 483:0-487:1 -/
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 499:0-503:1 -/
 structure state.ImpactTraversal where
   reverse : alloc.collections.btree.map.BTreeMap mrr_identity.api.FactId
     (alloc.collections.btree.set.BTreeSet mrr_identity.api.FactId Global)

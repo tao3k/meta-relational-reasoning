@@ -69,4 +69,57 @@ def alloc.collections.btree.set.Iter.Insts.CoreIterTraitsIteratorIteratorSharedA
   | [] => .ok (none, [])
   | id :: rest => .ok (some id, rest)
 
+def alloc.collections.btree.set.BTreeSetTGlobal.new (T : Type) :
+    Result (alloc.collections.btree.set.BTreeSet T Global) := .ok []
+
+def alloc.collections.btree.set.BTreeSetTGlobal.Insts.CoreDefaultDefault.default
+    (T : Type) : Result (alloc.collections.btree.set.BTreeSet T Global) := .ok []
+
+def alloc.collections.btree.map.BTreeMapKVGlobal.new (K V : Type) :
+    Result (alloc.collections.btree.map.BTreeMap K V Global) := .ok []
+
+def SharedABTreeMap.Insts.CoreIterTraitsCollectIntoIteratorPairSharedAKSharedAVIter.into_iter
+    {K V A : Type} (_allocator : MRR.ContextRust.core.alloc.AllocatorClone A)
+    (map : alloc.collections.btree.map.BTreeMap K V A) :
+    Result (alloc.collections.btree.map.Iter K V) := .ok map
+
+def alloc.collections.btree.map.Iter.Insts.CoreIterTraitsIteratorIteratorPairSharedAKSharedAV.next
+    {K V : Type} : alloc.collections.btree.map.Iter K V ->
+    Result (Option (K ** V) ** alloc.collections.btree.map.Iter K V)
+  | [] => .ok (none, [])
+  | pair :: rest => .ok (some pair, rest)
+
+-- An entry carries a borrowed value; its return closure restores the same key
+-- and preserves every other binding. These are trusted value/borrow models.
+def entryCursor {K V A : Type} (equal : K -> K -> Result Bool) (query : K) :
+    List (K ** V) -> Result (MRR.ContextRust.alloc.collections.btree.map.entry.Entry K V A **
+      (MRR.ContextRust.alloc.collections.btree.map.entry.Entry K V A -> List (K ** V)))
+  | [] => .ok (.Vacant query, fun entry => match entry with
+      | .Vacant _ => []
+      | .Occupied (_, value) => [(query, value)])
+  | (key, value) :: rest => do
+    let found <- equal key query
+    if found then .ok (.Occupied (key, value), fun entry => match entry with
+      | .Vacant _ => (key, value) :: rest
+      | .Occupied (_, updated) => (key, updated) :: rest)
+    else do
+      let (entry, restore) <- entryCursor equal query rest
+      .ok (entry, fun updated => (key, value) :: restore updated)
+
+def alloc.collections.btree.map.BTreeMap.entry {K V A : Type}
+    (_allocator : MRR.ContextRust.core.alloc.AllocatorClone A) (order : core.cmp.Ord K)
+    (map : alloc.collections.btree.map.BTreeMap K V A) (query : K) :=
+  entryCursor (A := A) order.eqInst.partialEqInst.eq query map
+
+def alloc.collections.btree.map.entry.Entry.or_default {K V A : Type}
+    (_order : core.cmp.Ord K) (default : core.default.Default V)
+    (_allocator : MRR.ContextRust.core.alloc.AllocatorClone A)
+    (entry : MRR.ContextRust.alloc.collections.btree.map.entry.Entry K V A) :
+    Result (V ** (V -> MRR.ContextRust.alloc.collections.btree.map.entry.Entry K V A)) :=
+  match entry with
+  | .Occupied (key, value) => .ok (value, fun updated => .Occupied (key, updated))
+  | .Vacant key => do
+      let value <- default.default
+      .ok (value, fun updated => .Occupied (key, updated))
+
 end Aeneas.Std

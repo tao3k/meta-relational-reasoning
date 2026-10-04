@@ -81,7 +81,7 @@ Install the pinned Rust toolchain. Then run through the repository profile:
 
 ```sh
 ./.devenv/devenv-profile-exec python3 tools/check/context-source-proof.py --toolchain-dir /path/to/aeneas
-./.devenv/devenv-profile-exec bash -c 'cd proofs/MRRProof/AgenticAIContextRust && MATHLIB_NO_CACHE_ON_UPDATE=1 lake update && lake exe cache get && lake build Evidence Driver NativeFacts Stack Expansion Forward Reverse && lake env lean Axioms.lean'
+./.devenv/devenv-profile-exec bash -c 'cd proofs/MRRProof/AgenticAIContextRust && MATHLIB_NO_CACHE_ON_UPDATE=1 lake update && lake exe cache get && lake build Evidence Driver NativeFacts Stack Expansion Forward Reverse ReverseIndex && lake env lean Axioms.lean'
 ```
 
 Use `--rustup-home` for an isolated compiler installation. `--update` deliberately
@@ -223,3 +223,26 @@ implementation proof. Earlier native-reverse-contract-open statements are
 superseded within this boundary only. Wrapper initialization/projection,
 reverse-index construction, aggregate coverage/error integration and
 serialization/cryptographic implementation refinement remain separate gaps.
+
+## Actual reverse-index construction and traversal connection
+
+`ReverseIndex.lean` proves the extracted `build_reverse_index`, its actual map
+iteration, dependency iteration, entry/default update and mutable-borrow
+restoration. Seventeen additional universal declarations establish exact old/new
+declared-edge union and duplicate-free neighbor lists. The graph projection and
+initial frontier invariant are derived, rather than supplied as adapter laws.
+`native_declared_impact_run_exact` connects the actual index constructor to actual
+`run_impact`: it terminates and returns exactly the reverse closure of the changed
+identities, including cycles and duplicate edges. Its remaining input premises
+are a duplicate-free changed list, matching seed-vector contents and a finite
+machine-capacity bound. The actual wrapper's seed-vector construction and final
+projection are not yet proved by this theorem.
+
+The extraction gate now checks six library types and eleven functions. Explicit
+value models additionally cover map enumeration, entry/default behavior and
+borrow restoration; unsafe stdlib implementation, sorted physical enumeration
+and allocation success remain outside the proof. The required axiom audit covers
+88 declarations. Earlier reverse-index-construction-open statements are
+superseded within this boundary. Wrapper initialization/projection, aggregate
+coverage/error integration and serialization/cryptographic implementation
+refinement remain open.

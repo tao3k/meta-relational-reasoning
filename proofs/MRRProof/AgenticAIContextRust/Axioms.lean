@@ -5,6 +5,7 @@ import Stack
 import Expansion
 import Forward
 import Reverse
+import ReverseIndex
 import Lean.Util.CollectAxioms
 import Lean.Elab.Command
 
@@ -84,7 +85,24 @@ run_cmd do
     `MRR.ContextRustProofs.native_nodup_subset_length,
     `MRR.ContextRustProofs.native_impact_nonempty_preserves,
     `MRR.ContextRustProofs.native_impact_advance_contract,
-    `MRR.ContextRustProofs.native_impact_run_exact]
+    `MRR.ContextRustProofs.native_impact_run_exact,
+    `MRR.ContextRustProofs.native_entry_cursor_returns,
+    `MRR.ContextRustProofs.native_reverse_edge_exact,
+    `MRR.ContextRustProofs.put_reverse_members,
+    `MRR.ContextRustProofs.add_declared_members,
+    `MRR.ContextRustProofs.index_declared_members,
+    `MRR.ContextRustProofs.native_reverse_dependency_loop_exact,
+    `MRR.ContextRustProofs.native_reverse_elements_loop_exact,
+    `MRR.ContextRustProofs.native_reverse_add_exact,
+    `MRR.ContextRustProofs.native_reverse_index_exact,
+    `MRR.ContextRustProofs.put_reverse_values_unique,
+    `MRR.ContextRustProofs.add_declared_values_unique,
+    `MRR.ContextRustProofs.index_declared_values_unique,
+    `MRR.ContextRustProofs.reverse_values_unique_neighbors,
+    `MRR.ContextRustProofs.native_reverse_index_declared_union,
+    `MRR.ContextRustProofs.native_reverse_graph_projection,
+    `MRR.ContextRustProofs.native_impact_seed_invariant,
+    `MRR.ContextRustProofs.native_declared_impact_run_exact]
   required.forM fun declarationName => do
     unless environment.contains declarationName do
       throwError "Missing source theorem: {declarationName}"

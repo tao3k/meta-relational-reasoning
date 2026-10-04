@@ -454,9 +454,7 @@ fn reverse_dependency_impact(
     new: &AgenticAiContextState,
     changed: &BTreeSet<FactId>,
 ) -> BTreeSet<FactId> {
-    let mut reverse: BTreeMap<FactId, BTreeSet<FactId>> = BTreeMap::new();
-    add_reverse_dependencies(&old.elements, &mut reverse);
-    add_reverse_dependencies(&new.elements, &mut reverse);
+    let reverse = build_reverse_index(&old.elements, &new.elements);
     let mut pending = Vec::with_capacity(changed.len());
     for id in changed {
         pending.push(*id);
@@ -469,15 +467,33 @@ fn reverse_dependency_impact(
     .invalidated
 }
 
+fn build_reverse_index(
+    old: &BTreeMap<FactId, AgenticAiContextElement>,
+    new: &BTreeMap<FactId, AgenticAiContextElement>,
+) -> BTreeMap<FactId, BTreeSet<FactId>> {
+    let mut reverse = BTreeMap::new();
+    add_reverse_dependencies(old, &mut reverse);
+    add_reverse_dependencies(new, &mut reverse);
+    reverse
+}
+
 fn add_reverse_dependencies(
     elements: &BTreeMap<FactId, AgenticAiContextElement>,
     reverse: &mut BTreeMap<FactId, BTreeSet<FactId>>,
 ) {
     for (id, element) in elements {
         for dependency in element.dependencies.iter() {
-            reverse.entry(*dependency).or_default().insert(*id);
+            insert_reverse_edge(reverse, *dependency, *id);
         }
     }
+}
+
+fn insert_reverse_edge(
+    reverse: &mut BTreeMap<FactId, BTreeSet<FactId>>,
+    dependency: FactId,
+    id: FactId,
+) {
+    reverse.entry(dependency).or_default().insert(id);
 }
 
 struct ImpactTraversal {

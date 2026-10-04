@@ -889,3 +889,26 @@ The actual reverse algorithm and iteration order are unchanged; private entry
 functions expose its production trait body to extraction. The previous a973d8b
 head has passing Ubuntu, source-proof and shared-model CI; macOS was still
 pending at the observed snapshot. Remote CI for this new slice is separate.
+
+** Actual old/new reverse-index construction and connection
+
+=ReverseIndex.lean= proves actual =build_reverse_index= and its nested map and
+dependency loops, entry/default mutation and mutable-borrow restoration. Exact
+neighbor membership is the union of old/new declared dependency edges; neighbor
+uniqueness is derived from the constructor. The linked actual =run_impact= proof
+derives graph correspondence and the initial frontier invariant. It requires
+duplicate-free changed identities, matching seed-vector contents and a twice
+finite-source Usize bound. It supplies no assumed adapter step/stop law.
+
+The source audit now covers 88 declarations. Fresh extraction checks exactly six
+library types and eleven functions, including explicit map enumeration and entry
+restoration models. These are trusted extensional models, not proofs of unsafe
+BTree storage, sorted enumeration or allocation success. Earlier index-construction
+obligations are superseded only within this boundary. Actual wrapper seed and
+projection, aggregate coverage/error integration and serialization/cryptographic
+implementation remain distinct gaps.
+
+Local index-slice qualification passes: 88 audited declarations, fresh
+byte-identical extraction, six Rust targets (35/13/15/55/62/4), rebuilt 99 replay
+checks, strict Context Clippy, formatting/Ruff and exact repository ASCII policy.
+Remote CI must qualify the new committed head independently.
