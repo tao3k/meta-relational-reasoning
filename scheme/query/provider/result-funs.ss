@@ -28,6 +28,14 @@
   (and (string? value) (= (string-length value) 71)
        (string=? (substring value 0 7) "sha256:")
        (every hex-char? (string->list (substring value 7 71)))))
+(def (native-generation? value)
+  (let (prefix "mrr:generation:v1:")
+    (and (string? value)
+         (= (string-length value) (+ (string-length prefix) 64))
+         (string=? (substring value 0 (string-length prefix)) prefix)
+         (every hex-char?
+                (string->list (substring value (string-length prefix)
+                                         (string-length value)))))))
 (def (digest datum)
   (string-append
    "sha256:"
@@ -37,22 +45,25 @@
               (lambda (port) (write datum port))))))))
 
 (def (mrr-result-admission-projection
-      id query binding generation relation entity snapshot native-result count)
+      id query binding generation relation entity snapshot native-result count
+      temporal-cut temporal-generation)
   (unless (and (text? id) (poo-flow-query? query)
                (every sha256-text?
-                      (list binding relation entity snapshot native-result))
-               (exact-integer? generation) (>= generation 0)
+                      (list binding relation entity snapshot native-result temporal-cut))
+               (native-generation? generation)
+               (exact-integer? temporal-generation) (>= temporal-generation 0)
                (exact-integer? count) (>= count 0))
     (error "invalid native MRR result admission projection"))
   (let* ((source (poo-flow-query-source-content-identity query))
          (result (string-append +mrr-result-prefix+ native-result))
          (semantic
-          (digest (list 'poo-flow.mrr-result-projection.v1 id
+          (digest (list 'poo-flow.mrr-result-projection.v2 id
                         +mrr-result-schema+ source binding generation
-                        relation entity snapshot result count))))
+                        relation entity snapshot result count
+                        temporal-cut temporal-generation))))
     (mrr-result-admission-projection-value
      id semantic +mrr-result-schema+ source binding generation
-     relation entity snapshot result count)))
+     relation entity snapshot temporal-cut temporal-generation result count)))
 
 (def (mrr-result-admission-projection-replay projection query)
   (unless (and (mrr-result-admission-projection? projection)
@@ -71,15 +82,19 @@
         (mrr-result-admission-projection
          (.ref projection 'identity) query
          (.ref projection 'query-binding-digest)
-         (.ref projection 'generation)
+         (.ref projection 'native-generation)
          (.ref projection 'relation-catalog-digest)
          (.ref projection 'entity-catalog-digest)
          (.ref projection 'snapshot-digest)
          (substring (.ref projection 'result-digest)
                     (string-length +mrr-result-prefix+)
                     (string-length (.ref projection 'result-digest)))
-         (.ref projection 'result-count)))
-    (unless (equal? (.ref projection 'semantic-digest)
-                    (.ref replayed 'semantic-digest))
+         (.ref projection 'result-count)
+         (.ref projection 'temporal-cut-digest)
+         (.ref projection 'temporal-generation)))
+    (unless (and (equal? (.ref projection 'semantic-digest)
+                         (.ref replayed 'semantic-digest))
+                 (equal? (.ref projection 'query-source-digest)
+                         (.ref replayed 'query-source-digest)))
       (error "native MRR projection digest mismatch"))
     replayed))

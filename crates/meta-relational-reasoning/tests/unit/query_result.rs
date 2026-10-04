@@ -334,28 +334,43 @@ fn transported_result_rechecks_exact_binding_rows_and_digest() {
         verify_query_result_transport(&other, &bytes, limits(10, 10), max_bytes),
         Err(QueryResultTransportError::BindingMismatch)
     );
-    let mut altered_count: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
-    altered_count["row_count"] = serde_json::json!(2);
+    let text = std::str::from_utf8(&bytes).unwrap();
+    assert!(text.starts_with("(object "));
+    let altered_count = text.replace("(\"row_count\" 1)", "(\"row_count\" 2)");
     assert_eq!(
-        verify_query_result_transport(
-            &bound,
-            &serde_json::to_vec(&altered_count).unwrap(),
-            limits(10, 10),
-            max_bytes,
-        ),
+        verify_query_result_transport(&bound, altered_count.as_bytes(), limits(10, 10), max_bytes),
         Err(QueryResultTransportError::RowCountMismatch)
     );
-    let mut altered_schema: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
-    altered_schema["schema"] = serde_json::json!("mrr.query-result-transport.v2");
+    let altered_schema = text.replace(
+        "mrr.query-result-transport.v2",
+        "mrr.query-result-transport.v1",
+    );
     assert_eq!(
-        verify_query_result_transport(
-            &bound,
-            &serde_json::to_vec(&altered_schema).unwrap(),
-            limits(10, 10),
-            max_bytes,
-        ),
+        verify_query_result_transport(&bound, altered_schema.as_bytes(), limits(10, 10), max_bytes),
         Err(QueryResultTransportError::SchemaMismatch)
     );
+    for malformed in [
+        "{}".to_owned(),
+        "#.(exit)".to_owned(),
+        "#0=(#0#)".to_owned(),
+        format!("{text} null"),
+        text.replacen("(object", "(object (\"row_count\" 1)", 1),
+        text.replacen("(object", "(object (\"unexpected\" #t)", 1),
+        "(list ".repeat(65) + &")".repeat(65),
+    ] {
+        assert!(
+            matches!(
+                verify_query_result_transport(
+                    &bound,
+                    malformed.as_bytes(),
+                    limits(10, 10),
+                    max_bytes
+                ),
+                Err(QueryResultTransportError::Encoding(_))
+            ),
+            "accepted {malformed}"
+        );
+    }
     assert!(matches!(
         verify_query_result_transport(
             &bound,
@@ -744,4 +759,179 @@ fn query_result_admission_checks_graph_value_types() {
             ..
         })
     ));
+}
+
+#[test]
+fn scheme_transport_preserves_native_scalar_schemas_and_values() {
+    use crate::{FloatWidth, TemporalUnit, TimezonePolicy};
+    let scalar_cases = vec![
+        (
+            ValueSchema::Entity,
+            Value::Entity(EntityId::from_canonical_bytes(b"entity-wire").unwrap()),
+        ),
+        (ValueSchema::Boolean, Value::Boolean(true)),
+        (ValueSchema::Integer, Value::Integer(i64::MIN)),
+        (ValueSchema::Integer, Value::Integer(i64::MAX)),
+        (
+            ValueSchema::Decimal {
+                precision: 8,
+                scale: 2,
+            },
+            Value::Decimal("123.45".into()),
+        ),
+        (
+            ValueSchema::Float {
+                width: FloatWidth::Binary64,
+            },
+            Value::Float("1.25".into()),
+        ),
+        (
+            ValueSchema::String,
+            Value::String("中文 λ \" \\ \n\r\t".into()),
+        ),
+        (
+            ValueSchema::ByteString,
+            Value::ByteString(vec![0, 1, 127, 255]),
+        ),
+        (ValueSchema::Date, Value::Date("2026-10-04".into())),
+        (
+            ValueSchema::Time {
+                unit: TemporalUnit::Second,
+                timezone: TimezonePolicy::Naive,
+            },
+            Value::Time("12:00:00".into()),
+        ),
+        (
+            ValueSchema::Timestamp {
+                unit: TemporalUnit::Second,
+                timezone: TimezonePolicy::Utc,
+            },
+            Value::Timestamp("2026-10-04T12:00:00Z".into()),
+        ),
+        (ValueSchema::Duration, Value::Duration("PT1S".into())),
+        (
+            ValueSchema::List {
+                element: Box::new(ValueSchema::Integer),
+                element_nullable: true,
+            },
+            Value::List(vec![Value::Integer(3), Value::Null]),
+        ),
+        (
+            ValueSchema::Record {
+                fields: vec![RelationField::new("message", ValueSchema::String, false).unwrap()],
+            },
+            Value::Record(vec![("message".into(), Value::String("event".into()))]),
+        ),
+    ];
+    for (schema, value) in scalar_cases {
+        let bound = bound_query("wire-scalars", schema.clone(), false, false);
+        let original = candidate(
+            &bound,
+            vec![Binding::new("name").unwrap()],
+            vec![vec![QueryResultValue::scalar(schema, value)]],
+        );
+        let bytes = export_query_result_transport(
+            &bound,
+            &original,
+            limits(10, 10),
+            NonZeroUsize::new(16_384).unwrap(),
+        )
+        .unwrap();
+        let exact = NonZeroUsize::new(bytes.len()).unwrap();
+        assert_eq!(
+            export_query_result_transport(&bound, &original, limits(10, 10), exact).unwrap(),
+            bytes
+        );
+        assert_eq!(
+            verify_query_result_transport(&bound, &bytes, limits(10, 10), exact)
+                .unwrap()
+                .candidate(),
+            &original
+        );
+    }
+}
+
+#[test]
+fn scheme_transport_bounds_nested_values_before_recursive_admission() {
+    let bound = bound_query("wire-depth", ValueSchema::Integer, false, false);
+    let mut nested = QueryResultValue::Null;
+    for _ in 0..80 {
+        nested = QueryResultValue::List(vec![nested]);
+    }
+    let original = candidate(
+        &bound,
+        vec![Binding::new("name").unwrap()],
+        vec![vec![nested]],
+    );
+    assert!(matches!(
+        export_query_result_transport(
+            &bound,
+            &original,
+            limits(10, 10),
+            NonZeroUsize::new(16_384).unwrap()
+        ),
+        Err(QueryResultTransportError::Encoding(_))
+    ));
+}
+
+#[test]
+fn scheme_transport_preserves_empty_null_lists_and_graph_results() {
+    let bound = bound_query("wire-null", ValueSchema::String, true, false);
+    let list_bound = bound_query("wire-list", ValueSchema::String, true, true);
+    let (graph_bound, entity_type, relation_type) = bound_graph_query("wire-graph");
+    let cases = vec![
+        (
+            &bound,
+            candidate(&bound, vec![Binding::new("name").unwrap()], vec![]),
+        ),
+        (
+            &bound,
+            candidate(
+                &bound,
+                vec![Binding::new("name").unwrap()],
+                vec![vec![QueryResultValue::Null], vec![QueryResultValue::Null]],
+            ),
+        ),
+        (
+            &list_bound,
+            candidate(
+                &list_bound,
+                vec![Binding::new("names").unwrap()],
+                vec![vec![QueryResultValue::List(vec![
+                    QueryResultValue::Null,
+                    QueryResultValue::scalar(ValueSchema::String, Value::String("event".into())),
+                ])]],
+            ),
+        ),
+        (
+            &graph_bound,
+            candidate(
+                &graph_bound,
+                vec![
+                    Binding::new("node").unwrap(),
+                    Binding::new("relation").unwrap(),
+                ],
+                vec![vec![
+                    QueryResultValue::node(
+                        EntityId::from_canonical_bytes(b"wire-node").unwrap(),
+                        entity_type,
+                    ),
+                    QueryResultValue::relation(
+                        crate::FactId::from_canonical_bytes(b"wire-fact").unwrap(),
+                        relation_type,
+                    ),
+                ]],
+            ),
+        ),
+    ];
+    for (query, result) in cases {
+        let cap = NonZeroUsize::new(16_384).unwrap();
+        let bytes = export_query_result_transport(query, &result, limits(10, 20), cap).unwrap();
+        assert_eq!(
+            verify_query_result_transport(query, &bytes, limits(10, 20), cap)
+                .unwrap()
+                .candidate(),
+            &result
+        );
+    }
 }

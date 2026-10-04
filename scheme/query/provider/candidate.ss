@@ -27,9 +27,9 @@
          (projection
           (mrr-result-admission-projection-replay projection query)))
     (unless (and (equal? (.ref scope 'evidence-cut-digest)
-                         (.ref projection 'snapshot-digest))
+                         (.ref projection 'temporal-cut-digest))
                  (= (.ref scope 'generation)
-                    (.ref projection 'generation))
+                    (.ref projection 'temporal-generation))
                  (eq? (.ref source-receipt 'provider-identity) 'mrr)
                  (equal? (.ref source-receipt 'result-digest)
                          (.ref projection 'result-digest))

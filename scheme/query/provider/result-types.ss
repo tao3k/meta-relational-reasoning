@@ -15,18 +15,20 @@
   (and (object? value)
        (every (lambda (slot) (.slot? value slot))
               '(kind identity semantic-digest native-schema
-                     query-source-digest query-binding-digest generation
+                     query-source-digest query-binding-digest native-generation
+                     temporal-cut-digest temporal-generation
                      relation-catalog-digest entity-catalog-digest
                      snapshot-digest result-digest result-count complete?))
        (eq? (.ref value 'kind) 'mrr.query.result-projection)
        (every text?
               (map (lambda (slot) (.ref value slot))
                    '(identity semantic-digest native-schema
-                              query-source-digest query-binding-digest
+                              query-source-digest query-binding-digest native-generation
+                              temporal-cut-digest
                               relation-catalog-digest entity-catalog-digest
                               snapshot-digest result-digest)))
-       (exact-integer? (.ref value 'generation))
-       (>= (.ref value 'generation) 0)
+       (exact-integer? (.ref value 'temporal-generation))
+       (>= (.ref value 'temporal-generation) 0)
        (exact-integer? (.ref value 'result-count))
        (>= (.ref value 'result-count) 0)
        (eq? (.ref value 'complete?) #f)))

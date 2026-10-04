@@ -262,6 +262,31 @@ fn query_selection_storage_round_trip_requires_no_token_feature() {
             NonZeroUsize::new(65536).unwrap(),
         )
         .unwrap();
+    assert_eq!(
+        record.schema,
+        "mrr.agentic-ai-context.query-selection-record.v2"
+    );
+    assert!(
+        std::str::from_utf8(&record.result_transport)
+            .unwrap()
+            .starts_with("(object ")
+    );
+    let mut legacy = record.clone();
+    legacy.schema = "mrr.agentic-ai-context.query-selection-record.v1".into();
+    assert!(matches!(
+        crate::restore_agentic_ai_context_query_selection(
+            &bundle,
+            &snapshot,
+            crate::AgenticAiContextQuerySelectionRestoreRequest {
+                record: &legacy,
+                expected_digest: *selected.digest(),
+                limits: req.limits,
+                result_limits: req.result_limits,
+                max_result_bytes: NonZeroUsize::new(65536).unwrap(),
+            }
+        ),
+        Err(AgenticAiContextAdmissionError::SelectionRecordSchema)
+    ));
     let decoded: crate::AgenticAiContextQuerySelectionRecord =
         serde_json::from_slice(&serde_json::to_vec(&record).unwrap()).unwrap();
     let restored = crate::restore_agentic_ai_context_query_selection(

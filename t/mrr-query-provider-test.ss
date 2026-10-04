@@ -93,9 +93,10 @@
               '(case-1 profile-1 source-1) #t))
             (projection
              (mrr-result-admission-projection
-              "native" query (test-sha256 #\b) 7
-              (test-sha256 #\c) (test-sha256 #\d) cut
-              (test-sha256 #\e) 1))
+              "native" query (test-sha256 #\b)
+              (string-append "mrr:generation:v1:" (make-string 64 #\1))
+              (test-sha256 #\c) (test-sha256 #\d) (test-sha256 #\f)
+              (test-sha256 #\e) 1 cut 7))
             (admission (poo-flow-query-admit query space))
             (execution-candidate
              (poo-flow-query-execution-candidate
@@ -122,6 +123,17 @@
                      "sha256:declared-basis")))))
        (check (.ref projection 'native-schema)
               => "mrr.query-result-admission.v1")
+       (check (.ref projection 'snapshot-digest) => (test-sha256 #\f))
+       (check (.ref projection 'temporal-cut-digest) => cut)
+       (check (.ref projection 'temporal-generation) => 7)
+       (check (.ref projection 'native-generation)
+              => (string-append "mrr:generation:v1:" (make-string 64 #\1)))
+       (check-exception
+        (mrr-result-admission-projection
+         "integer-is-not-native-generation" query (test-sha256 #\b) 7
+         (test-sha256 #\c) (test-sha256 #\d) (test-sha256 #\f)
+         (test-sha256 #\e) 1 cut 7)
+        true)
        (check (.ref candidate-receipt 'complete?) => #f)
        (check (.ref candidate-receipt 'result-digest)
               => (.ref projection 'result-digest))
@@ -151,21 +163,36 @@
        (check-exception
         (mrr-projected-candidate-receipt
          "forged" "candidate" scope query space source-receipt
-         (.o (:: @ projection) generation: 8))
+         (.o (:: @ projection) temporal-generation: 8))
+        true)
+       (check-exception
+        (mrr-result-admission-projection-replay
+         (.o (:: @ projection) query-source-digest: (test-sha256 #\0)) query)
+        true)
+       (check-exception
+        (mrr-result-admission-projection-replay
+         (.o (:: @ projection) snapshot-digest: (test-sha256 #\0)) query)
+        true)
+       (check-exception
+        (mrr-result-admission-projection-replay
+         (.o (:: @ projection)
+             native-generation:
+             (string-append "mrr:generation:v1:" (make-string 64 #\2))) query)
         true)
        (check-exception
         (mrr-projected-candidate-receipt
-         "other-snapshot" "candidate" scope query space source-receipt
+         "other-cut" "candidate" scope query space source-receipt
          (mrr-result-admission-projection
-          "other" query (test-sha256 #\b) 7
+          "other" query (test-sha256 #\b)
+          (string-append "mrr:generation:v1:" (make-string 64 #\1))
           (test-sha256 #\c) (test-sha256 #\d)
-          (test-sha256 #\f) (test-sha256 #\e) 1))
+          (test-sha256 #\f) (test-sha256 #\e) 1 (test-sha256 #\0) 7))
         true)
        (check-exception
         (mrr-result-admission-projection
          "bad" query "sha256:short" 7
          (test-sha256 #\c) (test-sha256 #\d) cut
-         (test-sha256 #\e) 1)
+         (test-sha256 #\e) 1 cut 7)
         true)))
 
 ))

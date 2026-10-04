@@ -1,5 +1,5 @@
 #+title: MRR Query Result Admission Projection
-#+date: [2026-10-01]
+#+date: [2026-10-04]
 #+options: toc:2 num:t
 
 #+begin_comment
@@ -32,9 +32,11 @@ Query.  No native Rust-to-Scheme exporter or attested crosswalk is wired yet.
 | Native field | POO projection check | Missing verification |
 |--------------+----------------------+----------------------|
 | Bound-query digest | Canonical 32-byte hex representation retained | Equality to a POO Query's semantics |
-| Generation | Exact nonnegative integer; matches Temporal scope | Authenticity of native generation |
+| Native generation | Canonical =mrr:generation:v1:<64 lowercase hex>=, retained separately | Authenticity of native generation |
+| Temporal generation | Exact nonnegative host integer | Host registration authority |
 | Relation and entity catalog digests | Both retained in projection digest | Catalog materialization and authority |
-| Snapshot digest | Exact equality to Temporal cut digest | Snapshot bytes and coverage |
+| Snapshot digest | Native snapshot digest retained independently | Snapshot bytes and coverage |
+| Temporal cut digest | Exact match to candidate scope | Checked native snapshot / Temporal cut correspondence |
 | Result digest and row count | Equal to SourceQueryReceipt assertion | Native row materialization and execution |
 
 * Temporal handoff
@@ -44,8 +46,12 @@ Query.  No native Rust-to-Scheme exporter or attested crosswalk is wired yet.
 
 =mrr-projected-candidate-receipt= first replays the ordinary GQL
 Query/ElementSpace/Provider receipt binding.  It then replays the MRR
-projection and checks exact cut, generation, provider, result digest and row
-count.  Its output uses the distinct
+projection and checks the separately declared Temporal cut and host generation,
+provider, result digest and row count. The projection v2 digest binds both native
+and Temporal identities. Replay also compares the declared Query source digest
+against the reconstructed source, rejecting relabeling under an unchanged
+projection digest. A snapshot may differ from a causal cut, and a native
+GenerationId is never coerced to the Temporal generation integer.  Its output uses the distinct
 =mrr.query-result-admission.v1:sha256:= digest label and forces
 =complete?= =#f= even when a caller's SourceQueryReceipt says complete.  A
 typed MRR result-admission receipt does not by itself establish a complete
@@ -62,18 +68,102 @@ semantics.
 | =t/mrr-query-provider-test.ss= | =MODULE-OK=, =HARNESS-OK=, =OK= | Valid projection, stale generation, wrong snapshot, forged digest, unsupported scalar checker |
 | =t/temporal-candidate-exchange-test.ss= | =MODULE-OK=, =HARNESS-OK=, =OK= | Incomplete required receipt remains pending |
 
-The native facade now exports =mrr.query-result-transport.v1= JSON under an
-explicit byte limit.  It carries exact binding identities, ordered columns and
-typed rows, row count and native result digest.  Its verifier checks the
-version and all five binding identities against an independently supplied
-=CatalogBoundQuery=, re-runs native row/type/budget admission and recomputes
-the receipt digest.  Edited rows, identity, count, version, truncation and
-oversized bytes fail closed in the focused Rust test.  Transport bytes alone
-remain untrusted; the caller must supply the authentic bound query.  The
-verified Rust value is still in-process evidence, not a cross-language call.
+* Native Scheme result transport v2
 
-The remaining owner slice is a host-mediated Rust-to-Scheme handoff of that
-verified value and a checked crosswalk to the original POO Query and Temporal
-cut.  A Scheme caller cannot authenticate the native result by parsing this
-JSON or by constructing =MrrResultAdmissionProjection= itself.  Completeness
-of the physical answer also remains independent of typed result admission.
+The facade exports =mrr.query-result-transport.v2= as an inert Scheme datum
+under a caller-owned byte limit. JSON and v1 records are rejected directly;
+there is no compatibility decoder. The existing Rust export/verify functions
+retain their names, so consumers must update immutable pins and exchange
+versions together. Context query-selection storage records are version 2 too;
+an old stored selection must be regenerated from its original admitted inputs.
+
+The grammar is the ABI v2 subset =null=, =#t=, =#f=, decimal integers, quoted
+UTF-8 strings, =(list ...)= and =(object ("field" value) ...)=. Escapes are
+only quote, backslash, n, r and t; other control characters, reader extensions,
+comments, duplicate fields, trailing data and unknown envelope fields fail.
+Depth is capped at 64 and datum nodes at 262144. MRR Float and Decimal values
+remain their original typed canonical strings; the codec does not round them.
+
+The typed Serde projection preserves all result variants, schemas, ordered
+columns, rows, duplicates and original receipt identities. Encoding borrows
+rows, performs a nonallocating output preflight, then re-admits and writes to a
+bounded sink. The decoder builds a bounded inert data tree and deserializes the
+owner types; =ciborium::Value= is an internal typed tree, not a CBOR transport.
+The existing admission digest remains =mrr.query-result-admission.v1= over the
+original canonical CBOR semantic values. Transport version is not semantic
+identity. Resource limits do not change a successful candidate's digest.
+
+The receiver independently supplies the authentic =CatalogBoundQuery=. Native
+verification checks all five original binding identities, re-runs row/type and
+budget admission, and compares count and digest. A transport is not proof of
+execution, completeness, source authentication, current applicability or effect
+authorization. A zero-row result remains a valid typed result and does not
+establish closed-world absence. Graph nodes, relations and nested result values
+are not reduced to POO's narrower event/position observation profile.
+
+* Integration gates and ownership
+
+POO PR #34 at =aa04d5738e4cacb81f3d043842ca47144ccb39f4= already consumes
+MRR candidate/receipt owner types in-process and calls Scheme semantic ABI v2.
+Its narrow event/position bridge uses a typed fixture. The MRR code here supplies
+the owner-side cross-process representation; it does not import POO's runtime
+or become a second Temporal interpreter. The Scheme projection is still declared
+metadata and always emits an incomplete candidate exchange. Parsing transport
+or constructing a projection cannot authenticate the native producer.
+
+Before physical G0 acceptance, MRR Data must export this original transport from
+its restored-root query result and update its MRR pin. POO must verify the
+original source compilation, native query, catalog, source revision vector and
+separate cut/clock correspondence. Result integrity and physical execution
+receipts remain distinct. Negative acceptance must change root, source, query,
+catalog, row and cut independently.
+
+The following bidirectional gates remain separate from G0: POO conclusion/proof
+projection with original support identities; late correction and current-state
+fences; alternative supports and bounded absence; recursive dependency handling;
+IFC and publication authority. MRR lineage impact is a reevaluation frontier,
+not proof that every reached conclusion is false. Reimported conclusions cannot
+become independent observations. Preserve immutable history and check current
+applicability at consumption. No full Temporal/MRR lifecycle closure is claimed.
+
+
+* Local qualification of this owner slice
+
+Validation uses the repository's captured devenv environment. On the PR branch
+including =6252cb883ba374ad7a7beb309bb1019b1af0cbdd=, the facade's all-feature
+unit suite passed 61 tests and Context workflow integration passed 4 tests.
+The default-feature facade suite passed 34 tests.
+The existing five-second output / 45-second batch watchdog was active for test
+execution. All-target, all-feature facade Clippy passed with warnings denied.
+The declared Gerbil dependencies were installed into a fresh isolated prefix
+(POO pin =273e637d2e6055ef072816f5567705afd17c78b7=), and the MRR package was
+rebuilt. The provider test passed with a 1 GiB heap ceiling, the existing progress
+watchdog, =MODULE-OK=, =HARNESS-OK= and final =OK=. It exercises distinct native
+snapshot/Temporal cut values, integer/native generation separation, source and
+projection relabeling rejection, and the still-incomplete candidate exchange.
+The transport suite includes every scalar schema, graph identities, nested
+values, null/empty/duplicate rows, exact byte limits, deep input, tampered rows,
+count/schema/binding mismatches, JSON/reader extensions, duplicate fields and
+unknown envelope fields. Context restoration rejects the old record version.
+
+The first owner gate found the =query_result.rs= / =query_result/= sibling
+layout; the next found implementations in =mod.rs=. The final layout has a pure
+re-export interface and separate admission/codec implementation leaves. The ASP
+owner gate passes without suppressing its diagnostics.
+
+The initial workspace commit hook selected Homebrew Ghostscript's =gsc= by
+PATH and failed the unrelated native archive build. Local native Cargo/hook
+commands must set =GERBIL_GSC= to the same Gerbil/Gambit compiler used by the
+successful package build and preserve the launcher's =GAMBOPT= relocation
+(=~~=, =~~bin=, =~~lib=). A raw relocated binary without those parameters tried
+the release builder's obsolete library directory. With both settings restored,
+the workspace Clippy commit hook passed. CI binds the compiler to its installed
+Gerbil prefix. No hook or test-progress threshold is disabled. The latest
+nonblocking output-forwarding helper also passed its three self-tests.
+
+These are local native/type/serialization checks. They do not rerun POO's paid
+DeepSeek qualification, MRR Data physical queries or the complete cross-repository
+lifecycle. The existing admission digest/proof interpretation is unchanged;
+no formal proof of the new wire decoder is claimed. Build/dependency preparation
+is separate from the five-second test-progress contract. Remote CI must qualify
+the actual submitted head independently.

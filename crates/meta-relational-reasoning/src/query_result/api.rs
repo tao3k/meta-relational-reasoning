@@ -1,7 +1,7 @@
 //! Admission of bounded physical query results into MRR candidate evidence.
 
 use core::num::NonZeroUsize;
-use std::{collections::BTreeSet, fmt, io::Write};
+use std::{collections::BTreeSet, fmt};
 
 use mrr_bundle::{EntityCatalogDigest, RelationCatalogDigest};
 use mrr_identity::{EntityId, FactId, GenerationId, RelationId};
@@ -13,7 +13,9 @@ use sha2::{Digest, Sha256};
 use crate::{CatalogBoundQuery, ExpressionType, QueryType};
 
 const QUERY_RESULT_ADMISSION_SCHEMA: &[u8] = b"mrr.query-result-admission.v1";
-const QUERY_RESULT_TRANSPORT_SCHEMA: &str = "mrr.query-result-transport.v1";
+use super::scheme;
+
+const QUERY_RESULT_TRANSPORT_SCHEMA: &str = "mrr.query-result-transport.v2";
 
 /// One self-describing value returned by a physical query engine.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -80,7 +82,8 @@ pub struct QueryResultAdmissionReceipt {
 /// A bounded, versioned physical result transport. Bytes are never an
 /// admission receipt: the receiving MRR process rechecks rows and identities.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-struct QueryResultTransportV1 {
+#[serde(deny_unknown_fields)]
+struct QueryResultTransportV2 {
     schema: String,
     query_binding_digest: [u8; 32],
     generation: String,
@@ -124,28 +127,6 @@ impl fmt::Display for QueryResultTransportError {
 }
 
 impl std::error::Error for QueryResultTransportError {}
-
-struct BoundedTransportWriter {
-    bytes: Vec<u8>,
-    limit: usize,
-    exceeded_at: Option<usize>,
-}
-
-impl Write for BoundedTransportWriter {
-    fn write(&mut self, data: &[u8]) -> std::io::Result<usize> {
-        let attempted = self.bytes.len().saturating_add(data.len());
-        if attempted > self.limit {
-            self.exceeded_at = Some(attempted);
-            return Err(std::io::Error::other("query transport byte limit exceeded"));
-        }
-        self.bytes.extend_from_slice(data);
-        Ok(data.len())
-    }
-
-    fn flush(&mut self) -> std::io::Result<()> {
-        Ok(())
-    }
-}
 
 /// Reasons a physical result cannot enter MRR candidate evidence.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -388,44 +369,58 @@ impl VerifiedQueryResultTransport {
 }
 
 /// Export an already admissible candidate with its exact ordered rows.
-/// The byte limit applies after encoding; semantic row/cell limits apply first.
+/// Scheme datum v2 only. Encoding is bounded before recursive admission, then
+/// checked against the exact byte limit while emitting the final receipt.
 pub fn export_query_result_transport(
     query: &CatalogBoundQuery,
     candidate: &CandidateQueryResult,
     limits: QueryResultLimits,
     max_bytes: NonZeroUsize,
 ) -> Result<Vec<u8>, QueryResultTransportError> {
-    let receipt = admit_query_result_candidate(query, candidate, limits)
-        .map_err(QueryResultTransportError::Admission)?;
-    let binding = receipt.binding();
-    let wire = QueryResultTransportV1 {
-        schema: String::from(QUERY_RESULT_TRANSPORT_SCHEMA),
-        query_binding_digest: *binding.query_binding_digest(),
-        generation: binding.generation().to_string(),
-        relation_catalog_digest: *binding.relation_catalog_digest().as_bytes(),
-        entity_catalog_digest: *binding.entity_catalog_digest().as_bytes(),
-        snapshot_digest: *binding.snapshot_digest(),
-        columns: candidate.columns().to_vec(),
-        rows: candidate.rows().to_vec(),
-        row_count: u64::try_from(receipt.row_count())
+    // Borrow original rows. Bound depth, node count and encoded bytes before
+    // recursive semantic validation/digesting; do not clone the candidate.
+    #[derive(Serialize)]
+    struct Transport<'a> {
+        schema: &'static str,
+        query_binding_digest: &'a [u8; 32],
+        generation: GenerationId,
+        relation_catalog_digest: &'a [u8; 32],
+        entity_catalog_digest: &'a [u8; 32],
+        snapshot_digest: &'a [u8; 32],
+        columns: &'a [Binding],
+        rows: &'a [Vec<QueryResultValue>],
+        row_count: u64,
+        result_digest: &'a [u8; 32],
+    }
+    let binding = candidate.binding();
+    let mut wire = Transport {
+        schema: QUERY_RESULT_TRANSPORT_SCHEMA,
+        query_binding_digest: binding.query_binding_digest(),
+        generation: binding.generation(),
+        relation_catalog_digest: binding.relation_catalog_digest.as_bytes(),
+        entity_catalog_digest: binding.entity_catalog_digest.as_bytes(),
+        snapshot_digest: binding.snapshot_digest(),
+        columns: candidate.columns(),
+        rows: candidate.rows(),
+        row_count: u64::try_from(candidate.rows().len())
             .map_err(|_| QueryResultTransportError::CountOverflow)?,
-        result_digest: *receipt.digest(),
+        // Maximum encoded width for every digest byte makes preflight conservative.
+        result_digest: &[255; 32],
     };
-    let mut writer = BoundedTransportWriter {
-        bytes: Vec::new(),
-        limit: max_bytes.get(),
-        exceeded_at: None,
-    };
-    if let Err(error) = serde_json::to_writer(&mut writer, &wire) {
-        return Err(match writer.exceeded_at {
-            Some(observed) => QueryResultTransportError::TooLarge {
+    // The fixed digest-width margin preserves the exact output-size contract.
+    scheme::check(&wire, max_bytes.get().saturating_add(64)).map_err(|error| match error {
+        QueryResultTransportError::TooLarge { observed, .. } => {
+            QueryResultTransportError::TooLarge {
                 limit: max_bytes.get(),
                 observed,
-            },
-            None => QueryResultTransportError::Encoding(error.to_string()),
-        });
-    }
-    Ok(writer.bytes)
+            }
+        }
+        other => other,
+    })?;
+    let receipt = admit_query_result_candidate(query, candidate, limits)
+        .map_err(QueryResultTransportError::Admission)?;
+    wire.result_digest = receipt.digest();
+    scheme::encode(&wire, max_bytes.get())
 }
 
 /// Verify every identity and re-admit the physical rows against a bound query.
@@ -443,8 +438,7 @@ pub fn verify_query_result_transport(
             observed: bytes.len(),
         });
     }
-    let wire: QueryResultTransportV1 = serde_json::from_slice(bytes)
-        .map_err(|error| QueryResultTransportError::Encoding(error.to_string()))?;
+    let wire: QueryResultTransportV2 = scheme::decode(bytes)?;
     if wire.schema != QUERY_RESULT_TRANSPORT_SCHEMA {
         return Err(QueryResultTransportError::SchemaMismatch);
     }

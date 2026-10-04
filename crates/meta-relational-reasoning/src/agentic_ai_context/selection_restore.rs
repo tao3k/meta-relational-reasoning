@@ -17,7 +17,7 @@ use crate::{
 };
 
 pub const AGENTIC_AI_CONTEXT_QUERY_SELECTION_SCHEMA: &str =
-    "mrr.agentic-ai-context.query-selection-record.v1";
+    "mrr.agentic-ai-context.query-selection-record.v2";
 
 /// Decoding this record grants no admission. Result bytes reuse the existing
 /// versioned Query transport rather than introduce another row representation.
