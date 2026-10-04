@@ -252,3 +252,23 @@ includes =llvm-tools=, which supplies LLVM's library at the tool-relative
 location. The explicit linker version probe remains mandatory. The locally
 tested LLD had no LLVM dylib dependency, so that result did not qualify the
 remote distribution's packaging. Remote setup and test success remain required.
+
+* Completed native startup boundaries
+
+Remote native Gerbil/Rust jobs now pass on both Linux and macOS at
+=1a9c9b798fbb37c931de5cc8b66cea3248241ca3=, including the required LLD probe.
+That closes the observed remote linker packaging failure, not Temporal G0--G5.
+
+The private native grammar and finite ABI modules now emit opt-in completion
+diagnostics after their bindings and initial owner state have been installed.
+The existing =MRR_NATIVE_PROGRESS= switch controls them. These are actual
+module completion events, never timer output, request results or authority
+claims. Public Scheme grammar and finite APIs retain their functional behavior.
+The owner thread still waits for complete native setup before accepting work.
+
+The local =mrr-gerbil= library regression passes all 31 cases with these modules
+under the unchanged five-second real-output and 45-second batch deadlines.
+This verifies the Scheme solver/parser projections and their existing negative
+controls. It is not a cold-start benchmark, a downstream physical correction
+receipt or a new model score. The original downstream initialization failures
+remain failures until a coherent pinned MRR/Data/POO graph is requalified.

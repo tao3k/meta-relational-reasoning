@@ -99,3 +99,11 @@
  (c-define (finite-cell table row column)
    (int32 int64 int64) int64 "mrr_finite_cell" "extern"
    (cell table row column)))
+
+;; All finite ABI bindings and initial owner state have been installed. This
+;; diagnostic says nothing about a request that has not yet been evaluated.
+(when (getenv "MRR_NATIVE_PROGRESS" #f)
+  (let (port (current-error-port))
+    (display "mrr-native: finite projection initialized" port)
+    (newline port)
+    (force-output port)))

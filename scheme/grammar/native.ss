@@ -574,3 +574,11 @@
       (if value
         (meta-relational-reasoning/scheme/grammar/native#grammar-text-char
          value index) -1))))
+
+;; A completed module boundary, never a timer or an inference result. Keep
+;; native startup observable without adding effects to the public grammar API.
+(when (getenv "MRR_NATIVE_PROGRESS" #f)
+  (let (port (current-error-port))
+    (display "mrr-native: grammar projection initialized" port)
+    (newline port)
+    (force-output port)))
