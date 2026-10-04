@@ -220,7 +220,7 @@ projection.
 
 * Reference pins and executable evidence
 
-=THIRD_PARTY_NOTICES.md= pins openCypher and SeleneDB by full commit digest as
+[[file:../../THIRD_PARTY_NOTICES.org][THIRD_PARTY_NOTICES.org]] pins openCypher and SeleneDB by full commit digest as
 reference material only. Neither repository participates in dependency
 resolution, generation, linking, or execution.
 
