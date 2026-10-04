@@ -300,9 +300,9 @@ passing a decoded candidate to MRR. MRR bounds metadata before cloning it for
 reconstruction. This interface owns no database, storage client, model assets or
 physical persistence policy. MRR Data remains a downstream consumer, and actual
 backend integration is a separate adapter. Restoring byte/token layouts is
-outside this record profile. Manifest/restore checks are Rust evidence; the
-existing Lean proofs cover their stated composition and prefix premises rather
-than proving this storage protocol.
+outside this record profile. Rust validates the concrete manifest/transport
+implementation. The Context system Lean model now proves checked source-bound
+re-entry under caller ceilings; concrete CBOR and digest refinement remain open.
 
 * Executable entrypoint
 
@@ -500,3 +500,76 @@ just context-scale
 CI runs positive/negative native qualification, the complete feature-gated
 integration test, the runnable workflow, scale scenarios, shared Lean replay
 and the axiom audit. Each platform uploads scale JSON receipts for inspection.
+
+* Context system proof: closure, restoration and revision
+
+The earlier Selection, Composition, Materialization and Tokenization modules
+proved individual laws. They did not establish dependency closure, storage
+re-entry or the reverse dependency revision algorithm. The new modules address
+these system-level obligations explicitly.
+
+** Least required closure
+
+=MRR/AgenticAIContext/Closure.lean= defines finite rooted reachability and an
+executable certificate checker. Query roots, mandatory contract facts and
+temporal receipts jointly seed the required closure. Acceptance checks source
+membership, rooted witnesses, all roots, every declared dependency, duplicate
+freedom and the caller's selected-fact ceiling.
+
+=checked_closure_exact= proves that the accepted list contains every and only
+reachable fact. =checked_closure_unique= proves set equality of independently
+accepted certificates, regardless of list order or expansion fuel. Cycles are
+allowed. Insufficient witness fuel fails admission; an accepted certificate is
+never merely a truncated traversal prefix. Source validity/completeness and the
+completeness of dependency declarations remain upstream admission premises.
+
+** Context admission and restored authority
+
+=MRR/AgenticAIContext/System.lean= composes selection and closure admission.
+=context_system_sound= proves exact Query binding, projected roots, least
+required closure and row/source/selection ceilings. The abstract record retains
+ordered result provenance, source identities, dependencies, mandatory facts,
+temporal receipts and renderer/tokenizer identities.
+
+=context_restore_sound= proves both exact equality with the caller-trusted
+expected record and fresh admission under current source/dependencies/ceilings.
+=context_restore_identity_refused= rejects any changed record. Neither stored
+closure metadata nor stored limits grant authority. Labels model exact admitted
+identities; these theorems do not assume SHA-256 injectivity or prove CBOR parsing.
+
+** Revision and the rendering consequence
+
+=MRR/AgenticAIContext/Revision.lean= uses the union of old and new dependencies
+for reverse impact. Changes include exact semantic element inequality and global
+query/snapshot/contract drift. A checked impact certificate contains the complete
+least reverse closure of changed elements. Reuse is computed from the selected
+intersection minus that impact, rather than supplied as an arbitrary list.
+
+=revision_reuse_dependency_safe= proves exact semantic equality for every
+reusable fact and all of its transitive dependencies. This requires complete
+source declarations with no unknown dependency targets.
+=revision_global_change_no_reuse= proves that global drift empties semantic reuse.
+
+=context_system_revision_render_tokens= combines both admitted endpoints,
+the upstream C4 composition certificate, its exact mapping to the selected
+closure and a computationally checked full rendering frame. It derives element
+equality from safe revision membership, then proves identical parent-first bytes
+under one deterministic element encoder and identical whole-prompt tokens under
+any fixed tokenizer. The encoder and tokenizer identity mappings remain explicit
+provider premises. Partial reuse does not establish whole-context byte equality.
+The existing leaf-append theorem separately requires its tokenizer boundary.
+
+** Executable and proof gates
+
+=Checks/Main.lean= reuses =selection.json= for source, provenance and dependency
+input, and adds 26 system checks: missing/extra/duplicate closure facts,
+insufficient witness fuel, cyclic closure, mandatory and temporal roots, current
+restore ceilings, provenance/source/generation drift, incomplete reverse impact,
+changed dependencies, unrelated changes, global drift and renderer drift.
+
+=Checks/Axioms.lean= requires the system theorem names to be loaded and audits all
+transitive MRR and upstream C4 declarations. No =sorry= or custom axiom is allowed;
+only standard Lean axioms are accepted. This is a checked executable mathematical
+model. Refining the concrete Rust worklist, CBOR transport and hashes into this
+model remains separate work; a physical cache hit or model inference acceleration
+is not a theorem of this system.

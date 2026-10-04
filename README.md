@@ -282,3 +282,8 @@ covered by `just test-agentic-ai-context`. `just context-scale` records bounded
 scale timing, per-process peak RSS and semantic/token reuse eligibility; CI saves
 these JSON receipts for each platform. See the [Context qualification and restore
 contract](docs/architecture/agentic-ai-context.org).
+
+The Context Lean project also checks least dependency closure, source-bound
+restore admission and reverse dependency revision, and connects checked reuse
+through certified C4 composition to rendered-byte and whole-prompt token equality.
+See `proofs/MRRProof/AgenticAIContext/MRR/AgenticAIContext/System.lean`.

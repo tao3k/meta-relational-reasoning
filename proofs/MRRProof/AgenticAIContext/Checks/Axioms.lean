@@ -9,6 +9,17 @@ dependencies. Imported C4 certificates and MRR mapping laws share the same axiom
 run_cmd do
   let environment <- getEnv
   let allowed := #[`propext, `Classical.choice, `Quot.sound]
+  for required in #[
+      `MRR.AgenticAIContext.checked_closure_exact,
+      `MRR.AgenticAIContext.checked_closure_unique,
+      `MRR.AgenticAIContext.context_system_sound,
+      `MRR.AgenticAIContext.context_restore_sound,
+      `MRR.AgenticAIContext.context_restore_identity_refused,
+      `MRR.AgenticAIContext.revision_reuse_dependency_safe,
+      `MRR.AgenticAIContext.revision_global_change_no_reuse,
+      `MRR.AgenticAIContext.context_system_revision_render_tokens] do
+    unless environment.contains required do
+      throwError "Required Context system theorem was not loaded: {required}"
   let mut count : Nat := 0
   let mut c4Count : Nat := 0
   for (name, _) in environment.constants.toList do

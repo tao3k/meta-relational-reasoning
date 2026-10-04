@@ -7,6 +7,7 @@ their upstream meanings; this model introduces neither IDs nor temporal truth. -
 structure SemanticElement (Payload : Type) where
   payload : Payload
   dependencies : List String
+  deriving DecidableEq
 
 abbrev SemanticState (Payload : Type) := String -> SemanticElement Payload
 

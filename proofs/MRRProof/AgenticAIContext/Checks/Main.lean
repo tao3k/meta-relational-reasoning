@@ -162,7 +162,82 @@ private def checkSelectionFixture : IO Unit := do
   check "selection workflow byte tokenizer prefix" ((stableTokenPrefix oldTokens newTokens).length == prefixLength)
   check "selection workflow full-block eligibility" (eligibleFullBlockTokens block oldTokens newTokens == some eligible)
 
+private def checkContextSystemFixture : IO Unit := do
+  let fixture <- jsonResult (Lean.Json.parse (<- IO.FS.readFile "../../../fixtures/agentic-ai-context/selection.json"))
+  let source <- fixtureRows fixture "facts"
+  let current <- fixtureBinding fixture "current_binding"
+  let workflow <- jsonResult (fixture.getObjVal? "workflow")
+  let rows <- fixtureRows workflow "old_rows"
+  let values <- jsonResult (<- jsonResult (workflow.getObjVal? "dependencies")).getArr?
+  let dependencies <- values.toList.mapM fun value => do
+    let entry <- jsonResult value.getArr?
+    let id <- jsonResult entry[0]!.getNat?
+    let ids <- jsonResult entry[1]!.getArr?
+    let ids <- ids.toList.mapM (fun id => jsonResult id.getNat?)
+    pure (id, ids)
+  let record : ContextSystemRecord := {
+    binding := current, source, rows, roots := [2], mandatory := [], temporal := [],
+    dependencies, closure := [1, 2], renderer := 1, tokenizer := 1 }
+  let admit := checkContextSystem current source dependencies 8 8 3 8
+  let restore := fun candidate => restoreContextSystem record candidate current source dependencies 8 8 3 8
+  check "system shared Query and complete closure admission" (admit record)
+  check "system source-bound provenance restore" (restore record)
+  check "system rejects missing dependency" (!admit { record with closure := [2] })
+  check "system rejects unrooted extra fact" (!admit { record with closure := [1, 2, 3] })
+  check "system rejects duplicate closure" (!admit { record with closure := [1, 2, 2] })
+  check "system refuses truncated traversal certificate"
+    (!checkContextSystem current source dependencies 8 8 0 8 record)
+  check "system restore enforces current closure ceiling"
+    (!restoreContextSystem record record current source dependencies 8 8 3 1)
+  check "system restore rejects changed row provenance"
+    (!restore { record with rows := rows ++ rows })
+  check "system restore rejects source declaration drift"
+    (!restoreContextSystem record record current source [(2, [3])] 8 8 3 8)
+  check "system restore rejects current generation drift"
+    (!restoreContextSystem record record { current with generation := 2 } source dependencies 8 8 3 8)
+  check "system empty Query still includes mandatory and temporal roots"
+    (admit { record with rows := [], roots := [], mandatory := [2], temporal := [3], closure := [1, 2, 3] })
+  check "system complete cyclic closure is accepted"
+    (checkRequiredClosure [1, 2, 3] [2] (declaredDependencies [(1, [2]), (2, [1])]) 2 8 [1, 2])
+  let deps := declaredDependencies dependencies
+  let reverse := reverseDependencies [1, 2, 3] deps
+  check "revision complete reverse dependency impact"
+    (checkRequiredClosure [1, 2, 3] [1] reverse 3 8 [1, 2, 3])
+  check "revision refuses incomplete impact certificate"
+    (!checkRequiredClosure [1, 2, 3] [1] reverse 3 8 [1, 2])
+  check "revision dependency change cancels dependent reuse"
+    (revisionReusable [1, 2] [1, 2] [1, 2, 3] == [])
+  check "revision unrelated change preserves selected reuse"
+    (revisionReusable [1, 2] [1, 2] [3] == [1, 2])
+  check "revision checks exact semantic change declaration"
+    (checkRevisionChanges [1, 2, 3] [1] (fun id => id) (fun id => if id == 1 then 9 else id) false)
+  check "revision rejects omitted semantic change"
+    (!checkRevisionChanges [1, 2, 3] [] (fun id => id) (fun id => if id == 1 then 9 else id) false)
+  check "revision global drift requires all source elements changed"
+    (!checkRevisionChanges [1, 2, 3] [1] (fun id => id) (fun id => id) true)
+  let unionDeps := revisionDependencies (declaredDependencies [(2, [1])])
+    (declaredDependencies [(3, [2])])
+  check "revision union retains removed old edge and added new edge"
+    (checkRequiredClosure [1, 2, 3] [1] (reverseDependencies [1, 2, 3] unionDeps) 3 8 [1, 2, 3])
+  check "revision rejects impact that omits the new-edge dependent"
+    (!checkRequiredClosure [1, 2, 3] [1] (reverseDependencies [1, 2, 3] unionDeps) 3 8 [1, 2])
+  let before : Nat -> SemanticElement Nat := fun id => { payload := id, dependencies := ["old"] }
+  let after : Nat -> SemanticElement Nat := fun id => { payload := id, dependencies := ["new"] }
+  check "revision semantic equality includes dependency declarations"
+    (checkRevisionChanges [2] [2] before after false)
+  check "revision refuses undeclared dependency-only change"
+    (!checkRevisionChanges [2] [] before after false)
+  check "system identical revision establishes full rendering frame"
+    (checkContextRevisionFrame record record [] [] (fun id => id) (fun id => id) 3 8)
+  check "system root drift refuses rendering frame"
+    (!checkContextRevisionFrame record { record with roots := [3], closure := [1, 2, 3] }
+      [1, 2, 3] [1, 2, 3] (fun id => id) (fun id => id) 3 8)
+  check "system renderer drift refuses rendering frame"
+    (!checkContextRevisionFrame record { record with renderer := 2 }
+      [1, 2, 3] [1, 2, 3] (fun id => id) (fun id => id) 3 8)
+
 def main (args : List String) : IO Unit := do
+  checkContextSystemFixture
   checkSelectionFixture
   checkUpstreamCertificates
   check "pinned C4 leaf-extension order"
