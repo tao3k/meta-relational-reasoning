@@ -258,37 +258,7 @@ impl AgenticAiContextRevision {
         new: &AgenticAiContextState,
         force_global_change: bool,
     ) -> Self {
-        let all: BTreeSet<_> = old
-            .elements
-            .keys()
-            .chain(new.elements.keys())
-            .copied()
-            .collect();
-        // A changed global binding conservatively invalidates all semantic reuse.
-        let global_change = force_global_change
-            || old.snapshot != new.snapshot
-            || old.query != new.query
-            || old.contract != new.contract;
-        let changed: BTreeSet<_> = all
-            .iter()
-            .copied()
-            .filter(|id| global_change || old.elements.get(id) != new.elements.get(id))
-            .collect();
-        let invalidated = reverse_dependency_impact(old, new, &changed);
-        let old_selected: BTreeSet<_> = old.closure.elements.iter().copied().collect();
-        let new_selected: BTreeSet<_> = new.closure.elements.iter().copied().collect();
-        let reusable = SemanticReuseCertificate {
-            elements: old_selected
-                .intersection(&new_selected)
-                .copied()
-                .filter(|id| !invalidated.contains(id))
-                .collect(),
-        };
-        Self {
-            changed: changed.into_iter().collect(),
-            invalidated: invalidated.into_iter().collect(),
-            reusable,
-        }
+        compare_revisions(old, new, force_global_change)
     }
 
     #[must_use]
@@ -302,6 +272,44 @@ impl AgenticAiContextRevision {
     #[must_use]
     pub const fn reusable(&self) -> &SemanticReuseCertificate {
         &self.reusable
+    }
+}
+
+fn compare_revisions(
+    old: &AgenticAiContextState,
+    new: &AgenticAiContextState,
+    force_global_change: bool,
+) -> AgenticAiContextRevision {
+    let all: BTreeSet<_> = old
+        .elements
+        .keys()
+        .chain(new.elements.keys())
+        .copied()
+        .collect();
+    // A changed global binding conservatively invalidates all semantic reuse.
+    let global_change = force_global_change
+        || old.snapshot != new.snapshot
+        || old.query != new.query
+        || old.contract != new.contract;
+    let changed: BTreeSet<_> = all
+        .iter()
+        .copied()
+        .filter(|id| global_change || old.elements.get(id) != new.elements.get(id))
+        .collect();
+    let invalidated = reverse_dependency_impact(old, new, &changed);
+    let old_selected: BTreeSet<_> = old.closure.elements.iter().copied().collect();
+    let new_selected: BTreeSet<_> = new.closure.elements.iter().copied().collect();
+    let reusable = SemanticReuseCertificate {
+        elements: old_selected
+            .intersection(&new_selected)
+            .copied()
+            .filter(|id| !invalidated.contains(id))
+            .collect(),
+    };
+    AgenticAiContextRevision {
+        changed: changed.into_iter().collect(),
+        invalidated: invalidated.into_iter().collect(),
+        reusable,
     }
 }
 

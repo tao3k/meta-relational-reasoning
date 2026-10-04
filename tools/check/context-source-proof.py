@@ -40,7 +40,9 @@ def ascii_lean(content: str) -> bytes:
 
 def run(command: list[str], environment: dict[str, str], timeout: int = 300) -> None:
     print("SOURCE-PREPARE:", " ".join(command), flush=True)
-    diagnostic = environment.get("MRR_BTREE_SOURCE_PROBE_DIR")
+    diagnostic = environment.get("MRR_SOURCE_PROBE_DIR") or environment.get(
+        "MRR_BTREE_SOURCE_PROBE_DIR"
+    )
     if diagnostic is None:
         subprocess.run(command, cwd=ROOT, env=environment, check=True, timeout=timeout)
         return
@@ -86,18 +88,24 @@ def main() -> int:
     parser.add_argument("--update", action="store_true")
     parser.add_argument("--probe-worklists", action="store_true")
     parser.add_argument(
+        "--probe-revision",
+        action="store_true",
+        help="Retain a diagnostic of actual revision comparison; no success receipt",
+    )
+    parser.add_argument(
         "--probe-btree-source",
         action="store_true",
         help="Retain a bounded diagnostic extracting actual unsafe BTree source",
     )
     args = parser.parse_args()
-    if args.probe_btree_source:
+    if args.probe_btree_source or args.probe_revision:
         args.probe_worklists = True
     if args.probe_worklists and args.update:
         parser.error("a native-adapter probe cannot replace proved generated modules")
     toolchain = args.toolchain_dir.resolve()
     environment = dict(os.environ)
     environment.pop("MRR_BTREE_SOURCE_PROBE_DIR", None)
+    environment.pop("MRR_SOURCE_PROBE_DIR", None)
     environment["PATH"] = f"{Path.home() / '.cargo/bin'}:{environment['PATH']}"
     if args.rustup_home:
         environment["RUSTUP_HOME"] = str(args.rustup_home.resolve())
@@ -120,7 +128,9 @@ def main() -> int:
     receipt.unlink(missing_ok=True)
     environment["CARGO_TARGET_DIR"] = str(receipt.parent / "mrr-source-proof-target")
     functions = (
-        [
+        ["mrr_agentic_ai_context::state::compare_revisions"]
+        if args.probe_revision
+        else [
             "mrr_agentic_ai_context::state::compute_required_closure",
             "mrr_agentic_ai_context::state::reverse_dependency_impact",
         ]
@@ -140,22 +150,32 @@ def main() -> int:
             "mrr_agentic_ai_context::state::run_impact",
             "mrr_agentic_ai_context::state::build_reverse_index",
             "mrr_agentic_ai_context::state::declared_dependency_impact",
+            "mrr_agentic_ai_context::state::compute_required_closure",
         ]
     )
     context = tempfile.TemporaryDirectory(prefix="mrr-source-proof-")
-    if args.probe_btree_source:
+    if args.probe_btree_source or args.probe_revision:
         diagnostic = Path(
-            tempfile.mkdtemp(prefix="mrr-btree-source-probe-", dir=receipt.parent)
+            tempfile.mkdtemp(
+                prefix="mrr-revision-source-probe-"
+                if args.probe_revision
+                else "mrr-btree-source-probe-",
+                dir=receipt.parent,
+            )
         )
-        environment["MRR_BTREE_SOURCE_PROBE_DIR"] = str(diagnostic)
+        environment["MRR_SOURCE_PROBE_DIR"] = str(diagnostic)
         (diagnostic / "library-source-probe.json").write_text(
             json.dumps(
                 {
-                    "schema": "mrr.context.library-source-probe.v1",
+                    "schema": "mrr.context.revision-source-probe.v1"
+                    if args.probe_revision
+                    else "mrr.context.library-source-probe.v1",
                     "proven": False,
                     "aeneas": version.strip(),
                     "charon": charon_version.strip(),
-                    "included_source": "alloc::collections::btree",
+                    "included_source": functions
+                    if args.probe_revision
+                    else "alloc::collections::btree",
                     "stages": [],
                 },
                 indent=2,
@@ -214,6 +234,7 @@ def main() -> int:
                 "-namespace",
                 "MRR.ContextRust",
                 "-split-files",
+                "-filter-trait-methods",
                 str(llbc),
             ],
             environment,
@@ -271,6 +292,7 @@ def main() -> int:
                 "alloc.collections.btree.map.Iter",
                 "alloc.collections.btree.set.BTreeSet",
                 "alloc.collections.btree.set.Iter",
+                "alloc.collections.btree.set.IntoIter",
             ],
             "FunsExternal_Template.lean": [
                 "Array.Insts.CoreCmpOrd.cmp",
@@ -281,11 +303,14 @@ def main() -> int:
                 "SharedABTreeMap.Insts.CoreIterTraitsCollectIntoIteratorPairSharedAKSharedAVIter.into_iter",
                 "alloc.collections.btree.map.Iter.Insts.CoreIterTraitsIteratorIteratorPairSharedAKSharedAV.next",
                 "alloc.collections.btree.set.BTreeSet.Insts.CoreCloneClone.clone",
+                "alloc.collections.btree.set.BTreeSetTGlobal.new",
                 "alloc.collections.btree.set.BTreeSet.insert",
                 "alloc.collections.btree.set.BTreeSet.len",
+                "alloc.collections.btree.set.BTreeSet.Insts.CoreIterTraitsCollectIntoIteratorTIntoIter.into_iter",
                 "SharedABTreeSet.Insts.CoreIterTraitsCollectIntoIteratorSharedATIter.into_iter",
                 "alloc.collections.btree.set.BTreeSetTGlobal.Insts.CoreDefaultDefault.default",
                 "alloc.collections.btree.set.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.next",
+                "alloc.collections.btree.set.IntoIter.Insts.CoreIterTraitsIteratorIterator.next",
             ],
         }
         for filename, declarations in allowed.items():
@@ -324,6 +349,7 @@ def main() -> int:
                     },
                     "library_model_interfaces": allowed,
                     "library_model_boundary": "trusted extensional BTree membership/lookup and entry restoration, map/set enumeration, element clone, checked lengths and lexicographic array ordering; no unsafe stdlib or sorted iteration proof",
+                    "trait_model_filter": "-filter-trait-methods: retain only target Iterator fields; collect.default remains a modeled call",
                     "generated_format": "ASCII arrows and local Prod notation; unknown Unicode rejected",
                     "boundary": "extraction freshness; Lean theorem and axiom checks are separate gates",
                 },

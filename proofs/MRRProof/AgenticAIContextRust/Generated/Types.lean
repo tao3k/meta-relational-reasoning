@@ -75,12 +75,26 @@ def mrr_identity.api.RelationId := Array Std.U8 32#usize
 @[reducible, rust_type "mrr_identity::api::GenerationId"]
 def mrr_identity.api.GenerationId := Array Std.U8 32#usize
 
+/-- [mrr_identity::api::QueryId]
+    Source: 'crates/mrr-identity/src/api.rs', lines 174:8-174:45
+    Name pattern: [mrr_identity::api::QueryId]
+    Visibility: public -/
+@[reducible, rust_type "mrr_identity::api::QueryId"]
+def mrr_identity.api.QueryId := Array Std.U8 32#usize
+
 /-- [mrr_identity::api::EntityId]
     Source: 'crates/mrr-identity/src/api.rs', lines 174:8-174:45
     Name pattern: [mrr_identity::api::EntityId]
     Visibility: public -/
 @[reducible, rust_type "mrr_identity::api::EntityId"]
 def mrr_identity.api.EntityId := Array Std.U8 32#usize
+
+/-- [mrr_identity::api::StateId]
+    Source: 'crates/mrr-identity/src/api.rs', lines 174:8-174:45
+    Name pattern: [mrr_identity::api::StateId]
+    Visibility: public -/
+@[reducible, rust_type "mrr_identity::api::StateId"]
+def mrr_identity.api.StateId := Array Std.U8 32#usize
 
 /-- [mrr_identity::api::RuleId]
     Source: 'crates/mrr-identity/src/api.rs', lines 174:8-174:45
@@ -204,6 +218,24 @@ structure state.AgenticAiContextElement where
   fact : mrr_relation.api.Fact
   dependencies : alloc.vec.Vec mrr_identity.api.FactId
 
+/-- [mrr_agentic_ai_context::state::AgenticAiContextQuery]
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 47:0-50:1
+    Visibility: public -/
+structure state.AgenticAiContextQuery where
+  id : mrr_identity.api.QueryId
+  roots : alloc.vec.Vec mrr_identity.api.FactId
+
+/-- [mrr_agentic_ai_context::state::AgenticAiContextContract]
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 77:0-84:1
+    Visibility: public -/
+structure state.AgenticAiContextContract where
+  actor : mrr_identity.api.EntityId
+  task : mrr_identity.api.StateId
+  policy_digest : Array Std.U8 32#usize
+  required : alloc.vec.Vec mrr_identity.api.FactId
+  temporal_receipts : alloc.vec.Vec mrr_identity.api.FactId
+  require_complete : Bool
+
 /-- [mrr_agentic_ai_context::state::AgenticAiContextError]
     Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 97:0-119:1
     Visibility: public -/
@@ -231,8 +263,20 @@ inductive state.AgenticAiContextError where
 | CompositionOrderViolation : state.AgenticAiContextError
 | InvalidCompositionProducer : state.AgenticAiContextError
 
+/-- [mrr_agentic_ai_context::state::AgenticAiContextClosure]
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 206:0-209:1
+    Visibility: public -/
+structure state.AgenticAiContextClosure where
+  elements : alloc.vec.Vec mrr_identity.api.FactId
+  coverage : mrr_relation.api.EvidenceCompleteness
+
+/-- Trait declaration: [mrr_agentic_ai_context::worklist::Worklist]
+    Source: 'crates/mrr-agentic-ai-context/src/worklist.rs', lines 33:0-36:1 -/
+structure worklist.Worklist (Self : Type) where
+  advance : Self -> Result (Bool ** Self)
+
 /-- [mrr_agentic_ai_context::state::ClosureTraversal]
-    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 388:0-395:1 -/
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 396:0-403:1 -/
 structure state.ClosureTraversal where
   elements : alloc.collections.btree.map.BTreeMap mrr_identity.api.FactId
     state.AgenticAiContextElement Global
@@ -243,13 +287,8 @@ structure state.ClosureTraversal where
   coverage : mrr_relation.api.EvidenceCompleteness
   error : Option state.AgenticAiContextError
 
-/-- Trait declaration: [mrr_agentic_ai_context::worklist::Worklist]
-    Source: 'crates/mrr-agentic-ai-context/src/worklist.rs', lines 33:0-36:1 -/
-structure worklist.Worklist (Self : Type) where
-  advance : Self -> Result (Bool ** Self)
-
 /-- [mrr_agentic_ai_context::state::ImpactTraversal]
-    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 507:0-511:1 -/
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 515:0-519:1 -/
 structure state.ImpactTraversal where
   reverse : alloc.collections.btree.map.BTreeMap mrr_identity.api.FactId
     (alloc.collections.btree.set.BTreeSet mrr_identity.api.FactId Global)

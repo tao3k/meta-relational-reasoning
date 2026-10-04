@@ -141,4 +141,17 @@ def alloc.collections.btree.set.BTreeSet.len {T A : Type}
     (values : alloc.collections.btree.set.BTreeSet T A) : Result Usize :=
   UScalar.tryMk .Usize values.length
 
+def alloc.collections.btree.set.BTreeSet.Insts.CoreIterTraitsCollectIntoIteratorTIntoIter.into_iter
+    {T A : Type} (_allocator : core.alloc.AllocatorClone A)
+    (values : alloc.collections.btree.set.BTreeSet T A) :
+    Result (alloc.collections.btree.set.IntoIter T A) := .ok values
+
+def alloc.collections.btree.set.IntoIter.Insts.CoreIterTraitsIteratorIterator.next
+    {T A : Type} (_allocator : core.alloc.AllocatorClone A)
+    (values : alloc.collections.btree.set.IntoIter T A) :
+    Result (Prod (Option T) (alloc.collections.btree.set.IntoIter T A)) :=
+  match values with
+  | [] => .ok (none, [])
+  | value :: rest => .ok (some value, rest)
+
 end Aeneas.Std

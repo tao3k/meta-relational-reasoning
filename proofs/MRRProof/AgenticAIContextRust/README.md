@@ -81,7 +81,7 @@ Install the pinned Rust toolchain. Then run through the repository profile:
 
 ```sh
 ./.devenv/devenv-profile-exec python3 tools/check/context-source-proof.py --toolchain-dir /path/to/aeneas
-./.devenv/devenv-profile-exec bash -c 'cd proofs/MRRProof/AgenticAIContextRust && MATHLIB_NO_CACHE_ON_UPDATE=1 lake update && lake exe cache get && lake build Evidence Driver NativeFacts Stack Expansion Forward Reverse ReverseIndex ImpactWrapper Coverage Rejection && lake env lean Axioms.lean'
+./.devenv/devenv-profile-exec bash -c 'cd proofs/MRRProof/AgenticAIContextRust && MATHLIB_NO_CACHE_ON_UPDATE=1 lake update && lake exe cache get && lake build Evidence Driver NativeFacts Stack Expansion Forward Reverse ReverseIndex ImpactWrapper Coverage Rejection ForwardWrapper GeneralForward GeneralWrapper DeclaredForward && lake env lean Axioms.lean'
 ```
 
 Use `--rustup-home` for an isolated compiler installation. `--update` deliberately
@@ -282,3 +282,56 @@ wrapper initialization/Result/collection, revision change/reuse construction,
 global rejection-path characterization, serialization/cryptographic
 implementation and unsafe stdlib correctness. Handwritten value models are
 explicit assumptions, not a substitute for those implementation proofs.
+
+## Actual forward outer wrapper and general typed rejection
+
+`ForwardWrapper.lean` proves actual seed initialization, owned-set iteration and
+Vec collection, then connects actual `compute_required_closure` to the native
+closure/coverage theorem. It returns an actual typed Ok with exact closure
+membership and the selected evidence maximum rank. Initial traversal and collect
+laws are derived, not supplied. Its admitted-source and capacity premises remain
+explicit; sorted physical collection and allocator implementation are not proved.
+
+`GeneralForward.lean` permits missing, invalid and required-incomplete evidence,
+without `SourceAdmits`. A strict finite rank covers every accepted/duplicate
+prefix and proves actual driver termination. A returned error has a concrete
+missing/invalid/incomplete witness in the original input; a successful stop has
+exact least-closure membership and duplicate-free identities. This is sound error
+classification, not a trace theorem naming the first rejected identity.
+`GeneralWrapper.lean` carries both cases through the actual outer typed Result:
+error returns do not collect selected identities, successful returns collect the
+actual final set. `DeclaredForward.lean` derives graph correspondence and finite
+source closure from actual root/required/temporal identities and declared element
+dependencies. `native_required_closure_declared_total` therefore needs only the
+explicit initial worklist and output Usize bounds, with no graph-correspondence,
+source-admission, initialized-traversal or adapter-law premise.
+
+The required audit now covers 116 declarations. Extraction allowlists seven
+library types and sixteen functions, including owned enumeration. The pinned
+Aeneas `-filter-trait-methods` option aligns generated Iterator instances with the
+target model's fields; actual `collect.default` remains a modeled call, and its
+complete value effect is proved. Fresh receipts record this configuration and
+model hashes. Trusted BTree/Vec/iterator models do not prove unsafe stdlib, sorted
+physical iteration, allocation or verified compilation. Earlier forward outer
+wrapper and arbitrary-prefix rejection gaps are superseded within this boundary.
+
+## Revision implementation diagnostic
+
+`--probe-revision` starts from actual `compare_revisions`, now called by the
+unchanged public comparison paths. Its body is moved unchanged to a private free
+function because Charon cannot start directly from an inherent impl. Algorithm,
+iteration order and public API remain unchanged. The probe cannot update proved
+modules or emit a success receipt. It retains stages and hashes even when
+translation fails. The pinned Aeneas fails during Iterator method signature
+translation (`SymbolicToPureTypes.translate_fun_sigs`, lines 1000-1001), reporting
+an internal error at Rust core Iterator, lines 42:0-42:24. The failing
+assertion requires empty method-binder `trait_type_constraints`; actual iterator
+adapters retain such constraints. This is a translator limitation, not a missing
+Lean theorem. Revision change/reuse
+construction remains unproved; the new entry and diagnostic are not closure of
+that gate. Serialization/hash implementation and unsafe stdlib/compilation
+correctness also remain separate gates.
+
+A separate retained `--monomorphize-mut=all` revision diagnostic also has stage
+exits 0/2 at the same Iterator signature assertion; it is not a successful
+translation or implementation proof.

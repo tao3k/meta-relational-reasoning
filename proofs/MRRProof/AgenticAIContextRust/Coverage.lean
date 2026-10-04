@@ -104,7 +104,7 @@ theorem native_forward_run_coverage_exact (source roots : List Nat) (deps : Nat 
     (coverage : CoverageInvariant elements initial) :
     exists final, state.run_closure initial = .ok final /\ final.error = none /\
       (forwardProject final).pending = [] /\ CoverageInvariant elements final /\
-      forall id : NativeFactId, id inList final.selected <-> Required roots deps (factModelId id) := by
+      ForwardInvariant source roots deps elements requireComplete final /\ forall id : NativeFactId, id inList final.selected <-> Required roots deps (factModelId id) := by
   let invariant := fun traversal => ForwardInvariant source roots deps elements requireComplete traversal /\
     CoverageInvariant elements traversal
   have contract : AdvanceContract nativeForwardAdapter invariant
@@ -124,7 +124,7 @@ theorem native_forward_run_coverage_exact (source roots : List Nat) (deps : Nat 
     (fun traversal => worklistCapacity source deps (forwardProject traversal)) contract initial (And.intro valid coverage))
   intro final spec
   refine Exists.intro final (And.intro spec.1 (And.intro spec.2.1.1.error
-    (And.intro spec.2.2 (And.intro spec.2.1.2 ?_))))
+    (And.intro spec.2.2 (And.intro spec.2.1.2 (And.intro spec.2.1.1 ?_)))))
   intro id
   have exactSet := worklist_finished_invariant_exact roots deps (forwardProject final)
     spec.2.1.1.graph spec.2.2 (factModelId id)

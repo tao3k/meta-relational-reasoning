@@ -304,8 +304,11 @@ models and admitted finite-source/capacity preconditions. Actual reverse-index
 construction proves exact old/new declared-edge union and supplies the graph
 correspondence for reverse closure. The production reverse helper now proves
 seed iteration/clone/run/return projection without a pending-content premise.
-Actual forward coverage aggregates the selected evidence ranks, and frontier
-rejections stop the actual driver with their exact typed errors. The generic driver also accepts explicit
+Actual forward coverage aggregates the selected evidence ranks. The actual forward
+outer wrapper derives initialization and owned collection and returns typed Ok/Err.
+Its general termination/error-soundness theorem permits arbitrary accepted or
+duplicate prefixes, deriving graph correspondence from actual dependencies and
+requiring only explicit machine-capacity bounds under the named library models. The generic driver also accepts explicit
 adapter invariant and progress laws; source expansion proves exact rejection/error effects and accepted
 dependency/coverage updates. Source pop/extension laws establish the reversed-queue seam under
 the existing Vec/Slice library models. The separate

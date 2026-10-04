@@ -943,3 +943,49 @@ fresh extraction (six types/thirteen functions), six Rust feature targets
 exact repository ASCII policy. At the observed =94b2e2a= remote snapshot both
 source-proof and shared-model jobs passed; native jobs were still running/queued.
 Those results do not qualify the new seed/aggregate/rejection commit.
+
+** Actual forward outer Result, collection and general rejection
+
+The source suite now checks the actual =compute_required_closure= wrapper.
+=ForwardWrapper.lean= derives root/required/temporal initialization, owned set
+enumeration and Vec collection, with exact admitted closure membership and
+coverage aggregation. =GeneralForward.lean= permits rejected evidence and proves
+actual termination after arbitrary accepted/duplicate prefixes without a source
+admission premise. Errors carry a concrete original-input missing/invalid/
+required-incomplete witness; successful stopping has exact closure membership.
+=GeneralWrapper.lean= carries these cases through the actual typed outer Result.
+=DeclaredForward.lean= derives the source graph and finite closure from actual
+input identities and dependency values; its outer totality theorem needs only
+explicit worklist and output Usize bounds. It is not an execution-trace theorem
+naming the first rejected identity or a publication/admission pipeline proof.
+
+The axiom audit requires 116 declarations. Fresh extraction admits exactly seven
+library types and sixteen functions. =-filter-trait-methods= uses the pinned
+extractor's documented target-model alignment; =collect.default= remains present
+and its complete value effect is proved. Explicit value models still do not
+prove unsafe storage, sorted physical iteration, allocators or compilation.
+Earlier forward wrapper and arbitrary-prefix rejection obligations are superseded
+only inside these declared model/resource boundaries.
+
+Revision comparison is now exposed through an unchanged private production body
+=compare_revisions=. This avoids Charon's unsupported direct inherent-impl start
+pattern without changing public API, algorithm or iteration order. A retained
+=--probe-revision= diagnostic cannot update proved modules or emit a success
+receipt. Actual revision extraction reaches Aeneas but triggers an internal error
+in Iterator method signature conversion at =SymbolicToPureTypes.ml:1000-1001=
+and Rust core Iterator =42:0-42:24=. Actual change/reuse construction remains
+unproved, along with serialization/hash and unsafe stdlib/compilation correctness.
+
+Local wrapper/general-result gates pass: 116 audited declarations; fresh
+byte-identical extraction with seven-type/sixteen-function allowlist and explicit
+trait-model filtering; six Rust feature targets (35/13/15/55/62/4); freshly rebuilt
+99 replay checks; strict Context Clippy, fmt/Ruff and exact repository ASCII
+policy. The retained revision probe has stage exits 0/2, verified log hashes and
+=proven: false=, with no success receipt. Its first assertion is a nonempty method
+binder =trait_type_constraints= in =translate_fun_sigs=, not a missing Lean lemma.
+The observed parent =34fa063= has successful source/replay/Ubuntu CI; macOS remains
+pending in that snapshot. A new commit requires independent exact-head CI.
+
+A separate retained `--monomorphize-mut=all` revision diagnostic also has stage
+exits 0/2 at the same Iterator signature assertion; it is not a successful
+translation or implementation proof.

@@ -9,6 +9,7 @@ import ReverseIndex
 import ImpactWrapper
 import Coverage
 import Rejection
+import DeclaredForward
 import Lean.Util.CollectAxioms
 import Lean.Elab.Command
 
@@ -117,7 +118,23 @@ run_cmd do
     `MRR.ContextRustProofs.native_forward_rejection_run_stop,
     `MRR.ContextRustProofs.native_forward_missing_run_stop,
     `MRR.ContextRustProofs.native_forward_invalid_run_stop,
-    `MRR.ContextRustProofs.native_forward_incomplete_run_stop]
+    `MRR.ContextRustProofs.native_forward_incomplete_run_stop,
+    `MRR.ContextRustProofs.native_owned_iterator_list_exact,
+    `MRR.ContextRustProofs.native_owned_collect_exact,
+    `MRR.ContextRustProofs.native_closure_seed_exact,
+    `MRR.ContextRustProofs.model_nodup_subset_length,
+    `MRR.ContextRustProofs.native_required_closure_wrapper_exact,
+    `MRR.ContextRustProofs.native_required_closure_error_projection,
+    `MRR.ContextRustProofs.native_rejected_step_exact,
+    `MRR.ContextRustProofs.native_continuation_invariant,
+    `MRR.ContextRustProofs.native_general_forward_step,
+    `MRR.ContextRustProofs.native_general_forward_run_total,
+    `MRR.ContextRustProofs.native_required_closure_wrapper_total,
+    `MRR.ContextRustProofs.native_declared_graph_projection,
+    `MRR.ContextRustProofs.native_declared_graph_members,
+    `MRR.ContextRustProofs.native_declared_source_matches,
+    `MRR.ContextRustProofs.native_declared_source_closed,
+    `MRR.ContextRustProofs.native_required_closure_declared_total]
   required.forM fun declarationName => do
     unless environment.contains declarationName do
       throwError "Missing source theorem: {declarationName}"

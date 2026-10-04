@@ -18,4 +18,6 @@ abbrev alloc.collections.btree.map.entry.OccupiedEntry (K V _Allocator : Type) :
 abbrev alloc.collections.btree.map.entry.VacantEntry (K _V _Allocator : Type) := K
 abbrev alloc.collections.btree.map.Iter (K V : Type) := List (K ** V)
 
+abbrev alloc.collections.btree.set.IntoIter (T _Allocator : Type) := List T
+
 end Aeneas.Std
