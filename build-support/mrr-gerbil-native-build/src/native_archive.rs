@@ -11,7 +11,7 @@ use std::time::Duration;
 use gerbil_scheme_native_build::{
     NativeHeaderInput, ProgramArchiveContract, ProgramArchiveObservation, ProgramArchiveObserver,
     ProgramArchiveOperation, ProgramArchiveRequest, build_program_archive_with_contract,
-    observe_program_archive_operation, source_workspace,
+    gerbil_command, observe_program_archive_operation, source_workspace,
 };
 
 const REQUIRED_MODULES: &[&str] = &[
@@ -134,7 +134,7 @@ impl NativeBuild {
     }
 
     fn package_command(&self, program: &Path) -> Command {
-        let mut command = clean_command(program);
+        let mut command = gerbil_command(program);
         if program == self.gxi.as_path() && gerbil_build_verbose_level() > 0 {
             // Gerbil's driver appends GSC options after -target, where runtime
             // diagnostics are ignored. GAMBOPT reaches GXI and child GSC before
@@ -325,26 +325,6 @@ pub(crate) fn run_with_progress(
             String::from_utf8_lossy(&output.stderr)
         ))
     }
-}
-
-fn clean_command(program: &Path) -> Command {
-    let mut command = Command::new(program);
-    for name in [
-        "CC",
-        "CFLAGS",
-        "CPPFLAGS",
-        "LDFLAGS",
-        "CPATH",
-        "C_INCLUDE_PATH",
-        "CPLUS_INCLUDE_PATH",
-        "LIBRARY_PATH",
-        "NIX_CFLAGS_COMPILE",
-        "NIX_LDFLAGS",
-        "SDKROOT",
-    ] {
-        command.env_remove(name);
-    }
-    command
 }
 
 fn resolve_program(program: impl AsRef<OsStr>) -> PathBuf {

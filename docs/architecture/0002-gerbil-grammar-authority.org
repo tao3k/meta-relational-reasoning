@@ -264,6 +264,35 @@ replace those gates. A warm package run succeeded, but a fresh package run
 still failed idle30 and exposed =unable to execute tool 'ld'= on this host.
 These failures remain open, rather than being changed into successful builds.
 
+* Shared SDK command isolation (2026-10-05)
+
+GSC =9175ae2c8ba2ac80abf9120030ee7ab13ba742de= exports the canonical
+=gerbil_command= boundary. MRR PackageSpec preparation and program staging use
+that same command builder, removing the duplicated local cleanup list and
+filtering unrelated Nix PATH entries. In particular =DEVELOPER_DIR= is removed
+alongside =SDKROOT=: an owned fresh-prefix process tree showed nested Nix
+=xcrun ld= invocations even though the selected C compiler was Homebrew GCC.
+
+Eight GSC default regressions passed (0.48s), including actual Darwin system
+linker resolution under an inherited Nix developer directory; four native
+fixtures remained explicitly ignored. The Cargo test build succeeded (44.82s)
+and the current source passed direct strict lint against qualified inputs.
+
+Removing the inherited developer-directory override allowed a second
+fresh-prefix PackageSpec run to exit zero under idle30/wall1200. A preceding
+clean fresh-prefix run still failed idle30. The successful run's quiet-phase
+sample contained only GXI and localized =___cleanup_dyn_module= / =dlclose= /
+dyld unload notifications. This explains a distinct process-exit risk; it does
+not establish the cause of every earlier idle5 batch refusal. Compilation,
+cleanup, exit and full downstream construction retain separate gates.
+
+The current MRR production helper passed strict direct Clippy/type checking
+against production-library metadata for the current GSC API and previously
+qualified remaining dependency inputs. The initial attempt incorrectly used
+test-binary metadata and was rejected (E0463); it was not counted as a pass.
+This checks the shared command call but does not replace full Cargo lint or
+the downstream native build gate.
+
 Exact GSC =b20d209= Ubuntu and macOS CI completed successfully. Exact MRR
 =f256c13= had two successful Ubuntu native jobs; one macOS native job failed
 idle5 after final =HARNESS-OK= and =OK= output. Its signal cleanup then hit a
