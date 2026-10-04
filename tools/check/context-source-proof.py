@@ -67,6 +67,8 @@ def run(command: list[str], environment: dict[str, str], timeout: int = 300) -> 
         except subprocess.TimeoutExpired:
             stage["exit_code"] = 124
             stage["reason"] = "preparation timeout"
+            log.flush()
+            stage["log_sha256"] = hashlib.sha256(log_path.read_bytes()).hexdigest()
             report_path.write_text(json.dumps(report, indent=2) + "\n")
             raise
     stage["exit_code"] = result.returncode
@@ -150,6 +152,8 @@ def main() -> int:
             "mrr_agentic_ai_context::state::run_impact",
             "mrr_agentic_ai_context::state::build_reverse_index",
             "mrr_agentic_ai_context::state::declared_dependency_impact",
+            "mrr_agentic_ai_context::state::revision_source_ids",
+            "mrr_agentic_ai_context::state::revision_reusable_ids",
             "mrr_agentic_ai_context::state::compute_required_closure",
         ]
     )
@@ -304,6 +308,7 @@ def main() -> int:
                 "alloc.collections.btree.map.Iter.Insts.CoreIterTraitsIteratorIteratorPairSharedAKSharedAV.next",
                 "alloc.collections.btree.set.BTreeSet.Insts.CoreCloneClone.clone",
                 "alloc.collections.btree.set.BTreeSetTGlobal.new",
+                "alloc.collections.btree.set.BTreeSet.contains",
                 "alloc.collections.btree.set.BTreeSet.insert",
                 "alloc.collections.btree.set.BTreeSet.len",
                 "alloc.collections.btree.set.BTreeSet.Insts.CoreIterTraitsCollectIntoIteratorTIntoIter.into_iter",

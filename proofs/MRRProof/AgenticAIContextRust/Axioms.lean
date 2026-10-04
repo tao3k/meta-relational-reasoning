@@ -10,6 +10,7 @@ import ImpactWrapper
 import Coverage
 import Rejection
 import DeclaredForward
+import RevisionProjection
 import Lean.Util.CollectAxioms
 import Lean.Elab.Command
 
@@ -134,7 +135,16 @@ run_cmd do
     `MRR.ContextRustProofs.native_declared_graph_members,
     `MRR.ContextRustProofs.native_declared_source_matches,
     `MRR.ContextRustProofs.native_declared_source_closed,
-    `MRR.ContextRustProofs.native_required_closure_declared_total]
+    `MRR.ContextRustProofs.native_required_closure_declared_total,
+    `MRR.ContextRustProofs.insert_all_members,
+    `MRR.ContextRustProofs.insert_all_unique,
+    `MRR.ContextRustProofs.insert_all_length,
+    `MRR.ContextRustProofs.native_borrowed_contains_exact,
+    `MRR.ContextRustProofs.native_revision_source_loop_exact,
+    `MRR.ContextRustProofs.native_revision_source_union,
+    `MRR.ContextRustProofs.native_revision_selected_loop_exact,
+    `MRR.ContextRustProofs.native_revision_reuse_loop_exact,
+    `MRR.ContextRustProofs.native_revision_reusable_exact]
   required.forM fun declarationName => do
     unless environment.contains declarationName do
       throwError "Missing source theorem: {declarationName}"

@@ -280,37 +280,68 @@ fn compare_revisions(
     new: &AgenticAiContextState,
     force_global_change: bool,
 ) -> AgenticAiContextRevision {
-    let all: BTreeSet<_> = old
-        .elements
-        .keys()
-        .chain(new.elements.keys())
-        .copied()
-        .collect();
+    let all = revision_source_ids(&old.elements, &new.elements);
     // A changed global binding conservatively invalidates all semantic reuse.
     let global_change = force_global_change
         || old.snapshot != new.snapshot
         || old.query != new.query
         || old.contract != new.contract;
-    let changed: BTreeSet<_> = all
-        .iter()
-        .copied()
-        .filter(|id| global_change || old.elements.get(id) != new.elements.get(id))
-        .collect();
+    let mut changed = BTreeSet::new();
+    for id in &all {
+        if global_change || old.elements.get(id) != new.elements.get(id) {
+            changed.insert(*id);
+        }
+    }
     let invalidated = reverse_dependency_impact(old, new, &changed);
-    let old_selected: BTreeSet<_> = old.closure.elements.iter().copied().collect();
-    let new_selected: BTreeSet<_> = new.closure.elements.iter().copied().collect();
     let reusable = SemanticReuseCertificate {
-        elements: old_selected
-            .intersection(&new_selected)
-            .copied()
-            .filter(|id| !invalidated.contains(id))
-            .collect(),
+        elements: revision_reusable_ids(
+            &old.closure.elements,
+            &new.closure.elements,
+            &invalidated,
+        ),
     };
     AgenticAiContextRevision {
         changed: changed.into_iter().collect(),
         invalidated: invalidated.into_iter().collect(),
         reusable,
     }
+}
+
+#[expect(clippy::for_kv_map, reason = "Share the proved map iterator")]
+fn revision_source_ids(
+    old: &BTreeMap<FactId, AgenticAiContextElement>,
+    new: &BTreeMap<FactId, AgenticAiContextElement>,
+) -> BTreeSet<FactId> {
+    let mut all = BTreeSet::new();
+    for (id, _) in old {
+        all.insert(*id);
+    }
+    for (id, _) in new {
+        all.insert(*id);
+    }
+    all
+}
+
+fn revision_reusable_ids(
+    old: &[FactId],
+    new: &[FactId],
+    invalidated: &BTreeSet<FactId>,
+) -> Vec<FactId> {
+    let mut old_selected = BTreeSet::new();
+    for id in old {
+        old_selected.insert(*id);
+    }
+    let mut new_selected = BTreeSet::new();
+    for id in new {
+        new_selected.insert(*id);
+    }
+    let mut reusable = Vec::new();
+    for id in &old_selected {
+        if new_selected.contains(id) && !invalidated.contains(id) {
+            reusable.push(*id);
+        }
+    }
+    reusable
 }
 
 fn canonical_ids(ids: Vec<FactId>) -> Vec<FactId> {

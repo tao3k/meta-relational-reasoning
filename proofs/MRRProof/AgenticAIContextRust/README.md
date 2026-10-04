@@ -335,3 +335,37 @@ correctness also remain separate gates.
 A separate retained `--monomorphize-mut=all` revision diagnostic also has stage
 exits 0/2 at the same Iterator signature assertion; it is not a successful
 translation or implementation proof.
+
+## Actual revision identity and reuse projections
+
+`RevisionProjection.lean` proves two helpers called by actual production
+`compare_revisions`: `revision_source_ids` builds exactly the old/new map-key
+union without duplicates; `revision_reusable_ids` returns exactly the old/new
+selected intersection excluding invalidated ids, without duplicates, even when
+input selection lists contain duplicates. The latter requires the explicit old
+selection Usize bound. Actual Rust BTreeSet ordering is preserved by the refactor;
+this source theorem proves membership and uniqueness within extensional models,
+not sorted unsafe enumeration or correctness of its invalidated argument.
+
+Nine additional audited laws derive borrowed FactId membership, finite iterator
+termination, exact insertion and filtering effects, and the two outer helpers.
+The strict external interface has seven types and seventeen functions, adding
+only the computable borrowed BTreeSet membership model. No independent
+hand-written replacement of production comparison, assumed adapter law, fuel,
+or generated template axiom is used.
+
+The old Iterator method-binder failure is avoided by explicit production loops.
+Full revision comparison is still unproved. The earlier direct-loop diagnostic
+retains an Aeneas `Could not match the contexts` error at the short-circuit global
+binding comparison. The final full-comparison probe reaches the existing 60s
+translation cap (Charon exit 0, translation exit 124). A separate independent
+boolean-comparison attempt also timed out and was reverted; original Rust
+short-circuit binding behavior remains. These are failed diagnostics, not proof
+success. Timed-out diagnostics now retain the exact log hash as well as the log,
+command and failure code. Their timeout is not relaxed into success.
+
+See [CLOSURE-AUDIT.md](CLOSURE-AUDIT.md) for the obligation inventory, exact green
+starting head, remaining trust boundaries and acceptance conditions. Complete
+change classification, revision assembly, state validation/publication,
+serialization/hash, unsafe stdlib and compilation/provider obligations remain
+separate gates.

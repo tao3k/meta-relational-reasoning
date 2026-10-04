@@ -49,6 +49,22 @@ def alloc.collections.btree.map.BTreeMap.get
     (map : alloc.collections.btree.map.BTreeMap K V A) (query : Q) : Result (Option V) :=
   borrowedLookup borrow.borrow queryOrder.eqInst.partialEqInst.eq query map
 
+-- Trusted borrowed membership in the same extensional set value model.
+def borrowedContains {T Q : Type} (borrow : T -> Result Q)
+    (equal : Q -> Q -> Result Bool) (query : Q) : List T -> Result Bool
+  | [] => .ok false
+  | value :: rest => do
+    let borrowed <- borrow value
+    let matched <- equal borrowed query
+    if matched then .ok true else borrowedContains borrow equal query rest
+
+def alloc.collections.btree.set.BTreeSet.contains {T A Q : Type}
+    (_allocator : MRR.ContextRust.core.alloc.AllocatorClone A)
+    (borrow : MRR.ContextRust.core.borrow.Borrow T Q)
+    (_elementOrder : core.cmp.Ord T) (queryOrder : core.cmp.Ord Q)
+    (set : alloc.collections.btree.set.BTreeSet T A) (query : Q) : Result Bool :=
+  borrowedContains borrow.borrow queryOrder.eqInst.partialEqInst.eq query set
+
 def alloc.collections.btree.set.BTreeSet.insert {T A : Type}
     (_allocator : MRR.ContextRust.core.alloc.AllocatorClone A) (order : core.cmp.Ord T)
     (set : alloc.collections.btree.set.BTreeSet T A) (value : T) :
