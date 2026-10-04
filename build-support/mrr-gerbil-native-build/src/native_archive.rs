@@ -9,7 +9,7 @@ use std::process::Command;
 use std::time::Duration;
 
 use gerbil_scheme_native_build::{
-    ProgramArchiveContract, ProgramArchiveObservation, ProgramArchiveObserver,
+    NativeHeaderInput, ProgramArchiveContract, ProgramArchiveObservation, ProgramArchiveObserver,
     ProgramArchiveOperation, ProgramArchiveRequest, build_program_archive_with_contract,
     observe_program_archive_operation, source_workspace,
 };
@@ -73,6 +73,11 @@ impl ProgramArchiveObserver for CargoObserver {
 /// Materializes the MRR program and delegates its complete AOT graph to the
 /// upstream Gerbil-to-Rust builder.
 pub fn build_native_archive(manifest: &Path) {
+    // SDK selection changes the imported module closure and compiler inputs.
+    // A cached archive from another prefix must not survive that selection.
+    for name in ["GERBIL_PATH", "GERBIL_LOADPATH", "GERBIL_HOME", "GAMBOPT"] {
+        println!("cargo:rerun-if-env-changed={name}");
+    }
     println!("cargo:rerun-if-env-changed=GERBIL_GSC");
     println!("cargo:rerun-if-env-changed=GERBIL_GXPKG");
     println!("cargo:rerun-if-env-changed=GERBIL_BUILD_VERBOSE");
@@ -152,6 +157,14 @@ impl NativeBuild {
     }
 
     fn package_archive(&self, observer: &CargoObserver) {
+        let prefix = env::var_os("GERBIL_PATH")
+            .map_or_else(|| self.workspace.join(".gerbil"), PathBuf::from);
+        let parser_include = prefix.join("pkg/github.com/tao3k/gerbil-parser/include");
+        let parser_headers = [parser_include.join("gerbil-parser/parse-artifact-v1.h")];
+        let native_headers = [NativeHeaderInput {
+            include_directory: &parser_include,
+            header_files: &parser_headers,
+        }];
         let receipt = build_program_archive_with_contract(
             ProgramArchiveRequest {
                 manifest: &self.program_manifest,
@@ -165,6 +178,7 @@ impl NativeBuild {
                 forbidden_modules: FORBIDDEN_RUNTIME_MODULES,
                 linker_main_symbol: "mrr_grammar_gambit_main",
                 additional_objects: &[],
+                native_headers: &native_headers,
             },
             observer,
         )
