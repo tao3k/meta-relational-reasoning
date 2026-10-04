@@ -527,7 +527,7 @@ dependencies = [
 [[package]]
 name = "gerbil-scheme-native-build"
 version = "0.1.0"
-source = "git+https://github.com/tao3k/gerbil-scheme-rust.git?rev=5f4ca683e3635b89fa791233147e272699b72321#5f4ca683e3635b89fa791233147e272699b72321"
+source = "git+https://github.com/tao3k/gerbil-scheme-rust.git?rev=2d20e4818170c8ed97bbb98f66d95faad8a72723#2d20e4818170c8ed97bbb98f66d95faad8a72723"
 dependencies = [
  "cbindgen",
  "cc",
@@ -540,7 +540,7 @@ dependencies = [
 [[package]]
 name = "gerbil-scheme-rust-project-harness"
 version = "0.1.2"
-source = "git+https://github.com/tao3k/gerbil-scheme-rust.git?rev=5f4ca683e3635b89fa791233147e272699b72321#5f4ca683e3635b89fa791233147e272699b72321"
+source = "git+https://github.com/tao3k/gerbil-scheme-rust.git?rev=2d20e4818170c8ed97bbb98f66d95faad8a72723#2d20e4818170c8ed97bbb98f66d95faad8a72723"
 dependencies = [
  "cargo-lock",
  "cargo_toml",
@@ -558,7 +558,7 @@ dependencies = [
 [[package]]
 name = "gerbil-scheme-rust-project-harness-policy"
 version = "0.1.0"
-source = "git+https://github.com/tao3k/gerbil-scheme-rust.git?rev=5f4ca683e3635b89fa791233147e272699b72321#5f4ca683e3635b89fa791233147e272699b72321"
+source = "git+https://github.com/tao3k/gerbil-scheme-rust.git?rev=2d20e4818170c8ed97bbb98f66d95faad8a72723#2d20e4818170c8ed97bbb98f66d95faad8a72723"
 dependencies = [
  "gerbil-scheme-rust-project-harness",
 ]
@@ -566,7 +566,7 @@ dependencies = [
 [[package]]
 name = "gerbil-scheme-sys"
 version = "0.1.0"
-source = "git+https://github.com/tao3k/gerbil-scheme-rust.git?rev=5f4ca683e3635b89fa791233147e272699b72321#5f4ca683e3635b89fa791233147e272699b72321"
+source = "git+https://github.com/tao3k/gerbil-scheme-rust.git?rev=2d20e4818170c8ed97bbb98f66d95faad8a72723#2d20e4818170c8ed97bbb98f66d95faad8a72723"
 dependencies = [
  "gerbil-scheme-native-build",
  "gerbil-scheme-rust-project-harness-policy",
@@ -934,6 +934,7 @@ name = "mrr-gerbil-native-build"
 version = "0.1.0"
 dependencies = [
  "gerbil-scheme-native-build",
+ "sha2 0.10.9",
 ]
 
 [[package]]

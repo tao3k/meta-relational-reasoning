@@ -1,5 +1,6 @@
 //! Thin Cargo adapter for the canonical Gerbil AOT program builder.
 
+use sha2::{Digest, Sha256};
 use std::env;
 use std::ffi::OsStr;
 use std::fs;
@@ -11,7 +12,8 @@ use std::time::Duration;
 use gerbil_scheme_native_build::{
     NativeHeaderInput, ProgramArchiveContract, ProgramArchiveObservation, ProgramArchiveObserver,
     ProgramArchiveOperation, ProgramArchiveRequest, build_program_archive_with_contract,
-    gerbil_command, observe_program_archive_operation, source_workspace,
+    gerbil_command, observe_program_archive_operation, prepare_gsc_progress_launcher,
+    source_workspace,
 };
 
 const REQUIRED_MODULES: &[&str] = &[
@@ -165,16 +167,52 @@ impl NativeBuild {
                 subject: Some("meta-relational-reasoning"),
             },
             || {
-                fs::create_dir_all(&self.package_prefix).map_err(|error| error.to_string())?;
-                run(
-                    self.package_command(&self.gxi)
-                        .arg(&declaration)
-                        .arg("compile"),
-                    "compile canonical MRR PackageSpec",
-                )
+                let identity = self.package_identity()?;
+                run_package_attempt(&self.package_prefix, identity.as_bytes(), || {
+                    let compiler = prepare_gsc_progress_launcher(
+                        &self.gsc,
+                        &self.package_prefix.join("compiler"),
+                        gerbil_build_verbose_level() > 0,
+                    )?;
+                    run(
+                        self.package_command(&self.gxi)
+                            .env("GERBIL_GSC", compiler)
+                            .arg(&declaration)
+                            .arg("compile"),
+                        "compile canonical MRR PackageSpec",
+                    )
+                })
             },
         )
         .expect("prepare isolated MRR Scheme package");
+    }
+
+    fn package_identity(&self) -> Result<String, String> {
+        let mut digest = Sha256::new();
+        digest.update(b"mrr-package-v2\0");
+        for tool in [&self.gsc, &self.gxi] {
+            let path = fs::canonicalize(tool)
+                .map_err(|error| format!("resolve package SDK tool: {error}"))?;
+            let bytes =
+                fs::read(&path).map_err(|error| format!("read package SDK tool: {error}"))?;
+            digest.update(format!("{path:?}\0").as_bytes());
+            digest.update(Sha256::digest(bytes));
+        }
+        let gsc =
+            fs::canonicalize(&self.gsc).map_err(|error| format!("resolve package GSC: {error}"))?;
+        let config = gsc.parent().expect("GSC directory").join("gambuild-C");
+        match fs::read(config) {
+            Ok(bytes) => digest.update(Sha256::digest(bytes)),
+            Err(error) if error.kind() == io::ErrorKind::NotFound => {
+                digest.update(b"no-gambuild-config")
+            }
+            Err(error) => return Err(format!("read package compiler configuration: {error}")),
+        }
+        for name in ["GERBIL_HOME", "GAMBOPT", "GERBIL_BUILD_VERBOSE"] {
+            digest.update(format!("{name}={:?}\0", env::var_os(name)).as_bytes());
+        }
+        digest.update(format!("{:?}\0", self.package_load_path).as_bytes());
+        Ok(format!("mrr-package-v2\n{:x}\n", digest.finalize()))
     }
 
     fn stage_program(&self, observer: &CargoObserver) {
@@ -291,6 +329,34 @@ fn gerbil_build_verbose_level() -> u8 {
 
 fn run(command: &mut Command, operation: &str) -> Result<(), String> {
     run_with_progress(command, operation, gerbil_build_verbose_level() > 0)
+}
+
+pub(crate) fn run_package_attempt(
+    prefix: &Path,
+    identity: &[u8],
+    build: impl FnOnce() -> Result<(), String>,
+) -> Result<(), String> {
+    let marker = prefix.join(".mrr-package-complete");
+    let complete = match fs::read(&marker) {
+        Ok(bytes) => bytes == identity,
+        Err(error) if error.kind() == io::ErrorKind::NotFound => false,
+        Err(error) => return Err(format!("read package completion marker: {error}")),
+    };
+    // std/make can consider intermediate SSI/SCM files current after an
+    // interrupted GSC call. Only this Cargo-owned directory is invalidated.
+    if !complete && prefix.exists() {
+        fs::remove_dir_all(prefix)
+            .map_err(|error| format!("discard incomplete package: {error}"))?;
+    }
+    fs::create_dir_all(prefix).map_err(|error| format!("create package directory: {error}"))?;
+    match fs::remove_file(&marker) {
+        Ok(()) => {}
+        Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+        Err(error) => return Err(format!("invalidate package completion marker: {error}")),
+    }
+    build()?;
+    fs::write(marker, identity)
+        .map_err(|error| format!("publish package completion marker: {error}"))
 }
 
 pub(crate) fn run_with_progress(

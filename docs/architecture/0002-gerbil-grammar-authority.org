@@ -327,6 +327,52 @@ did not provide a complete typed final compiler cause, so the object failure
 is not classified as a proven timeout. Source-bound integration and Rust lint
 steps were skipped; the current native chain remains unqualified.
 
+* Package macro diagnostics and interrupted-output lifecycle (2026-10-05)
+
+MRR pins GSC =2d20e4818170c8ed97bbb98f66d95faad8a72723= and uses its
+=prepare_gsc_progress_launcher= for PackageSpec preparation. The selected
+SDK GSC receives its original arguments and GCC diagnostic options, including
+macro modules for which Gerbil v0.19 drops PackageSpec C options. Quiet and
+non-GCC builds retain the original compiler; the ABI settings, optimization
+level and default parallelism remain in place. GSC owns this compiler policy.
+
+A new isolated package prefix exited zero under idle30/wall1200 in 80.51s
+and produced =native~1.o1=. This is one actual compiler qualification, not a
+speedup, complete archive or downstream semantic claim. The earlier resumed
+incomplete prefix exited zero without GCC diagnostics: =std/make= trusted its
+current-looking SSI even though the macro object was missing. That resumed
+attempt did not qualify the launcher. Previous idle refusals remain retained.
+
+Cargo's package directory now has a completion marker published only after
+successful child exit. A qualified warm directory is retained, but its marker
+is invalidated before rebuilding. Failure leaves the marker absent; the next
+attempt discards only the Cargo-owned package directory before invoking make.
+This prevents partial SSI/SCM outputs from bypassing the next compiler call.
+The marker binds canonical GSC/GXI paths and binary SHA-256 digests, compiler
+configuration bytes, selected SDK/runtime options and package library paths.
+A changed SDK identity invalidates even a previously successful directory.
+The marker qualifies package-process completion, not archive or semantic
+admission; those later gates remain independent.
+
+The final helper Cargo test build succeeded (35.85s); five default regressions
+passed (0.03s), with the six-second streaming fixture explicitly ignored. The
+new lifecycle regression verifies warm reuse, failed rebuild and invalidation
+before retry and changed-SDK invalidation. Current production helper source also passed direct strict
+Clippy with qualified dependency inputs, which does not replace full Cargo
+lint. GSC's thirteen default regressions passed and its monitor now retains
+panic causes and typed diagnostic I/O errors. The original Ubuntu monitor
+panic cause remains unproven until current CI reports it.
+
+Data dependency pins remain frozen while its parallel current-composition
+source/resource-matrix qualification runs. This upstream revision is queued
+for coordination; no Data semantic result is inferred from the package run.
+
+The first full MRR archive attempt passed PackageSpec preparation (63.18s)
+but refused idle30 with 57/59 module objects complete. The remaining objects
+were =clan/poo/trie= and the GQL grammar; the last output was GQL optimization
+analysis. No test binary was admitted. This preserves a distinct archive
+optimization gate after the package macro diagnostics qualified successfully.
+
 The current MRR production helper passed strict direct Clippy/type checking
 against production-library metadata for the current GSC API and previously
 qualified remaining dependency inputs. The initial attempt incorrectly used
@@ -369,3 +415,39 @@ and default test parallelism. Its Cargo test build passed (1m11s), and eight
 default regressions passed (0.61s; four native fixtures ignored). MRR now pins
 that repair; production helper source is unchanged, and new-head CI remains
 a separate gate.
+
+The subsequent full local archive build completed in 5m43s under the unchanged
+idle30/wall1200 gate: package preparation took 63.23s and all 59 object jobs
+completed with the default twelve workers. Thirty-one native ABI/parser tests
+passed in 1.84s under idle5/wall120. The preceding failed attempt used four
+workers; these runs do not establish a performance comparison. This successful
+receipt used GSC =fc114cc=, before the immutable launcher publication fix.
+
+Exact-head Ubuntu GSC =fc114cc= failed parallel publication with =ETXTBSY=.
+The new pin uses no-replacement publication; its local thirteen regressions
+passed. Current-composition MRR build/tests and exact-head Ubuntu CI remain
+separate gates. Data pins remain frozen pending its owner's qualification.
+
+The first local run of the new pin omitted =GERBIL_BUILD_VERBOSE=1= and was
+refused by idle30 after the Rust helper compilation, before native admission.
+This is a retained invocation failure, not evidence against the launcher
+regression fix and not a successful build. The repository native CI already
+sets this diagnostic mode. Local supervised native builds must also set it
+explicitly; it enables real compiler/phase reports without timer heartbeats,
+job caps, optimization changes or heap tuning.
+
+The corrected current-pin build completed in 5m05s under idle30/wall1200:
+PackageSpec completed in 49.46s, module C generation in 35.00s and the full
+59-job object batch (default twelve workers) in 97.01s. Cargo exited
+successfully and admitted the exact native test binary. All thirty-one native
+ABI/parser tests then passed in 2.61s under idle5/wall120. This receipt includes
+GSC =2d20e4818170c8ed97bbb98f66d95faad8a72723= and the current SDK-bound
+package completion lifecycle. Warm cache differences prevent a speedup claim.
+Current-pin production helper metadata also passed strict direct Clippy;
+full Cargo lint and exact-head platform CI remain distinct qualification.
+
+The latest-pin helper test build passed in 2m29s. All five default helper
+regressions passed; the six-second streaming fixture remained explicitly
+ignored by the default test selection. The lifecycle test verifies retained
+warm outputs, failed-attempt marker invalidation, partial-output removal before
+retry, and SDK-change invalidation. This is separate from native ABI admission.
