@@ -11,6 +11,7 @@ import Coverage
 import Rejection
 import DeclaredForward
 import RevisionProjection
+import BindingEquality
 import Lean.Util.CollectAxioms
 import Lean.Elab.Command
 
@@ -144,7 +145,23 @@ run_cmd do
     `MRR.ContextRustProofs.native_revision_source_union,
     `MRR.ContextRustProofs.native_revision_selected_loop_exact,
     `MRR.ContextRustProofs.native_revision_reuse_loop_exact,
-    `MRR.ContextRustProofs.native_revision_reusable_exact]
+    `MRR.ContextRustProofs.native_revision_reusable_exact,
+    `MRR.ContextRustProofs.native_list_equality_exact,
+    `MRR.ContextRustProofs.native_vec_equality_exact,
+    `MRR.ContextRustProofs.native_generation_equality_exact,
+    `MRR.ContextRustProofs.native_entity_equality_exact,
+    `MRR.ContextRustProofs.native_query_id_equality_exact,
+    `MRR.ContextRustProofs.native_state_id_equality_exact,
+    `MRR.ContextRustProofs.native_revision_id_equality_exact,
+    `MRR.ContextRustProofs.native_byte_array_equality_exact,
+    `MRR.ContextRustProofs.native_fact_vec_equality_exact,
+    `MRR.ContextRustProofs.native_external_revision_equality_exact,
+    `MRR.ContextRustProofs.native_revision_binding_equality_exact,
+    `MRR.ContextRustProofs.native_revision_vec_equality_exact,
+    `MRR.ContextRustProofs.native_snapshot_equality_exact,
+    `MRR.ContextRustProofs.native_query_equality_exact,
+    `MRR.ContextRustProofs.native_contract_equality_exact,
+    `MRR.ContextRustProofs.native_revision_bindings_changed_exact]
   required.forM fun declarationName => do
     unless environment.contains declarationName do
       throwError "Missing source theorem: {declarationName}"

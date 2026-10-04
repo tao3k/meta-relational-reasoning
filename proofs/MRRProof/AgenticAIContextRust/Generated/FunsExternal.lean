@@ -11,6 +11,11 @@ local infixr:35 " ** " => Prod
 
 namespace Aeneas.Std
 
+-- Trusted exact string value equality, not an unsafe Rust string implementation proof.
+def alloc.string.String.Insts.CoreCmpPartialEqString.eq (left right : String) : Result Bool :=
+  .ok (decide (left = right))
+
+
 def compareValues {T : Type} (cmp : T -> T -> Result Ordering) :
     List T -> List T -> Result Ordering
   | [], [] => .ok .eq

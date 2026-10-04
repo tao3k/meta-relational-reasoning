@@ -282,10 +282,15 @@ fn compare_revisions(
 ) -> AgenticAiContextRevision {
     let all = revision_source_ids(&old.elements, &new.elements);
     // A changed global binding conservatively invalidates all semantic reuse.
-    let global_change = force_global_change
-        || old.snapshot != new.snapshot
-        || old.query != new.query
-        || old.contract != new.contract;
+    let global_change = revision_bindings_changed(
+        &old.snapshot,
+        &new.snapshot,
+        &old.query,
+        &new.query,
+        &old.contract,
+        &new.contract,
+        force_global_change,
+    );
     let mut changed = BTreeSet::new();
     for id in &all {
         if global_change || old.elements.get(id) != new.elements.get(id) {
@@ -294,17 +299,28 @@ fn compare_revisions(
     }
     let invalidated = reverse_dependency_impact(old, new, &changed);
     let reusable = SemanticReuseCertificate {
-        elements: revision_reusable_ids(
-            &old.closure.elements,
-            &new.closure.elements,
-            &invalidated,
-        ),
+        elements: revision_reusable_ids(&old.closure.elements, &new.closure.elements, &invalidated),
     };
     AgenticAiContextRevision {
         changed: changed.into_iter().collect(),
         invalidated: invalidated.into_iter().collect(),
         reusable,
     }
+}
+
+fn revision_bindings_changed(
+    old_snapshot: &SemanticSnapshot,
+    new_snapshot: &SemanticSnapshot,
+    old_query: &AgenticAiContextQuery,
+    new_query: &AgenticAiContextQuery,
+    old_contract: &AgenticAiContextContract,
+    new_contract: &AgenticAiContextContract,
+    force_global_change: bool,
+) -> bool {
+    force_global_change
+        || old_snapshot != new_snapshot
+        || old_query != new_query
+        || old_contract != new_contract
 }
 
 #[expect(clippy::for_kv_map, reason = "Share the proved map iterator")]
