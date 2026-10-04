@@ -1,6 +1,6 @@
 name = "MRRContextRustProofs"
 version = "0.1.0"
-defaultTargets = ["Evidence", "Driver", "NativeFacts", "Stack", "Expansion", "Forward", "Reverse", "ReverseIndex"]
+defaultTargets = ["Evidence", "Driver", "NativeFacts", "Stack", "Expansion", "Forward", "Reverse", "ReverseIndex", "ImpactWrapper", "Coverage", "Rejection"]
 moreLeanArgs = ["-DautoImplicit=false", "-DwarningAsError=true"]
 
 [[require]]
@@ -40,3 +40,12 @@ name = "Reverse"
 
 [[lean_lib]]
 name = "ReverseIndex"
+
+[[lean_lib]]
+name = "ImpactWrapper"
+
+[[lean_lib]]
+name = "Coverage"
+
+[[lean_lib]]
+name = "Rejection"

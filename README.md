@@ -302,7 +302,10 @@ directions. The actual forward and reverse traversals now discharge their adapte
 and prove termination with exact closures under explicit BTree value/enumeration
 models and admitted finite-source/capacity preconditions. Actual reverse-index
 construction proves exact old/new declared-edge union and supplies the graph
-correspondence for reverse closure; its seed-vector contents remain a premise. The generic driver also accepts explicit
+correspondence for reverse closure. The production reverse helper now proves
+seed iteration/clone/run/return projection without a pending-content premise.
+Actual forward coverage aggregates the selected evidence ranks, and frontier
+rejections stop the actual driver with their exact typed errors. The generic driver also accepts explicit
 adapter invariant and progress laws; source expansion proves exact rejection/error effects and accepted
 dependency/coverage updates. Source pop/extension laws establish the reversed-queue seam under
 the existing Vec/Slice library models. The separate

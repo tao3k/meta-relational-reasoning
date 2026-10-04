@@ -122,4 +122,23 @@ def alloc.collections.btree.map.entry.Entry.or_default {K V A : Type}
       let value <- default.default
       .ok (value, fun updated => .Occupied (key, updated))
 
+-- Clone invokes the actual element clone, preserving its failure behavior.
+def cloneValues {T : Type} (elementClone : core.clone.Clone T) : List T -> Result (List T)
+  | [] => .ok []
+  | value :: rest => do
+    let cloned <- elementClone.clone value
+    let tail <- cloneValues elementClone rest
+    .ok (cloned :: tail)
+
+def alloc.collections.btree.set.BTreeSet.Insts.CoreCloneClone.clone
+    {T A : Type} (elementClone : core.clone.Clone T)
+    (_allocator : core.alloc.AllocatorClone A)
+    (values : alloc.collections.btree.set.BTreeSet T A) :
+    Result (alloc.collections.btree.set.BTreeSet T A) := cloneValues elementClone values
+
+def alloc.collections.btree.set.BTreeSet.len {T A : Type}
+    (_allocator : core.alloc.AllocatorClone A)
+    (values : alloc.collections.btree.set.BTreeSet T A) : Result Usize :=
+  UScalar.tryMk .Usize values.length
+
 end Aeneas.Std

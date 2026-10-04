@@ -912,3 +912,34 @@ Local index-slice qualification passes: 88 audited declarations, fresh
 byte-identical extraction, six Rust targets (35/13/15/55/62/4), rebuilt 99 replay
 checks, strict Context Clippy, formatting/Ruff and exact repository ASCII policy.
 Remote CI must qualify the new committed head independently.
+
+** Actual seed wrapper, coverage aggregate and rejection driver
+
+=ImpactWrapper.lean= closes construction, actual changed-set-to-Vec initialization,
+element clone, run and returned invalidated membership in the production helper.
+The pending-content premise is removed; changed-set duplicate freedom and the
+finite Usize bound remain. Revision comparison/change selection and State field
+projection are not proved here. Six trusted types and thirteen functions now
+include actual element clone calls and checked machine lengths.
+
+=Coverage.lean= proves final actual forward coverage is the maximum weakness rank
+of selected evidence, together with exact least-closure membership and no error
+for an admitted finite source. It handles duplicate pops and derives the empty
+Complete initial coverage invariant. Existing source/graph/initial/budget
+premises remain explicit. =Rejection.lean= derives actual driver stopping at a
+fresh missing, invalidated or required-incomplete frontier identity. It preserves
+the exact typed error and previous coverage and performs no further advance.
+It does not characterize an arbitrary accepted prefix or the outer Result.
+
+The audit requires 100 declarations. Remaining implementation obligations are
+forward outer wrapper/collection/Result, revision change/reuse construction,
+global rejection characterization, serialization/hash and unsafe stdlib. The
+trusted value/enumeration/entry/clone models do not prove physical storage,
+sorted iteration, allocator behavior or compilation correctness.
+
+Local seed/aggregate/rejection gates pass: 100 audited declarations, byte-identical
+fresh extraction (six types/thirteen functions), six Rust feature targets
+(35/13/15/55/62/4), rebuilt 99 replay checks, strict Context Clippy, fmt/Ruff and
+exact repository ASCII policy. At the observed =94b2e2a= remote snapshot both
+source-proof and shared-model jobs passed; native jobs were still running/queued.
+Those results do not qualify the new seed/aggregate/rejection commit.

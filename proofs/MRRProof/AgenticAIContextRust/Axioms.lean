@@ -6,6 +6,9 @@ import Expansion
 import Forward
 import Reverse
 import ReverseIndex
+import ImpactWrapper
+import Coverage
+import Rejection
 import Lean.Util.CollectAxioms
 import Lean.Elab.Command
 
@@ -102,7 +105,19 @@ run_cmd do
     `MRR.ContextRustProofs.native_reverse_index_declared_union,
     `MRR.ContextRustProofs.native_reverse_graph_projection,
     `MRR.ContextRustProofs.native_impact_seed_invariant,
-    `MRR.ContextRustProofs.native_declared_impact_run_exact]
+    `MRR.ContextRustProofs.native_declared_impact_run_exact,
+    `MRR.ContextRustProofs.native_changed_clone_exact,
+    `MRR.ContextRustProofs.native_changed_len_exact,
+    `MRR.ContextRustProofs.native_impact_pending_loop_exact,
+    `MRR.ContextRustProofs.native_declared_impact_wrapper_exact,
+    `MRR.ContextRustProofs.native_evidence_rank_projection,
+    `MRR.ContextRustProofs.native_forward_step_preserves_coverage,
+    `MRR.ContextRustProofs.native_forward_run_coverage_exact,
+    `MRR.ContextRustProofs.native_empty_coverage_invariant,
+    `MRR.ContextRustProofs.native_forward_rejection_run_stop,
+    `MRR.ContextRustProofs.native_forward_missing_run_stop,
+    `MRR.ContextRustProofs.native_forward_invalid_run_stop,
+    `MRR.ContextRustProofs.native_forward_incomplete_run_stop]
   required.forM fun declarationName => do
     unless environment.contains declarationName do
       throwError "Missing source theorem: {declarationName}"

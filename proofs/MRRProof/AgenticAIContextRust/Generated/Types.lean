@@ -249,7 +249,7 @@ structure worklist.Worklist (Self : Type) where
   advance : Self -> Result (Bool ** Self)
 
 /-- [mrr_agentic_ai_context::state::ImpactTraversal]
-    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 499:0-503:1 -/
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 507:0-511:1 -/
 structure state.ImpactTraversal where
   reverse : alloc.collections.btree.map.BTreeMap mrr_identity.api.FactId
     (alloc.collections.btree.set.BTreeSet mrr_identity.api.FactId Global)

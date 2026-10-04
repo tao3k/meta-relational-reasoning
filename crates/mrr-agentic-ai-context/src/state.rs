@@ -454,7 +454,15 @@ fn reverse_dependency_impact(
     new: &AgenticAiContextState,
     changed: &BTreeSet<FactId>,
 ) -> BTreeSet<FactId> {
-    let reverse = build_reverse_index(&old.elements, &new.elements);
+    declared_dependency_impact(&old.elements, &new.elements, changed)
+}
+
+fn declared_dependency_impact(
+    old: &BTreeMap<FactId, AgenticAiContextElement>,
+    new: &BTreeMap<FactId, AgenticAiContextElement>,
+    changed: &BTreeSet<FactId>,
+) -> BTreeSet<FactId> {
+    let reverse = build_reverse_index(old, new);
     let mut pending = Vec::with_capacity(changed.len());
     for id in changed {
         pending.push(*id);

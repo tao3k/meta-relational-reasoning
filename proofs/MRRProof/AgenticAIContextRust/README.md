@@ -81,7 +81,7 @@ Install the pinned Rust toolchain. Then run through the repository profile:
 
 ```sh
 ./.devenv/devenv-profile-exec python3 tools/check/context-source-proof.py --toolchain-dir /path/to/aeneas
-./.devenv/devenv-profile-exec bash -c 'cd proofs/MRRProof/AgenticAIContextRust && MATHLIB_NO_CACHE_ON_UPDATE=1 lake update && lake exe cache get && lake build Evidence Driver NativeFacts Stack Expansion Forward Reverse ReverseIndex && lake env lean Axioms.lean'
+./.devenv/devenv-profile-exec bash -c 'cd proofs/MRRProof/AgenticAIContextRust && MATHLIB_NO_CACHE_ON_UPDATE=1 lake update && lake exe cache get && lake build Evidence Driver NativeFacts Stack Expansion Forward Reverse ReverseIndex ImpactWrapper Coverage Rejection && lake env lean Axioms.lean'
 ```
 
 Use `--rustup-home` for an isolated compiler installation. `--update` deliberately
@@ -246,3 +246,39 @@ and allocation success remain outside the proof. The required axiom audit covers
 superseded within this boundary. Wrapper initialization/projection, aggregate
 coverage/error integration and serialization/cryptographic implementation
 refinement remain open.
+
+## Actual reverse seed wrapper, aggregate coverage and typed rejection
+
+`ImpactWrapper.lean` proves the actual `declared_dependency_impact` helper called
+by `reverse_dependency_impact`: construction, changed-set iteration into a Vec,
+element clone, terminating traversal and return projection. The seed-content
+premise is eliminated. Changed-set duplicate freedom and the finite Usize bound
+remain explicit well-formedness/resource premises. The clone model invokes the
+actual element clone and preserves failures; the length model checks machine
+bounds. This does not prove how revision comparison constructs `changed` or the
+State field projection, and it does not establish sorted physical enumeration.
+
+`Coverage.lean` derives a coverage invariant for actual forward steps, including
+duplicate pops, and lifts it through the actual terminating driver. Final coverage
+rank is the maximum weakness rank of selected evidence; the same result has exact
+least-required-closure membership and no error under `SourceAdmits`. Empty selected
+state with Complete coverage satisfies the initial coverage invariant. The source
+graph, source admission, initial graph invariant and machine budget remain the
+forward theorem's explicit premises.
+
+`Rejection.lean` proves actual pop/insert/lookup/expansion/driver stopping for a
+fresh missing, invalidated or required-incomplete identity at the current pending
+frontier. The exact typed error is retained, coverage is unchanged and the driver
+does not perform another advance. The rejected identity remains in the internal
+selected set exactly as Rust does. This is not a theorem about the first bad
+identity after an arbitrary accepted prefix, nor the outer Result wrapper or
+publication admission.
+
+The required audit now covers 100 declarations; the extraction gate checks six
+types and thirteen functions. Actual reverse seed initialization/projection,
+aggregate admitted-forward coverage and frontier rejection/driver integration
+are closed within the named value models. Remaining gaps include forward outer
+wrapper initialization/Result/collection, revision change/reuse construction,
+global rejection-path characterization, serialization/cryptographic
+implementation and unsafe stdlib correctness. Handwritten value models are
+explicit assumptions, not a substitute for those implementation proofs.

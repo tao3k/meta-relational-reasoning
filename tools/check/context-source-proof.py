@@ -139,6 +139,7 @@ def main() -> int:
             "mrr_agentic_ai_context::state::advance_impact",
             "mrr_agentic_ai_context::state::run_impact",
             "mrr_agentic_ai_context::state::build_reverse_index",
+            "mrr_agentic_ai_context::state::declared_dependency_impact",
         ]
     )
     context = tempfile.TemporaryDirectory(prefix="mrr-source-proof-")
@@ -279,7 +280,9 @@ def main() -> int:
                 "alloc.collections.btree.map.BTreeMap.entry",
                 "SharedABTreeMap.Insts.CoreIterTraitsCollectIntoIteratorPairSharedAKSharedAVIter.into_iter",
                 "alloc.collections.btree.map.Iter.Insts.CoreIterTraitsIteratorIteratorPairSharedAKSharedAV.next",
+                "alloc.collections.btree.set.BTreeSet.Insts.CoreCloneClone.clone",
                 "alloc.collections.btree.set.BTreeSet.insert",
+                "alloc.collections.btree.set.BTreeSet.len",
                 "SharedABTreeSet.Insts.CoreIterTraitsCollectIntoIteratorSharedATIter.into_iter",
                 "alloc.collections.btree.set.BTreeSetTGlobal.Insts.CoreDefaultDefault.default",
                 "alloc.collections.btree.set.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.next",
@@ -320,7 +323,7 @@ def main() -> int:
                         for name in ("TypesExternal.lean", "FunsExternal.lean")
                     },
                     "library_model_interfaces": allowed,
-                    "library_model_boundary": "trusted extensional BTree membership/lookup and entry restoration, map/set enumeration and lexicographic array ordering; no unsafe stdlib or sorted iteration proof",
+                    "library_model_boundary": "trusted extensional BTree membership/lookup and entry restoration, map/set enumeration, element clone, checked lengths and lexicographic array ordering; no unsafe stdlib or sorted iteration proof",
                     "generated_format": "ASCII arrows and local Prod notation; unknown Unicode rejected",
                     "boundary": "extraction freshness; Lean theorem and axiom checks are separate gates",
                 },

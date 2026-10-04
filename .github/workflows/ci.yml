@@ -183,7 +183,7 @@ jobs:
       - name: Prove generated production functions and audit axioms
         working-directory: proofs/MRRProof/AgenticAIContextRust
         run: |
-          lake build Evidence Driver NativeFacts Stack Expansion Forward Reverse ReverseIndex
+          lake build Evidence Driver NativeFacts Stack Expansion Forward Reverse ReverseIndex ImpactWrapper Coverage Rejection
           lake env lean Axioms.lean
       - name: Save current source extraction receipt
         if: always()

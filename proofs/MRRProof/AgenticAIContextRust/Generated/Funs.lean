@@ -446,8 +446,98 @@ def state.run_closure
     state.ClosureTraversal.Insts.Mrr_agentic_ai_contextWorklistWorklist
     traversal
 
+/-- [mrr_agentic_ai_context::state::advance_impact]: loop body 0:
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 528:8-532:9 -/
+@[rust_loop_body]
+def state.advance_impact_loop.body
+  (iter : alloc.collections.btree.set.Iter mrr_identity.api.FactId)
+  (bs : alloc.collections.btree.set.BTreeSet mrr_identity.api.FactId Global)
+  (v : alloc.vec.Vec mrr_identity.api.FactId) :
+  Result (ControlFlow ((alloc.collections.btree.set.Iter
+    mrr_identity.api.FactId) ** (alloc.collections.btree.set.BTreeSet
+    mrr_identity.api.FactId Global) ** (alloc.vec.Vec mrr_identity.api.FactId))
+    ((alloc.collections.btree.set.BTreeSet mrr_identity.api.FactId Global) **
+    (alloc.vec.Vec mrr_identity.api.FactId)))
+  := do
+  let (o, iter1) <-
+    alloc.collections.btree.set.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.next
+      iter
+  match o with
+  | none => ok (done (bs, v))
+  | some dependent =>
+    let (b, bs1) <-
+      alloc.collections.btree.set.BTreeSet.insert
+        alloc.alloc.Global.Insts.CoreAllocAllocatorClone
+        mrr_identity.api.FactId.Insts.CoreCmpOrd bs dependent
+    if b
+    then let v1 <- alloc.vec.Vec.push v dependent
+         ok (cont (iter1, bs1, v1))
+    else ok (cont (iter1, bs1, v))
+
+/-- [mrr_agentic_ai_context::state::advance_impact]: loop 0:
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 528:8-532:9 -/
+@[rust_loop]
+def state.advance_impact_loop
+  (iter : alloc.collections.btree.set.Iter mrr_identity.api.FactId)
+  (bs : alloc.collections.btree.set.BTreeSet mrr_identity.api.FactId Global)
+  (v : alloc.vec.Vec mrr_identity.api.FactId) :
+  Result ((alloc.collections.btree.set.BTreeSet mrr_identity.api.FactId Global)
+    ** (alloc.vec.Vec mrr_identity.api.FactId))
+  := do
+  loop
+    (fun (iter1, bs1, v1) => state.advance_impact_loop.body iter1 bs1 v1)
+    (iter, bs, v)
+
+/-- [mrr_agentic_ai_context::state::advance_impact]:
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 523:0-535:1 -/
+def state.advance_impact
+  (traversal : state.ImpactTraversal) :
+  Result (Bool ** state.ImpactTraversal)
+  := do
+  let (o, v) <- worklist.pop_identity traversal.pending
+  match o with
+  | none => ok (false, { traversal with pending := v })
+  | some id =>
+    let o1 <-
+      alloc.collections.btree.map.BTreeMap.get
+        alloc.alloc.Global.Insts.CoreAllocAllocatorClone
+        (core.borrow.Borrow.Blanket mrr_identity.api.FactId)
+        mrr_identity.api.FactId.Insts.CoreCmpOrd
+        mrr_identity.api.FactId.Insts.CoreCmpOrd traversal.reverse id
+    match o1 with
+    | none => ok (true, { traversal with pending := v })
+    | some dependents =>
+      let iter <-
+        SharedABTreeSet.Insts.CoreIterTraitsCollectIntoIteratorSharedATIter.into_iter
+          alloc.alloc.Global.Insts.CoreAllocAllocatorClone dependents
+      let (bs, v1) <- state.advance_impact_loop iter traversal.invalidated v
+      ok (true, { traversal with invalidated := bs, pending := v1 })
+
+/-- [mrr_agentic_ai_context::state::{impl mrr_agentic_ai_context::worklist::Worklist for mrr_agentic_ai_context::state::ImpactTraversal}::advance]:
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 518:4-520:5 -/
+def state.ImpactTraversal.Insts.Mrr_agentic_ai_contextWorklistWorklist.advance
+  (self : state.ImpactTraversal) : Result (Bool ** state.ImpactTraversal) := do
+  state.advance_impact self
+
+/-- Trait implementation: [mrr_agentic_ai_context::state::{impl mrr_agentic_ai_context::worklist::Worklist for mrr_agentic_ai_context::state::ImpactTraversal}]
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 517:0-521:1 -/
+@[reducible]
+def state.ImpactTraversal.Insts.Mrr_agentic_ai_contextWorklistWorklist :
+  worklist.Worklist state.ImpactTraversal := {
+  advance :=
+    state.ImpactTraversal.Insts.Mrr_agentic_ai_contextWorklistWorklist.advance
+}
+
+/-- [mrr_agentic_ai_context::state::run_impact]:
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 513:0-515:1 -/
+def state.run_impact
+  (traversal : state.ImpactTraversal) : Result state.ImpactTraversal := do
+  worklist.run
+    state.ImpactTraversal.Insts.Mrr_agentic_ai_contextWorklistWorklist
+    traversal
+
 /-- [mrr_agentic_ai_context::state::insert_reverse_edge]:
-    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 491:0-497:1 -/
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 499:0-505:1 -/
 def state.insert_reverse_edge
   (reverse : alloc.collections.btree.map.BTreeMap mrr_identity.api.FactId
   (alloc.collections.btree.set.BTreeSet mrr_identity.api.FactId Global) Global)
@@ -474,7 +564,7 @@ def state.insert_reverse_edge
   ok (entry_back e1)
 
 /-- [mrr_agentic_ai_context::state::add_reverse_dependencies]: loop body 1:
-    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 485:8-487:9 -/
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 493:8-495:9 -/
 @[rust_loop_body]
 def state.add_reverse_dependencies_loop0_loop0.body
   (id : mrr_identity.api.FactId)
@@ -497,7 +587,7 @@ def state.add_reverse_dependencies_loop0_loop0.body
     ok (cont (iter1, reverse1))
 
 /-- [mrr_agentic_ai_context::state::add_reverse_dependencies]: loop 1:
-    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 485:8-487:9 -/
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 493:8-495:9 -/
 @[rust_loop]
 def state.add_reverse_dependencies_loop0_loop0
   (iter : core.slice.iter.Iter mrr_identity.api.FactId)
@@ -514,7 +604,7 @@ def state.add_reverse_dependencies_loop0_loop0
     (iter, reverse)
 
 /-- [mrr_agentic_ai_context::state::add_reverse_dependencies]: loop body 0:
-    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 484:4-488:5 -/
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 492:4-496:5 -/
 @[rust_loop_body]
 def state.add_reverse_dependencies_loop0.body
   (iter : alloc.collections.btree.map.Iter mrr_identity.api.FactId
@@ -544,7 +634,7 @@ def state.add_reverse_dependencies_loop0.body
     ok (cont (iter1, reverse1))
 
 /-- [mrr_agentic_ai_context::state::add_reverse_dependencies]: loop 0:
-    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 484:4-488:5 -/
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 492:4-496:5 -/
 @[rust_loop]
 def state.add_reverse_dependencies_loop0
   (iter : alloc.collections.btree.map.Iter mrr_identity.api.FactId
@@ -562,7 +652,7 @@ def state.add_reverse_dependencies_loop0
     (iter, reverse)
 
 /-- [mrr_agentic_ai_context::state::add_reverse_dependencies]:
-    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 480:0-489:1 -/
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 488:0-497:1 -/
 def state.add_reverse_dependencies
   (elements : alloc.collections.btree.map.BTreeMap mrr_identity.api.FactId
   state.AgenticAiContextElement Global)
@@ -579,7 +669,7 @@ def state.add_reverse_dependencies
   state.add_reverse_dependencies_loop0 iter reverse
 
 /-- [mrr_agentic_ai_context::state::build_reverse_index]:
-    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 470:0-478:1 -/
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 478:0-486:1 -/
 def state.build_reverse_index
   (old : alloc.collections.btree.map.BTreeMap mrr_identity.api.FactId
   state.AgenticAiContextElement Global)
@@ -595,95 +685,65 @@ def state.build_reverse_index
   let reverse1 <- state.add_reverse_dependencies old reverse
   state.add_reverse_dependencies new reverse1
 
-/-- [mrr_agentic_ai_context::state::advance_impact]: loop body 0:
-    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 520:8-524:9 -/
+/-- [mrr_agentic_ai_context::state::declared_dependency_impact]: loop body 0:
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 467:4-469:5 -/
 @[rust_loop_body]
-def state.advance_impact_loop.body
+def state.declared_dependency_impact_loop.body
   (iter : alloc.collections.btree.set.Iter mrr_identity.api.FactId)
-  (bs : alloc.collections.btree.set.BTreeSet mrr_identity.api.FactId Global)
-  (v : alloc.vec.Vec mrr_identity.api.FactId) :
+  (pending : alloc.vec.Vec mrr_identity.api.FactId) :
   Result (ControlFlow ((alloc.collections.btree.set.Iter
-    mrr_identity.api.FactId) ** (alloc.collections.btree.set.BTreeSet
-    mrr_identity.api.FactId Global) ** (alloc.vec.Vec mrr_identity.api.FactId))
-    ((alloc.collections.btree.set.BTreeSet mrr_identity.api.FactId Global) **
-    (alloc.vec.Vec mrr_identity.api.FactId)))
+    mrr_identity.api.FactId) ** (alloc.vec.Vec mrr_identity.api.FactId))
+    (alloc.vec.Vec mrr_identity.api.FactId))
   := do
   let (o, iter1) <-
     alloc.collections.btree.set.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.next
       iter
   match o with
-  | none => ok (done (bs, v))
-  | some dependent =>
-    let (b, bs1) <-
-      alloc.collections.btree.set.BTreeSet.insert
-        alloc.alloc.Global.Insts.CoreAllocAllocatorClone
-        mrr_identity.api.FactId.Insts.CoreCmpOrd bs dependent
-    if b
-    then let v1 <- alloc.vec.Vec.push v dependent
-         ok (cont (iter1, bs1, v1))
-    else ok (cont (iter1, bs1, v))
+  | none => ok (done pending)
+  | some id =>
+    let pending1 <- alloc.vec.Vec.push pending id
+    ok (cont (iter1, pending1))
 
-/-- [mrr_agentic_ai_context::state::advance_impact]: loop 0:
-    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 520:8-524:9 -/
+/-- [mrr_agentic_ai_context::state::declared_dependency_impact]: loop 0:
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 467:4-469:5 -/
 @[rust_loop]
-def state.advance_impact_loop
+def state.declared_dependency_impact_loop
   (iter : alloc.collections.btree.set.Iter mrr_identity.api.FactId)
-  (bs : alloc.collections.btree.set.BTreeSet mrr_identity.api.FactId Global)
-  (v : alloc.vec.Vec mrr_identity.api.FactId) :
-  Result ((alloc.collections.btree.set.BTreeSet mrr_identity.api.FactId Global)
-    ** (alloc.vec.Vec mrr_identity.api.FactId))
+  (pending : alloc.vec.Vec mrr_identity.api.FactId) :
+  Result (alloc.vec.Vec mrr_identity.api.FactId)
   := do
   loop
-    (fun (iter1, bs1, v1) => state.advance_impact_loop.body iter1 bs1 v1)
-    (iter, bs, v)
+    (fun (iter1, pending1) => state.declared_dependency_impact_loop.body iter1
+      pending1)
+    (iter, pending)
 
-/-- [mrr_agentic_ai_context::state::advance_impact]:
-    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 515:0-527:1 -/
-def state.advance_impact
-  (traversal : state.ImpactTraversal) :
-  Result (Bool ** state.ImpactTraversal)
+/-- [mrr_agentic_ai_context::state::declared_dependency_impact]:
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 460:0-476:1 -/
+def state.declared_dependency_impact
+  (old : alloc.collections.btree.map.BTreeMap mrr_identity.api.FactId
+  state.AgenticAiContextElement Global)
+  (new : alloc.collections.btree.map.BTreeMap mrr_identity.api.FactId
+  state.AgenticAiContextElement Global)
+  (changed : alloc.collections.btree.set.BTreeSet mrr_identity.api.FactId
+  Global) :
+  Result (alloc.collections.btree.set.BTreeSet mrr_identity.api.FactId Global)
   := do
-  let (o, v) <- worklist.pop_identity traversal.pending
-  match o with
-  | none => ok (false, { traversal with pending := v })
-  | some id =>
-    let o1 <-
-      alloc.collections.btree.map.BTreeMap.get
-        alloc.alloc.Global.Insts.CoreAllocAllocatorClone
-        (core.borrow.Borrow.Blanket mrr_identity.api.FactId)
-        mrr_identity.api.FactId.Insts.CoreCmpOrd
-        mrr_identity.api.FactId.Insts.CoreCmpOrd traversal.reverse id
-    match o1 with
-    | none => ok (true, { traversal with pending := v })
-    | some dependents =>
-      let iter <-
-        SharedABTreeSet.Insts.CoreIterTraitsCollectIntoIteratorSharedATIter.into_iter
-          alloc.alloc.Global.Insts.CoreAllocAllocatorClone dependents
-      let (bs, v1) <- state.advance_impact_loop iter traversal.invalidated v
-      ok (true, { traversal with invalidated := bs, pending := v1 })
-
-/-- [mrr_agentic_ai_context::state::{impl mrr_agentic_ai_context::worklist::Worklist for mrr_agentic_ai_context::state::ImpactTraversal}::advance]:
-    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 510:4-512:5 -/
-def state.ImpactTraversal.Insts.Mrr_agentic_ai_contextWorklistWorklist.advance
-  (self : state.ImpactTraversal) : Result (Bool ** state.ImpactTraversal) := do
-  state.advance_impact self
-
-/-- Trait implementation: [mrr_agentic_ai_context::state::{impl mrr_agentic_ai_context::worklist::Worklist for mrr_agentic_ai_context::state::ImpactTraversal}]
-    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 509:0-513:1 -/
-@[reducible]
-def state.ImpactTraversal.Insts.Mrr_agentic_ai_contextWorklistWorklist :
-  worklist.Worklist state.ImpactTraversal := {
-  advance :=
-    state.ImpactTraversal.Insts.Mrr_agentic_ai_contextWorklistWorklist.advance
-}
-
-/-- [mrr_agentic_ai_context::state::run_impact]:
-    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 505:0-507:1 -/
-def state.run_impact
-  (traversal : state.ImpactTraversal) : Result state.ImpactTraversal := do
-  worklist.run
-    state.ImpactTraversal.Insts.Mrr_agentic_ai_contextWorklistWorklist
-    traversal
+  let reverse <- state.build_reverse_index old new
+  let i <-
+    alloc.collections.btree.set.BTreeSet.len
+      alloc.alloc.Global.Insts.CoreAllocAllocatorClone changed
+  let pending := alloc.vec.Vec.with_capacity mrr_identity.api.FactId i
+  let iter <-
+    SharedABTreeSet.Insts.CoreIterTraitsCollectIntoIteratorSharedATIter.into_iter
+      alloc.alloc.Global.Insts.CoreAllocAllocatorClone changed
+  let pending1 <- state.declared_dependency_impact_loop iter pending
+  let bs <-
+    alloc.collections.btree.set.BTreeSet.Insts.CoreCloneClone.clone
+      mrr_identity.api.FactId.Insts.CoreCloneClone
+      alloc.alloc.Global.Insts.CoreAllocAllocatorClone changed
+  let it <-
+    state.run_impact { reverse, invalidated := bs, pending := pending1 }
+  ok it.invalidated
 
 /-- [mrr_agentic_ai_context::worklist::initial_pending]:
     Source: 'crates/mrr-agentic-ai-context/src/worklist.rs', lines 21:0-31:1 -/
