@@ -433,6 +433,96 @@ def state.run_closure
     state.ClosureTraversal.Insts.Mrr_agentic_ai_contextWorklistWorklist
     traversal
 
+/-- [mrr_agentic_ai_context::state::advance_impact]: loop body 0:
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 504:8-508:9 -/
+@[rust_loop_body]
+def state.advance_impact_loop.body
+  (iter : alloc.collections.btree.set.Iter mrr_identity.api.FactId)
+  (bs : alloc.collections.btree.set.BTreeSet mrr_identity.api.FactId Global)
+  (v : alloc.vec.Vec mrr_identity.api.FactId) :
+  Result (ControlFlow ((alloc.collections.btree.set.Iter
+    mrr_identity.api.FactId) ** (alloc.collections.btree.set.BTreeSet
+    mrr_identity.api.FactId Global) ** (alloc.vec.Vec mrr_identity.api.FactId))
+    ((alloc.collections.btree.set.BTreeSet mrr_identity.api.FactId Global) **
+    (alloc.vec.Vec mrr_identity.api.FactId)))
+  := do
+  let (o, iter1) <-
+    alloc.collections.btree.set.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.next
+      iter
+  match o with
+  | none => ok (done (bs, v))
+  | some dependent =>
+    let (b, bs1) <-
+      alloc.collections.btree.set.BTreeSet.insert
+        alloc.alloc.Global.Insts.CoreAllocAllocatorClone
+        mrr_identity.api.FactId.Insts.CoreCmpOrd bs dependent
+    if b
+    then let v1 <- alloc.vec.Vec.push v dependent
+         ok (cont (iter1, bs1, v1))
+    else ok (cont (iter1, bs1, v))
+
+/-- [mrr_agentic_ai_context::state::advance_impact]: loop 0:
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 504:8-508:9 -/
+@[rust_loop]
+def state.advance_impact_loop
+  (iter : alloc.collections.btree.set.Iter mrr_identity.api.FactId)
+  (bs : alloc.collections.btree.set.BTreeSet mrr_identity.api.FactId Global)
+  (v : alloc.vec.Vec mrr_identity.api.FactId) :
+  Result ((alloc.collections.btree.set.BTreeSet mrr_identity.api.FactId Global)
+    ** (alloc.vec.Vec mrr_identity.api.FactId))
+  := do
+  loop
+    (fun (iter1, bs1, v1) => state.advance_impact_loop.body iter1 bs1 v1)
+    (iter, bs, v)
+
+/-- [mrr_agentic_ai_context::state::advance_impact]:
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 499:0-511:1 -/
+def state.advance_impact
+  (traversal : state.ImpactTraversal) :
+  Result (Bool ** state.ImpactTraversal)
+  := do
+  let (o, v) <- worklist.pop_identity traversal.pending
+  match o with
+  | none => ok (false, { traversal with pending := v })
+  | some id =>
+    let o1 <-
+      alloc.collections.btree.map.BTreeMap.get
+        alloc.alloc.Global.Insts.CoreAllocAllocatorClone
+        (core.borrow.Borrow.Blanket mrr_identity.api.FactId)
+        mrr_identity.api.FactId.Insts.CoreCmpOrd
+        mrr_identity.api.FactId.Insts.CoreCmpOrd traversal.reverse id
+    match o1 with
+    | none => ok (true, { traversal with pending := v })
+    | some dependents =>
+      let iter <-
+        SharedABTreeSet.Insts.CoreIterTraitsCollectIntoIteratorSharedATIter.into_iter
+          alloc.alloc.Global.Insts.CoreAllocAllocatorClone dependents
+      let (bs, v1) <- state.advance_impact_loop iter traversal.invalidated v
+      ok (true, { traversal with invalidated := bs, pending := v1 })
+
+/-- [mrr_agentic_ai_context::state::{impl mrr_agentic_ai_context::worklist::Worklist for mrr_agentic_ai_context::state::ImpactTraversal}::advance]:
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 494:4-496:5 -/
+def state.ImpactTraversal.Insts.Mrr_agentic_ai_contextWorklistWorklist.advance
+  (self : state.ImpactTraversal) : Result (Bool ** state.ImpactTraversal) := do
+  state.advance_impact self
+
+/-- Trait implementation: [mrr_agentic_ai_context::state::{impl mrr_agentic_ai_context::worklist::Worklist for mrr_agentic_ai_context::state::ImpactTraversal}]
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 493:0-497:1 -/
+@[reducible]
+def state.ImpactTraversal.Insts.Mrr_agentic_ai_contextWorklistWorklist :
+  worklist.Worklist state.ImpactTraversal := {
+  advance :=
+    state.ImpactTraversal.Insts.Mrr_agentic_ai_contextWorklistWorklist.advance
+}
+
+/-- [mrr_agentic_ai_context::state::run_impact]:
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 489:0-491:1 -/
+def state.run_impact
+  (traversal : state.ImpactTraversal) : Result state.ImpactTraversal := do
+  worklist.run
+    state.ImpactTraversal.Insts.Mrr_agentic_ai_contextWorklistWorklist
+    traversal
+
 /-- [mrr_agentic_ai_context::worklist::initial_pending]:
     Source: 'crates/mrr-agentic-ai-context/src/worklist.rs', lines 21:0-31:1 -/
 def worklist.initial_pending

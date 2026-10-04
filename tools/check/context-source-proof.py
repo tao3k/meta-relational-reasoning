@@ -136,6 +136,8 @@ def main() -> int:
             "mrr_agentic_ai_context::state::expand_identity",
             "mrr_agentic_ai_context::state::advance_closure",
             "mrr_agentic_ai_context::state::run_closure",
+            "mrr_agentic_ai_context::state::advance_impact",
+            "mrr_agentic_ai_context::state::run_impact",
         ]
     )
     context = tempfile.TemporaryDirectory(prefix="mrr-source-proof-")
@@ -263,11 +265,14 @@ def main() -> int:
             "TypesExternal_Template.lean": [
                 "alloc.collections.btree.map.BTreeMap",
                 "alloc.collections.btree.set.BTreeSet",
+                "alloc.collections.btree.set.Iter",
             ],
             "FunsExternal_Template.lean": [
                 "Array.Insts.CoreCmpOrd.cmp",
                 "alloc.collections.btree.map.BTreeMap.get",
                 "alloc.collections.btree.set.BTreeSet.insert",
+                "SharedABTreeSet.Insts.CoreIterTraitsCollectIntoIteratorSharedATIter.into_iter",
+                "alloc.collections.btree.set.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.next",
             ],
         }
         for filename, declarations in allowed.items():
@@ -305,7 +310,7 @@ def main() -> int:
                         for name in ("TypesExternal.lean", "FunsExternal.lean")
                     },
                     "library_model_interfaces": allowed,
-                    "library_model_boundary": "trusted extensional BTree membership/lookup and lexicographic array ordering; no unsafe stdlib or sorted iteration proof",
+                    "library_model_boundary": "trusted extensional BTree membership/lookup, set enumeration and lexicographic array ordering; no unsafe stdlib or sorted iteration proof",
                     "generated_format": "ASCII arrows and local Prod notation; unknown Unicode rejected",
                     "boundary": "extraction freshness; Lean theorem and axiom checks are separate gates",
                 },

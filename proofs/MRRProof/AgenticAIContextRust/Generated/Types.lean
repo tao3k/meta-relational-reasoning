@@ -233,4 +233,14 @@ structure state.ClosureTraversal where
 structure worklist.Worklist (Self : Type) where
   advance : Self -> Result (Bool ** Self)
 
+/-- [mrr_agentic_ai_context::state::ImpactTraversal]
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 483:0-487:1 -/
+structure state.ImpactTraversal where
+  reverse : alloc.collections.btree.map.BTreeMap mrr_identity.api.FactId
+    (alloc.collections.btree.set.BTreeSet mrr_identity.api.FactId Global)
+    Global
+  invalidated : alloc.collections.btree.set.BTreeSet mrr_identity.api.FactId
+    Global
+  pending : alloc.vec.Vec mrr_identity.api.FactId
+
 end MRR.ContextRust

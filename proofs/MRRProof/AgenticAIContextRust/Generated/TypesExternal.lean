@@ -12,4 +12,6 @@ namespace Aeneas.Std
 abbrev alloc.collections.btree.map.BTreeMap (K V _Allocator : Type) := List (K ** V)
 abbrev alloc.collections.btree.set.BTreeSet (T _Allocator : Type) := List T
 
+def alloc.collections.btree.set.Iter (T : Type) := List T
+
 end Aeneas.Std

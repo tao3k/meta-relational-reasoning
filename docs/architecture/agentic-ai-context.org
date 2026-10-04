@@ -860,3 +860,32 @@ watchdog during concurrent Cargo compilation; its isolated rerun passed. The
 large Scheme V2 cases emit 7373746-byte transports and measured roughly 156-169
 MB peak RSS on this host. These are dev-profile measurements, not performance
 threshold guarantees. Remote checks must qualify the new exact head separately.
+
+** Actual reverse traversal under explicit library enumeration
+
+=Reverse.lean= checks the actual =advance_impact= iterator loop, its production
+trait instance and =run_impact=. The actual step preserves a reachable frontier,
+selected-set uniqueness and pending coverage; fresh insertion conserves the
+selected/pending length difference. A finite source-capacity rank strictly drops
+on every outer step. =native_impact_run_exact= proves termination without fuel
+and exact invalidated membership in the least reverse dependency closure. It
+does not assume an adapter refinement or stopping law.
+
+The current source audit requires 71 declarations. Fresh extraction allowlists
+three library types and five functions and records handwritten model hashes.
+The iterator model promises complete extensional enumeration; sorted iteration
+and unsafe library implementation remain outside this proof. The source graph
+must match the supplied reverse map, neighbor lists must be duplicate-free, and
+twice the finite source length must fit Usize. Initial frontier invariants are
+explicit. Construction of the old/new reverse index and wrapper initialization
+are not supplied by this traversal theorem. These boundaries supersede earlier
+native-reverse-open statements only within the named value models.
+
+Current local reverse-slice gates pass: all 71 audited source declarations,
+fresh byte-identical extraction with the three-type/five-function allowlist,
+six Rust feature targets (35/13/15/55/62/4), freshly rebuilt 99 replay checks,
+strict Context Clippy, formatting/Ruff, diff and exact repository ASCII policy.
+The actual reverse algorithm and iteration order are unchanged; private entry
+functions expose its production trait body to extraction. The previous a973d8b
+head has passing Ubuntu, source-proof and shared-model CI; macOS was still
+pending at the observed snapshot. Remote CI for this new slice is separate.

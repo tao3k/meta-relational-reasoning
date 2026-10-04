@@ -81,7 +81,7 @@ Install the pinned Rust toolchain. Then run through the repository profile:
 
 ```sh
 ./.devenv/devenv-profile-exec python3 tools/check/context-source-proof.py --toolchain-dir /path/to/aeneas
-./.devenv/devenv-profile-exec bash -c 'cd proofs/MRRProof/AgenticAIContextRust && MATHLIB_NO_CACHE_ON_UPDATE=1 lake update && lake exe cache get && lake build Evidence Driver NativeFacts Stack Expansion Forward && lake env lean Axioms.lean'
+./.devenv/devenv-profile-exec bash -c 'cd proofs/MRRProof/AgenticAIContextRust && MATHLIB_NO_CACHE_ON_UPDATE=1 lake update && lake exe cache get && lake build Evidence Driver NativeFacts Stack Expansion Forward Reverse && lake env lean Axioms.lean'
 ```
 
 Use `--rustup-home` for an isolated compiler installation. `--update` deliberately
@@ -135,7 +135,7 @@ establish sorted iteration, BTree balancing, unsafe memory correctness, or the
 Rust standard-library implementation. Axiom auditing checks Lean dependencies,
 not correspondence of these models to unsafe Rust code.
 
-The reverse `ImpactTraversal::advance` contract remains unproved. In particular, the
+The earlier reverse-model slice established scheduling at the graph level. In particular, the
 revision adapter suppresses duplicate enqueues and needs an invariant over
 processed identities, rather than treating every scheduled identity as processed.
 `Scheduled.lean` now proves that invariant at the graph-model level: scheduled
@@ -145,12 +145,13 @@ and a completed scheduled set is the exact least closure. Distinct initial roots
 and neighbor lists express the native BTreeSet projections; they are explicit
 premises of this model theorem. The extracted driver is instantiated with this
 model and has no fuel bound. Both Lean projects compile the same model file.
-Binding the native BTree operations and reverse-index union to it remains open.
+The native traversal binding is now proved by the reverse slice below under explicit
+library enumeration models; source proof of reverse-index union remains open.
 The identity-to-model mapping and native fact evidence policy now have universal
 proofs. Forward lookup/insertion and admitted-fact binding are now evaluated by the named
-models. Native reverse-edge construction and processed-versus-scheduled binding,
+models. Native reverse-edge construction,
 wrapper initialization/projection, whole-run coverage aggregation, rejection
-integration, serialization refinement, and unsafe stdlib correctness remain open. The latest full wrapper probe exposes 9 external
+integration, serialization refinement, and unsafe stdlib correctness remain open. An earlier full wrapper probe exposed 9 external
 types and 16 external functions: BTreeMap/BTreeSet and their entry/iterator
 interfaces, byte-array ordering and unused nonzero types in source-limit fields.
 Vec pop/extension and the generic array/shared-Vec iteration stubs have been
@@ -189,7 +190,36 @@ not a passing proof or test.
 
 ## Forward source slice
 
-The forward phase now audits 59 declarations, including ten additional universal
+The forward slice brought the audit to 59 declarations, including ten additional universal
 container/projection/step/contract/run laws. This closes the native forward
 adapter obligation relative to the explicit library models. The full-wrapper
 probe remains diagnostic and the direct unsafe-library probe remains unproved.
+
+## Actual native reverse traversal slice
+
+`Reverse.lean` evaluates the actual `advance_impact` iterator loop and its native
+trait instance. Twelve new universal laws prove exact enqueue effects, membership,
+duplicate suppression, selected-set duplicate freedom, length conservation,
+lookup, stopping, reachable-frontier preservation and a strict finite capacity
+rank. `native_impact_advance_contract` derives the actual adapter contract;
+`native_impact_run_exact` proves that actual `run_impact` terminates without fuel
+and returns exactly the least reverse dependency closure. No assumed adapter
+step or stopping law is supplied.
+
+`ReverseSource` explicitly requires the source/adjacency graph correspondence,
+closed finite source, duplicate-free neighbor projections and a twice-source
+machine-capacity bound. `ReverseInvariant` retains pending coverage and reachable
+frontier properties. The initial state must satisfy it; this theorem does not
+prove construction of the old/new reverse-index union or wrapper initialization.
+The invalidated set is the scheduled set; processing is tracked by frontier
+coverage, not equated with membership in that set.
+
+The current extraction gate admits three library types and five functions. The
+new set iterator model enumerates its extensional value list exactly once and
+stops at the empty suffix. It proves neither the unsafe implementation nor
+sorted physical iteration. The required axiom audit now covers 71 declarations;
+this is Lean dependency auditing relative to explicit models, not a Rust stdlib
+implementation proof. Earlier native-reverse-contract-open statements are
+superseded within this boundary only. Wrapper initialization/projection,
+reverse-index construction, aggregate coverage/error integration and
+serialization/cryptographic implementation refinement remain separate gaps.

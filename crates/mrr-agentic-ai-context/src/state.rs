@@ -461,7 +461,7 @@ fn reverse_dependency_impact(
     for id in changed {
         pending.push(*id);
     }
-    worklist::run(ImpactTraversal {
+    run_impact(ImpactTraversal {
         reverse,
         invalidated: changed.clone(),
         pending,
@@ -486,18 +486,26 @@ struct ImpactTraversal {
     pending: Vec<FactId>,
 }
 
+fn run_impact(traversal: ImpactTraversal) -> ImpactTraversal {
+    worklist::run(traversal)
+}
+
 impl Worklist for ImpactTraversal {
     fn advance(&mut self) -> bool {
-        let Some(id) = worklist::pop_identity(&mut self.pending) else {
-            return false;
-        };
-        if let Some(dependents) = self.reverse.get(&id) {
-            for dependent in dependents {
-                if self.invalidated.insert(*dependent) {
-                    self.pending.push(*dependent);
-                }
+        advance_impact(self)
+    }
+}
+
+fn advance_impact(traversal: &mut ImpactTraversal) -> bool {
+    let Some(id) = worklist::pop_identity(&mut traversal.pending) else {
+        return false;
+    };
+    if let Some(dependents) = traversal.reverse.get(&id) {
+        for dependent in dependents {
+            if traversal.invalidated.insert(*dependent) {
+                traversal.pending.push(*dependent);
             }
         }
-        true
     }
+    true
 }

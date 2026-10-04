@@ -298,9 +298,9 @@ fact-level evidence admission, completeness merge, identity comparisons and
 shared traversal driver/stack operations with Charon/Aeneas before checking universal Lean laws
 and their axiom dependencies. The actual 32-byte FactId representation has an
 injective projection to the graph model, with closure transport in both
-directions. The actual forward traversal now discharges its adapter contract and proves
-termination with exact closure under explicit BTree value models and admitted
-finite-source/capacity preconditions. The generic driver also accepts explicit
+directions. The actual forward and reverse traversals now discharge their adapter contracts
+and prove termination with exact closures under explicit BTree value/enumeration
+models and admitted finite-source/capacity preconditions. The generic driver also accepts explicit
 adapter invariant and progress laws; source expansion proves exact rejection/error effects and accepted
 dependency/coverage updates. Source pop/extension laws establish the reversed-queue seam under
 the existing Vec/Slice library models. The separate

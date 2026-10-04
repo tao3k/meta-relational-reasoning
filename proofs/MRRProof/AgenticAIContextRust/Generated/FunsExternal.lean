@@ -56,4 +56,17 @@ def alloc.collections.btree.set.BTreeSet.insert {T A : Type}
   let known <- containsValue order.eqInst.partialEqInst.eq value set
   if known then .ok (false, set) else .ok (true, value :: set)
 
+-- Trusted enumeration without duplicates for a well-formed extensional set.
+-- No correspondence with unsafe iterator implementation or sorted order is proved.
+def SharedABTreeSet.Insts.CoreIterTraitsCollectIntoIteratorSharedATIter.into_iter
+    {T A : Type} (_allocator : MRR.ContextRust.core.alloc.AllocatorClone A)
+    (set : alloc.collections.btree.set.BTreeSet T A) :
+    Result (alloc.collections.btree.set.Iter T) := .ok set
+
+def alloc.collections.btree.set.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.next
+    {T : Type} : alloc.collections.btree.set.Iter T ->
+    Result (Option T ** alloc.collections.btree.set.Iter T)
+  | [] => .ok (none, [])
+  | id :: rest => .ok (some id, rest)
+
 end Aeneas.Std

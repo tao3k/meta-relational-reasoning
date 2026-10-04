@@ -4,6 +4,7 @@ import NativeFacts
 import Stack
 import Expansion
 import Forward
+import Reverse
 import Lean.Util.CollectAxioms
 import Lean.Elab.Command
 
@@ -71,7 +72,19 @@ run_cmd do
     `MRR.ContextRustProofs.native_forward_accepted,
     `MRR.ContextRustProofs.native_forward_step_refines_graph,
     `MRR.ContextRustProofs.native_forward_advance_contract,
-    `MRR.ContextRustProofs.native_forward_run_exact]
+    `MRR.ContextRustProofs.native_forward_run_exact,
+    `MRR.ContextRustProofs.native_impact_enqueue_exact,
+    `MRR.ContextRustProofs.enqueue_model_members,
+    `MRR.ContextRustProofs.enqueue_model_pending_members,
+    `MRR.ContextRustProofs.enqueue_model_length_balance,
+    `MRR.ContextRustProofs.enqueue_model_selected_nodup,
+    `MRR.ContextRustProofs.native_reverse_lookup_exact,
+    `MRR.ContextRustProofs.native_impact_empty,
+    `MRR.ContextRustProofs.native_impact_step_exact,
+    `MRR.ContextRustProofs.native_nodup_subset_length,
+    `MRR.ContextRustProofs.native_impact_nonempty_preserves,
+    `MRR.ContextRustProofs.native_impact_advance_contract,
+    `MRR.ContextRustProofs.native_impact_run_exact]
   required.forM fun declarationName => do
     unless environment.contains declarationName do
       throwError "Missing source theorem: {declarationName}"
