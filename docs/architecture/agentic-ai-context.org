@@ -16,6 +16,10 @@ fact-based Context system.  [[file:0035-content-authority-and-compliance.org][RF
 proposes typed Content authority, obligations and compliance receipts;
 [[file:0036-agentic-context-projection-and-reuse.org][RFC 0036]] proposes their
 integration with Context, including a disjoint working-hypothesis overlay.
+[[file:0038-context-session-lifecycle.org][RFC 0038]] proposes a Context
+Session identity and transition contract that binds turns and query uses to
+these source-admitted views.  It is not implemented by the current Context
+crate or facade.
 Those proposals do not upgrade the existing =policy_digest= or fact-validity
 checks into enforcement, and they do not change the proof claims below.
 
@@ -178,6 +182,11 @@ execution remain outside this slice.
 The facade exposes a concrete stage chain. Stage constructors have private
 fields: storage and consumers cannot promote a raw layout into a source-admitted
 presentation by attaching a label.
+
+These are lifecycle stages of *one Context view*, not a Session lifecycle.
+The proposed RFC 0038 adds a semantic Session head over turns and query uses;
+it re-enters the existing stage admissions at each source cut.  It does not
+make a stored stage or historical manifest a current authorization decision.
 
 #+name: agentic-ai-context-stage-chain
 #+begin_src mermaid

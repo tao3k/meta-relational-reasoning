@@ -3,8 +3,11 @@
 
 * Context
 
-MRR is one semantic layer in an agent system.  It is not an agent framework,
-workflow runtime, session manager, sandbox, or general policy control plane.
+MRR is one semantic layer in an agent system.  The current implementation is
+not an agent framework, workflow runtime, execution session manager, sandbox,
+or general policy control plane.  RFC 0038 proposes an MRR Context Session
+*semantic head* for identity, turn/query binding and transition admission;
+it does not move execution scheduling or effects into MRR.
 The surrounding control-plane owner is
 [[https://github.com/tao3k/poo-flow][POO Flow]], whose public architecture
 uses functional composition and Gerbil POO objects to describe strategies,
@@ -46,6 +49,10 @@ it cannot promote a model response, tool result, or cached summary into
 canonical Content by itself.  RFC 0035 proposes typed Content authority and
 compliance; RFC 0036 proposes its Context integration.  The implemented
 Context slice and its exact limits remain in =agentic-ai-context.org=.
+[[file:0038-context-session-lifecycle.org][RFC 0038]] proposes one shared
+POO Flow Session identity with an MRR Context semantic head, so turns can bind
+the existing Query and Context receipts without a second query system or
+Session ID registry.
 
 ** Anchoring invariants
 
@@ -132,7 +139,7 @@ of them as this repository's semantic authority:
 | Layer | Owner | Responsibility | Explicit non-responsibility |
 |-
 | canonical content | source owners and the Content Graph contract | source identity, revision, provenance, durable shared facts | task-local selection or Agent scheduling |
-| context engineering | POO Flow policy, MRR semantic projection, consumer renderer | selection policy, admitted closure, ranking, redaction, compaction, expiry, and capability scope at their respective boundaries | manufacturing Content truth or bypassing semantic admission |
+| context engineering | POO Flow policy, MRR semantic projection, consumer renderer | selection policy, admitted closure, ranking, redaction, compaction, expiry, and capability scope at their respective boundaries; RFC 0038 proposes semantic Session-head admission | manufacturing Content truth or bypassing semantic admission |
 | strategy and composition | POO Flow | POO/C3 policy objects, profiles, workflows, sessions, loops, resource ordering, retry policy, runtime handoff | fixed-point fact derivation and live effect execution |
 | semantic reasoning | MRR | identity, relations, queries, rules, lineage, generations, transitions, bounded safety, admission | Agent lifecycle, sandbox placement, scheduling, persistence |
 | candidate evaluation | Scheme ASCENT via MRR native dispatch | bounded Datalog-style fixed point | identity allocation, lineage admission, publication |

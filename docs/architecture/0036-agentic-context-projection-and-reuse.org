@@ -35,6 +35,10 @@ source assertions, normative contracts, evidence, and derivations with typed
 authority.  Let =X[p,g]= be the Context Graph assembled for a projection scope
 =p=.  A scope binds actor, task, turn, capabilities, temporal cut receipt,
 effective-contract digest, query, projection-policy digest, budget, and expiry.
+RFC 0038 proposes that a Context-enabled scope also binds the shared
+=SessionKey=, expected =SessionRevision=, and =TurnId=.  Session identity is
+not derived from =X[p,g]=, and a changed Context projection need not start a
+new Session.
 The temporal cut is supplied by its owner (for example POO Flow); MRR checks
 its receipt and does not implement another time ontology.
 
@@ -91,6 +95,9 @@ Construction extends the existing semantic manifest with a linked
 identity.  The receipt binds that manifest digest, exact Content generation and
 source cut, effective contract, selected and omitted optional identities with
 reasons, authorization decision, budget accounting, expiry, and completeness.
+Under RFC 0038, the Session head references this immutable receipt at the
+exact turn; neither a Session ID nor its history upgrades an old projection
+to current authority.
 The existing manifest remains the authority for query, source bundle,
 declared dependency graph, and required closure.
 If the required closure exceeds a budget, contains a conflict, is stale,

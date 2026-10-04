@@ -1,0 +1,253 @@
+#+title: RFC 0038: Context Sessions and Query-Bound Lifecycle
+#+status: proposed
+#+options: toc:2
+#+property: header-args :eval never-export :exports code
+
+* Decision
+
+Place a *Context Session* under =MRR.AgenticAIContext= as the semantic unit that
+binds one Agent session to its turns, query uses, source cuts, Context
+projections, and restoration checks.  It is a first-class identity and
+transition contract, not a conversation transcript or a second query engine.
+The existing POO Flow session ID is the address of the same logical session;
+an adapter must map it injectively into the Context Session key.  There must
+be no independent MRR session ID registry with a competing lifecycle.
+
+POO Flow continues to own session policy, parent/child workflow composition,
+capabilities, scheduling, communication, cancellation, and effect handoff.
+The designated runtime owns physical persistence, atomic head updates,
+leases, recovery, and effects.  MRR owns semantic binding and validation of a
+Context Session transition.  A POO Flow execution session can exist without
+the optional MRR Context feature; a Context-enabled session uses its existing
+identity and adds this semantic head.
+
+This RFC is a design for a new API.  The current
+[[file:agentic-ai-context.org][Context implementation]] has source-bound
+selection, query-result candidate admission, manifest/restore, declared
+revision impact, and materialization stages.  It has no =ContextSession=,
+=SessionKey=, turn ledger, or live authorization manager.  The current POO Flow
+=modules/session/registry.ss= emits a report receipt; it is not a live runtime
+store.  Neither implementation currently satisfies the transitions below.
+
+* Why the existing Query path is sufficient
+
+MRR already has =CatalogBoundQuery=, exact catalog and snapshot binding,
+=admit_query_result_candidate=, and
+=select_agentic_ai_context_from_query=.  That selection binds a typed
+relation-valued result column to existing source facts and produces an
+admitted Context with result provenance.  The admission receipt checks
+identity and types; it does not prove physical execution correctness.
+
+A Session records *which use* of this Query path belongs to which turn.  It
+does not parse, plan, execute, or reinterpret the query.  POO Flow's common
+=modules/query= remains the authoring and orchestration entry point; MRR's
+existing query/catalog/result admission remains the semantic gate.  Query
+parameters, source cut, result identity, and projection policy can vary from
+turn to turn without changing the Session key.
+
+#+begin_src mermaid
+flowchart LR
+  P[POO Flow session and query policy] --> T[Context Session turn permit]
+  T --> Q[Existing Query authoring and physical adapter]
+  Q --> A[MRR catalog and result admission]
+  A --> X[MRR Context selection and manifest]
+  X --> H[Validated Session head transition]
+  H --> R[Runtime conditional head commit]
+  R --> P
+#+end_src
+
+* Identity and scope
+
+=SessionKey= is a proposed typed tuple of an issuer namespace, project or
+tenant scope, and the opaque POO Flow session ID.  The POO adapter must
+encode its existing project and session symbols injectively and canonically;
+string formatting or an unscoped symbol is not sufficient across projects.
+One registry allocates or accepts a key at creation with an atomic
+does-not-exist check.  A key is never recycled, including after close,
+expiration, or deletion of retained artifacts.  The key is an address, not a
+capability token or an authorization decision.  It is not a hash of query,
+prompt, Context manifest, or message bytes: two sessions may use identical
+queries and Context, and one session may use several queries.
+
+| Identity | Meaning | Stability rule |
+|-
+| =SessionKey= | one logical POO Flow/Context session in one issuer and project scope | immutable; never reused |
+| =SessionRevision= | accepted semantic-head transition number and predecessor digest | strictly advances under conditional commit |
+| =TurnId= | =SessionKey= plus a monotonically allocated turn ordinal | never reassigned after abandonment |
+| =AttemptId= | retry identity for one proposed operation | repeated identical request returns its prior decision; changed payload rejects |
+| =QueryUseId= | =TurnId= plus an ordinal for a bound query invocation | binds one query/result/selection receipt chain |
+
+A child Agent or fork receives a new =SessionKey=.  Its lineage names the
+parent key and exact committed parent revision.  Forking does not grant access
+to the parent's private overlay or capability scope; any transferred Context
+reference needs an explicit scoped admission receipt.  A retry remains within
+the same key and attempt identity.  These cases must not be conflated.
+
+Direct lookup by =SessionKey= resolves an untrusted stored head through the
+runtime, then MRR validates the expected head identity and source bindings
+under the caller's current access decision.  The POO Flow registry receipt
+can report addresses but cannot prove which head is current.  Discovery or
+filtering of sessions may use the existing Query framework over an explicitly
+admitted, access-filtered session-metadata projection.  That future projection
+needs its own schema, source cut and result-admission profile; an index hit is
+never sufficient to resume or disclose a Session.  This keeps address lookup
+separate from semantic Query execution without creating a second Query
+language.
+
+* Semantic head and projection relation
+
+The immutable =ContextSessionHead= is the current semantic reference for a
+key.  A proposed head records schema version, key, owner/project scope,
+parent checkpoint if any, status, revision and predecessor digest, current
+turn allocation, pending turn if any, the latest admitted Context manifest and
+query-selection receipt references, source generation/snapshot/cut, policy and
+capability decision references, expiry, and the digest of a bounded
+non-authoritative working overlay.  Large messages, model output, and prompt
+bytes are separate artifacts referenced by digest; they are not facts merely
+because they appear in session history.
+
+The head is a *current pointer*, not a frozen authority grant.  A Context
+manifest and a result receipt are immutable historical evidence.  Before
+projection, disclosure, resume, or action, the current source, authorization,
+expiry, and applicable contracts must be checked again by their respective
+owners.  The Session head binds the exact Context receipt used at a turn; it
+does not modify the manifest or allow a stored manifest to bypass facade
+restore.  RFC 0036's projection scope therefore gains =SessionKey=,
+=SessionRevision=, and =TurnId= alongside actor, task, query, cut, policy,
+budget, and expiry.  Session history remains a working overlay until source
+owner admission creates Content under RFC 0035.
+
+Compaction replaces a working overlay or rendered history artifact with a
+new identified artifact; it does not erase the transition chain or remove
+required Context closure.  Token/KV prefix eligibility still follows the
+existing computational-identity and serving-owner gates.  A shared cache
+must separately authorize cross-Session use; matching bytes or model IDs do
+not authorize sharing private session state.
+
+* Lifecycle and transition contract
+
+The initial model permits one pending mutating turn per Session key.  Read-only
+inspection may be concurrent, but publication uses an expected head revision
+and digest.  Parallel work that must commit independently uses child/forked
+sessions and explicit merge admission.  The runtime implements a conditional
+head update; MRR validates the proposed old/new semantic transition and
+returns a versioned receipt.  A receipt without the matching conditional
+commit is not a published head.
+
+| Operation | Guard and semantic effect | Rejection example |
+|-
+| create | authenticated issuer/project; key absent; record initial policy/capability and source scope; publish =active= head at first revision | duplicate or cross-project key |
+| begin turn | =active=, no pending turn, current scope checked; allocate the next =TurnId= and bind an =AttemptId= | stale head or concurrent turn |
+| attach query use | pending turn matches; admit existing bound query, result candidate, source selection and projection at one cut; bind their exact receipt digests to =QueryUseId= | different session/turn, mixed generation, incomplete required closure |
+| commit turn | same pending turn and expected head; recheck source/capability/cut and required receipts; atomically publish new head and clear pending turn | old receipt, changed policy, losing conditional commit |
+| abandon or suspend | record a typed reason and stop new turns; resolve any pending turn as abandoned before suspension | unaccounted pending effect |
+| resume | only from =suspended=; reauthorize and re-admit current source/projection, then advance revision | expired grant or old manifest treated as current |
+| fork | from a committed parent revision; create a new key and explicit scoped parent reference | sharing an unadmitted private overlay |
+| close or expire | terminal; reject begin, resume, and new projection publication; retain only artifacts allowed by retention policy | reuse of terminal key |
+
+=active= and =suspended= are semantic states; =closed= and =expired= are
+terminal.  Revocation, source drift, or a failed guard can suspend the session
+or reject the operation without declaring historical receipts false.  A
+source generation change does not silently advance a Session's Context: the
+next use must obtain a new source-bound projection and head transition.
+Expiration is driven by a named clock/authority owner, not by a client-supplied
+timestamp alone.  Retention and erasure are separate storage policies; neither
+reactivates a terminal Session.
+
+Every transition request carries =SessionKey=, expected revision and digest,
+=AttemptId=, actor/capability decision, exact source cut, and bounded inputs.
+The =ContextSessionTransitionReceipt= binds the old/new head digests,
+operation, query-use and Context receipt references, guard decisions,
+completeness, and a typed outcome.  It uses a versioned, domain-separated
+identity profile.  Encoding and hash choice must be fixed with negative
+conformance fixtures before implementation.  Replaying the same attempt and
+payload is idempotent; replaying an attempt with changed payload is a
+conflict.  A crash after an external effect cannot be repaired by blindly
+rerunning the turn: the runtime must reconcile its effect receipt before
+committing or abandoning the pending turn.
+
+* Query use at one turn
+
+The intended sequence is:
+
+1. POO Flow obtains the current policy and capability decision, then asks MRR
+   to validate =begin_turn= against the exact Session head.
+2. The existing Query path binds the query to the chosen semantic snapshot;
+   its physical owner produces a candidate result.
+3. MRR admits the candidate through RFC 0032 and selects Context through the
+   existing facade entry point.  =QueryUseId= links the bound query digest,
+   result receipt digest, Context selection digest and manifest digest.
+4. MRR validates the proposed turn commit against the same key, source cut,
+   current policy and expected head.  The runtime conditionally publishes it.
+5. Before display or effect, the designated owner rechecks current access and
+   source; an old turn receipt alone does not authorize the action.
+
+Zero query rows are a valid candidate shape but do not prove semantic absence.
+A turn can also select explicit roots through the existing Context facade;
+that path records its own source-bound selection reference and must not
+fabricate a query-result receipt.  Query result rows, Context manifest, and
+session history are three different identities.  A later query or changed
+result may create a new projection within the same Session; a changed
+projection does not create a new Session ID.
+
+For example, =SessionKey(P, S)= can commit turn 0 with query =Q1= and
+manifest =M1=, then commit turn 1 with query =Q2= and manifest =M2=.  Both
+turns retain their exact query/result receipts while the current head points
+to =M2=.  If source generation or capability changes before turn 2, =M2=
+remains a historical basis but cannot be disclosed as a fresh projection.
+If two workers propose turn 2 from the same head revision, only one
+conditional commit can advance that head; the loser must read and validate
+the winning revision before proposing another transition.
+
+* Failure, recovery, and trust boundary
+
+Typed failures include =unknown-session=, =wrong-scope=, =stale-head=,
+=duplicate-attempt-conflict=, =turn-in-progress=, =terminal-session=,
+=source-stale=, =authorization-denied=, =expired=, =incomplete=, and
+=storage-conflict=.  A failed candidate publishes no new head.  A storage
+conflict after semantic validation requires reading the winning head and
+reevaluating; the losing receipt cannot be attached to a different revision.
+
+Recovery loads an untrusted stored head and referenced artifacts, verifies
+the expected trusted head reference and predecessor chain within a declared
+bound, then re-enters facade source/query/Context admission.  The runtime
+owns journal, checkpoints, and conditional writes; =mrr-data= may persist
+generic bytes and CIDs.  Neither an event log, index row, CID, nor a matching
+digest is a live authorization grant.  Recovery of a pending turn requires
+the runtime's effect and idempotency evidence.  A partially available chain
+returns =incomplete=; it does not infer the missing transition.
+
+RFC 0037's meta-relational Impact may place a Session projection on a
+reevaluation frontier when query, Content, contract, capability, or source
+receipts change.  Reachability alone does not close or invalidate the
+Session; the owning evaluator must recheck the affected projection and
+publish a new scoped outcome.  Session continuation and action remain gated
+by the current source and policy even if the rendered bytes or token prefix
+are unchanged.
+
+* Ownership and implementation gates
+
+| Owner | Proposed obligation |
+|-
+| POO Flow | preserve one Session ID and project-scoped parent/child lineage; supply policy, authorization, query orchestration and turn/effect decisions |
+| MRR Context | define typed Session key/head/transition receipts; bind existing Query, Context and Content identities; reject stale or cross-session transitions |
+| Runtime | atomically allocate keys and publish heads, enforce idempotency/effect reconciliation, persist and recover, check access at disclosure/effect |
+| MRR Data | optional generic byte/CID persistence only; no Session semantic or authorization decision |
+
+Implement this as a direct extension of the existing Context feature, with no
+new query subsystem or legacy parallel Session API.  First agree on the
+injective POO session-ID encoding and head/transition identity profile.  Then
+implement pure transition validation and negative Rust contracts in
+=mrr-agentic-ai-context=, facade binding of actual query-selection and
+manifest receipts, and a POO Flow/production-runtime conditional-head
+adapter.  Existing POO session receipts should migrate to reference the same
+typed key; a temporary second registry would obscure ownership.
+
+Lean should prove key separation, terminal-state non-resurrection,
+monotonic revision/turn allocation, and that a query-use receipt belongs to
+the exact Session/turn/cut.  TLA+ should explore two concurrent commits,
+retry after uncertain commit, revocation between projection and action,
+resume after source change, fork isolation, and crash with a pending effect.
+Implementation replay must then connect the formal transitions to actual
+POO Flow, MRR, and runtime receipts.  No theorem or model in the current
+checkout proves those properties yet.

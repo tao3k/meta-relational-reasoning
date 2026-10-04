@@ -71,6 +71,11 @@ an effect boundary.  =mrr-data= remains a physical downstream adapter.
 typed meta-relational Impact step between reverse reachability and the
 semantic/action verdict.  It preserves POO Flow's separate structural,
 Temporal, trajectory, and causal claim levels.
+[[file:docs/architecture/0038-context-session-lifecycle.org][RFC 0038]]
+proposes a Context Session semantic head for one shared POO Flow Session ID.
+It binds turns and existing Query/Context receipts while POO Flow and the
+runtime retain policy, scheduling, persistence and effects.  No Session-head
+API is implemented in this checkout.
 
 The facade feature =agentic-ai-context= enables the Context domain;
 =agentic-ai-context-tokens= additionally enables external-tokenizer and reuse

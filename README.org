@@ -223,6 +223,7 @@ their owners:
 - [[file:docs/architecture/0035-content-authority-and-compliance.org][proposed Content authority and compliance]]
 - [[file:docs/architecture/0036-agentic-context-projection-and-reuse.org][proposed Content-aware Context projection and reuse]]
 - [[file:docs/architecture/0037-meta-relational-impact.org][proposed meta-relational Impact]]
+- [[file:docs/architecture/0038-context-session-lifecycle.org][proposed Context Session identity and lifecycle]]
 - [[file:research/content-context-compliance-agenda.org][Content, Context, and Compliance research agenda]]
 - [[file:research/meta-relational-impact-agenda.org][Meta-Relational Impact research agenda]]
 
