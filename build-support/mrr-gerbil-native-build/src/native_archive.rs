@@ -279,6 +279,28 @@ fn gerbil_build_verbose_level() -> u8 {
 }
 
 fn run(command: &mut Command, operation: &str) -> Result<(), String> {
+    run_with_progress(command, operation, gerbil_build_verbose_level() > 0)
+}
+
+pub(crate) fn run_with_progress(
+    command: &mut Command,
+    operation: &str,
+    stream: bool,
+) -> Result<(), String> {
+    if stream {
+        // status() inherits child stdout/stderr. output() would buffer actual
+        // PackageSpec/program-stage progress until the whole child exits.
+        let status = command
+            .status()
+            .map_err(|error| format!("{operation}: {error}"))?;
+        return if status.success() {
+            Ok(())
+        } else {
+            Err(format!(
+                "{operation}: {status}; child diagnostics streamed above"
+            ))
+        };
+    }
     let output = command
         .output()
         .map_err(|error| format!("{operation}: {error}"))?;
