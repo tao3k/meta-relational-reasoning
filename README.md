@@ -200,6 +200,7 @@ The README defines the project. Detailed arguments and evidence remain with
 their owners:
 
 - [workspace and language-neutral ownership](docs/architecture/0001-mrr-workspace-ownership.org)
+- [POO Flow Temporal production runtime and Scheme ASCENT ownership](docs/architecture/0034-poo-temporal-production-runtime.org)
 - [Agentic AI Context System](docs/architecture/agentic-ai-context.org)
 - [bounded Ascent evaluation](docs/architecture/0003-mrr-ascent-evaluation.org)
 - [typed relation core](docs/architecture/0005-typed-relation-core.org)

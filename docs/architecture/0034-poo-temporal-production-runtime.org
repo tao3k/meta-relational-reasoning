@@ -1,0 +1,157 @@
+#+title: POO Flow Temporal in the MRR Production Runtime
+#+startup: overview
+
+* Decision and implementation boundary
+
+MRR is the Rust production runtime for the POO Flow contracts it implements.
+POO Flow owns the public POO objects and functional Temporal semantics. MRR
+executes those semantics through an embedded, ahead-of-time compiled Scheme
+library and supplies typed admission, concurrency and durable runtime effects.
+The Scheme ASCENT library owns finite relational evaluation. Rust ASCENT is
+removed from the target runtime, including Search factor inference.
+
+This is the required architecture. The current implementation still executes
+Rust =ascent!= in =crates/mrr-ascent/src/api.rs= and
+=crates/mrr-search/src/reasoning.rs=. Neither a Scheme dependency nor the
+existing native grammar archive establishes replacement of those executions.
+The bounded read-only physical roundtrip qualifies only its exercised path.
+
+This decision supersedes the runtime restrictions in RFC 0001 and RFC 0020
+that confine Gerbil to projection and permit Rust ASCENT as the evaluator.
+The restrictions on frontend parsing and language-neutral core dependencies
+remain applicable. Embedding compiled Scheme evaluation does not permit
+evaluating source text supplied by a caller or model.
+
+* Production composition
+
+#+begin_src mermaid
+flowchart TB
+  application[Library consumer] --> runtime[MRR Rust production runtime]
+  runtime --> contracts[Typed identity generation query lineage admission]
+  runtime --> native[Native Scheme execution boundary]
+  native --> temporal[POO Flow Temporal semantics]
+  temporal --> finite[Scheme ASCENT finite solver]
+  runtime --> data[MRR Data physical query and durable storage]
+  runtime --> effects[Explicit IFC authorization and effect handoff]
+#+end_src
+
+| Concern | Semantic owner | Production execution responsibility |
+|---------+----------------+-------------------------------------|
+| Events, clocks, cuts, uncertainty, trajectories, corrections | POO Flow Temporal | MRR admits and executes the exact Scheme projection |
+| Finite relation closure and bounded temporal solving | Scheme ASCENT | MRR invokes its AOT entry and checks the returned candidate |
+| Fact, relation, generation, query and derivation identities | MRR typed contracts | MRR validates projections and allocates admitted identities |
+| Provenance and derivation support | MRR lineage contracts | MRR admits complete support against the bound generation |
+| Physical data roots, rows and query execution | MRR Data | MRR consumes original physical and query admission receipts |
+| Policy meaning and authorization decisions | POO Flow IFC and authorization owners | MRR enforces the checked decision at the effect boundary |
+| Durable commit, recovery, concurrency and effect delivery | MRR with explicit storage/runtime adapters | Production runtime supplies executable guarantees |
+
+Rust preserves identities and checks receipts; Scheme remains the executable
+owner of the POO algorithms. Reimplementing Temporal or finite inference in
+Rust creates a second semantic engine and does not satisfy this composition.
+MRR Data remains a physical adapter: it does not decide Temporal authority.
+
+* One bound operation
+
+A production Temporal request binds the original source identity, admitted
+semantic generation, physical root, relation catalog, query binding, event
+mapping, valid-time and knowledge-time domain identities, selected cut,
+coverage declaration, operation limits, and requested analysis scope.
+These are conceptual contract fields, not a newly implemented public API.
+Public authoring remains POO-native; transport is bounded inert Scheme data.
+
+The runtime resolves a single immutable source snapshot. It verifies fact
+identities and the bijective event mapping before calling Temporal. Logical
+positions, observed knowledge positions and valid-time bounds retain their
+separate domains; acquisition time cannot substitute for any of them.
+
+Physical query results retain their original MRR receipt and row identities.
+Native Temporal and ASCENT receive the admitted snapshot projection. The
+returned finite candidate binds the same source, generation, axes, cut,
+scope, coverage and input identities. MRR independently checks its structure,
+support and binding before attaching admitted facts and lineage. A content
+digest cannot authenticate a source or establish complete coverage.
+
+Historical and hypothetical requests remain labelled with their actual
+snapshot scope. Missing coverage, unknown coordinates, partial execution or
+budget exhaustion cannot become definitive absence or effect authorization.
+
+* Corrections, currentness and publication
+
+An assertion, correction or retraction produces a new admitted generation.
+Its immutable history and explicit supersession/retraction links are retained.
+The runtime invalidates dependent queries, candidates, lineage projections and
+pending publications. Re-query and re-evaluation bind the new generation;
+relabeling an old receipt is invalid even if the output rows happen to match.
+
+Read-only analysis can return an explicitly historical result. A publication
+must compare the expected generation, cut and relevant policy version with
+the current owner state at the commit boundary. That check and the durable
+admission/publication intent must occur in one atomic transition. Checking
+currentness before computation and committing later without a fence is
+insufficient. A concurrent correction or policy revocation blocks the commit.
+
+IFC labels, permitted flow and the exact authorization decision apply to the
+data and effect being published. Finite causal evidence cannot supply them.
+An external effect requires a durable delivery identity and a recoverable
+handoff. A durable outbox can atomically record state and delivery intent;
+exactly-once external delivery additionally requires the destination's
+deduplication/transaction contract. Recovery cannot infer successful delivery
+from a locally committed intent alone.
+
+Recovery verifies stored source roots, generations, bindings and receipts,
+reconstructs admitted state, and distinguishes uncommitted, committed and
+delivered operations. Retries preserve their operation identity. Replays use
+the declared snapshot and clock domains; host wall-clock time is not a replay
+input unless the source contract explicitly admits it.
+
+* Native execution and dependency direction
+
+The existing =mrr-gerbil= runtime uses one Gambit owner thread. Production
+native calls must preserve that affinity and buffer lifetime discipline.
+One process must have one deliberately composed native program closure;
+loading the POO ABI and grammar archive independently is not evidence that
+two Gambit program initializers can safely coexist.
+
+Language-neutral identity, relation, revision, query and lineage crates remain
+independent of Gerbil and ASCENT. A production execution adapter composes
+those contracts with the native library. It must not introduce a cycle by
+making the native bridge depend on the facade that invokes it. Static rule
+declarations are compiled from the Scheme owner; requests contain values,
+not dynamically evaluated programs or subprocess commands.
+
+The Rust replacement removes both =ascent!= execution sites and the Cargo
+=ascent= dependency. Existing =mrr-ascent= receipt/admission contracts must be
+moved to an appropriately named owner or replaced by the admitted native
+contract, with all facade consumers migrated. Keeping that crate as a Legacy
+alias, replacing inference with a Rust BFS evaluator, or deleting its negative
+admission tests does not establish removal. Rust witness reconstruction may
+remain an independent receipt check; it cannot become the production solver.
+
+The native archive and architecture dependency allowlists must name the
+actual Temporal/ASCENT runtime imports. Build tooling and observability build
+modules remain outside the execution closure. Missing native initialization,
+unsupported ABI, malformed values, rejected bindings and unavailable runtime
+are typed failures; none triggers fallback to the deleted evaluator.
+
+* Executable acceptance obligations
+
+Acceptance requires real native calls for closure, Search factor influence
+and Temporal operations, with original typed receipts admitted by MRR. It
+also requires rejection of stale generation/cut, substituted source/root,
+clock-domain mismatch, incomplete coverage, unsupported inference and
+truncated evidence. Rust witness checks preserve deterministic support and
+the existing shortest-distance contract without silently changing semantics.
+
+Production currentness requires an exercised correction between computation
+and commit, a policy revocation at that boundary, and deterministic conflict
+rejection. Recovery requires crash injection before/after durable commit and
+delivery acknowledgement, followed by identity-preserving replay and retry.
+These obligations are separate from a successful read-only query roundtrip.
+
+Benchmarks and qualification receipts belong to ASP's native Scheme owners.
+Cold startup, queueing and steady-state native calls are measured separately.
+Five seconds without genuine progress remains failure; queue wait and native
+initialization are included where the corresponding operation promises that
+deadline. A host timeout alone cannot interrupt or safely reuse an in-flight
+Gambit call: bounded native computation or an explicitly isolated worker
+lifecycle must establish cancellation and subsequent runtime health.

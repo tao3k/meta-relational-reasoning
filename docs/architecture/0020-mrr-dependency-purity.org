@@ -5,6 +5,13 @@
 
 Normative for the MRR MVP dependency graph.
 
+The production execution boundary is refined by
+[[file:0034-poo-temporal-production-runtime.org][POO Flow Temporal in the MRR Production Runtime]].
+Language-neutral core purity still applies. Its native production adapter
+composes compiled Scheme Temporal and ASCENT; the projection-only Gerbil
+restriction and Rust ASCENT evaluation allowance below describe the earlier
+MVP and do not define the target production graph.
+
 * Direction
 
 The semantic dependency direction is:

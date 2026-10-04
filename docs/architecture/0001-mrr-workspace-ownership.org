@@ -7,6 +7,12 @@
 
 Accepted foundation.
 
+The production runtime composition is refined by
+[[file:0034-poo-temporal-production-runtime.org][POO Flow Temporal in the MRR Production Runtime]].
+Its Scheme Temporal/ASCENT ownership supersedes this document's earlier
+projection-only Gerbil and Rust ASCENT runtime boundary. The older crate
+graph below describes the existing foundation, not completed migration.
+
 * Decision
 
 This repository is a language-neutral Meta-Relational Reasoning workspace.
