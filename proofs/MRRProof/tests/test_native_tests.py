@@ -3,6 +3,7 @@
 import os
 import subprocess
 import sys
+import tempfile
 import time
 import unittest
 from unittest.mock import Mock, patch
@@ -11,6 +12,56 @@ from mrr_proof_validation import native_tests as native
 
 
 class OutputRegression(unittest.TestCase):
+    @unittest.skipUnless(hasattr(os, "fork"), "requires POSIX process groups")
+    def test_exited_parent_does_not_admit_or_leak_pipe_holding_descendant(self):
+        with tempfile.TemporaryDirectory() as directory:
+            pid_path = os.path.join(directory, "descendant.pid")
+            producer = (
+                "import os, signal, time; "
+                "signal.signal(signal.SIGTERM, signal.SIG_IGN); "
+                "pid = os.fork(); "
+                f"open({pid_path!r}, 'w').write(str(pid)) if pid else None; "
+                "print('MODULE x\\nCASE-OK y\\nMODULE-OK x\\nOK', flush=True) "
+                "if pid else None; "
+                "os._exit(0) if pid else time.sleep(30)"
+            )
+            descendant = None
+            try:
+                status = native.qualify(
+                    [sys.executable, "-c", producer], native.SchemeReceipt(["x"])
+                )
+                with open(pid_path) as stream:
+                    descendant = int(stream.read())
+                self.assertEqual(status, 124)
+                deadline = time.monotonic() + 1
+                while time.monotonic() < deadline:
+                    try:
+                        os.kill(descendant, 0)
+                    except ProcessLookupError:
+                        break
+                    if sys.platform == "linux":
+                        # An orphan zombie awaits init's reap but has no live
+                        # execution or pipe; container init may reap later.
+                        try:
+                            with open(f"/proc/{descendant}/stat") as stream:
+                                state = stream.read().rsplit(") ", 1)[1].split()[0]
+                            if state == "Z":
+                                break
+                        except FileNotFoundError:
+                            break
+                    time.sleep(0.01)
+                else:
+                    self.fail("owned descendant survived timeout cleanup")
+            finally:
+                if descendant is None and os.path.exists(pid_path):
+                    with open(pid_path) as stream:
+                        descendant = int(stream.read())
+                if descendant is not None:
+                    try:
+                        os.kill(descendant, native.signal.SIGKILL)
+                    except ProcessLookupError:
+                        pass
+
     def test_exit_race_reaps_before_retrying_group_signal(self):
         child = Mock(pid=123)
         child.poll.side_effect = [None, 0]

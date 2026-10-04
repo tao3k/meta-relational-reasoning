@@ -115,7 +115,12 @@ def qualify(
     try:
         with selectors.DefaultSelector() as selector:
             selector.register(child.stdout, selectors.EVENT_READ)
-            while selector.get_map() or child.poll() is None:
+            while True:
+                # Reap independently of pipe readiness: descendants can hold
+                # stdout open after the direct child has exited.
+                status = child.poll()
+                if not selector.get_map() and status is not None:
+                    break
                 ready = selector.select(timeout=0.1)
                 if ready:
                     chunk = os.read(child.stdout.fileno(), 65536)
@@ -130,7 +135,9 @@ def qualify(
                 now = time.monotonic()
                 if now - last_output > 5 or now - started > 45:
                     print(
-                        "NATIVE-FAIL: five seconds without output or 45s batch limit",
+                        "NATIVE-FAIL: five seconds without output or 45s batch limit "
+                        f"(direct child status={child.poll()}, "
+                        f"output pipe open={bool(selector.get_map())})",
                         flush=True,
                     )
                     # A descendant may retain the pipe after its parent exits.
@@ -152,6 +159,9 @@ def qualify(
             except subprocess.TimeoutExpired:
                 signal_owned_group(child, signal.SIGKILL)
                 child.wait()
+        # A reaped parent does not prove its process group is gone. In
+        # particular a descendant retaining stdout may ignore timeout SIGTERM.
+        signal_owned_group(child, signal.SIGKILL)
         child.stdout.close()
 
 

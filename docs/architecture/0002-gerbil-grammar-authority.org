@@ -270,3 +270,23 @@ idle5 after final =HARNESS-OK= and =OK= output. Its signal cleanup then hit a
 Darwin zombie-group permission race. Supervision now reaps before group signals
 and retries an exited-child race while retaining live permission refusals.
 This repair does not turn that idle failure into a pass or relax its budget.
+
+The qualification loop now polls/reaps the direct child independently of pipe
+readiness. Timeout diagnostics distinguish a live direct child from an exited
+parent whose descendants retain stdout. Cleanup always sends SIGKILL to the
+owned group, including after the parent has exited: SIGTERM alone is not a
+complete lifecycle boundary for descendants that ignore it.
+
+A real fork regression prints complete module/case/final-OK receipts, exits its
+parent with status zero, and leaves a SIGTERM-ignoring descendant holding the
+pipe. The prior implementation failed the cleanup assertion (6.146s); the
+repair retained refusal 124 at the unchanged idle5 boundary and terminated the
+descendant. Six process regressions passed in 5.575s. This is process ownership
+evidence, not successful qualification of the earlier macOS Scheme batch.
+
+The previously failing generated Scheme module also compiled dynamically in
+isolation with the configured GCC/SDK, so the earlier linker error is not yet
+attributed to a missing linker. An observed retry of the existing PackageSpec
+prefix exited zero while reporting real GC work; an owned GXI sample showed
+hash-table, expander and collector activity. That retry reused the prefix and
+does not replace the failed fresh-prefix receipt or qualify a full cold build.
