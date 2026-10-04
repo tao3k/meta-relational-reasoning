@@ -1,6 +1,8 @@
 //! Public facade for the language-neutral MRR contract graph.
 #![forbid(unsafe_code)]
 mod admission;
+#[cfg(feature = "agentic-ai-context")]
+mod agentic_ai_context;
 mod api;
 mod binding;
 mod counterexample;
@@ -8,8 +10,30 @@ mod query_result;
 mod truth;
 mod typing;
 pub use admission::{
-    CandidateIdentities, ClosureAdmissionError, DerivationReceipt, MaterializedClosure,
-    admit_closure_candidates,
+    BundleBoundClosure, CandidateIdentities, ClosureAdmissionError,
+    ClosureCandidateComparisonError, ClosureCandidateRow, ClosurePairComparisonError,
+    DerivationReceipt, MaterializedClosure, admit_closure_candidates, compare_closure_candidates,
+    compare_closure_pairs,
+};
+#[cfg(feature = "agentic-ai-context")]
+pub use agentic_ai_context::{
+    AGENTIC_AI_CONTEXT_MANIFEST_SCHEMA, AGENTIC_AI_CONTEXT_QUERY_SELECTION_SCHEMA,
+    AdmittedAgenticAiContext, AdmittedAgenticAiContextMaterialization,
+    AdmittedAgenticAiContextQuerySelection, AgenticAiContextAdmissionError,
+    AgenticAiContextAdmissionRequest, AgenticAiContextComposedMaterializationRequest,
+    AgenticAiContextCompositionError, AgenticAiContextCompositionReceipt,
+    AgenticAiContextCompositionRequest, AgenticAiContextManifest, AgenticAiContextManifestRecord,
+    AgenticAiContextMaterializationRequest, AgenticAiContextQuerySelectionRecord,
+    AgenticAiContextQuerySelectionRequest, AgenticAiContextQuerySelectionRestoreRequest,
+    AgenticAiContextRestoreRequest, AgenticAiContextRevisionReceipt,
+    AgenticAiContextRevisionRequest, admit_agentic_ai_context, compare_agentic_ai_context_revision,
+    restore_agentic_ai_context, restore_agentic_ai_context_query_selection,
+    select_agentic_ai_context_from_query,
+};
+#[cfg(feature = "agentic-ai-context-tokens")]
+pub use agentic_ai_context::{
+    AgenticAiContextTokenBindingRequest, AgenticAiContextTokenizationError,
+    AgenticAiContextTokenizationRequest, SourceBoundAgenticAiContextTokens,
 };
 pub use api::{
     DeductionLimits, DeductionPlan, EngineBuildError, EngineQueryError, MrrEngine, MrrEngineBuilder,
@@ -20,6 +44,21 @@ pub use binding::{
 pub use counterexample::{
     CounterexampleFactIdentity, CounterexampleLineageError, CounterexampleLineageIdentities,
     counterexample_lineage,
+};
+#[cfg(feature = "agentic-ai-context")]
+pub use mrr_agentic_ai_context::{
+    AgenticAiContextClosure, AgenticAiContextComposer, AgenticAiContextComposition,
+    AgenticAiContextCompositionGraph, AgenticAiContextCompositionGraphInput,
+    AgenticAiContextCompositionNode, AgenticAiContextCompositionProducer, AgenticAiContextContract,
+    AgenticAiContextElement, AgenticAiContextError, AgenticAiContextLimits,
+    AgenticAiContextMaterialization, AgenticAiContextQuery, AgenticAiContextRenderedElement,
+    AgenticAiContextRevision, AgenticAiContextSpan, AgenticAiContextState,
+    AgenticAiContextStateInput, SemanticReuseCertificate,
+};
+#[cfg(feature = "agentic-ai-context-tokens")]
+pub use mrr_agentic_ai_context::{
+    AgenticAiContextComputationalIdentity, AgenticAiContextReuseEligibility,
+    AgenticAiContextTokenLayout, AgenticAiContextTokenizer,
 };
 pub use mrr_ascent::{
     ClosureError as DeductionError, ClosureReceipt, ClosureStatus, DerivationCandidate,
@@ -76,8 +115,9 @@ pub use mrr_transition::{
 };
 pub use query_result::{
     CandidateQueryResult, QueryResultAdmissionError, QueryResultAdmissionReceipt,
-    QueryResultBinding, QueryResultLimits, QueryResultValue, QueryResultValueKind,
-    admit_query_result_candidate,
+    QueryResultBinding, QueryResultLimits, QueryResultTransportError, QueryResultValue,
+    QueryResultValueKind, VerifiedQueryResultTransport, admit_query_result_candidate,
+    export_query_result_transport, verify_query_result_transport,
 };
 pub use truth::{TruthStatus, conflict_truth, intent_binding_truth, safety_truth, why_not_truth};
 pub use typing::{ExpressionType, ParameterType, QueryType, ResultField, StaticQueryTyping};

@@ -12,6 +12,10 @@ const MRR_DEPENDENCY_POLICY: &[(&str, &[&str])] = &[
     ("mrr-intent", &["mrr-identity"]),
     ("mrr-relation", &["mrr-identity"]),
     ("mrr-revision", &["mrr-identity"]),
+    (
+        "mrr-agentic-ai-context",
+        &["mrr-identity", "mrr-relation", "mrr-revision"],
+    ),
     ("mrr-search", &["ascent", "mrr-identity", "mrr-lineage"]),
     ("mrr-query", &["mrr-identity", "mrr-relation"]),
     ("mrr-logic", &["mrr-identity", "mrr-query", "mrr-relation"]),
@@ -57,6 +61,7 @@ const MRR_DEPENDENCY_POLICY: &[(&str, &[&str])] = &[
     (
         "meta-relational-reasoning",
         &[
+            "mrr-agentic-ai-context",
             "mrr-ascent",
             "mrr-bundle",
             "mrr-identity",

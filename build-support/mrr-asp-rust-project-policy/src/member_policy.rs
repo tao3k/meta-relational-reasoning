@@ -17,6 +17,7 @@ macro_rules! workspace_member_policy {
 }
 
 const MRR_WORKSPACE_MEMBER_POLICIES: &[MrrAspRustMemberPolicy] = &[
+    workspace_member_policy!("mrr-agentic-ai-context", "crates/mrr-agentic-ai-context"),
     workspace_member_policy!("mrr-identity", "crates/mrr-identity"),
     workspace_member_policy!("mrr-intent", "crates/mrr-intent"),
     workspace_member_policy!("mrr-relation", "crates/mrr-relation"),

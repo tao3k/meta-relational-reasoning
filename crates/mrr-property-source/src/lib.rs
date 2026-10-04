@@ -1,4 +1,4 @@
-//! MRR-owned source-bound property query integration for physical executors.
+//! MRR-owned source compilation, catalog binding, and result admission.
 #![forbid(unsafe_code)]
 
 mod source_query;

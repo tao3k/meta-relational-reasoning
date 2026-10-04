@@ -1,0 +1,575 @@
+#+title: Agentic AI Context System
+#+options: toc:2
+#+property: header-args :eval never-export :exports code
+
+* Authority and scope
+
+MRR owns Agentic AI Context semantics, selection, revision, materialization,
+and source admission. The first executable slice is
+=crates/mrr-agentic-ai-context=, exposed through the
+=meta-relational-reasoning= facade. Context Management names lifecycle
+operations within this system. The domain namespace is
+=MRR.AgenticAIContext=.
+
+* Optional features and package isolation
+
+Context is an optional capability of the Meta-Relational Reasoning facade.
+Default features are empty in both the facade and the Context crate.
+
+| Facade configuration | Enabled capability | Normal Context dependency |
+|----------------------+--------------------+---------------------------|
+| Default | Existing MRR facade | None |
+| =agentic-ai-context= | Source admission, selection, revision and byte materialization | Context core without token layout |
+| =agentic-ai-context-tokens= | Context plus external tokenizer binding and prefix eligibility | Context core with =token-layout= |
+
+Direct consumers of =mrr-agentic-ai-context= may enable =token-layout= explicitly.
+The token feature implies the Context feature in the facade. Ordinary MRR
+consumers do not receive Context APIs or a normal Context dependency unless
+they enable the feature. Workspace-wide commands still build the Context crate
+as an independent workspace member. Cargo features are additive within one
+resolved graph; these switches isolate dependencies and API availability, not
+process authority or tenant authorization.
+
+| Owner | Responsibility | Allowed direction |
+|-------+----------------+-------------------|
+| MRR Context crate | Semantic state, declared closure/impact, layouts and computational contracts | Depends on MRR identity, relation and revision |
+| Meta-Relational Reasoning facade | Exact source/query admission and stage construction | Optionally consumes the Context crate |
+| MRR Data | Generic persistence and storage adapters | Downstream consumption of existing MRR contracts |
+| Tokenizer/serving adapter | Vocabulary, model assets, tokenization and cache execution | Implements optional MRR interfaces externally |
+
+No feature introduces an MRR-to-MRR-Data dependency. Backend selection belongs
+to downstream storage adapters. The Context and facade token features do not
+pull in tokenizer libraries, model weights, serving runtimes or network clients.
+A production tokenizer adapter can use those dependencies in its own package;
+the semantic packages do not load its assets or select a model implicitly.
+
+=tools/check/context-features.py= inspects the actual normal consumer dependency
+graph under all three configurations. It rejects accidental Context activation,
+token-feature activation and storage/model/network dependency leakage. CI also
+compiles and tests each configuration independently, including the baseline.
+
+* Current selection profile
+
+Context supports explicit fact roots and result-driven selection for a catalog-bound
+query. Result-driven selection calls existing MRR query/result admission, then
+selects existing source facts from one named relation-valued column. Candidate
+admission checks binding and types; it does not prove engine execution correctness.
+
+* Ownership and dependency direction
+
+The Context crate consumes =mrr-identity=, =mrr-relation=, and =mrr-revision=.
+The facade rechecks the complete catalog binding against the supplied bundle
+and semantic snapshot before admitting the selection. A transported view must
+be checked again against its current source before disclosure.
+
+=mrr-data= owns generic persistence and storage adapters. It may persist these
+contracts through its existing dependency on MRR. The Context core has no
+dependency on =mrr-data=; a future storage adapter must preserve that direction.
+=lean-poo= supplies pure ordering/composition mathematics. It owns neither
+Context semantics nor storage. Org is a possible external projection; no Org
+parser or temporal ontology is introduced here. Temporal receipts are existing
+typed fact references supplied by their upstream owner.
+
+#+name: agentic-ai-context-authority
+#+begin_src mermaid
+flowchart TD
+    identity[mrr-identity] --> context[mrr-agentic-ai-context]
+    relation[mrr-relation] --> context
+    revision[mrr-revision] --> context
+    context --> facade[MRR facade source admission]
+    bundle[Admitted bundle and catalog binding] --> facade
+    facade --> consumers[Context consumers and storage adapters]
+    poo[lean-poo pure C4] --> proof[MRR.AgenticAIContext proofs]
+    fixture[Shared materialization fixture] --> proof
+    fixture --> context
+#+end_src
+
+* Selection and revision
+
+A validated state binds a snapshot, query identity and explicit roots, actor,
+task, policy digest, required facts, temporal references, and resource limits.
+Selection includes the transitive closure of all roots and contract references.
+Visited-node tracking terminates cycles. Missing dependencies, duplicate facts,
+stale generations, invalidated selected evidence, insufficient completeness,
+and exceeded element/edge limits fail before publishing a validated state.
+
+Dependencies are consumer declarations. This checks closure over that declared
+graph; it does not prove that every real semantic dependency was declared.
+Evidence completeness retains the existing MRR meaning and upstream premises.
+
+Revision compares facts and declared dependencies. Reverse dependency impact
+uses both old and new graphs. Snapshot, query, catalog binding, or contract drift conservatively
+invalidates all evidence. An unchanged selected node outside the impact set can
+receive a semantic reuse certificate. That certificate asserts equality of
+evidence under these premises, not equality of rendered bytes or cached state.
+
+* Composition, materialization, and computational reuse
+
+The raw materialization path accepts a unique, most-specific-first precedence
+containing exactly the required closure. The composition workflow additionally
+checks that its root is first, each child precedes its declared parents, and each
+local parent order is preserved. Neither path computes or certifies C4.
+Parent-first rendering reverses that precedence. A leaf extension requires the
+new order to be precisely a fresh child followed by the old order; structural
+recomposition can reorder existing parents and break the rendered prefix.
+
+Materialization checks externally rendered, versioned segments in exact order,
+records their spans and renderer identity, and enforces a byte budget. Byte
+append requires unchanged old segments, order, query, snapshot, and contract.
+Renderer determinism and correctness remain renderer-owner obligations.
+
+Token layout uses actual externally supplied token IDs. Computational identity
+binds model weights, tokenizer, renderer, template, positions, attention,
+cache format, adapters, multimodal inputs, sharing scope, and positive block
+size. Eligibility requires matching identities, query, and contract, then takes
+the longest common token prefix rounded down to whole blocks. A byte prefix
+alone does not establish token prefix: cross-boundary token merges can change
+the final old token. An unchanged suffix after an edit does not establish causal
+KV reuse. No serving cache, cache hit receipt, or live authorization is provided.
+
+* Proof boundary
+
+The independent Lake project is [[file:../../proofs/MRRProof/AgenticAIContext/lakefile.toml][AgenticAIContext]].
+It pins =lean-poo= to =cb4623980056fb761f34601181bb7d8485af1dda= and uses
+Lean 4.34.0 without migrating the existing MRR admission proof project.
+
+| Established kernel theorem | Required premise or remaining boundary |
+|----------------------------+----------------------------------------|
+| Injective identity mapping preserves certified C4 order, uniqueness and parent suffixes | Caller-established identity and selected-domain binding to lean-poo's NodeCertified |
+| Mapped element rendering agrees with upstream order rendering | Same renderer after the identity mapping |
+| Checked leaf extension yields the actual C4 order relation | Both C4 computations succeed and the checker accepts |
+| Parent-first leaf materialization appends bytes | Fixed renderer; equal old payloads and declared dependencies |
+| Token prefix follows materialization append | Explicit tokenizer append-composition at that boundary |
+| Longest common token prefix is maximal | Actual token sequences are supplied faithfully |
+| Whole-block eligibility lies inside the common prefix | Positive block size and equal computational configuration |
+
+Counterexamples cover structural reordering, a token merge, a changing global
+header, and changed causal history despite an unchanged suffix. Actual pinned
+C4 computations use =LeanPoo.C4.linearizeChecked=. Each reachable node consumes
+lean-poo's merge, suffix and complete-node certificates. Their established laws
+are reused directly; MRR does not reimplement or reprove C4. The general MRR
+identity-mapping and materialization bridges are conditional kernel proofs. No =sorry= or =native_decide= is admitted. The axiom
+audit scans every declaration in =MRR.AgenticAIContext= and imported =LeanPoo.C4=
+and permits only
+=propext=, =Classical.choice=, and =Quot.sound=.
+
+Rust and Lean replay [[file:../../fixtures/agentic-ai-context/materialization.json][one shared fixture]].
+This establishes bounded replay parity, not general Rust/Lean refinement.
+Hidden dependency completeness, generic query orchestration, automatic Rust
+C4 composition, production tokenizer integration, storage, and serving-cache
+execution remain outside this slice.
+
+* Lifecycle and stage admission
+
+The facade exposes a concrete stage chain. Stage constructors have private
+fields: storage and consumers cannot promote a raw layout into a source-admitted
+presentation by attaching a label.
+
+#+name: agentic-ai-context-stage-chain
+#+begin_src mermaid
+flowchart LR
+    bundle[Bundle and current snapshot] --> select[AdmittedAgenticAiContext]
+    selection[Roots contract and declared dependencies] --> select
+    select --> render[AdmittedAgenticAiContextMaterialization]
+    composer[External precedence and rendered segments] --> render
+    render --> tokens[SourceBoundAgenticAiContextTokens]
+    tokenizer[Actual token IDs and computational identity] --> tokens
+    tokens --> eligibility[Whole-block prefix eligibility]
+    previous[Historical token layout] --> eligibility
+    eligibility --> serving[External serving owner]
+#+end_src
+
+=AdmittedAgenticAiContext.materialize= rechecks the current source, validates
+exact selected closure membership, segment order, renderer identity and byte
+budget, then returns a source-admitted presentation. It does not execute an
+external renderer. =bind_tokens= consumes that presentation and binds an
+external token declaration after another source check. The token object retains
+the exact presentation, including bytes and spans. Binding tokens does not
+prove that the tokenizer actually encoded those bytes; the tokenizer owner
+must supply that evidence.
+
+The token feature also provides =AgenticAiContextTokenizer= and
+=AdmittedAgenticAiContextMaterialization.tokenize=. This path checks the source,
+computational declarations and adapter identity before invoking the adapter
+once on the exact complete presentation bytes. Adapter errors retain their
+original typed cause. No implicit per-segment encoding, asset download or model
+selection occurs. A byte-tokenizer fixture checks invocation and correspondence;
+it is not a production model tokenizer. Tokenizer correctness and authenticated
+configuration remain external owner obligations.
+
+Every stage retains the canonical source bundle identity and the exact
+catalog/snapshot query-binding digest. =check_source= rejects replaced bundles
+even when fact IDs and catalog shape match, and rejects stale snapshots even
+when the generation ID matches. Read-only accessors expose immutable values;
+they do not perform a live source check. Consumers must check source again
+when using a stored stage.
+
+=reuse_eligibility_from= checks the new view against its supplied current
+source before comparing token layouts. The old layout is a historical
+computational basis: its facts need not remain current for an identical token
+prefix to be reusable. Fresh evidence for the new view and compatible
+computational declarations are separate gates. Neither gate is a policy
+authorization observation, and eligibility is not a serving-cache receipt.
+
+* Adapter contracts and graph separation
+
+Selection dependency graph =D= and composition graph =G= have distinct
+meanings. =D= can contain cycles and drives required closure and reverse
+semantic impact. =G= contains explicit inheritance precedence and is supplied
+to the composition owner; successful C4 compilation requires its own graph
+conditions. A fact dependency does not automatically become an inheritance
+edge. The optional Rust API now accepts a bounded, single-root =G= over exactly
+that selected domain. It preserves ordered parent declarations and suffix flags,
+checks known references, root reachability and acyclicity, and canonicalizes node
+storage order. Empty selection requires no root. Multi-root selections need an
+explicit reachable composition root; MRR does not invent a virtual node.
+
+| Boundary | Inputs | Owner obligation | MRR check |
+|----------+--------+------------------+-----------|
+| Selection | Admitted bundle, bound query, contract and D | Declare all required semantic dependencies | Existing source/query binding, finite closure, validity and completeness |
+| Composition | Selected identities and G | Compute precedence with identified algorithm/version; retain its graph and result evidence | Exact closure, root/ancestry/local order checks, sealed graph/producer/manifest receipt |
+| Rendering | Ordered selected elements, contract, renderer version | Encode all prompt headers, separators and final-self inputs deterministically | Exact segment order, declared renderer identity and byte limit |
+| Tokenization | Exact full presentation, tokenizer/template version | Return actual full-prompt token IDs and establish byte-to-token correspondence | Retain that presentation; match renderer and computational declarations |
+| Serving | Current source-bound tokens and historical cache basis | Authenticate configuration/scope, check positions and attention, report actual hits/evictions | Common-prefix and whole-block eligibility only |
+| Persistence | Stage records and source references | Preserve canonical content and restore through facade admission | No public constructors for admitted stages; explicit source recheck |
+
+Composition evidence is an adapter contract, not a C4 proof attached to the
+Rust order. Renderer/tokenizer declarations are also explicit trust boundaries.
+Adding adapters must supply executable correspondence tests at each boundary;
+an algorithm name or matching version string alone does not satisfy them.
+Admitted stages have no =Deserialize= implementation. The selection manifest
+record below is an untrusted transport candidate; byte and token layouts still
+require their own stage constructors after selection restore.
+
+* Semantic manifest and storage re-entry
+
+=AgenticAiContextManifest= identifies one source-admitted semantic view under
+=mrr.agentic-ai-context.manifest.v1=. Its SHA-256 digest covers a deterministic
+CBOR encoding of the complete record, in the declared struct-field order.
+This is the versioned MRR manifest encoding, not a claim of DAG-CBOR encoding
+or an MRR Data CID. Changing the encoding or interpretation requires a new
+schema version.
+
+The record contains the canonical source bundle identity, generation, snapshot
+digest, query identity/binding digest, canonical roots and contract, the complete
+declared dependency graph, selected closure and completeness, and resource
+limits. The graph includes unselected source facts and records empty dependency
+lists explicitly. Source bundle identity binds fact payloads and schemas;
+selection declarations do not redefine those facts. Duplicate root/contract/
+edge declarations normalize during admission. A changed graph can change the
+manifest even when the selected closure remains the same.
+
+The manifest is shared immutably by the admitted Context and its materializations;
+the token stage retains it through its presentation. Renderer bytes, ordering
+adapter output, tokenizer IDs and cache state are separate identities. Equal
+semantic manifests do not establish equal bytes, token IDs or cache contents.
+Resource limits are included, so changing the resource envelope also changes
+manifest identity.
+
+#+name: agentic-ai-context-storage-reentry
+#+begin_src mermaid
+flowchart LR
+    admitted[Source-admitted Context] --> manifest[Immutable semantic manifest]
+    manifest --> record[Serializable candidate record]
+    record --> store[Downstream generic persistence]
+    store --> candidate[Decoded untrusted record]
+    reference[Trusted expected digest and resource ceiling] --> restore[MRR restore admission]
+    candidate --> restore
+    source[Current bundle and snapshot] --> restore
+    restore --> view[Reconstructed admitted Context]
+#+end_src
+
+=AgenticAiContextManifestRecord= can be encoded as JSON or CBOR by a generic
+storage adapter. Decoding it grants no admission. =restore_agentic_ai_context=
+requires current source objects, an independently held expected manifest digest,
+and a caller-owned resource ceiling. The expected digest must come from the
+consumer's admitted reference rather than the same untrusted storage record.
+A digest is a content reference, not a signature or authorization grant.
+
+Restore rejects unknown schema versions, enlarged limits, oversized metadata,
+replaced bundles and snapshot/query drift before rebuilding the selection. It
+then runs existing facade admission, compares every canonical record field,
+and compares the rebuilt digest to the expected reference. Stored closure,
+completeness and dependency declarations cannot silently become trusted.
+Noncanonical candidate metadata is rejected rather than silently rewritten.
+Limits are preserved; a smaller restore ceiling rejects a record that would
+require a larger envelope.
+
+The storage owner must bound transport bytes and decoder allocations before
+passing a decoded candidate to MRR. MRR bounds metadata before cloning it for
+reconstruction. This interface owns no database, storage client, model assets or
+physical persistence policy. MRR Data remains a downstream consumer, and actual
+backend integration is a separate adapter. Restoring byte/token layouts is
+outside this record profile. Rust validates the concrete manifest/transport
+implementation. The Context system Lean model now proves checked source-bound
+re-entry under caller ceilings; concrete CBOR and digest refinement remain open.
+
+* Executable entrypoint
+
+Run =just test-agentic-ai-context= through the captured repository environment.
+It checks Rust contracts and facade admission, builds the proof library, replays
+the shared fixture with the Lean interpreter, and audits transitive axioms.
+The independent CI job uses the same Lean project and commands.
+
+* Composition and revision receipts inside MRR
+
+=AdmittedAgenticAiContext::compose= rechecks the supplied bundle and snapshot,
+validates the expected producer labels, checks them against the external
+=AgenticAiContextComposer=, then validates =G= before invoking that producer once.
+The returned order must satisfy the bounded checks above. Adapter failure keeps
+its typed source; admission rejection and producer failure are distinct.
+
+=AgenticAiContextCompositionReceipt= has private fields and no =Deserialize=.
+Its SHA-256 digest binds the deterministic CBOR tuple with domain
+=mrr.agentic-ai-context.composition.v1=: manifest digest, canonical graph input,
+producer owner/algorithm/implementation version, and actual precedence. Ordered
+parent lists and suffix metadata remain significant. Matching labels are not
+code authentication; ancestry and local orders do not prove inherited C4 merges
+or suffix compatibility. Those algorithm obligations remain with the producer.
+
+=materialize_composed= requires the receipt's exact manifest digest, including
+source facts, dependencies, query binding, contract and limits. Equal selected
+IDs alone cannot authorize a foreign receipt. The resulting immutable
+presentation retains the receipt, and token binding retains that presentation.
+The direct =materialize= path remains available with no composition receipt;
+its evidence is limited to membership and physical layout checks.
+
+=compare_agentic_ai_context_revision= checks both endpoints against their own
+supplied bundle/snapshot before comparing states. The old source may be a
+historical source; it is not reinterpreted as the new source. The sealed revision
+receipt binds old/new manifest digests, query-binding drift, changed IDs,
+reverse dependency impact and reusable IDs under the domain
+=mrr.agentic-ai-context.revision.v1=. =check_contexts= rejects a different pair.
+It checks endpoint identity; live source use still requires =check_source=.
+
+Actual query/catalog binding drift invalidates all evidence even when the query
+ID, snapshot and fact selection are unchanged. A source payload change alone
+uses dependency impact across both graphs; an unchanged independent fact can
+remain semantically reusable. Resource limits are endpoint identity but a limit
+change alone does not change fact semantics. None of these semantic receipts
+establish rendered-byte equality, token-prefix equality, disclosure authority
+or a physical cache hit.
+
+These interfaces and gates are MRR-owned and remain behind the existing
+=agentic-ai-context= feature. No backend adapter or storage dependency is added.
+Rust regression tests exercise receipt binding and failure ordering. Existing
+Lean proofs keep their explicit mathematical premises; these new CBOR digests
+and source-binding implementations are not claimed as Lean refinements.
+
+* Reusing the upstream mathematical basis
+
+Fare's [[https://fare.tunes.org/files/cs/poof.pdf][POOF paper]] supplies prototype composition, open recursion and
+instantiation semantics; that PDF illustrates C3 linearization. The separate
+[[https://github.com/fare/c4-mixins][C4-Mixins]] source adds suffix specifications. lean-poo owns their C4
+translation and the existing certified merge/suffix/node laws. MRR pins that
+implementation and adds the consumer binding, selection and rendering layers.
+
+=CompositionBinding= consumes =LeanPoo.C4.NodeCertified= with an explicit
+injective node-to-element mapping and exact selected-order equality. Its laws
+transfer upstream order preservation, no duplicates and parent suffixes into
+the consumer element representation, then relate that representation's
+parent-first rendering to =materializeOrder=. These premises do not establish
+Rust FactId encoding, source admission or a Manifest digest automatically.
+
+The upstream graph-traversal and cached-metadata proof boundary remains stated
+in lean-poo. MRR's checked execution invokes those upstream checks rather than
+adding a second algorithm. The Rust composer interface remains an external
+invocation seam; shared fixture replay is not a production Rust-to-Lean bridge.
+
+
+* Query-driven selection
+
+=select_agentic_ai_context_from_query= takes the exact bundle, current snapshot,
+catalog-bound query, result candidate, and a named selection request. It rebinds
+the query, calls =admit_query_result_candidate= with row/cell limits, and requires
+a relation-valued selection column. Every selected FactId must exist in the source
+bundle with the returned relation type. Null, scalar, node and list values are
+rejected in this column. Duplicate rows retain their result identity while roots
+are canonicalized. Empty rows produce an empty root set; mandatory contract facts
+and declared dependencies still use the existing bounded closure admission.
+
+=AdmittedAgenticAiContextQuerySelection= privately binds the admitted Context,
+complete ordered result receipt and selected column into a versioned digest.
+The nested Context retains source bundle, query/catalog, snapshot and generation
+binding. =check_source= rechecks the current bundle and snapshot. Persisted
+selection provenance must be reconstructed by this entrypoint with the result
+candidate; restoring only a Context manifest does not restore result provenance.
+
+Semantic revision uses the existing Context revision API. Different result rows
+with equal canonical roots may retain semantic reuse while their selection
+provenance digests differ. Actual query/catalog/snapshot drift invalidates reuse.
+Neither selection nor semantic reuse certifies renderer, token, policy or cache
+behavior. Physical execution and backend work remain with their existing owners.
+
+* Native test progress
+
+=MRR_NATIVE_PROGRESS= enables actual Rust native owner-thread initialization and
+operation start/return diagnostics on stderr. There is no periodic output.
+Five seconds without real output still fails qualification. Build preparation is
+performed separately before bounded test execution so compilation is not mistaken
+for a test result.
+
+* Complete Query Context qualification
+
+The five-stage consumer qualification is executable through the facade. Native
+qualification rejects assertion failure (42), missing imports (42), an
+undiscovered suite with zero cases (65), and a silent child (124). Success
+requires every expected module, at least one successful case per module, and
+upstream final =OK=. The upstream gxtest harness still owns discovery/execution;
+these are additional receipt conditions. =self-test= executes actual Gerbil
+positive and negative fixtures rather than matching a simulated transcript.
+
+** Result provenance restore
+
+=AdmittedAgenticAiContextQuerySelection.export_record= re-admits the supplied
+candidate and checks it is the exact selected result. The versioned
+=AgenticAiContextQuerySelectionRecord= contains a Context manifest, its digest,
+the selected column and existing Query V1 transport bytes. It adds no storage
+implementation or second result-row format.
+
+=restore_agentic_ai_context_query_selection= accepts a caller-trusted expected
+selection digest, Context ceilings, row/cell ceilings and transport byte limit.
+It refuses oversized result bytes before decoding, restores the source-bound
+Context through existing admission, verifies and re-admits transported results,
+reconstructs selection/closure, then checks exact Context and selection identity.
+A self-consistent replacement record cannot replace the trusted expected digest.
+The caller bounds outer storage decoding; this API operates on decoded records.
+The API is available with =agentic-ai-context= alone; token support is optional.
+
+** Shared complete example
+
+=fixtures/agentic-ai-context/selection.json= is shared by Rust integration checks,
+the runnable =context_workflow= example and Lean runtime checks. Ten vectors
+cover exact roots, duplicate rows, empty results, unknown facts, relation types,
+query/generation/catalog/snapshot drift and row/source limits. The complete
+workflow uses a three-fact dependency chain, a producer returning the fixture's
+precedence checked against pinned Lean POO C4, deterministic segment rendering,
+a full-prompt byte tokenizer, stored provenance restore and paired revision.
+
+The old prompt is =[65,66]= and the extended prompt is =[65,66,67]=. Changed roots
+cancel semantic reuse under the current Context basis contract. The actual byte
+tokenizer still yields a two-token common prefix and two eligible full-block
+tokens. These are deliberately separate receipts. The adapters are deterministic
+consumer fixtures, not production tokenizer assets or an authenticated composer.
+
+The Lean Selection model proves exact projected root membership, deduplication
+preserving that set, matching source FactId/relation membership, accepted binding,
+row/source bounds, binding-drift refusal, and root/binding drift canceling reuse.
+Runtime checks replay the same JSON cases and workflow orders through upstream
+checked C4. Labels abstract the exact Rust identities. This is a conditional
+model with shared examples, not a refinement proof of Rust, CBOR or SHA-256.
+
+** Scale receipt and evidence boundary
+
+=just context-scale= runs four separate processes with a five-second silence
+cutoff and 45-second per-case cap. Each repeats selection, exact result export,
+restore, revision, rendering and full-prompt token eligibility three times.
+A separate worker records each binary's own peak RSS, not a cumulative maximum
+across earlier scenarios. It rejects overflow at row, source-element,
+dependency-edge, result-transport-byte and rendered-byte ceilings.
+
+The committed =fixtures/agentic-ai-context/scale-baseline.json= records observed
+single-host dev-profile measurements on 2026-10-04. Phase timings are three-run
+means; source admission is one cold construction. RSS covers the whole binary.
+It is an observational baseline, not a cross-platform performance guarantee.
+
+| Scenario | Facts | Rows | Fanout | Selected | Select ms | Restore ms | Peak RSS MiB | Eligible tokens |
+|----------+-------+------+--------+----------+-----------+------------+--------------+-----------------|
+| small | 256 | 1024 | 4 | 16 | 3.28 | 6.42 | 5.61 | 16 |
+| large results | 4096 | 32768 | 64 | 256 | 109.32 | 210.29 | 154.94 | 256 |
+| high fanout | 4096 | 8192 | 2048 | 2049 | 30.23 | 64.92 | 29.97 | 2048 |
+| duplicate heavy | 4096 | 32768 | 32 | 33 | 83.69 | 237.37 | 154.39 | 32 |
+
+Identical restored semantics retain all selected facts. The declared byte
+encoding retains the full token prefix; eligible tokens are rounded down to
+16-token blocks. The receipt measures qualification cost and reusable scope.
+It does not measure an actual serving-cache hit, model inference acceleration,
+or backend query performance. Duplicate-heavy results still bind and transport
+all ordered rows, explaining why their cost does not shrink with root count.
+
+** Reproduction and CI
+
+After =just deps=:
+
+#+begin_src sh
+just test-native
+just test-agentic-ai-context
+just context-scale
+#+end_src
+
+CI runs positive/negative native qualification, the complete feature-gated
+integration test, the runnable workflow, scale scenarios, shared Lean replay
+and the axiom audit. Each platform uploads scale JSON receipts for inspection.
+
+* Context system proof: closure, restoration and revision
+
+The earlier Selection, Composition, Materialization and Tokenization modules
+proved individual laws. They did not establish dependency closure, storage
+re-entry or the reverse dependency revision algorithm. The new modules address
+these system-level obligations explicitly.
+
+** Least required closure
+
+=MRR/AgenticAIContext/Closure.lean= defines finite rooted reachability and an
+executable certificate checker. Query roots, mandatory contract facts and
+temporal receipts jointly seed the required closure. Acceptance checks source
+membership, rooted witnesses, all roots, every declared dependency, duplicate
+freedom and the caller's selected-fact ceiling.
+
+=checked_closure_exact= proves that the accepted list contains every and only
+reachable fact. =checked_closure_unique= proves set equality of independently
+accepted certificates, regardless of list order or expansion fuel. Cycles are
+allowed. Insufficient witness fuel fails admission; an accepted certificate is
+never merely a truncated traversal prefix. Source validity/completeness and the
+completeness of dependency declarations remain upstream admission premises.
+
+** Context admission and restored authority
+
+=MRR/AgenticAIContext/System.lean= composes selection and closure admission.
+=context_system_sound= proves exact Query binding, projected roots, least
+required closure and row/source/selection ceilings. The abstract record retains
+ordered result provenance, source identities, dependencies, mandatory facts,
+temporal receipts and renderer/tokenizer identities.
+
+=context_restore_sound= proves both exact equality with the caller-trusted
+expected record and fresh admission under current source/dependencies/ceilings.
+=context_restore_identity_refused= rejects any changed record. Neither stored
+closure metadata nor stored limits grant authority. Labels model exact admitted
+identities; these theorems do not assume SHA-256 injectivity or prove CBOR parsing.
+
+** Revision and the rendering consequence
+
+=MRR/AgenticAIContext/Revision.lean= uses the union of old and new dependencies
+for reverse impact. Changes include exact semantic element inequality and global
+query/snapshot/contract drift. A checked impact certificate contains the complete
+least reverse closure of changed elements. Reuse is computed from the selected
+intersection minus that impact, rather than supplied as an arbitrary list.
+
+=revision_reuse_dependency_safe= proves exact semantic equality for every
+reusable fact and all of its transitive dependencies. This requires complete
+source declarations with no unknown dependency targets.
+=revision_global_change_no_reuse= proves that global drift empties semantic reuse.
+
+=context_system_revision_render_tokens= combines both admitted endpoints,
+the upstream C4 composition certificate, its exact mapping to the selected
+closure and a computationally checked full rendering frame. It derives element
+equality from safe revision membership, then proves identical parent-first bytes
+under one deterministic element encoder and identical whole-prompt tokens under
+any fixed tokenizer. The encoder and tokenizer identity mappings remain explicit
+provider premises. Partial reuse does not establish whole-context byte equality.
+The existing leaf-append theorem separately requires its tokenizer boundary.
+
+** Executable and proof gates
+
+=Checks/Main.lean= reuses =selection.json= for source, provenance and dependency
+input, and adds 26 system checks: missing/extra/duplicate closure facts,
+insufficient witness fuel, cyclic closure, mandatory and temporal roots, current
+restore ceilings, provenance/source/generation drift, incomplete reverse impact,
+changed dependencies, unrelated changes, global drift and renderer drift.
+
+=Checks/Axioms.lean= requires the system theorem names to be loaded and audits all
+transitive MRR and upstream C4 declarations. No =sorry= or custom axiom is allowed;
+only standard Lean axioms are accepted. This is a checked executable mathematical
+model. Refining the concrete Rust worklist, CBOR transport and hashes into this
+model remains separate work; a physical cache hit or model inference acceleration
+is not a theorem of this system.

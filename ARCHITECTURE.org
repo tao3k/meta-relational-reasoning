@@ -16,6 +16,8 @@ flowchart LR
     scheme[Gerbil reasoning declarations] --> native[mrr-gerbil native ABI]
     native --> facade
     contracts[mrr identity relation logic lineage transition] --> facade
+    context[mrr-agentic-ai-context] --> facade
+    contracts --> context
 #+end_src
 
 * Ownership boundary
@@ -42,6 +44,22 @@ do not run inside the Rust query hot path.
 The complete ownership decision is recorded in
 =docs/architecture/0001-mrr-workspace-ownership.org=. Parser authority and ISO
 profile evidence are recorded in RFC 0002 and RFC 0024.
+
+* Agentic AI Context System
+
+MRR owns the Context domain and source admission. =mrr-agentic-ai-context=
+selects explicit facts and their declared dependency closure, tracks revision
+impact, materializes ordered segments, and checks token-prefix reuse eligibility.
+The facade binds this view to an existing admitted bundle and catalog query.
+The [[file:docs/architecture/agentic-ai-context.org][Context authority]] records premises,
+the independent =MRR.AgenticAIContext= proof project, and runtime boundaries.
+=lean-poo= remains pure composition mathematics; =mrr-data= owns generic
+persistence through downstream adapters.
+
+The facade feature =agentic-ai-context= enables the Context domain;
+=agentic-ai-context-tokens= additionally enables external-tokenizer and reuse
+contracts. Both are off by default. Storage and model implementations remain
+downstream adapters, and no Context feature introduces a dependency on MRR Data.
 
 * Mathematical publication view
 

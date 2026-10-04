@@ -1,7 +1,7 @@
 //! Admission of bounded physical query results into MRR candidate evidence.
 
 use core::num::NonZeroUsize;
-use std::{collections::BTreeSet, fmt};
+use std::{collections::BTreeSet, fmt, io::Write};
 
 use mrr_bundle::{EntityCatalogDigest, RelationCatalogDigest};
 use mrr_identity::{EntityId, FactId, GenerationId, RelationId};
@@ -13,6 +13,7 @@ use sha2::{Digest, Sha256};
 use crate::{CatalogBoundQuery, ExpressionType, QueryType};
 
 const QUERY_RESULT_ADMISSION_SCHEMA: &[u8] = b"mrr.query-result-admission.v1";
+const QUERY_RESULT_TRANSPORT_SCHEMA: &str = "mrr.query-result-transport.v1";
 
 /// One self-describing value returned by a physical query engine.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -74,6 +75,76 @@ pub struct QueryResultAdmissionReceipt {
     binding: QueryResultBinding,
     row_count: usize,
     digest: [u8; 32],
+}
+
+/// A bounded, versioned physical result transport. Bytes are never an
+/// admission receipt: the receiving MRR process rechecks rows and identities.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+struct QueryResultTransportV1 {
+    schema: String,
+    query_binding_digest: [u8; 32],
+    generation: String,
+    relation_catalog_digest: [u8; 32],
+    entity_catalog_digest: [u8; 32],
+    snapshot_digest: [u8; 32],
+    columns: Vec<Binding>,
+    rows: Vec<Vec<QueryResultValue>>,
+    row_count: u64,
+    result_digest: [u8; 32],
+}
+
+/// A physical candidate and receipt reconstructed by native admission.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct VerifiedQueryResultTransport {
+    candidate: CandidateQueryResult,
+    receipt: QueryResultAdmissionReceipt,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum QueryResultTransportError {
+    /// `observed` is the input length or the first attempted output length
+    /// beyond the cap; serialization stops before allocating that output.
+    TooLarge {
+        limit: usize,
+        observed: usize,
+    },
+    Encoding(String),
+    SchemaMismatch,
+    BindingMismatch,
+    RowCountMismatch,
+    DigestMismatch,
+    CountOverflow,
+    Admission(QueryResultAdmissionError),
+}
+
+impl fmt::Display for QueryResultTransportError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(formatter, "{self:?}")
+    }
+}
+
+impl std::error::Error for QueryResultTransportError {}
+
+struct BoundedTransportWriter {
+    bytes: Vec<u8>,
+    limit: usize,
+    exceeded_at: Option<usize>,
+}
+
+impl Write for BoundedTransportWriter {
+    fn write(&mut self, data: &[u8]) -> std::io::Result<usize> {
+        let attempted = self.bytes.len().saturating_add(data.len());
+        if attempted > self.limit {
+            self.exceeded_at = Some(attempted);
+            return Err(std::io::Error::other("query transport byte limit exceeded"));
+        }
+        self.bytes.extend_from_slice(data);
+        Ok(data.len())
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
 }
 
 /// Reasons a physical result cannot enter MRR candidate evidence.
@@ -302,6 +373,103 @@ impl QueryResultAdmissionReceipt {
     pub const fn digest(&self) -> &[u8; 32] {
         &self.digest
     }
+}
+
+impl VerifiedQueryResultTransport {
+    #[must_use]
+    pub const fn candidate(&self) -> &CandidateQueryResult {
+        &self.candidate
+    }
+
+    #[must_use]
+    pub const fn receipt(&self) -> &QueryResultAdmissionReceipt {
+        &self.receipt
+    }
+}
+
+/// Export an already admissible candidate with its exact ordered rows.
+/// The byte limit applies after encoding; semantic row/cell limits apply first.
+pub fn export_query_result_transport(
+    query: &CatalogBoundQuery,
+    candidate: &CandidateQueryResult,
+    limits: QueryResultLimits,
+    max_bytes: NonZeroUsize,
+) -> Result<Vec<u8>, QueryResultTransportError> {
+    let receipt = admit_query_result_candidate(query, candidate, limits)
+        .map_err(QueryResultTransportError::Admission)?;
+    let binding = receipt.binding();
+    let wire = QueryResultTransportV1 {
+        schema: String::from(QUERY_RESULT_TRANSPORT_SCHEMA),
+        query_binding_digest: *binding.query_binding_digest(),
+        generation: binding.generation().to_string(),
+        relation_catalog_digest: *binding.relation_catalog_digest().as_bytes(),
+        entity_catalog_digest: *binding.entity_catalog_digest().as_bytes(),
+        snapshot_digest: *binding.snapshot_digest(),
+        columns: candidate.columns().to_vec(),
+        rows: candidate.rows().to_vec(),
+        row_count: u64::try_from(receipt.row_count())
+            .map_err(|_| QueryResultTransportError::CountOverflow)?,
+        result_digest: *receipt.digest(),
+    };
+    let mut writer = BoundedTransportWriter {
+        bytes: Vec::new(),
+        limit: max_bytes.get(),
+        exceeded_at: None,
+    };
+    if let Err(error) = serde_json::to_writer(&mut writer, &wire) {
+        return Err(match writer.exceeded_at {
+            Some(observed) => QueryResultTransportError::TooLarge {
+                limit: max_bytes.get(),
+                observed,
+            },
+            None => QueryResultTransportError::Encoding(error.to_string()),
+        });
+    }
+    Ok(writer.bytes)
+}
+
+/// Verify every identity and re-admit the physical rows against a bound query.
+/// The caller remains responsible for supplying the authentic bound query and
+/// for mapping its semantic source to any POO Query or Temporal cut.
+pub fn verify_query_result_transport(
+    query: &CatalogBoundQuery,
+    bytes: &[u8],
+    limits: QueryResultLimits,
+    max_bytes: NonZeroUsize,
+) -> Result<VerifiedQueryResultTransport, QueryResultTransportError> {
+    if bytes.len() > max_bytes.get() {
+        return Err(QueryResultTransportError::TooLarge {
+            limit: max_bytes.get(),
+            observed: bytes.len(),
+        });
+    }
+    let wire: QueryResultTransportV1 = serde_json::from_slice(bytes)
+        .map_err(|error| QueryResultTransportError::Encoding(error.to_string()))?;
+    if wire.schema != QUERY_RESULT_TRANSPORT_SCHEMA {
+        return Err(QueryResultTransportError::SchemaMismatch);
+    }
+    let binding = QueryResultBinding::for_query(query);
+    if wire.query_binding_digest != *binding.query_binding_digest()
+        || wire.generation != binding.generation().to_string()
+        || wire.relation_catalog_digest != *binding.relation_catalog_digest().as_bytes()
+        || wire.entity_catalog_digest != *binding.entity_catalog_digest().as_bytes()
+        || wire.snapshot_digest != *binding.snapshot_digest()
+    {
+        return Err(QueryResultTransportError::BindingMismatch);
+    }
+    let candidate = CandidateQueryResult::new(binding, wire.columns, wire.rows);
+    let receipt = admit_query_result_candidate(query, &candidate, limits)
+        .map_err(QueryResultTransportError::Admission)?;
+    if wire.row_count
+        != u64::try_from(receipt.row_count())
+            .map_err(|_| QueryResultTransportError::CountOverflow)?
+    {
+        return Err(QueryResultTransportError::RowCountMismatch);
+    }
+    if wire.result_digest != *receipt.digest() {
+        return Err(QueryResultTransportError::DigestMismatch);
+    }
+    Ok(VerifiedQueryResultTransport { candidate, receipt })
 }
 
 /// Admits an exact, bounded result candidate for one catalog-bound query.

@@ -3,7 +3,9 @@ use std::fmt;
 use std::num::NonZeroUsize;
 
 use ascent::{Dual, ascent};
-use mrr_identity::{FactId, GenerationId, LineageEdgeId, LineageNodeId, QueryOperatorId};
+use mrr_identity::{
+    FactId, GenerationId, IdentityError, LineageEdgeId, LineageNodeId, QueryOperatorId,
+};
 use mrr_lineage::{
     ImpactError, ImpactGraph, LineageEdge, LineageEdgeKind, LineageGraph, LineageGraphError,
     LineageNode, LineageNodeKind, impact,
@@ -32,6 +34,14 @@ impl SearchFactor {
     #[must_use]
     pub const fn new(id: QueryOperatorId, role: SearchFactorRole) -> Self {
         Self { id, role }
+    }
+
+    /// Derives the same typed identity from a Scheme Search factor's canonical input.
+    pub fn from_canonical_input(
+        canonical_input: &str,
+        role: SearchFactorRole,
+    ) -> Result<Self, IdentityError> {
+        QueryOperatorId::from_canonical_bytes(canonical_input).map(|id| Self { id, role })
     }
 
     #[must_use]
@@ -75,6 +85,7 @@ pub struct SearchObservation {
     id: FactId,
     candidate: FactId,
     factor: QueryOperatorId,
+    generation: GenerationId,
     logical_position: u64,
     causal_parents: Vec<FactId>,
 }
@@ -85,6 +96,7 @@ impl SearchObservation {
         id: FactId,
         candidate: FactId,
         factor: QueryOperatorId,
+        generation: GenerationId,
         logical_position: u64,
         causal_parents: Vec<FactId>,
     ) -> Self {
@@ -92,6 +104,7 @@ impl SearchObservation {
             id,
             candidate,
             factor,
+            generation,
             logical_position,
             causal_parents,
         }
@@ -110,6 +123,11 @@ impl SearchObservation {
     #[must_use]
     pub const fn factor(&self) -> QueryOperatorId {
         self.factor
+    }
+
+    #[must_use]
+    pub const fn generation(&self) -> GenerationId {
+        self.generation
     }
 
     #[must_use]
@@ -167,6 +185,11 @@ pub enum SearchFrameworkError {
     SelfEdge(SearchFactorEdge),
     FactorCycle,
     DuplicateObservation(FactId),
+    ObservationGenerationMismatch {
+        observation: FactId,
+        expected: GenerationId,
+        actual: GenerationId,
+    },
     DuplicateCausalParent {
         observation: FactId,
         parent: FactId,
@@ -331,6 +354,15 @@ pub fn evaluate_search_factors(
     }
 
     let factor_index = validate_factors(factors, edges)?;
+    for observation in observations {
+        if observation.generation != generation {
+            return Err(SearchFrameworkError::ObservationGenerationMismatch {
+                observation: observation.id,
+                expected: generation,
+                actual: observation.generation,
+            });
+        }
+    }
     let observation_index = validate_observations(&factor_index, edges, observations)?;
     let potential = observations.len().saturating_mul(factors.len());
     validate_budget("influences", potential, limits.max_influences.get())?;

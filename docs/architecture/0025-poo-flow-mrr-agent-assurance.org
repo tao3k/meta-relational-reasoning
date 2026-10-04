@@ -170,14 +170,31 @@ result is complete, identity-bound, lineage-valid, and transition-valid.  The
 runtime performs admitted external work.  No layer may fabricate the receipt
 owned by another layer.
 
+The common Query authoring and admission entry point is POO Flow's Scheme
+=modules/query= library. A =lambda-*= Module specializes that entry point for
+its domain: it supplies the projection, source, generation, root, result
+contract, and capability scope. The vertical-domain Case stays in its Lambda
+library. MRR Scheme distributes its grammar projections, ReasoningBundle
+declarations, bounded resource driver, and semantic Search composition using
+POO Flow's POO/Flow primitives. MRR's native libraries supply bounded Ascent
+evaluation, semantic compilation, catalog binding, lineage, and result
+admission; they do not contain domain Case logic or own a backend. POO Flow's
+=temporal-causality= analyzes event order and structural Impact, while its
+=reverse-inference= evaluates competing source-labelled hypotheses as bounded
+candidates. These are distinct from MRR's semantic admission and from ASP's
+concrete Search Playbook and runtime execution.
+
 For an original GQL property query, the optional
-=mrr-property-source= integration crate compiles and checks the
-exact source digest before any physical read. It binds that query to the
-caller-owned catalogs and semantic snapshot, then admits the physical result
-candidate against the same bound query. MRR Data implements verified local/S3
-snapshot restore and bounded physical execution behind this interface. A POO
-Flow resource selects the source, generation, root, and execution scope; it
-does not create a second GQL parser or result-admission rule.
+=mrr-property-source= integration crate compiles and checks the exact source
+digest. =CompiledPropertySourceQuery.bind= binds the source to caller-owned
+catalogs and a semantic snapshot. The caller passes the resulting
+=CatalogBoundQuery= to its physical library, then passes the candidate back to
+=BoundPropertySourceQuery.admit=. MRR does not schedule the physical call or
+define an executor trait. MRR Data supplies verified local/S3 snapshot restore
+and bounded physical execution. Cargo features select optional physical and
+domain library support at build time; they do not select a running backend or
+grant execution authority. An application backend such as Marlin composes the
+selected libraries and owns runtime execution, persistence, and effects.
 
 * Why TLA+ crosses both layers
 
@@ -205,14 +222,16 @@ component-local safety does not imply safety after composition.
 The current checkout already consumes POO Flow rather than rebuilding its
 composition machinery:
 
-- =scheme/search/core.ss= exposes backend-neutral POO Search roles, typed
-  stages, compositions, and strategies.  A consumer such as ASP owns its
-  Playbook grammar and lowers concrete operators into this framework;
+- POO Flow =modules/search/interface.ss= owns backend-neutral Search
+  roles, typed stages, compositions, and strategies.  MRR consumes its
+  declarations for semantic reasoning; ASP owns its Playbook grammar and
+  lowers concrete operators into this framework;
 - =scheme/reasoning/core.ss= uses POO objects for the ReasoningBundle
   declaration and its bounded resource driver;
 - the native build consumes POO Flow observability modules;
-- =gerbil.pkg= declares only =gerbil-parser=, while =gerbil-parser= owns the
-  transitive POO Flow revision.  MRR must not add a second direct pin.
+- =gerbil.pkg= directly pins the POO Flow Ascent PR revision, which owns the
+  transitive =gerbil-parser= edge and exposes the common Scheme
+  =modules/query= API as a library dependency.
 
 The implemented evidence is still narrower than the complete diagram.  Current
 TLC parity covers committed MRR transition fixtures.  It does not yet prove a

@@ -1,0 +1,25 @@
+[package]
+name = "mrr-agentic-ai-context"
+description = "Snapshot-bound Agentic AI Context selection, materialization and reuse eligibility"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[features]
+default = []
+token-layout = []
+
+[dependencies]
+mrr-identity.workspace = true
+mrr-relation.workspace = true
+mrr-revision.workspace = true
+serde.workspace = true
+
+[dev-dependencies]
+mrr-asp-rust-build-support.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true

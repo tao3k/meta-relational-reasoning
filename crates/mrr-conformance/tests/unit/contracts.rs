@@ -10,8 +10,8 @@ use meta_relational_reasoning::{
     PathSegment, Precondition, Projection, QueryId, QueryOperatorId, QueryResult, QueryTemplate,
     ReasoningBundle, ReasoningBundleDeclaration, RelationAuthority, RelationContext, RelationField,
     RelationId, RelationPattern, RelationSchema, RevisionBinding, Rule, RuleId, RulePack,
-    RulePackId, SafetyLimits, SafetyStatus, SetQuantifier, StatePredicate, StateSchema,
-    StateSnapshot, Term, TransitionSystem, Value, ValueSchema, Variable, WhyNotLimits,
+    RulePackId, SafetyLimits, SafetyStatus, SemanticSnapshot, SetQuantifier, StatePredicate,
+    StateSchema, StateSnapshot, Term, TransitionSystem, Value, ValueSchema, Variable, WhyNotLimits,
     WhyNotStatus,
 };
 
@@ -197,10 +197,21 @@ fn execute(domain: Domain<'_>) {
         vec![edge]
     );
 
+    let closure_snapshot = SemanticSnapshot::admit(
+        generation,
+        vec![
+            RevisionBinding::admit(
+                ExternalRevisionIdentity::new(domain.name, "closure-source", "content-1").unwrap(),
+                generation,
+            )
+            .unwrap(),
+        ],
+    )
+    .unwrap();
     let closure = engine
         .derive(
             DeductionPlan::transitive_closure(edge, reachable, rule_pack, base, transitive),
-            generation,
+            &closure_snapshot,
             DeductionLimits::new(
                 NonZeroUsize::new(8).unwrap(),
                 NonZeroUsize::new(16).unwrap(),
@@ -208,8 +219,8 @@ fn execute(domain: Domain<'_>) {
             ),
         )
         .expect("bounded closure");
-    assert_eq!(closure.status(), ClosureStatus::Complete);
-    assert!(closure.candidates().iter().any(|candidate| {
+    assert_eq!(closure.closure().status(), ClosureStatus::Complete);
+    assert!(closure.closure().candidates().iter().any(|candidate| {
         candidate.values()
             == &[
                 Value::String(domain.left.into()),
@@ -217,6 +228,7 @@ fn execute(domain: Domain<'_>) {
             ]
     }));
     let identities: Vec<_> = closure
+        .closure()
         .candidates()
         .iter()
         .enumerate()
@@ -231,11 +243,14 @@ fn execute(domain: Domain<'_>) {
         .materialize(
             &closure,
             id!(GenerationId, domain.name, 0),
-            generation,
+            &closure_snapshot,
             &identities,
         )
         .expect("atomic materialization");
-    assert_eq!(materialized.derivations().len(), closure.candidates().len());
+    assert_eq!(
+        materialized.derivations().len(),
+        closure.closure().candidates().len()
+    );
 
     let derivation = &materialized.derivations()[0];
     let result_node = id!(LineageNodeId, domain.name, "result");

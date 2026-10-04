@@ -16,9 +16,10 @@ language descriptors through =parser-authority.ss=. Its
 not a second complete grammar. Each POO projection carries the exact parser V1
 schema, language, version, contract, grammar IR, and parser IR that authorize it.
 
-=gerbil.pkg= declares only the linked Gerbil Parser edge. POO Flow and
-=asp-gerbil-scheme= are inherited through Gerbil Parser rather than independently
-pinned by MRR. Root =build.ss= declares the library package through the ASP POO
+=gerbil.pkg= directly pins only the POO Flow library revision. POO Flow owns
+the Gerbil Parser and =asp-gerbil-scheme= package edges. The POO Flow pin
+exposes its common Scheme =modules/query= contract to MRR consumers. Root =build.ss=
+declares the library package through the ASP POO
 extension and hands execution to Gerbil's first-party =defbuild-script= and
 =std/make=. It produces the normal project-local =.gerbil= package artifacts;
 MRR does not implement a parallel Scheme package builder.
@@ -62,8 +63,8 @@ memory-safe Rowan event sink and never duplicates the grammar dispatch table.
 #+name: rfc-0002-authority-flow
 #+begin_src mermaid
 flowchart LR
-    pkg[gerbil.pkg] --> parser[gerbil-parser GQL and Cypher grammars]
-    parser --> flow[transitive POO Flow and ASP build API]
+    pkg[gerbil.pkg] --> flow[POO Flow common Query and ASP build API]
+    flow --> parser[gerbil-parser GQL and Cypher grammars]
     parser --> adapter[parser-authority.ss]
     declaration[gql-declaration.ss MRR projection] --> object[parser-bound POO projection]
     adapter --> object

@@ -950,6 +950,7 @@ version = "0.1.0"
 dependencies = [
  "ciborium",
  "criterion",
+ "mrr-agentic-ai-context",
  "mrr-ascent",
  "mrr-asp-rust-build-support",
  "mrr-bundle",
@@ -963,7 +964,20 @@ dependencies = [
  "mrr-search",
  "mrr-transition",
  "serde",
+ "serde_json",
  "sha2 0.10.9",
+]
+
+[[package]]
+name = "mrr-agentic-ai-context"
+version = "0.1.0"
+dependencies = [
+ "mrr-asp-rust-build-support",
+ "mrr-identity",
+ "mrr-relation",
+ "mrr-revision",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -1017,6 +1031,7 @@ dependencies = [
  "mrr-asp-rust-build-support",
  "mrr-intent",
  "mrr-revision",
+ "sha2 0.10.9",
 ]
 
 [[package]]

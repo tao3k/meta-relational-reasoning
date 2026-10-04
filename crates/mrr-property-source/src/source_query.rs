@@ -111,7 +111,7 @@ impl CompiledPropertySourceQuery {
 }
 
 impl BoundPropertySourceQuery {
-    /// The exact MRR query supplied to a physical backend for execution.
+    /// The exact MRR query a caller may submit to its physical library.
     #[must_use]
     pub const fn query(&self) -> &CatalogBoundQuery {
         &self.query

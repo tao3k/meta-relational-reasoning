@@ -200,6 +200,7 @@ The README defines the project. Detailed arguments and evidence remain with
 their owners:
 
 - [workspace and language-neutral ownership](docs/architecture/0001-mrr-workspace-ownership.org)
+- [Agentic AI Context System](docs/architecture/agentic-ai-context.org)
 - [bounded Ascent evaluation](docs/architecture/0003-mrr-ascent-evaluation.org)
 - [typed relation core](docs/architecture/0005-typed-relation-core.org)
 - [MetaQueryIr](docs/architecture/0006-meta-query-ir.org)
@@ -217,12 +218,24 @@ their owners:
 
 ## Build and verify
 
+Agentic AI Context is opt-in on the `meta-relational-reasoning` crate:
+`agentic-ai-context` enables semantic selection, composition/revision receipts,
+and source-bound byte materialization;
+`agentic-ai-context-tokens` additionally enables the external tokenizer interface
+and token-prefix eligibility. Both are disabled by default. Storage, model assets
+and serving runtimes remain downstream adapter dependencies. Run
+`just test-agentic-ai-context` to check the feature matrix and Lean proofs.
+
 Use the repository environment so Cargo, Gerbil packages, native libraries,
 and proof tools resolve through one dependency graph. `just` refreshes the
 Gerbil package through the SDK-sanitizing `mrr-gerbil` wrapper before Cargo can
 stage the native archive.
 
+On a fresh package cache, `just deps` fetches the declared POO Flow checkout
+and uses its native SHA prefetch helper before gxpkg installs the graph.
+
 ```bash
+./.devenv/devenv-profile-exec just deps
 ./.devenv/devenv-profile-exec just test
 ./.devenv/devenv-profile-exec just check
 ```
@@ -231,7 +244,7 @@ Focused owner commands remain available for diagnosis:
 
 ```bash
 ./.devenv/devenv-profile-exec mrr-gerbil build
-./.devenv/devenv-profile-exec mrr-gerbil test
+./.devenv/devenv-profile-exec mrr-gerbil env python3 tools/check/native-tests.py scheme
 ./.devenv/devenv-profile-exec mrr-cargo test --workspace --locked
 ./.devenv/devenv-profile-exec mrr-cargo test -p mrr-conformance --all-targets
 ./.devenv/devenv-profile-exec env GQL_HARNESS_VERIFY=1 \
@@ -257,3 +270,20 @@ receipt.
 `cargo package` remains intentionally disabled while workspace crates retain
 local unpublished dependency edges. Packaging will be enabled only after the
 publication topology is closed.
+
+
+For bounded native qualification after dependency setup, run `just test-native`.
+This prepares native artifacts, then uses real import/evaluation/runtime progress
+with a five-second silence cutoff and explicit upstream gxtest exit propagation.
+The Scheme package build includes Query provider and Search projection modules.
+
+The complete Query Context workflow and shared positive/negative fixtures are
+covered by `just test-agentic-ai-context`. `just context-scale` records bounded
+scale timing, per-process peak RSS and semantic/token reuse eligibility; CI saves
+these JSON receipts for each platform. See the [Context qualification and restore
+contract](docs/architecture/agentic-ai-context.org).
+
+The Context Lean project also checks least dependency closure, source-bound
+restore admission and reverse dependency revision, and connects checked reuse
+through certified C4 composition to rendered-byte and whole-prompt token equality.
+See `proofs/MRRProof/AgenticAIContext/MRR/AgenticAIContext/System.lean`.
