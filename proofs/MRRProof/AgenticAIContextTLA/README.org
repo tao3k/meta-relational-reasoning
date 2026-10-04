@@ -92,6 +92,12 @@ Flow receipt adapter has been implemented.
 
 ** Context Session model
 
+These are cross-boundary design checks for the proposed POO Flow
+=modules/session= contract.  Session types and transitions belong to POO Flow;
+MRR supplies only the admitted Query/Content/Context inputs, and MRR Data
+stores physical artifacts through an integration adapter.  Hosting these
+models in the MRR proof project does not assign Session implementation to MRR.
+
 [[file:ContextSession.tla][ContextSession.tla]] explores two Session identities, two workers, one turn per
 Session, two source cuts, and bounded revision states.  Its current invariants
 cover no duplicate commit from concurrent proposals, no commit after
@@ -100,7 +106,7 @@ close.  Four mutations must violate the corresponding named invariants:
 ignoring the conditional head check, current authorization, current source
 cut, or terminal state.  The model permits terminal deadlocks.
 
-[[file:../AgenticAIContext/MRR/AgenticAIContext/ContextSession.lean][ContextSession.lean]] proves pure design-level guards for begin, query-use binding,
+[[file:../AgenticAIContext/POOFlow/Session.lean][POOFlow/Session.lean]] proves pure design-level guards for begin, query-use binding,
 and resume, including terminal refusal, key/turn/cut agreement and revision
 advance.  The Lean and TLA models are not yet linked by a state replay or
 refined against production Rust, POO Flow, Marlin, or MRR Data code.  Neither

@@ -184,9 +184,10 @@ fields: storage and consumers cannot promote a raw layout into a source-admitted
 presentation by attaching a label.
 
 These are lifecycle stages of *one Context view*, not a Session lifecycle.
-The proposed RFC 0038 adds a semantic Session head over turns and query uses;
-it re-enters the existing stage admissions at each source cut.  It does not
-make a stored stage or historical manifest a current authorization decision.
+The proposed RFC 0038 extends the POO Flow-owned Session head over turns and
+query uses; MRR re-enters the existing Context stage admissions at each source
+cut.  A stored stage or historical manifest does not become a current
+authorization decision.
 
 #+name: agentic-ai-context-stage-chain
 #+begin_src mermaid

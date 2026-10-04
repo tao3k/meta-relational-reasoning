@@ -5,21 +5,25 @@
 
 * Decision
 
-Place a *Context Session* under =MRR.AgenticAIContext= as the semantic unit that
-binds one Agent session to its turns, query uses, source cuts, Context
-projections, and restoration checks.  It is a first-class identity and
-transition contract, not a conversation transcript or a second query engine.
-The existing POO Flow session ID is the address of the same logical session;
-an adapter must map it injectively into the Context Session key.  There must
-be no independent MRR session ID registry with a competing lifecycle.
+Extend POO Flow's =modules/session= as the sole owner of Session identity,
+state, turn/query-use binding, lifecycle transitions, and parent/child
+lineage.  A Context-enabled Session binds exact source cuts and admitted MRR
+Context projection receipts at each turn.  It is a first-class POO Flow
+contract, not a conversation transcript or a second query engine.  MRR must
+not create a parallel Session key, registry, head, or transition API.
 
-POO Flow continues to own session policy, parent/child workflow composition,
-capabilities, scheduling, communication, cancellation, and effect handoff.
-The designated runtime owns physical persistence, atomic head updates,
-leases, recovery, and effects.  MRR owns semantic binding and validation of a
-Context Session transition.  A POO Flow execution session can exist without
-the optional MRR Context feature; a Context-enabled session uses its existing
-identity and adds this semantic head.
+POO Flow also owns session policy, workflow composition, capabilities,
+scheduling, communication, cancellation, and effect handoff.  MRR
+AgenticAIContext owns admission and revalidation of the *Context, Query, and
+Content receipts* referenced by a POO Flow Session; it does not accept or
+publish Session lifecycle transitions.  The designated runtime owns physical
+persistence, atomic pointer updates, leases, recovery, and effects.  MRR Data
+provides generic physical artifact/snapshot storage and imports only the
+versioned identity/receipt interface needed by an integration adapter; its
+core does not implement Session semantics or a Session registry.  A POO Flow
+Session can exist without the optional MRR Context feature.  The optional
+storage adapter depends on the POO Flow contract; =modules/session= does not
+depend on MRR Data.
 
 The intended production chain is Orgize source structure, POO Flow policy and
 verified C4 precedence, MRR Query/Content/Context admission, a Tokio-driven
@@ -27,13 +31,14 @@ Marlin execution owner, and MRR Data physical artifacts.  The value of this
 chain depends on exact handoff receipts between these owners; merely placing
 their names in one diagram would not make the Session safe or distinctive.
 
-This RFC is a design for a new API.  The current
-[[file:agentic-ai-context.org][Context implementation]] has source-bound
+This RFC is a design for extending POO Flow's Session API and its MRR-facing
+adapter.  The current [[file:agentic-ai-context.org][Context implementation]]
+has source-bound
 selection, query-result candidate admission, manifest/restore, declared
-revision impact, and materialization stages.  It has no =ContextSession=,
-=SessionKey=, turn ledger, or live authorization manager.  The current POO Flow
+revision impact, and materialization stages.  It has no Session manager, turn
+ledger, or live authorization manager.  The current POO Flow
 =modules/session/registry.ss= emits a report receipt; it is not a live runtime
-store.  Neither implementation currently satisfies the transitions below.
+store.  The POO Flow Session extension and adapter below remain proposed.
 
 * Why the existing Query path is sufficient
 
@@ -53,26 +58,26 @@ turn to turn without changing the Session key.
 
 #+begin_src mermaid
 flowchart LR
-  P[POO Flow session and query policy] --> T[Context Session turn permit]
+  P[POO Flow modules/session and query policy] --> T[POO Flow Session turn permit]
   T --> Q[Existing Query authoring and physical adapter]
   Q --> A[MRR catalog and result admission]
   A --> X[MRR Context selection and manifest]
-  X --> H[Validated Session head transition]
+  X --> H[POO Flow validates Session transition with MRR receipts]
   H --> R[Runtime conditional head commit]
   R --> P
 #+end_src
 
 * Identity and scope
 
-=SessionKey= is a proposed typed tuple of an issuer namespace, project or
-tenant scope, and the opaque POO Flow session ID.  The POO adapter must
+=SessionKey= is a proposed POO Flow typed tuple of an issuer namespace,
+project or tenant scope, and its existing opaque session ID.  POO Flow must
 encode its existing project and session symbols injectively and canonically;
 string formatting or an unscoped symbol is not sufficient across projects.
 The Session head separately binds one =WorktreeId=, =TaskRunId=, and exact
 =WorktreeSourceCut=.  A Session moving to another WorkTree forks to a new key
 with explicit lineage and Context re-admission; changing a path or branch
 label does not silently move its existing head.
-One registry allocates or accepts a key at creation with an atomic
+The POO Flow Session owner allocates or accepts a key at creation with an atomic
 does-not-exist check.  A key is never recycled, including after close,
 expiration, or deletion of retained artifacts.  The key is an address, not a
 capability token or an authorization decision.  It is not a hash of query,
@@ -105,8 +110,9 @@ tasks over time.  Each admitted source cut and C4 evaluation still uses a
 infinite traversal during one projection.
 
 Direct lookup by =SessionKey= resolves an untrusted stored head through the
-runtime, then MRR validates the expected head identity and source bindings
-under the caller's current access decision.  The POO Flow registry receipt
+runtime.  POO Flow validates its identity, current scope and access decision;
+MRR revalidates any referenced Context/query/source receipts before their use.
+The POO Flow registry receipt
 can report addresses but cannot prove which head is current.  Discovery or
 filtering of sessions may use the existing Query framework over an explicitly
 admitted, access-filtered session-metadata projection.  That future projection
@@ -287,7 +293,7 @@ nodes to selected Context identities.  Policy resolution uses
 most-specific-first precedence; the existing byte materializer renders the
 selected order parent-first.  These are separate order contracts.
 
-The Context Session head then binds a turn to the existing MRR Query/result
+The POO Flow Session head then binds a turn to the existing MRR Query/result
 admission, required Content closure, source cut, effective policy and
 projection manifest.  A Tokio runtime such as Marlin can schedule queries,
 tools, cancellation and retries, but async execution does not confer MRR
@@ -295,21 +301,23 @@ admission or exactly-once effects.  Before publication, the runtime must
 check the current capability/effect guard and conditionally replace the
 head.  In Marlin, =marlin-agent-sessions= already has session identity,
 runtime policy and event-storage adapters, and =marlin-agent-storage= has an
-artifact-pointer compare-and-swap operation.  A Context Session adapter
+artifact-pointer compare-and-swap operation.  A POO Flow Session adapter
 connecting those APIs to MRR receipts remains to be built.
 
 MRR Data already owns physical snapshots, content identities and storage
-providers.  It does not currently expose a Context Session head transaction.
-The proposed durable protocol is: write immutable Context/session artifacts
-to MRR Data; verify their content identity and retrieval under the required
-availability profile; then publish a pointer to the validated head through a
-runtime conditional update.  An unsuccessful pointer update may leave an
-unreferenced immutable artifact for later garbage collection, but must not
-publish a partial head.  If the pointer store and MRR Data are separate,
-the adapter must prove that its pointer resolves to the exact MRR Data
-artifact; a string that merely resembles a CID is insufficient.  A future
-MRR Data conditional-head API could combine the physical steps, but this RFC
-does not assume it exists.
+providers.  The Session integration imports a versioned POO Flow identity and
+artifact-reference contract at its adapter boundary; MRR Data's storage core
+remains generic.  The proposed durable protocol is: write immutable
+Context/session artifacts to MRR Data; verify their content identity and
+retrieval under the required availability profile; then publish a pointer to
+the POO Flow-validated head through a runtime conditional update.  An
+unsuccessful pointer update may leave an unreferenced immutable artifact for
+later garbage collection, but must not publish a partial head.  If the
+pointer store and MRR Data are separate, the adapter must prove that its
+pointer resolves to the exact MRR Data artifact; a string that merely
+resembles a CID is insufficient.  A future generic MRR Data conditional
+pointer operation could combine physical steps without moving Session
+transition rules into storage; this RFC does not assume it exists.
 
 #+begin_src mermaid
 flowchart LR
@@ -318,7 +326,7 @@ flowchart LR
   P --> C[lean-poo C4 verified order]
   C --> X[MRR Context composition admission]
   Q[Existing MRR Query and Content cut] --> X
-  X --> S[Context Session transition receipt]
+  X --> S[POO Flow Session transition with MRR receipt refs]
   S --> T[Marlin Tokio execution and current guard]
   T --> D[MRR Data immutable artifact]
   D --> H[Runtime conditional Session-head publish]
@@ -374,8 +382,9 @@ better correctness or efficiency relative to a named baseline.
 
 * Semantic head and projection relation
 
-The immutable =ContextSessionHead= is the current semantic reference for a
-key.  A proposed head records schema version, key, owner/project scope,
+The proposed immutable =ContextSessionHead= belongs to POO Flow
+=modules/session= and is the current Session reference for a key.  It records
+schema version, key, owner/project scope,
 =WorktreeId=, =TaskRunId=, =WorktreeSourceCut=, consumed Project/WorkTree/Task
 Context head revisions, parent checkpoint if any, status, revision and
 predecessor digest, current
@@ -410,8 +419,9 @@ The initial model permits one pending mutating turn per Session key.  Read-only
 inspection may be concurrent, but publication uses an expected head revision
 and digest.  Parallel work that must commit independently uses child/forked
 sessions and explicit merge admission.  The runtime implements a conditional
-head update; MRR validates the proposed old/new semantic transition and
-returns a versioned receipt.  A receipt without the matching conditional
+head update; POO Flow validates the proposed old/new Session transition and
+returns a versioned receipt, while MRR validates only the referenced
+Query/Content/Context inputs.  A receipt without the matching conditional
 commit is not a published head.
 
 | Operation | Guard and semantic effect | Rejection example |
@@ -437,7 +447,7 @@ reactivates a terminal Session.
 Every transition request carries =SessionKey=, expected revision and digest,
 =WorktreeId=, =TaskRunId=, consumed shared-head revisions, =AttemptId=,
 actor/capability decision, exact WorkTree source cut, and bounded inputs.
-The =ContextSessionTransitionReceipt= binds the old/new head digests,
+The POO Flow =ContextSessionTransitionReceipt= binds the old/new head digests,
 operation, query-use and Context receipt references, guard decisions,
 completeness, and a typed outcome.  It uses a versioned, domain-separated
 identity profile.  Encoding and hash choice must be fixed with negative
@@ -451,15 +461,17 @@ committing or abandoning the pending turn.
 
 The intended sequence is:
 
-1. POO Flow obtains the current policy and capability decision, then asks MRR
-   to validate =begin_turn= against the exact Session head.
+1. POO Flow obtains the current policy and capability decision and validates
+   =begin_turn= against its exact Session head.
 2. The existing Query path binds the query to the chosen semantic snapshot;
    its physical owner produces a candidate result.
 3. MRR admits the candidate through RFC 0032 and selects Context through the
    existing facade entry point.  =QueryUseId= links the bound query digest,
    result receipt digest, Context selection digest and manifest digest.
-4. MRR validates the proposed turn commit against the same key, source cut,
-   current policy and expected head.  The runtime conditionally publishes it.
+4. POO Flow validates the proposed turn commit against the same key, source
+   cut, current policy and expected head.  MRR revalidates referenced
+   Query/Content/Context receipts.  The runtime conditionally publishes the
+   POO Flow head.
 5. Before display or effect, the designated owner rechecks current access and
    source; an old turn receipt alone does not authorize the action.
 
@@ -501,8 +513,8 @@ returns =incomplete=; it does not infer the missing transition.
 RFC 0037's meta-relational Impact may place a Session projection on a
 reevaluation frontier when query, Content, contract, capability, or source
 receipts change.  Reachability alone does not close or invalidate the
-Session; the owning evaluator must recheck the affected projection and
-publish a new scoped outcome.  Session continuation and action remain gated
+Session; MRR rechecks the affected Context projection and POO Flow decides
+whether to publish a new Session outcome.  Continuation and action remain gated
 by the current source and policy even if the rendered bytes or token prefix
 are unchanged.
 
@@ -510,19 +522,21 @@ are unchanged.
 
 | Owner | Proposed obligation |
 |-
-| POO Flow | preserve one Session ID and project-scoped parent/child lineage; select explicit policy parents, sharing and promotion authority for Project/WorkTree/Task/Session |
-| MRR Context | define typed scoped heads/transition receipts; bind Query, Content, Context, WorkTree cut and provenance; reject stale or foreign transfers |
-| Runtime | allocate WorkTree/Session identities and conditionally publish their heads; capture source cuts, enforce idempotency/effect reconciliation, recover and check disclosure/effects |
-| MRR Data | physical immutable artifact/CID persistence for the integrated profile, with retrievability evidence; no scope, semantic or authorization decision |
+| POO Flow =modules/session= | own the sole Session ID/key, head, turn ledger, lifecycle transitions and transition receipts; define parent/child lineage and policy for Project/WorkTree/Task/Session sharing |
+| MRR Context | admit and revalidate Query, Content and Context references bound to a POO Flow Session/turn/source cut; reject stale or foreign Context transfers; no Session head or transition API |
+| Runtime | conditionally publish POO Flow Session and WorkTree head references; capture source cuts, enforce idempotency/effect reconciliation, recover and check disclosure/effects |
+| MRR Data integration | import the versioned POO Flow Session identity/artifact-reference interface and persist generic immutable artifacts/CIDs with retrievability evidence; no Session lifecycle, scope or authorization decision in the storage core |
 
-Implement this as a direct extension of the existing Context feature, with no
-new query subsystem or legacy parallel Session API.  First agree on the
-injective POO session-ID encoding and head/transition identity profile.  Then
-implement pure transition validation and negative Rust contracts in
-=mrr-agentic-ai-context=, facade binding of actual query-selection and
-manifest receipts, and a POO Flow/production-runtime conditional-head
-adapter.  Existing POO session receipts should migrate to reference the same
-typed key; a temporary second registry would obscure ownership.
+Implement Session state and pure transition validation directly in POO Flow
+=modules/session=, with no new query subsystem or parallel MRR Session API.
+First agree on the POO Flow session-ID encoding and head/transition identity
+profile.  Then implement POO Flow transition contracts, MRR Context checks
+for actual query-selection and manifest receipts, an optional MRR Data import
+adapter for physical artifacts, and the production-runtime conditional-head
+adapter.  Existing POO Flow session receipts should migrate to reference the
+same typed key; a temporary second registry would obscure ownership.  The
+MRR crate remains usable without POO Flow or MRR Data through its current
+Context facade.
 
 Lean should prove key separation, terminal-state non-resurrection,
 monotonic revision/turn allocation, and that a query-use receipt belongs to
@@ -533,7 +547,9 @@ retry after uncertain commit, revocation between projection and action,
 resume after source change, fork isolation, cross-WorkTree transfer, and crash
 with a pending effect.
 Implementation replay must then connect the formal transitions to actual
-POO Flow, MRR, and runtime receipts.  The current design-level Lean model
+POO Flow, MRR, and runtime receipts.  The current design-level Lean Session
+model is hosted with MRR's cross-boundary proof fixtures; it is a proposed
+POO Flow contract mirror, not an MRR Session implementation.  It
 proves terminal refusal, accepted begin key/revision/turn progression,
 exact query-use key/turn/cut binding and fresh resume guards.  A finite TLA+
 model checks two Session identities and two workers, including concurrent

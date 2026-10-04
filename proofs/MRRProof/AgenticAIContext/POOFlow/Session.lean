@@ -1,6 +1,9 @@
 import Std
 
-namespace MRR.AgenticAIContext
+/- A design-level mirror of the proposed POO Flow modules/session contract.
+   It lives in this cross-boundary proof project for integration checks and
+   does not implement or assign ownership of Session to MRR. -/
+namespace POOFlow.Session
 
 /-- Design-level Session status. Runtime scheduling and physical head commit
 remain with their owners. -/
@@ -128,4 +131,4 @@ theorem accepted_resume_is_fresh (head next : ContextSessionHead)
     exact ⟨guards.2.1, guards.2.2, rfl, rfl, rfl⟩
   · contradiction
 
-end MRR.AgenticAIContext
+end POOFlow.Session

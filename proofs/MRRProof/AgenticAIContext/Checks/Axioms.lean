@@ -31,14 +31,14 @@ run_cmd do
       `MRR.AgenticAIContext.published_revision_dependency_safe,
       `MRR.AgenticAIContext.published_revision_impact_exact,
       `MRR.AgenticAIContext.context_system_revision_render_tokens,
-      `MRR.AgenticAIContext.closed_session_cannot_begin,
-      `MRR.AgenticAIContext.expired_session_cannot_begin,
-      `MRR.AgenticAIContext.foreign_session_cannot_begin,
-      `MRR.AgenticAIContext.closed_session_cannot_resume,
-      `MRR.AgenticAIContext.accepted_begin_preserves_key_and_advances,
-      `MRR.AgenticAIContext.accepted_query_use_has_exact_session_turn_cut,
-      `MRR.AgenticAIContext.foreign_query_use_cannot_bind,
-      `MRR.AgenticAIContext.accepted_resume_is_fresh,
+      `POOFlow.Session.closed_session_cannot_begin,
+      `POOFlow.Session.expired_session_cannot_begin,
+      `POOFlow.Session.foreign_session_cannot_begin,
+      `POOFlow.Session.closed_session_cannot_resume,
+      `POOFlow.Session.accepted_begin_preserves_key_and_advances,
+      `POOFlow.Session.accepted_query_use_has_exact_session_turn_cut,
+      `POOFlow.Session.foreign_query_use_cannot_bind,
+      `POOFlow.Session.accepted_resume_is_fresh,
       `MRR.AgenticAIContext.foreign_worktree_cannot_direct_read,
       `MRR.AgenticAIContext.stale_worktree_cut_cannot_direct_read,
       `MRR.AgenticAIContext.authorized_tasks_share_current_worktree_head,
@@ -51,7 +51,9 @@ run_cmd do
   let mut count : Nat := 0
   let mut c4Count : Nat := 0
   for (name, _) in environment.constants.toList do
-    if (`MRR.AgenticAIContext).isPrefixOf name || (`LeanPoo.C4).isPrefixOf name then
+    if (`MRR.AgenticAIContext).isPrefixOf name ||
+        (`POOFlow.Session).isPrefixOf name ||
+        (`LeanPoo.C4).isPrefixOf name then
       if (`LeanPoo.C4).isPrefixOf name then c4Count := c4Count + 1
       count := count + 1
       for axiomName in (<- collectAxioms name) do

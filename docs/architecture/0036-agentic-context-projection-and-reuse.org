@@ -35,7 +35,7 @@ source assertions, normative contracts, evidence, and derivations with typed
 authority.  Let =X[p,g]= be the Context Graph assembled for a projection scope
 =p=.  A scope binds actor, task, turn, capabilities, temporal cut receipt,
 effective-contract digest, query, projection-policy digest, budget, and expiry.
-RFC 0038 proposes that a Context-enabled scope also binds the shared
+RFC 0038 proposes that a Context-enabled scope also binds the POO Flow-owned
 =SessionKey=, expected =SessionRevision=, =TurnId=, =WorktreeId=,
 =TaskRunId=, =WorktreeSourceCut= and the exact consumed Project/WorkTree/Task
 Context head revisions.  Session identity is
@@ -101,7 +101,7 @@ Construction extends the existing semantic manifest with a linked
 identity.  The receipt binds that manifest digest, exact Content generation and
 source cut, effective contract, selected and omitted optional identities with
 reasons, authorization decision, budget accounting, expiry, and completeness.
-Under RFC 0038, the Session head references this immutable receipt at the
+Under RFC 0038, the POO Flow Session head references this immutable receipt at the
 exact turn; neither a Session ID nor its history upgrades an old projection
 to current authority.
 The existing manifest remains the authority for query, source bundle,
