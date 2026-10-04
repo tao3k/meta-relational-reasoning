@@ -125,7 +125,7 @@ def mrr_identity.api.RulePackId := Array Std.U8 32#usize
 def mrr_identity.api.DerivationId := Array Std.U8 32#usize
 
 /-- [mrr_relation::api::Value]
-    Source: 'crates/mrr-relation/src/api.rs', lines 13:0-13:14
+    Source: 'crates/mrr-relation/src/api.rs', lines 17:0-17:14
     Name pattern: [mrr_relation::api::Value]
     Visibility: public -/
 @[discriminant isize, rust_type "mrr_relation::api::Value"]
@@ -148,7 +148,7 @@ inductive mrr_relation.api.Value where
   mrr_relation.api.Value
 
 /-- [mrr_relation::api::RelationAuthority]
-    Source: 'crates/mrr-relation/src/api.rs', lines 248:0-248:26
+    Source: 'crates/mrr-relation/src/api.rs', lines 350:0-350:26
     Name pattern: [mrr_relation::api::RelationAuthority]
     Visibility: public -/
 @[discriminant isize, rust_type "mrr_relation::api::RelationAuthority"]
@@ -158,7 +158,7 @@ inductive mrr_relation.api.RelationAuthority where
 | RulePack : mrr_identity.api.RulePackId -> mrr_relation.api.RelationAuthority
 
 /-- [mrr_relation::api::FactProvenance]
-    Source: 'crates/mrr-relation/src/api.rs', lines 255:0-255:23
+    Source: 'crates/mrr-relation/src/api.rs', lines 357:0-357:23
     Name pattern: [mrr_relation::api::FactProvenance]
     Visibility: public -/
 @[discriminant isize, rust_type "mrr_relation::api::FactProvenance"]
@@ -169,7 +169,7 @@ inductive mrr_relation.api.FactProvenance where
   mrr_relation.api.FactProvenance
 
 /-- [mrr_relation::api::EvidenceCompleteness]
-    Source: 'crates/mrr-relation/src/api.rs', lines 261:0-261:29
+    Source: 'crates/mrr-relation/src/api.rs', lines 363:0-363:29
     Name pattern: [mrr_relation::api::EvidenceCompleteness]
     Visibility: public -/
 @[discriminant isize, rust_type "mrr_relation::api::EvidenceCompleteness"]
@@ -179,7 +179,7 @@ inductive mrr_relation.api.EvidenceCompleteness where
 | Unknown : mrr_relation.api.EvidenceCompleteness
 
 /-- [mrr_relation::api::FactValidity]
-    Source: 'crates/mrr-relation/src/api.rs', lines 268:0-268:21
+    Source: 'crates/mrr-relation/src/api.rs', lines 370:0-370:21
     Name pattern: [mrr_relation::api::FactValidity]
     Visibility: public -/
 @[discriminant isize, rust_type "mrr_relation::api::FactValidity"]
@@ -188,7 +188,7 @@ inductive mrr_relation.api.FactValidity where
 | InvalidatedBy : mrr_identity.api.FactId -> mrr_relation.api.FactValidity
 
 /-- [mrr_relation::api::RelationContext]
-    Source: 'crates/mrr-relation/src/api.rs', lines 274:0-274:26
+    Source: 'crates/mrr-relation/src/api.rs', lines 376:0-376:26
     Name pattern: [mrr_relation::api::RelationContext]
     Visibility: public -/
 @[rust_type "mrr_relation::api::RelationContext"]
@@ -200,7 +200,7 @@ structure mrr_relation.api.RelationContext where
   validity : mrr_relation.api.FactValidity
 
 /-- [mrr_relation::api::Fact]
-    Source: 'crates/mrr-relation/src/api.rs', lines 352:0-352:15
+    Source: 'crates/mrr-relation/src/api.rs', lines 454:0-454:15
     Name pattern: [mrr_relation::api::Fact]
     Visibility: public -/
 @[rust_type "mrr_relation::api::Fact"]

@@ -240,6 +240,7 @@ def main() -> int:
                 "MRR.ContextRust",
                 "-split-files",
                 "-filter-trait-methods",
+                *(["-loops-to-rec"] if args.probe_revision else []),
                 str(llbc),
             ],
             environment,

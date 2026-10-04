@@ -254,7 +254,7 @@ def mrr_identity.api.RevisionId.Insts.CoreCmpPartialEqRevisionId.eq
   core.array.equality.PartialEqArray.eq core.cmp.PartialEqU8 self other
 
 /-- [mrr_relation::api::{impl core::cmp::PartialEq<mrr_relation::api::FactValidity> for mrr_relation::api::FactValidity}::eq]:
-    Source: 'crates/mrr-relation/src/api.rs', lines 267:52-267:61
+    Source: 'crates/mrr-relation/src/api.rs', lines 369:52-369:61
     Name pattern: [mrr_relation::api::{core::cmp::PartialEq<mrr_relation::api::FactValidity, mrr_relation::api::FactValidity>}::eq]
     Visibility: public -/
 @[rust_fun
@@ -279,7 +279,7 @@ def mrr_relation.api.FactValidity.Insts.CoreCmpPartialEqFactValidity.eq
   else ok false
 
 /-- [mrr_relation::api::{mrr_relation::api::RelationContext}::completeness]:
-    Source: 'crates/mrr-relation/src/api.rs', lines 341:4-341:60
+    Source: 'crates/mrr-relation/src/api.rs', lines 443:4-443:60
     Name pattern: [mrr_relation::api::{mrr_relation::api::RelationContext}::completeness]
     Visibility: public -/
 @[rust_fun
@@ -291,7 +291,7 @@ def mrr_relation.api.RelationContext.impl.completeness
   ok self.completeness
 
 /-- [mrr_relation::api::{mrr_relation::api::RelationContext}::validity]:
-    Source: 'crates/mrr-relation/src/api.rs', lines 346:4-346:48
+    Source: 'crates/mrr-relation/src/api.rs', lines 448:4-448:48
     Name pattern: [mrr_relation::api::{mrr_relation::api::RelationContext}::validity]
     Visibility: public -/
 @[rust_fun "mrr_relation::api::{mrr_relation::api::RelationContext}::validity"]
@@ -302,7 +302,7 @@ def mrr_relation.api.RelationContext.impl.validity
   ok self.validity
 
 /-- [mrr_relation::api::{mrr_relation::api::Fact}::context]:
-    Source: 'crates/mrr-relation/src/api.rs', lines 391:4-391:51
+    Source: 'crates/mrr-relation/src/api.rs', lines 493:4-493:51
     Name pattern: [mrr_relation::api::{mrr_relation::api::Fact}::context]
     Visibility: public -/
 @[rust_fun "mrr_relation::api::{mrr_relation::api::Fact}::context"]

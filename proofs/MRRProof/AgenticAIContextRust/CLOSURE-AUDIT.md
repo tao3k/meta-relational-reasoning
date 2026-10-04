@@ -72,14 +72,20 @@ The complete generated state includes two NonZero library types absent from
 the default proved scope. A separate isolated compiler diagnostic supplies
 computable nonzero-value candidates, retaining the nonzero constraint. These
 candidates are not part of the admitted seven-type/eighteen-function interface.
-With those isolated candidates, Lean reports unknown constant
-`MRR.ContextRust.mrr_relation.api.Value.Insts.CoreCmpPartialEqValue` at
-the generated recursive List/Record comparison branches: the function references
-the trait instance before its later declaration. The pinned extractor does not
-support mixed recursive function/trait groups. Generated source is not patched,
-and no recursive equality axiom is admitted. Resolve this compiler obligation
-before extending the default proof gate. Earlier context/timeout failures remain
-historical diagnostics, not the current extraction blocker.
+The prior generated derived Value equality referenced its trait instance before
+its definition. The current production implementation uses direct variant and
+ordered-field recursion, preserving exact text, duplicates and short-circuit
+comparison. A finite independent derived-equality oracle checks all pairs of
+primitive/nested/order-sensitive samples; derived hashing is retained unchanged.
+This bounded regression check is not a universal equality theorem.
+
+Full comparison extraction now uses the pinned extractor's `-loops-to-rec`
+option in diagnostic mode, avoiding a nested-loop monotonicity failure within
+mutual recursion. Both extraction stages and complete isolated Lean compilation
+pass with explicit computable library candidates. No generated-source patch,
+equality oracle or custom axiom is used. The compile candidates remain outside
+the admitted default interface; full recursive equality correctness and complete
+revision assembly are still open refinement obligations.
 
 ## Actual global binding equality
 
@@ -96,3 +102,18 @@ uses the pinned library value model and actual derived element comparators.
 These proofs do not establish unsafe library storage/allocation, compilation,
 or complete revision assembly. Complete element classification, changed-set
 construction, state validation/publication and serialization remain open.
+
+## Complementary temporal and value evidence
+
+The [TLA+/Lean lifecycle gate](../AgenticAIContextTLA/README.md) checks eight
+finite four-identity graphs and two required real invariant counterexamples.
+Every distinct positive TLC state and both final counterexample states are
+projected into the Lean publication gate. TLC checks the phase transition
+safety/liveness under weak fairness; three universal Lean publication laws
+establish guards, complete impact and dependency-safe reuse within the model.
+
+This executable cross-model conformance does not replace the remaining Rust
+source equality/classification/assembly proof, prove a TLA-to-Lean translator,
+or establish universal lifecycle fairness or physical serving behavior. The CI
+gate retains five-second silence and 45-second qualification limits and exact
+model/config/log/Lean-binary hashes.

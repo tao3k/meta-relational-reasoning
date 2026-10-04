@@ -193,6 +193,43 @@ jobs:
           path: .ci/context-source-proof.json
           if-no-files-found: error
 
+  agentic-ai-context-tla:
+    name: Agentic AI Context TLA and Lean conformance
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Prepare pinned official TLC
+        run: |
+          mkdir -p .ci/tla
+          curl --fail --location --retry 3 https://github.com/tlaplus/tlaplus/releases/download/v1.7.4/tla2tools.jar -o .ci/tla/tla2tools.jar
+          echo '936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88  .ci/tla/tla2tools.jar' | sha256sum --check
+      - uses: leanprover/lean-action@v1
+        with:
+          lake-package-directory: proofs/MRRProof/AgenticAIContext
+          auto-config: false
+          build: false
+          test: false
+          lint: false
+      - name: Build Lean publication laws and actual TLC-state replay
+        working-directory: proofs/MRRProof/AgenticAIContext
+        run: lake build MRR agentic-ai-context-tla-replay && lake env lean Checks/Axioms.lean
+      - name: Check safety, liveness, counterexamples and Lean state conformance
+        run: python3 tools/check/context-tla.py --tlc-jar .ci/tla/tla2tools.jar --lean-replay proofs/MRRProof/AgenticAIContext/.lake/build/bin/agentic-ai-context-tla-replay --receipt .ci/tla/receipt.json
+      - name: Save TLA receipt and actual TLC logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: context-tla-${{ github.event_name }}
+          path: |
+            .ci/tla/*.json
+            .ci/tla/*.log
+          if-no-files-found: error
+
   agentic-ai-context-proof:
     name: Agentic AI Context proofs and shared C4 replay
     runs-on: ubuntu-latest
