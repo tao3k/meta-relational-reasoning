@@ -367,14 +367,16 @@ model brings the strict external interface to seven types/eighteen functions.
 
 The production helper preserves the original short-circuit binding evaluation.
 Full actual `compare_revisions` extraction now succeeds (Charon 0, Aeneas 0),
-superseding the earlier context/timeout blockers for extraction. Diagnostic
-mode still emits no proof success: the complete generated function requires
-additional NonZero library models, recursive payload equality compilation and
-complete revision/changed-set proofs. Isolated candidates are kept outside the
-default admitted interface. With those candidates, Lean rejects two recursive
-Value equality branches because the generated trait instance is referenced
-before its definition (`lean.unknownIdentifier`). No generated-source patch or
-recursive equality axiom is admitted. All 141 required declarations are checked for
+superseding the earlier context/timeout blockers for extraction. Diagnostic mode
+still emits no proof success. Actual Value equality uses direct variant and
+ordered-field recursion, retaining exact textual values and duplicate/order
+semantics; an independent derived-equality regression oracle checks finite
+samples. The pinned `-loops-to-rec` extraction option avoids recursive loop
+monotonicity failures. Complete isolated Lean compilation passes with explicit
+computable NonZero and library candidates outside the admitted default interface.
+No generated code is patched and no equality axiom is admitted. Universal
+recursive equality, exact changed construction and revision assembly remain open.
+All 141 required declarations are checked for
 custom axioms by `Axioms.lean`.
 
 See [CLOSURE-AUDIT.md](CLOSURE-AUDIT.md) for the obligation inventory, exact green
@@ -382,3 +384,9 @@ starting head, remaining trust boundaries and acceptance conditions. Complete
 change classification, revision assembly, state validation/publication,
 serialization/hash, unsafe stdlib and compilation/provider obligations remain
 separate gates.
+
+The complementary [TLA+/Lean gate](../AgenticAIContextTLA/README.md) checks phase
+ordering, weak-fair termination, complete invalidation before publication, and
+real fault counterexamples. Actual exported TLC states are checked against Lean
+publication/closure/reuse definitions. This cross-model conformance is distinct
+from the universal production-source obligations above.

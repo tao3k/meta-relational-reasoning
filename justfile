@@ -55,6 +55,11 @@ context-source-proof toolchain_dir:
     {{profile}} python3 tools/check/context-source-proof.py --toolchain-dir {{toolchain_dir}}
     {{profile}} bash -c 'cd proofs/MRRProof/AgenticAIContextRust && lake build Evidence Driver NativeFacts Stack Expansion Forward Reverse ReverseIndex ImpactWrapper Coverage Rejection ForwardWrapper GeneralForward GeneralWrapper DeclaredForward RevisionProjection BindingEquality && lake env lean Axioms.lean'
 
+# Check finite revision interleavings, fairness and required negative controls.
+context-tla receipt:
+    {{profile}} bash -c 'cd proofs/MRRProof/AgenticAIContext && lake build MRR agentic-ai-context-tla-replay && lake env lean Checks/Axioms.lean'
+    {{profile}} python3 tools/check/context-tla.py --lean-replay proofs/MRRProof/AgenticAIContext/.lake/build/bin/agentic-ai-context-tla-replay --receipt {{receipt}}
+
 # Record time, peak RSS, bounded rejection and actual declared reuse eligibility.
 context-scale:
     {{profile}} mrr-cargo build -p meta-relational-reasoning --example context_scale --locked --features agentic-ai-context-tokens

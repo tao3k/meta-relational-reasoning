@@ -27,6 +27,9 @@ run_cmd do
       `MRR.AgenticAIContext.context_restore_identity_refused,
       `MRR.AgenticAIContext.revision_reuse_dependency_safe,
       `MRR.AgenticAIContext.revision_global_change_no_reuse,
+      `MRR.AgenticAIContext.published_revision_gates,
+      `MRR.AgenticAIContext.published_revision_dependency_safe,
+      `MRR.AgenticAIContext.published_revision_impact_exact,
       `MRR.AgenticAIContext.context_system_revision_render_tokens] do
     unless environment.contains required do
       throwError "Required Context system theorem was not loaded: {required}"

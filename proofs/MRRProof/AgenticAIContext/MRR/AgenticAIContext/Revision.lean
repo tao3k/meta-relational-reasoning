@@ -103,3 +103,68 @@ theorem revision_global_change_no_reuse {Value : Type} [DecidableEq Value] (doma
     fuel limit invalidated impactOk id).mpr (Required.root changedId))
 
 end MRR.AgenticAIContext
+
+namespace MRR.AgenticAIContext
+
+/-- Protocol publication gate mirrored by the TLA+ Seal/Publish actions.
+This model gate is not yet a source theorem for complete Rust publication. -/
+def publishRevision {Value : Type} [DecidableEq Value]
+    (domain changed oldSelected newSelected invalidated : List Nat)
+    (oldValue newValue : Nat -> Value) (globalChanged : Bool)
+    (deps : Nat -> List Nat) (fuel limit : Nat) : Option (List Nat) :=
+  if checkRevisionChanges domain changed oldValue newValue globalChanged then
+    if checkRequiredClosure domain changed (reverseDependencies domain deps) fuel limit invalidated then
+      some (revisionReusable oldSelected newSelected invalidated)
+    else none
+  else none
+
+theorem published_revision_gates {Value : Type} [DecidableEq Value]
+    (domain changed oldSelected newSelected invalidated : List Nat)
+    (oldValue newValue : Nat -> Value) (globalChanged : Bool)
+    (deps : Nat -> List Nat) (fuel limit : Nat) (output : List Nat) :
+    publishRevision domain changed oldSelected newSelected invalidated oldValue newValue
+      globalChanged deps fuel limit = some output <->
+    checkRevisionChanges domain changed oldValue newValue globalChanged = true /\
+    checkRequiredClosure domain changed (reverseDependencies domain deps) fuel limit invalidated = true /\
+    output = revisionReusable oldSelected newSelected invalidated := by
+  by_cases changes : checkRevisionChanges domain changed oldValue newValue globalChanged = true
+  case pos =>
+    by_cases impact : checkRequiredClosure domain changed (reverseDependencies domain deps)
+      fuel limit invalidated = true
+    case pos =>
+      simp only [publishRevision, changes, impact, ite_true, Option.some.injEq, true_and]
+      exact eq_comm
+    case neg => simp [publishRevision, changes, impact]
+  case neg => simp [publishRevision, changes]
+
+theorem published_revision_dependency_safe {Value : Type} [DecidableEq Value]
+    (domain changed oldSelected newSelected invalidated : List Nat)
+    (oldValue newValue : Nat -> Value) (globalChanged : Bool)
+    (deps : Nat -> List Nat) (fuel limit id : Nat) (output : List Nat)
+    (published : publishRevision domain changed oldSelected newSelected invalidated
+      oldValue newValue globalChanged deps fuel limit = some output)
+    (selectedSource : forall selected, selected inList oldSelected -> selected inList domain)
+    (sourceClosed : forall parent, parent inList domain -> forall dependency,
+      dependency inList deps parent -> dependency inList domain)
+    (member : id inList output) :
+    globalChanged = false /\ forall dependency,
+      Required [id] deps dependency -> oldValue dependency = newValue dependency := by
+  have gates := (published_revision_gates domain changed oldSelected newSelected invalidated
+    oldValue newValue globalChanged deps fuel limit output).mp published
+  apply revision_reuse_dependency_safe domain changed oldSelected newSelected invalidated
+    oldValue newValue globalChanged deps fuel limit id gates.1 gates.2.1 selectedSource sourceClosed
+  simpa [gates.2.2] using member
+
+theorem published_revision_impact_exact {Value : Type} [DecidableEq Value]
+    (domain changed oldSelected newSelected invalidated : List Nat)
+    (oldValue newValue : Nat -> Value) (globalChanged : Bool)
+    (deps : Nat -> List Nat) (fuel limit : Nat) (output : List Nat)
+    (published : publishRevision domain changed oldSelected newSelected invalidated
+      oldValue newValue globalChanged deps fuel limit = some output) (id : Nat) :
+    id inList invalidated <-> Required changed (reverseDependencies domain deps) id := by
+  have gates := (published_revision_gates domain changed oldSelected newSelected invalidated
+    oldValue newValue globalChanged deps fuel limit output).mp published
+  exact checked_closure_exact domain changed (reverseDependencies domain deps)
+    fuel limit invalidated gates.2.1 id
+
+end MRR.AgenticAIContext
