@@ -451,3 +451,38 @@ regressions passed; the six-second streaming fixture remained explicitly
 ignored by the default test selection. The lifecycle test verifies retained
 warm outputs, failed-attempt marker invalidation, partial-output removal before
 retry, and SDK-change invalidation. This is separate from native ABI admission.
+
+* Child stdio flags and diagnostic backpressure (2026-10-05)
+
+Data's current-composition archive build exposed EAGAIN on a Rust artifact
+progress write, before Source admission, rather than an idle refusal. SDK GXI
+was independently observed changing the inherited parent's shared stderr
+open-file-description to nonblocking. MRR now pins the GSC stdio ownership
+repair and delegates package/program-stage execution to =run_native_process=.
+Native children use private pipes, preserving parent console flags while owned
+readers forward real bytes. Artifact/forwarded writes retain partial offsets
+and retry Interrupted/WouldBlock, including flush; genuine I/O and child-exit
+failures remain refusals. No timer log or budget/resource tuning is introduced.
+
+GSC =3635dfa08329f42765e8828b95bf3baf256d582f= passed sixteen local default
+regressions and strict direct Clippy. Its real six-second artifact growth
+fixture passed explicitly under idle5/wall120. The new MRR composition must
+qualify independently; the previous 31-test pass does not qualify this pin.
+Data pin changes remain owned by the current Data work.
+
+The complete latest-pin local native build passed under idle30/wall1200 in
+6m43s. PackageSpec completed in 45.35s, all 205 module C inputs in 38.53s,
+and all 59 object jobs with default twelve workers in 105.23s. The previously
+failing Cypher grammar object completed in 58.24s without EAGAIN. The final
+linked test artifact was admitted only after successful Cargo exit. All
+thirty-one native ABI/parser tests passed in 1.94s under idle5/wall120; strict
+direct production helper Clippy passed. These are local current-composition
+receipts, not Source/Data semantic admission, full Cargo lint, exact-head CI
+closure or a controlled performance comparison.
+
+The latest helper test build passed in 1m43s and all five default regressions
+passed (0.01s), with the streaming fixture explicitly ignored by default. That
+fixture was then run explicitly: actual start/intermediate/complete child
+events arrived during its six-second execution and the test passed (6.03s)
+under idle5/wall120. This qualifies continuous forwarding through MRR's shared
+executor and retains nonzero/quiet child failure regressions.

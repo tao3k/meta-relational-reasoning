@@ -13,7 +13,7 @@ use gerbil_scheme_native_build::{
     NativeHeaderInput, ProgramArchiveContract, ProgramArchiveObservation, ProgramArchiveObserver,
     ProgramArchiveOperation, ProgramArchiveRequest, build_program_archive_with_contract,
     gerbil_command, observe_program_archive_operation, prepare_gsc_progress_launcher,
-    source_workspace,
+    run_native_process, source_workspace,
 };
 
 const REQUIRED_MODULES: &[&str] = &[
@@ -364,33 +364,7 @@ pub(crate) fn run_with_progress(
     operation: &str,
     stream: bool,
 ) -> Result<(), String> {
-    if stream {
-        // status() inherits child stdout/stderr. output() would buffer actual
-        // PackageSpec/program-stage progress until the whole child exits.
-        let status = command
-            .status()
-            .map_err(|error| format!("{operation}: {error}"))?;
-        return if status.success() {
-            Ok(())
-        } else {
-            Err(format!(
-                "{operation}: {status}; child diagnostics streamed above"
-            ))
-        };
-    }
-    let output = command
-        .output()
-        .map_err(|error| format!("{operation}: {error}"))?;
-    if output.status.success() {
-        Ok(())
-    } else {
-        Err(format!(
-            "{operation}: {}; {}{}",
-            output.status,
-            String::from_utf8_lossy(&output.stdout),
-            String::from_utf8_lossy(&output.stderr)
-        ))
-    }
+    run_native_process(command, operation, stream)
 }
 
 fn resolve_program(program: impl AsRef<OsStr>) -> PathBuf {
