@@ -12,8 +12,8 @@ use super::{
 };
 use crate::{
     AgenticAiContextLimits, Binding, CandidateQueryResult, CatalogBoundQuery, QueryResultLimits,
-    ReasoningBundle, SemanticSnapshot, admit_query_result_candidate, bind_query_to_catalog,
-    export_query_result_transport, verify_query_result_transport,
+    ReasoningBundle, SemanticSnapshot, VerifiedQueryResultTransport, admit_query_result_candidate,
+    bind_query_to_catalog, export_query_result_transport, verify_query_result_transport,
 };
 
 pub const AGENTIC_AI_CONTEXT_QUERY_SELECTION_SCHEMA: &str =
@@ -70,11 +70,18 @@ impl AdmittedAgenticAiContextQuerySelection {
 
 /// Re-admit source, catalog/snapshot/generation, transported rows, selection and
 /// closure; then compare the complete selection identity with the trusted caller.
-pub fn restore_agentic_ai_context_query_selection(
+pub(super) fn restore_selection_parts(
     bundle: &ReasoningBundle,
     snapshot: &SemanticSnapshot,
     request: AgenticAiContextQuerySelectionRestoreRequest<'_>,
-) -> Result<AdmittedAgenticAiContextQuerySelection, AgenticAiContextAdmissionError> {
+) -> Result<
+    (
+        AdmittedAgenticAiContextQuerySelection,
+        CatalogBoundQuery,
+        VerifiedQueryResultTransport,
+    ),
+    AgenticAiContextAdmissionError,
+> {
     let record = request.record;
     if record.schema != AGENTIC_AI_CONTEXT_QUERY_SELECTION_SCHEMA {
         return Err(AgenticAiContextAdmissionError::SelectionRecordSchema);
@@ -122,5 +129,15 @@ pub fn restore_agentic_ai_context_query_selection(
     if admitted.context() != &context || admitted.digest() != &request.expected_digest {
         return Err(AgenticAiContextAdmissionError::SelectionRecordMismatch);
     }
-    Ok(admitted)
+    Ok((admitted, query, result))
+}
+
+/// Re-admit a digest-referenced selection. Cryptographic collision resistance
+/// remains the identity assumption for this compact-reference profile.
+pub fn restore_agentic_ai_context_query_selection(
+    bundle: &ReasoningBundle,
+    snapshot: &SemanticSnapshot,
+    request: AgenticAiContextQuerySelectionRestoreRequest<'_>,
+) -> Result<AdmittedAgenticAiContextQuerySelection, AgenticAiContextAdmissionError> {
+    restore_selection_parts(bundle, snapshot, request).map(|(selection, _, _)| selection)
 }

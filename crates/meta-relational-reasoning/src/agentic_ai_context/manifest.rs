@@ -65,13 +65,17 @@ impl AgenticAiContextManifest {
             completeness: state.required_closure().coverage(),
             limits: state.limits(),
         };
-        let mut canonical = Vec::new();
-        ciborium::into_writer(&record, &mut canonical)
-            .map_err(|error| AgenticAiContextAdmissionError::ManifestEncoding(error.to_string()))?;
+        let canonical = encode_manifest_record(&record)?;
         Ok(Self {
             digest: Sha256::digest(&canonical).into(),
             record,
         })
+    }
+
+    /// Exact versioned CBOR bytes used by the content digest, for independent
+    /// conformance checks. This is serialization, not an admission operation.
+    pub fn canonical_bytes(&self) -> Result<Vec<u8>, AgenticAiContextAdmissionError> {
+        encode_manifest_record(&self.record)
     }
 
     #[must_use]
@@ -84,4 +88,13 @@ impl AgenticAiContextManifest {
     pub const fn record(&self) -> &AgenticAiContextManifestRecord {
         &self.record
     }
+}
+
+fn encode_manifest_record(
+    record: &AgenticAiContextManifestRecord,
+) -> Result<Vec<u8>, AgenticAiContextAdmissionError> {
+    let mut bytes = Vec::new();
+    ciborium::into_writer(record, &mut bytes)
+        .map_err(|error| AgenticAiContextAdmissionError::ManifestEncoding(error.to_string()))?;
+    Ok(bytes)
 }

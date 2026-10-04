@@ -10,6 +10,12 @@ run_cmd do
   let environment <- getEnv
   let allowed := #[`propext, `Classical.choice, `Quot.sound]
   for required in #[
+      `MRR.AgenticAIContext.worklist_refines_certificate,
+      `MRR.AgenticAIContext.finite_worklist_total_correctness,
+      `MRR.AgenticAIContext.exact_restore_identity,
+      `MRR.AgenticAIContext.exact_restore_collision_refused,
+      `MRR.AgenticAIContext.cbor_decoder_consumes_input,
+      `MRR.AgenticAIContext.sha256_digest_length,
       `MRR.AgenticAIContext.checked_closure_exact,
       `MRR.AgenticAIContext.checked_closure_unique,
       `MRR.AgenticAIContext.context_system_sound,

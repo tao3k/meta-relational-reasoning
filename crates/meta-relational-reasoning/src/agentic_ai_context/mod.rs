@@ -4,6 +4,7 @@ mod admission;
 mod compose;
 mod composition_receipt;
 mod error;
+mod exact_restore;
 mod manifest;
 mod restore;
 mod revision;
@@ -46,4 +47,9 @@ pub use selection::{
 pub use selection_restore::{
     AGENTIC_AI_CONTEXT_QUERY_SELECTION_SCHEMA, AgenticAiContextQuerySelectionRecord,
     AgenticAiContextQuerySelectionRestoreRequest, restore_agentic_ai_context_query_selection,
+};
+
+pub use exact_restore::{
+    AdmittedExactAgenticAiContextQuerySelection, AgenticAiContextExactSelectionRestoreRequest,
+    restore_agentic_ai_context_query_selection_exact, select_agentic_ai_context_from_query_exact,
 };

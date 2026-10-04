@@ -148,6 +148,7 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
       - uses: leanprover/lean-action@v1
         with:
           lake-package-directory: proofs/MRRProof/AgenticAIContext
@@ -162,6 +163,17 @@ jobs:
       - name: Replay actual C4 and shared Rust fixture
         working-directory: proofs/MRRProof/AgenticAIContext
         run: lake env lean --run Checks/Main.lean
+      - name: Build actual Rust Context refinement producer
+        run: cargo build -p meta-relational-reasoning --example context_refinement --no-default-features --features agentic-ai-context-tokens --locked
+      - name: Compare actual Rust algorithms and CBOR hashes with Lean
+        run: python3 tools/check/context-refinement.py --receipt .ci/context-refinement.json
+      - name: Save actual Rust refinement receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: context-refinement-${{ github.event_name }}
+          path: .ci/context-refinement.json
+          if-no-files-found: error
       - name: Audit all Context declarations for axioms
         working-directory: proofs/MRRProof/AgenticAIContext
         run: lake env lean Checks/Axioms.lean

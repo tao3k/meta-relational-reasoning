@@ -282,3 +282,93 @@ fn selection_restore_rejects_tampering_rebinding_and_resource_inflation() {
             .is_err()
     );
 }
+
+#[test]
+fn exact_reference_restore_compares_retained_source_query_and_ordered_results() {
+    use meta_relational_reasoning::{
+        AgenticAiContextExactSelectionRestoreRequest, QueryResultLimits,
+        restore_agentic_ai_context_query_selection_exact,
+        select_agentic_ai_context_from_query_exact,
+    };
+    let source = support::source(&[(1, 7), (2, 7), (3, 7)]);
+    let rows = support::candidate(&source, &[(2, 7), (3, 7)]);
+    let request = support::request(8, 8, &[(2, vec![1]), (3, vec![2])]);
+    let expected = select_agentic_ai_context_from_query_exact(
+        &source.bundle,
+        &source.snapshot,
+        &source.query,
+        &rows,
+        request.clone(),
+    )
+    .unwrap();
+    let record = expected
+        .export_record(request.result_limits, support::nz(65536))
+        .unwrap();
+    let restore = |record: &AgenticAiContextQuerySelectionRecord| {
+        restore_agentic_ai_context_query_selection_exact(
+            &source.bundle,
+            &source.snapshot,
+            AgenticAiContextExactSelectionRestoreRequest {
+                record,
+                expected: &expected,
+                limits: request.limits,
+                result_limits: request.result_limits,
+                max_result_bytes: support::nz(65536),
+            },
+        )
+    };
+    assert_eq!(restore(&record).unwrap(), expected);
+    let reordered = support::candidate(&source, &[(3, 7), (2, 7)]);
+    let alternate = select_agentic_ai_context_from_query_exact(
+        &source.bundle,
+        &source.snapshot,
+        &source.query,
+        &reordered,
+        request.clone(),
+    )
+    .unwrap();
+    assert_eq!(
+        alternate.selection().context(),
+        expected.selection().context()
+    );
+    assert!(
+        restore(
+            &alternate
+                .export_record(request.result_limits, support::nz(65536))
+                .unwrap()
+        )
+        .is_err()
+    );
+    let foreign_source = support::source(&[(1, 7), (2, 7), (3, 7), (4, 7)]);
+    assert!(matches!(
+        restore_agentic_ai_context_query_selection_exact(
+            &foreign_source.bundle,
+            &foreign_source.snapshot,
+            AgenticAiContextExactSelectionRestoreRequest {
+                record: &record,
+                expected: &expected,
+                limits: request.limits,
+                result_limits: request.result_limits,
+                max_result_bytes: support::nz(65536),
+            }
+        ),
+        Err(AgenticAiContextAdmissionError::SourceBundleMismatch)
+    ));
+    assert!(
+        restore_agentic_ai_context_query_selection_exact(
+            &source.bundle,
+            &source.snapshot,
+            AgenticAiContextExactSelectionRestoreRequest {
+                record: &record,
+                expected: &expected,
+                limits: request.limits,
+                result_limits: QueryResultLimits::new(support::nz(1), support::nz(1)),
+                max_result_bytes: support::nz(65536),
+            }
+        )
+        .is_err()
+    );
+    let mut corrupt = record.clone();
+    corrupt.result_transport.push(0);
+    assert!(restore(&corrupt).is_err());
+}

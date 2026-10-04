@@ -52,3 +52,7 @@ required-features = ["agentic-ai-context-tokens"]
 name = "context_workflow"
 path = "tests/integration_test.rs"
 required-features = ["agentic-ai-context-tokens"]
+
+[[example]]
+name = "context_refinement"
+required-features = ["agentic-ai-context-tokens"]

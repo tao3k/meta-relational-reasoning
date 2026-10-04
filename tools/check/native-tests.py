@@ -52,9 +52,12 @@ class SchemeReceipt:
         )
 
 
-def qualify(command: list[str], receipt: SchemeReceipt | None = None) -> int:
+def qualify(
+    command: list[str], receipt: SchemeReceipt | None = None, *, cwd: str | None = None
+) -> int:
     child = subprocess.Popen(
         command,
+        cwd=cwd,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         start_new_session=True,

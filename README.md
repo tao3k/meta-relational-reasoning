@@ -287,3 +287,8 @@ The Context Lean project also checks least dependency closure, source-bound
 restore admission and reverse dependency revision, and connects checked reuse
 through certified C4 composition to rendered-byte and whole-prompt token equality.
 See `proofs/MRRProof/AgenticAIContext/MRR/AgenticAIContext/System.lean`.
+
+`just context-refinement` generates receipts from actual Rust Context admission
+and revision, then checks them against the terminating Lean worklist and an
+independent CBOR/SHA-256 model. The complete workflow uses exact retained
+source/query/result references for restoration, avoiding hash-only equality.

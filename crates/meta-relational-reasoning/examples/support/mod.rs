@@ -209,11 +209,11 @@ use meta_relational_reasoning::{
     AgenticAiContextComposer, AgenticAiContextCompositionGraph,
     AgenticAiContextCompositionGraphInput, AgenticAiContextCompositionNode,
     AgenticAiContextCompositionProducer, AgenticAiContextCompositionRequest,
-    AgenticAiContextComputationalIdentity, AgenticAiContextQuerySelectionRestoreRequest,
+    AgenticAiContextComputationalIdentity, AgenticAiContextExactSelectionRestoreRequest,
     AgenticAiContextRenderedElement, AgenticAiContextRevisionRequest,
     AgenticAiContextTokenizationRequest, AgenticAiContextTokenizer,
     SourceBoundAgenticAiContextTokens, compare_agentic_ai_context_revision,
-    restore_agentic_ai_context_query_selection, select_agentic_ai_context_from_query,
+    restore_agentic_ai_context_query_selection_exact, select_agentic_ai_context_from_query_exact,
 };
 use serde::Serialize;
 
@@ -340,7 +340,7 @@ pub fn workflow() -> Result<WorkflowReceipt, Box<dyn std::error::Error>> {
     let fixture: SelectionFixture = serde_json::from_str(FIXTURE)?;
     let source = source(&fixture.facts);
     let run = |rows: &[(usize, usize)]| {
-        select_agentic_ai_context_from_query(
+        select_agentic_ai_context_from_query_exact(
             &source.bundle,
             &source.snapshot,
             &source.query,
@@ -348,37 +348,35 @@ pub fn workflow() -> Result<WorkflowReceipt, Box<dyn std::error::Error>> {
             request(8, 8, &fixture.workflow.dependencies),
         )
     };
-    let old = run(&fixture.workflow.old_rows)?;
+    let old_exact = run(&fixture.workflow.old_rows)?;
     println!("WORKFLOW-OK: query admission and old required closure");
-    let new = run(&fixture.workflow.new_rows)?;
-    let record = new.export_record(
-        &source.query,
-        &candidate(&source, &fixture.workflow.new_rows),
-        request(8, 8, &[]).result_limits,
-        nz(64 * 1024),
-    )?;
-    let restored = restore_agentic_ai_context_query_selection(
+    let new_exact = run(&fixture.workflow.new_rows)?;
+    let record = new_exact.export_record(request(8, 8, &[]).result_limits, nz(64 * 1024))?;
+    let restored_exact = restore_agentic_ai_context_query_selection_exact(
         &source.bundle,
         &source.snapshot,
-        AgenticAiContextQuerySelectionRestoreRequest {
+        AgenticAiContextExactSelectionRestoreRequest {
             record: &record,
-            expected_digest: *new.digest(),
+            expected: &new_exact,
             limits: request(8, 8, &[]).limits,
             result_limits: request(8, 8, &[]).result_limits,
             max_result_bytes: nz(64 * 1024),
         },
     )?;
-    assert_eq!(restored, new);
-    println!("WORKFLOW-OK: exact selection provenance restored");
+    assert_eq!(restored_exact, new_exact);
+    let old = old_exact.selection();
+    let new = new_exact.selection();
+    let restored = restored_exact.selection();
+    println!("WORKFLOW-OK: exact trusted source/query/result reference restored");
     let old_tokens = present(
         &source,
-        &old,
+        old,
         &fixture.workflow.old_precedence,
         fixture.workflow.block_tokens,
     )?;
     let new_tokens = present(
         &source,
-        &restored,
+        restored,
         &fixture.workflow.new_precedence,
         fixture.workflow.block_tokens,
     )?;

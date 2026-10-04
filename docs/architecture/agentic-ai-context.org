@@ -573,3 +573,84 @@ only standard Lean axioms are accepted. This is a checked executable mathematica
 model. Refining the concrete Rust worklist, CBOR transport and hashes into this
 model remains separate work; a physical cache hit or model inference acceleration
 is not a theorem of this system.
+
+* Implementation refinement and exact restoration
+
+** Production-shaped worklist with total correctness
+
+=Worklist.lean= models the actual Rust =Vec= pending stack and =BTreeSet=
+visited membership. Its pending list is the reverse of the Rust stack; each pop
+either skips an already visited identity or inserts it and pushes its declared
+dependencies. Step and run invariants preserve rooted reachability, root coverage,
+dependency coverage and duplicate freedom.
+
+=worklist_refines_certificate= connects a finished run to the independently
+checked least-closure certificate. =Termination.lean= proves termination for a
+finite, complete source, including cycles. The decreasing measure is pending
+stack length plus the number of dependency edges of all unvisited source facts.
+A sufficient fuel bound is initial stack length plus all declared edges plus one.
+=finite_worklist_total_correctness= combines termination and exact reachability.
+
+The same model applies to revision's reverse graph using the union of old and
+new dependencies. Source validity and evidence completeness checks still belong
+to native source admission, before these successful graph computations.
+
+** Exact trusted references avoid hash-only restoration
+
+The optional =AdmittedExactAgenticAiContextQuerySelection= is sealed and cannot
+be deserialized from storage. =select_agentic_ai_context_from_query_exact=
+retains the full admitted source bundle, catalog-bound Query and ordered typed
+result alongside the admitted Context. These contents are cloned once at initial
+construction and shared by subsequent reference clones. The compact selection
+API does not acquire this additional retained-memory cost.
+
+=restore_agentic_ai_context_query_selection_exact= first checks current source
+and snapshot contents, then reuses the existing bounded decoding and source
+admission path. It finally compares the reconstructed full Context, actual
+rebound Query and complete ordered result with the retained trusted reference.
+The complete runnable workflow now uses this profile.
+
+=ExactIdentity.lean= proves that accepted output equals the trusted identity and
+was actually rebuilt. The theorem is valid for any digest function, even a
+constant function; collision freedom is not a premise of this exact comparison.
+The compact digest-reference API still assumes cryptographic collision
+resistance. Neither profile turns a decoded storage record into authority.
+
+** Actual byte and algorithm conformance
+
+=context_refinement= executes the production Rust facade and emits fresh receipts:
+68 chain/cycle/diamond/mandatory/temporal/finite-graph closures, old/new revision
+impact and reuse, actual manifest and selection identity CBOR bytes, their native
+SHA-256 digests, and hash vectors across padding and block boundaries.
+
+=Checks/Refinement.lean= independently recomputes the graph closures, reverse
+impact and reuse. =Cbor.lean= independently decodes the exact Rust identity bytes
+and compares their entire logical contents. It covers the emitted definite-length
+unsigned-integer/text/array/string-keyed-map/bool/null profile, refuses duplicate
+keys and nonminimal forms, bounds byte length and nesting, and requires complete
+input consumption. Query result transport remains the existing JSON V1 format;
+it is not mislabeled as CBOR.
+
+=Sha256.lean= is an independent executable 32-bit SHA-256 specification, including
+message schedule, compression, padding and digest extraction. The replay checks
+both real identity preimages, eight native boundary vectors and NIST's published
+one-block and two-block known answers. The algorithm source is FIPS 180-4:
+https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf
+The known answers are:
+https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA256.pdf
+
+=tools/check/context-refinement.py= runs the actual Rust producer followed by the
+Lean replay, each under the existing five-second silence and 45-second runtime
+boundaries. Compilation is a separate preparation phase. CI generates receipts
+from the current checkout and uploads them; it never substitutes a frozen golden
+file for current implementation output.
+
+** Precise remaining formal boundary
+
+The loop model has total correctness and the exact restore gate has hash-agnostic
+identity safety. The 99 implementation replay checks establish bounded agreement
+with production Rust and identity bytes. They are not a universal extraction proof
+for the Rust source, standard-library containers, compiler, =ciborium=, =serde_json=
+or =sha2=. CBOR/SHA-256 executable conformance is distinct from a universal library
+refinement theorem or a proof of cryptographic collision resistance. The trusted
+native reference must still be retained independently of untrusted storage.

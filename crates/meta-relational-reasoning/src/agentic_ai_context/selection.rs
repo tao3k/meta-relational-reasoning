@@ -99,17 +99,11 @@ pub fn select_agentic_ai_context_from_query(
             limits: request.limits,
         },
     )?;
-    let mut encoded = Vec::new();
-    ciborium::into_writer(
-        &(
-            "mrr.agentic-ai-context.query-selection.v1",
-            context.manifest().digest(),
-            result.digest(),
-            &request.column,
-        ),
-        &mut encoded,
-    )
-    .map_err(|error| AgenticAiContextAdmissionError::ManifestEncoding(error.to_string()))?;
+    let encoded = encode_selection_identity(
+        context.manifest().digest(),
+        result.digest(),
+        &request.column,
+    )?;
     Ok(AdmittedAgenticAiContextQuerySelection {
         context,
         result,
@@ -119,6 +113,15 @@ pub fn select_agentic_ai_context_from_query(
 }
 
 impl AdmittedAgenticAiContextQuerySelection {
+    /// Actual versioned CBOR preimage of this selection identity.
+    pub fn canonical_identity_bytes(&self) -> Result<Vec<u8>, AgenticAiContextAdmissionError> {
+        encode_selection_identity(
+            self.context.manifest().digest(),
+            self.result.digest(),
+            &self.column,
+        )
+    }
+
     #[must_use]
     pub const fn context(&self) -> &AdmittedAgenticAiContext {
         &self.context
@@ -143,4 +146,23 @@ impl AdmittedAgenticAiContextQuerySelection {
     ) -> Result<(), AgenticAiContextAdmissionError> {
         self.context.check_source(bundle, snapshot)
     }
+}
+
+fn encode_selection_identity(
+    context: &[u8; 32],
+    result: &[u8; 32],
+    column: &Binding,
+) -> Result<Vec<u8>, AgenticAiContextAdmissionError> {
+    let mut bytes = Vec::new();
+    ciborium::into_writer(
+        &(
+            "mrr.agentic-ai-context.query-selection.v1",
+            context,
+            result,
+            column,
+        ),
+        &mut bytes,
+    )
+    .map_err(|error| AgenticAiContextAdmissionError::ManifestEncoding(error.to_string()))?;
+    Ok(bytes)
 }

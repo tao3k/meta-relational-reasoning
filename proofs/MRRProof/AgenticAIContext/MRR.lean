@@ -8,3 +8,8 @@ import MRR.AgenticAIContext.Selection
 import MRR.AgenticAIContext.Closure
 import MRR.AgenticAIContext.Revision
 import MRR.AgenticAIContext.System
+import MRR.AgenticAIContext.Worklist
+import MRR.AgenticAIContext.ExactIdentity
+import MRR.AgenticAIContext.Cbor
+import MRR.AgenticAIContext.Sha256
+import MRR.AgenticAIContext.Termination
