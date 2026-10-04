@@ -79,10 +79,12 @@ pub fn build_native_archive(manifest: &Path) {
         println!("cargo:rerun-if-env-changed={name}");
     }
     println!("cargo:rerun-if-env-changed=GERBIL_GSC");
+    println!("cargo:rerun-if-env-changed=GERBIL_GXI");
     println!("cargo:rerun-if-env-changed=GERBIL_GXPKG");
     println!("cargo:rerun-if-env-changed=GERBIL_BUILD_VERBOSE");
     let build = NativeBuild::new(manifest);
     let observer = CargoObserver;
+    build.prepare_package(&observer);
     build.stage_program(&observer);
     build.package_archive(&observer);
 }
@@ -92,6 +94,9 @@ struct NativeBuild {
     program_source: PathBuf,
     program_stage: PathBuf,
     program_manifest: PathBuf,
+    package_prefix: PathBuf,
+    package_load_path: std::ffi::OsString,
+    gxi: PathBuf,
     gsc: PathBuf,
     gxpkg: PathBuf,
 }
@@ -105,14 +110,58 @@ impl NativeBuild {
             .to_path_buf();
         let out = PathBuf::from(env::var_os("OUT_DIR").expect("OUT_DIR"));
         let program_stage = out.join("gerbil-program");
+        let package_prefix = out.join("gerbil-package");
+        let sdk_prefix =
+            env::var_os("GERBIL_PATH").map_or_else(|| workspace.join(".gerbil"), PathBuf::from);
+        let mut libraries = vec![package_prefix.join("lib"), sdk_prefix.join("lib")];
+        if let Some(paths) = env::var_os("GERBIL_LOADPATH") {
+            libraries.extend(env::split_paths(&paths));
+        }
+        let package_load_path = env::join_paths(libraries).expect("package library search path");
         Self {
             program_source: workspace.join("scheme/grammar/native-program.ss"),
             program_manifest: program_stage.join("program.json"),
             program_stage,
+            package_prefix,
+            package_load_path,
+            gxi: resolve_program(env::var_os("GERBIL_GXI").unwrap_or_else(|| "gxi".into())),
             workspace,
             gsc: resolve_program(env::var_os("GERBIL_GSC").unwrap_or_else(|| "gsc".into())),
             gxpkg: resolve_program(env::var_os("GERBIL_GXPKG").unwrap_or_else(|| "gxpkg".into())),
         }
+    }
+
+    fn package_command(&self, program: &Path) -> Command {
+        let mut command = clean_command(program);
+        command
+            .current_dir(&self.workspace)
+            .env("GERBIL_PATH", &self.package_prefix)
+            .env("GERBIL_LOADPATH", &self.package_load_path);
+        command
+    }
+
+    fn prepare_package(&self, observer: &CargoObserver) {
+        let declaration = self.workspace.join("build.ss");
+        observer.observe_source_input(&declaration);
+        observer.observe_source_input(&self.workspace.join("scheme"));
+        observe_program_archive_operation(
+            observer,
+            ProgramArchiveOperation {
+                phase: "package-build",
+                operation: "compile canonical MRR PackageSpec into isolated Cargo output",
+                subject: Some("meta-relational-reasoning"),
+            },
+            || {
+                fs::create_dir_all(&self.package_prefix).map_err(|error| error.to_string())?;
+                run(
+                    self.package_command(&self.gxi)
+                        .arg(&declaration)
+                        .arg("compile"),
+                    "compile canonical MRR PackageSpec",
+                )
+            },
+        )
+        .expect("prepare isolated MRR Scheme package");
     }
 
     fn stage_program(&self, observer: &CargoObserver) {
@@ -145,8 +194,7 @@ impl NativeBuild {
                     scheme_string(&self.program_stage),
                 );
                 run(
-                    clean_command(&self.gxpkg)
-                        .current_dir(&self.workspace)
+                    self.package_command(&self.gxpkg)
                         .args(["env", "gxi", "-e"])
                         .arg(expression),
                     "stage compiler-owned Gerbil AOT program",
@@ -201,7 +249,8 @@ pub(crate) fn observation_channel(
 
     let phase_summary = matches!(
         phase,
-        "program-stage"
+        "package-build"
+            | "program-stage"
             | "program-plan"
             | "module-c-batch"
             | "gsc-link"

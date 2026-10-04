@@ -228,8 +228,12 @@ and serving runtimes remain downstream adapter dependencies. Run
 
 Use the repository environment so Cargo, Gerbil packages, native libraries,
 and proof tools resolve through one dependency graph. `just` refreshes the
-Gerbil package through the SDK-sanitizing `mrr-gerbil` wrapper before Cargo can
-stage the native archive.
+Gerbil package through the SDK-sanitizing `mrr-gerbil` wrapper for Scheme tests.
+Cargo also compiles the consuming MRR checkout's canonical PackageSpec into
+`OUT_DIR/gerbil-package` before staging its AOT program. That isolated library
+directory takes precedence over SDK libraries, so the archive uses this
+checkout's Scheme modules. SDK dependencies still come from the declared POO
+Flow graph; Cargo does not acquire or replace those packages.
 
 On a fresh package cache, `just deps` fetches the declared POO Flow checkout
 and uses its native SHA prefetch helper before gxpkg installs the graph.
