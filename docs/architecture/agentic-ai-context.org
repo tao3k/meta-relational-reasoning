@@ -726,7 +726,7 @@ and byte-array ordering are not established. Tuple-newtype extraction aliases
 identity domains to byte arrays, so these FactId laws do not prove separation of
 all identity domains within Lean.
 
-The full wrapper probe now exposes 10 external types and 22 external functions.
+The fact/identity follow-up wrapper probe exposed 10 external types and 22 external functions.
 Their absence from the smaller proved surface must not be confused with proof of
 native BTree containers or the complete adapter contract. Scheduled-versus-processed
 invariants and reverse-index construction are still explicit obligations.
@@ -736,3 +736,42 @@ Handwritten proofs now use ASCII syntax. The extraction script reproducibly
 normalizes arrows and uses a local ASCII spelling of Prod, rejecting all other
 Unicode. Lean checks the normalized code; fresh extraction compares its exact
 bytes. The policy remains enabled and has a dedicated local regression check.
+
+** Source-derived pending-stack operations
+
+Both native adapters now call =worklist::pop_identity=. Its checked subtraction,
+indexing and shrinking resize are extracted from actual Rust. Shrinking a Copy
+FactId vector neither allocates nor clones the fill value. =Stack.lean= proves
+empty/nonempty behavior and exact last-in-first-out semantics universally, then
+transports the result to the Nat graph model's reversed pending list.
+
+Forward traversal calls =append_identities= instead of generic Extend. Its
+source-derived law preserves all dependency identities, order and duplicates,
+and proves that graph pending receives the reverse dependency list before its
+old tail. Extension requires the explicit machine-size bound in Aeneas's Vec
+model. These are universal laws under the existing Vec/Slice modeling interface,
+not source verification of the allocator or stdlib storage implementation.
+
+Old and new reverse indexes are scanned through the same helper, called once
+for each index, avoiding generic array iteration. Dependency iteration uses the
+existing slice iterator model. The blanket Borrow implementation is included
+from core source. The complete wrapper probe now exposes 9 external types and
+16 external functions, down from 10/22. BTreeMap/BTreeSet entry and iterator
+semantics, byte-array ordering, reverse-index construction and the native
+adapter invariants are still open. A successful stack theorem is not the
+complete =AdvanceContract= for either native adapter.
+
+** Source-derived expansion and rejection
+
+The forward adapter calls =state::expand_identity= after its map lookup and
+selected-set insertion. =Expansion.lean= proves the actual source function's
+four paths: missing, invalid and required incomplete facts stop with the exact
+typed error and preserve the remaining stack/coverage; accepted facts append
+exact dependencies and merge coverage by maximum weakness rank, preserving the
+error slot. Accepted expansion retains the explicit machine-size premise.
+
+The extracted driver returns the exact mutated terminal state on immediate
+stop, without requiring an invariant over that rejected state. The source
+axiom audit now requires 40 declarations with only standard Lean axioms.
+BTree lookup/selected-set binding and the full native adapter contract remain
+open; these helper laws do not discharge them or serialization-library refinement.

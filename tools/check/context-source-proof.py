@@ -87,7 +87,10 @@ def main() -> int:
             "mrr_agentic_ai_context::evidence::admit_evidence",
             "mrr_agentic_ai_context::evidence::merge_completeness",
             "mrr_agentic_ai_context::worklist::run",
+            "mrr_agentic_ai_context::worklist::pop_identity",
+            "mrr_agentic_ai_context::worklist::append_identities",
             "mrr_agentic_ai_context::evidence::admit_fact_evidence",
+            "mrr_agentic_ai_context::state::expand_identity",
         ]
     )
     with tempfile.TemporaryDirectory(prefix="mrr-source-proof-") as directory:
@@ -107,6 +110,8 @@ def main() -> int:
                 "mrr_relation",
                 "--include",
                 "mrr_revision",
+                "--include",
+                "core::borrow",
                 *starts,
                 "--dest-file",
                 str(llbc),

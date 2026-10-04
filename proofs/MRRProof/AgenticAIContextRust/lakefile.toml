@@ -1,6 +1,6 @@
 name = "MRRContextRustProofs"
 version = "0.1.0"
-defaultTargets = ["Evidence", "Driver", "NativeFacts"]
+defaultTargets = ["Evidence", "Driver", "NativeFacts", "Stack", "Expansion"]
 moreLeanArgs = ["-DautoImplicit=false", "-DwarningAsError=true"]
 
 [[require]]
@@ -25,3 +25,9 @@ name = "Driver"
 
 [[lean_lib]]
 name = "NativeFacts"
+
+[[lean_lib]]
+name = "Stack"
+
+[[lean_lib]]
+name = "Expansion"

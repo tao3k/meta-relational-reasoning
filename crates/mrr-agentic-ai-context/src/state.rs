@@ -394,32 +394,49 @@ struct ClosureTraversal<'a> {
 
 impl Worklist for ClosureTraversal<'_> {
     fn advance(&mut self) -> bool {
-        let Some(id) = self.pending.pop() else {
+        let Some(id) = worklist::pop_identity(&mut self.pending) else {
             return false;
         };
         if !self.selected.insert(id) {
             return true;
         }
-        let Some(element) = self.elements.get(&id) else {
-            self.error = Some(AgenticAiContextError::UnknownElement(id));
-            return false;
-        };
-        let context = element.fact.context();
-        match admit_fact_evidence(&element.fact, self.contract.require_complete) {
-            EvidenceAdmission::Accepted => {}
-            EvidenceAdmission::Invalid => {
-                self.error = Some(AgenticAiContextError::InvalidatedElement(id));
-                return false;
-            }
-            EvidenceAdmission::Incomplete => {
-                self.error = Some(AgenticAiContextError::IncompleteEvidence(id));
-                return false;
-            }
-        }
-        self.coverage = merge_completeness(self.coverage, context.completeness());
-        self.pending.extend(&element.dependencies);
-        true
+        expand_identity(
+            id,
+            self.elements.get(&id),
+            self.contract.require_complete,
+            &mut self.pending,
+            &mut self.coverage,
+            &mut self.error,
+        )
     }
+}
+
+fn expand_identity(
+    id: FactId,
+    element: Option<&AgenticAiContextElement>,
+    require_complete: bool,
+    pending: &mut Vec<FactId>,
+    coverage: &mut EvidenceCompleteness,
+    error: &mut Option<AgenticAiContextError>,
+) -> bool {
+    let Some(element) = element else {
+        *error = Some(AgenticAiContextError::UnknownElement(id));
+        return false;
+    };
+    match admit_fact_evidence(&element.fact, require_complete) {
+        EvidenceAdmission::Accepted => {}
+        EvidenceAdmission::Invalid => {
+            *error = Some(AgenticAiContextError::InvalidatedElement(id));
+            return false;
+        }
+        EvidenceAdmission::Incomplete => {
+            *error = Some(AgenticAiContextError::IncompleteEvidence(id));
+            return false;
+        }
+    }
+    *coverage = merge_completeness(*coverage, element.fact.context().completeness());
+    worklist::append_identities(pending, &element.dependencies);
+    true
 }
 
 fn reverse_dependency_impact(
@@ -428,13 +445,8 @@ fn reverse_dependency_impact(
     changed: &BTreeSet<FactId>,
 ) -> BTreeSet<FactId> {
     let mut reverse: BTreeMap<FactId, BTreeSet<FactId>> = BTreeMap::new();
-    for state in [old, new] {
-        for (id, element) in &state.elements {
-            for dependency in &element.dependencies {
-                reverse.entry(*dependency).or_default().insert(*id);
-            }
-        }
-    }
+    add_reverse_dependencies(&old.elements, &mut reverse);
+    add_reverse_dependencies(&new.elements, &mut reverse);
     let mut pending = Vec::with_capacity(changed.len());
     for id in changed {
         pending.push(*id);
@@ -447,6 +459,17 @@ fn reverse_dependency_impact(
     .invalidated
 }
 
+fn add_reverse_dependencies(
+    elements: &BTreeMap<FactId, AgenticAiContextElement>,
+    reverse: &mut BTreeMap<FactId, BTreeSet<FactId>>,
+) {
+    for (id, element) in elements {
+        for dependency in element.dependencies.iter() {
+            reverse.entry(*dependency).or_default().insert(*id);
+        }
+    }
+}
+
 struct ImpactTraversal {
     reverse: BTreeMap<FactId, BTreeSet<FactId>>,
     invalidated: BTreeSet<FactId>,
@@ -455,7 +478,7 @@ struct ImpactTraversal {
 
 impl Worklist for ImpactTraversal {
     fn advance(&mut self) -> bool {
-        let Some(id) = self.pending.pop() else {
+        let Some(id) = worklist::pop_identity(&mut self.pending) else {
             return false;
         };
         if let Some(dependents) = self.reverse.get(&id) {

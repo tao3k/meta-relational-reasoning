@@ -58,6 +58,26 @@ theorem extracted_driver_preserves_invariant {State : Type}
         (fun done => And.intro nextSpec.2.1 (nextSpec.2.2.2 done))))))
   exact extracted_driver_total_correctness adapter invariant _ rank stronger initial valid
 
+/-- A rejection stops the actual extracted loop with the mutated error state.
+No law about a later advance, or invariant over that terminal state, is needed. -/
+theorem extracted_driver_stop_exact {State : Type} (adapter : worklist.Worklist State)
+    (initial final : State) (stopped : adapter.advance initial = .ok (false, final)) :
+    worklist.run adapter initial = .ok final := by
+  have total : WP.spec (loop (worklist.run_loop.body adapter) initial)
+      (fun output => output = final) := by
+    apply loop.spec_decr_nat (fun _ => 0) (fun state => state = initial)
+      (fun output => output = final) (worklist.run_loop.body adapter)
+    next =>
+      intro state equal
+      subst state
+      simp only [worklist.run_loop.body, stopped, bind_ok]
+      exact (WP.spec_ok _).mpr rfl
+    next => rfl
+  apply Exists.elim ((WP.spec_equiv_exists _ _).mp total)
+  intro output outputSpec
+  have exactOutput := outputSpec.1.trans (congrArg Result.ok outputSpec.2)
+  simpa only [worklist.run, worklist.run_loop] using exactOutput
+
 /-- This form permits duplicate suppression at enqueue time, as used by reverse
 impact, or at pop time, as used by forward closure. It requires the adapter's
 actual invariant and progress laws, not equality to a particular scheduling order. -/

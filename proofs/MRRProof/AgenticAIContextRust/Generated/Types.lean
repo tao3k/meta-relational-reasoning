@@ -164,8 +164,42 @@ inductive evidence.EvidenceAdmission where
 | Invalid : evidence.EvidenceAdmission
 | Incomplete : evidence.EvidenceAdmission
 
+/-- [mrr_agentic_ai_context::state::AgenticAiContextElement]
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 19:0-22:1
+    Visibility: public -/
+structure state.AgenticAiContextElement where
+  fact : mrr_relation.api.Fact
+  dependencies : alloc.vec.Vec mrr_identity.api.FactId
+
+/-- [mrr_agentic_ai_context::state::AgenticAiContextError]
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 97:0-119:1
+    Visibility: public -/
+@[discriminant isize]
+inductive state.AgenticAiContextError where
+| ElementBudget : state.AgenticAiContextError
+| DependencyBudget : state.AgenticAiContextError
+| RenderedByteBudget : state.AgenticAiContextError
+| DuplicateElement : mrr_identity.api.FactId -> state.AgenticAiContextError
+| UnknownElement : mrr_identity.api.FactId -> state.AgenticAiContextError
+| GenerationMismatch :
+  mrr_identity.api.FactId ->
+  mrr_identity.api.GenerationId ->
+  mrr_identity.api.GenerationId ->
+  state.AgenticAiContextError
+| InvalidatedElement : mrr_identity.api.FactId -> state.AgenticAiContextError
+| IncompleteEvidence : mrr_identity.api.FactId -> state.AgenticAiContextError
+| InvalidPrecedence : state.AgenticAiContextError
+| RenderedElementMismatch : state.AgenticAiContextError
+| ComputationalIdentityMismatch : state.AgenticAiContextError
+| EmptyComputationalIdentity : state.AgenticAiContextError
+| CompositionBudget : state.AgenticAiContextError
+| CompositionGraphMismatch : state.AgenticAiContextError
+| CompositionCycle : state.AgenticAiContextError
+| CompositionOrderViolation : state.AgenticAiContextError
+| InvalidCompositionProducer : state.AgenticAiContextError
+
 /-- Trait declaration: [mrr_agentic_ai_context::worklist::Worklist]
-    Source: 'crates/mrr-agentic-ai-context/src/worklist.rs', lines 3:0-6:1 -/
+    Source: 'crates/mrr-agentic-ai-context/src/worklist.rs', lines 21:0-24:1 -/
 structure worklist.Worklist (Self : Type) where
   advance : Self -> Result (Bool ** Self)
 

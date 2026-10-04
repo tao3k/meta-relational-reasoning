@@ -53,7 +53,7 @@ context-refinement:
 # Regenerate exact production functions before checking the extracted Lean laws.
 context-source-proof toolchain_dir:
     {{profile}} python3 tools/check/context-source-proof.py --toolchain-dir {{toolchain_dir}}
-    {{profile}} bash -c 'cd proofs/MRRProof/AgenticAIContextRust && lake build Evidence Driver NativeFacts && lake env lean Axioms.lean'
+    {{profile}} bash -c 'cd proofs/MRRProof/AgenticAIContextRust && lake build Evidence Driver NativeFacts Stack Expansion && lake env lean Axioms.lean'
 
 # Record time, peak RSS, bounded rejection and actual declared reuse eligibility.
 context-scale:

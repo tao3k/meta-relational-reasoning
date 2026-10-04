@@ -1,6 +1,8 @@
 import Evidence
 import Driver
 import NativeFacts
+import Stack
+import Expansion
 import Lean.Util.CollectAxioms
 import Lean.Elab.Command
 
@@ -19,6 +21,7 @@ run_cmd do
     `MRR.ContextRustProofs.complete_is_identity,
     `MRR.ContextRustProofs.extracted_driver_total_correctness,
     `MRR.ContextRustProofs.extracted_driver_preserves_invariant,
+    `MRR.ContextRustProofs.extracted_driver_stop_exact,
     `MRR.ContextRustProofs.extracted_driver_graph_invariant_complete,
     `MRR.ContextRustProofs.extracted_driver_refines_graph,
     `MRR.ContextRustProofs.extracted_model_driver_total_correctness,
@@ -37,7 +40,18 @@ run_cmd do
     `MRR.ContextRustProofs.native_fact_accepted_iff,
     `MRR.ContextRustProofs.native_invalid_fact_rejected,
     `MRR.ContextRustProofs.projected_dependencies_exact,
-    `MRR.ContextRustProofs.native_required_projection]
+    `MRR.ContextRustProofs.native_required_projection,
+    `MRR.ContextRustProofs.identity_clone_exact,
+    `MRR.ContextRustProofs.pop_identity_empty,
+    `MRR.ContextRustProofs.pop_identity_nonempty,
+    `MRR.ContextRustProofs.pop_identity_lifo,
+    `MRR.ContextRustProofs.pop_identity_projects_pending,
+    `MRR.ContextRustProofs.append_identities_exact,
+    `MRR.ContextRustProofs.append_identities_projects_pending,
+    `MRR.ContextRustProofs.expansion_missing_stops,
+    `MRR.ContextRustProofs.expansion_invalid_stops,
+    `MRR.ContextRustProofs.expansion_incomplete_stops,
+    `MRR.ContextRustProofs.expansion_accepted_step]
   required.forM fun declarationName => do
     unless environment.contains declarationName do
       throwError "Missing source theorem: {declarationName}"

@@ -14,10 +14,10 @@ functions: exact acceptance policy, invalidity precedence, rejection of required
 incomplete evidence, merge refinement to maximum weakness rank, commutativity,
 associativity, and complete evidence as the identity.
 
-`Driver.lean` proves five additional universal laws about the extracted while
+`Driver.lean` proves six additional universal laws about the extracted while
 loop: termination under an adapter contract, preservation of its invariant,
 exact least closure from a completed graph invariant, refinement via a one-pop
-simulation, and total correctness instantiated with the existing shared graph
+simulation, immediate stopping with the mutated terminal state, and total correctness instantiated with the existing shared graph
 model. The driver theorem has no fuel bound and applies to all state types. The
 model is compiled from the same `Closure`, `Worklist`, and `Termination` sources
 as the Lean 4.34 system project, rather than copied. Its foundation imports `Std`.
@@ -41,6 +41,26 @@ The generated tuple-newtype representation aliases identity domains to byte
 arrays. These theorems concern FactIds only and do not establish separation of
 all MRR identity domains within Lean.
 
+`Stack.lean` proves the actual source `worklist::pop_identity` and
+`worklist::append_identities`: empty pop, total nonempty pop, last-in-first-out
+behavior, preservation of extension order/duplicates, and both operations'
+projection to the existing graph model's reversed pending list. The pop uses
+checked subtraction, indexing and shrinking resize on Copy FactIds; it allocates
+nothing and does not invoke the fill-value clone. Extension has an explicit
+machine-size premise. These laws use Aeneas's existing Vec/Slice models; native
+allocation failure and source proof of stdlib primitives remain outside them.
+Neither operation is now an undefined external stub in the native traversal probe.
+
+`Expansion.lean` proves the actual `state::expand_identity`, called by forward
+traversal after map lookup and selected-set insertion. Missing facts, invalid
+facts and required incomplete facts stop with the exact typed error, preserving
+remaining pending identities and coverage. Accepted facts append their exact
+dependencies, aggregate coverage by maximum weakness rank and preserve the error
+slot. The accepted case has the same explicit machine-size premise as extension.
+The extracted driver also returns the exact mutated state immediately when an
+adapter reports stop. These facts do not prove the preceding BTree lookup and
+insertion, nor the complete native adapter contract.
+
 ## Reproduction
 
 - Aeneas revision: `557eff83ecef5083b98a52a94ca7fae63d6c1dab`.
@@ -54,7 +74,7 @@ Install the pinned Rust toolchain. Then run through the repository profile:
 
 ```sh
 ./.devenv/devenv-profile-exec python3 tools/check/context-source-proof.py --toolchain-dir /path/to/aeneas
-./.devenv/devenv-profile-exec bash -c 'cd proofs/MRRProof/AgenticAIContextRust && MATHLIB_NO_CACHE_ON_UPDATE=1 lake update && lake exe cache get && lake build Evidence Driver NativeFacts && lake env lean Axioms.lean'
+./.devenv/devenv-profile-exec bash -c 'cd proofs/MRRProof/AgenticAIContextRust && MATHLIB_NO_CACHE_ON_UPDATE=1 lake update && lake exe cache get && lake build Evidence Driver NativeFacts Stack Expansion && lake env lean Axioms.lean'
 ```
 
 Use `--rustup-home` for an isolated compiler installation. `--update` deliberately
@@ -96,11 +116,15 @@ instantiation does not discharge those native obligations. In particular, the
 revision adapter suppresses duplicate enqueues and needs an invariant over
 processed identities, rather than treating every scheduled identity as processed.
 The identity-to-model mapping and native fact evidence policy now have universal
-proofs. Native source admission, map lookup/insertion, conversion of errors to
-the traversal's stopping state, reverse-edge construction and processed versus
-scheduled invariants remain open. The latest full wrapper probe exposes 10 external
-types and 22 external functions, including BTreeMap/BTreeSet, iterators, Vec pop
-and extension, and byte-array ordering. This inventory is a diagnostic, not a
+proofs. Map lookup/insertion, binding the admitted Fact to that lookup, full adapter
+stopping/refinement laws, reverse-edge construction and processed versus
+scheduled invariants remain open. The latest full wrapper probe exposes 9 external
+types and 16 external functions: BTreeMap/BTreeSet and their entry/iterator
+interfaces, byte-array ordering and unused nonzero types in source-limit fields.
+Vec pop/extension and the generic array/shared-Vec iteration stubs have been
+removed by source-extractable operations and equivalent explicit traversal of
+the old and new indexes. The blanket Borrow implementation is now extracted
+from Rust's core source too. This inventory is a diagnostic, not a
 proof of library semantics or native adapter contracts. The driver theorem covers
 loop control once its step obligations hold. Existing Rust/Lean replay is separate
 bounded evidence for the adapters.

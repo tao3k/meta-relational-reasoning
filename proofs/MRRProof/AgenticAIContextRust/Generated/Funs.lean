@@ -18,7 +18,28 @@ set_option maxHeartbeats 1000000
 /- You can set the `maxRecDepth` value with the `-max-recdepth` CLI option -/
 set_option maxRecDepth 2048
 
+local infixr:35 " ** " => Prod
+
 namespace MRR.ContextRust
+
+/-- [mrr_identity::api::{impl core::clone::Clone for mrr_identity::api::FactId}::clone]:
+    Source: 'crates/mrr-identity/src/api.rs', lines 173:17-173:22
+    Name pattern: [mrr_identity::api::{core::clone::Clone<mrr_identity::api::FactId>}::clone]
+    Visibility: public -/
+@[rust_fun
+  "mrr_identity::api::{core::clone::Clone<mrr_identity::api::FactId>}::clone"]
+def mrr_identity.api.FactId.Insts.CoreCloneClone.clone
+  (self : mrr_identity.api.FactId) : Result mrr_identity.api.FactId := do
+  ok self
+
+/-- Trait implementation: [mrr_identity::api::{impl core::clone::Clone for mrr_identity::api::FactId}]
+    Source: 'crates/mrr-identity/src/api.rs', lines 173:17-173:22
+    Name pattern: [core::clone::Clone<mrr_identity::api::FactId>] -/
+@[reducible, rust_trait_impl "core::clone::Clone<mrr_identity::api::FactId>"]
+def mrr_identity.api.FactId.Insts.CoreCloneClone : core.clone.Clone
+  mrr_identity.api.FactId := {
+  clone := mrr_identity.api.FactId.Insts.CoreCloneClone.clone
+}
 
 /-- [mrr_identity::api::{impl core::cmp::PartialEq<mrr_identity::api::FactId> for mrr_identity::api::FactId}::eq]:
     Source: 'crates/mrr-identity/src/api.rs', lines 173:45-173:54
@@ -164,8 +185,71 @@ def evidence.merge_completeness
   | mrr_relation.api.EvidenceCompleteness.Unknown =>
     ok mrr_relation.api.EvidenceCompleteness.Unknown
 
+/-- [mrr_agentic_ai_context::worklist::append_identities]:
+    Source: 'crates/mrr-agentic-ai-context/src/worklist.rs', lines 17:0-19:1 -/
+def worklist.append_identities
+  (pending : alloc.vec.Vec mrr_identity.api.FactId)
+  (dependencies : Slice mrr_identity.api.FactId) :
+  Result (alloc.vec.Vec mrr_identity.api.FactId)
+  := do
+  alloc.vec.Vec.extend_from_slice mrr_identity.api.FactId.Insts.CoreCloneClone
+    pending dependencies
+
+/-- [mrr_agentic_ai_context::state::expand_identity]:
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 414:0-440:1 -/
+def state.expand_identity
+  (id : mrr_identity.api.FactId)
+  (element : Option state.AgenticAiContextElement) (require_complete : Bool)
+  (pending : alloc.vec.Vec mrr_identity.api.FactId)
+  (coverage : mrr_relation.api.EvidenceCompleteness)
+  (error : Option state.AgenticAiContextError) :
+  Result (Bool ** (alloc.vec.Vec mrr_identity.api.FactId) **
+    mrr_relation.api.EvidenceCompleteness ** (Option
+    state.AgenticAiContextError))
+  := do
+  match element with
+  | none =>
+    ok (false, pending, coverage, some
+      (state.AgenticAiContextError.UnknownElement id))
+  | some element1 =>
+    let ea <- evidence.admit_fact_evidence element1.fact require_complete
+    match ea with
+    | evidence.EvidenceAdmission.Accepted =>
+      let rc <- mrr_relation.api.Fact.impl.context element1.fact
+      let ec <- mrr_relation.api.RelationContext.impl.completeness rc
+      let coverage1 <- evidence.merge_completeness coverage ec
+      let s := alloc.vec.Vec.deref element1.dependencies
+      let pending1 <- worklist.append_identities pending s
+      ok (true, pending1, coverage1, error)
+    | evidence.EvidenceAdmission.Invalid =>
+      ok (false, pending, coverage, some
+        (state.AgenticAiContextError.InvalidatedElement id))
+    | evidence.EvidenceAdmission.Incomplete =>
+      ok (false, pending, coverage, some
+        (state.AgenticAiContextError.IncompleteEvidence id))
+
+/-- [mrr_agentic_ai_context::worklist::pop_identity]:
+    Source: 'crates/mrr-agentic-ai-context/src/worklist.rs', lines 7:0-15:1 -/
+def worklist.pop_identity
+  (pending : alloc.vec.Vec mrr_identity.api.FactId) :
+  Result ((Option mrr_identity.api.FactId) ** (alloc.vec.Vec
+    mrr_identity.api.FactId))
+  := do
+  let length := alloc.vec.Vec.len pending
+  if length = 0#usize
+  then ok (none, pending)
+  else
+    let i <- length - 1#usize
+    let id <-
+      alloc.vec.Vec.index (core.slice.index.SliceIndexUsizeSlice
+        mrr_identity.api.FactId) pending i
+    let pending1 <-
+      alloc.vec.Vec.resize mrr_identity.api.FactId.Insts.CoreCloneClone pending
+        i id
+    ok (some id, pending1)
+
 /-- [mrr_agentic_ai_context::worklist::run]: loop body 0:
-    Source: 'crates/mrr-agentic-ai-context/src/worklist.rs', lines 9:4-9:28 -/
+    Source: 'crates/mrr-agentic-ai-context/src/worklist.rs', lines 27:4-27:28 -/
 @[rust_loop_body]
 def worklist.run_loop.body
   {W : Type} (WorklistInst : worklist.Worklist W) (state : W) :
@@ -177,7 +261,7 @@ def worklist.run_loop.body
   else ok (done state1)
 
 /-- [mrr_agentic_ai_context::worklist::run]: loop 0:
-    Source: 'crates/mrr-agentic-ai-context/src/worklist.rs', lines 9:4-9:28 -/
+    Source: 'crates/mrr-agentic-ai-context/src/worklist.rs', lines 27:4-27:28 -/
 @[rust_loop]
 def worklist.run_loop
   {W : Type} (WorklistInst : worklist.Worklist W) (state : W) : Result W := do
@@ -186,7 +270,7 @@ def worklist.run_loop
     state
 
 /-- [mrr_agentic_ai_context::worklist::run]:
-    Source: 'crates/mrr-agentic-ai-context/src/worklist.rs', lines 8:0-11:1 -/
+    Source: 'crates/mrr-agentic-ai-context/src/worklist.rs', lines 26:0-29:1 -/
 @[reducible]
 def worklist.run
   {W : Type} (WorklistInst : worklist.Worklist W) (state : W) : Result W := do
