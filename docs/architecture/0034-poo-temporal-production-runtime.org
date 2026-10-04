@@ -226,3 +226,22 @@ modules pass without suppressions. Final serial success does not close cold
 p95, queue admission, interruptible cancellation or production startup under
 contention. This slice does not establish a new model score, Temporal current
 cut, correction/retraction, IFC publication or durable recovery.
+
+** macOS linker qualification
+
+Exact-head remote CI at =8f389fd0= failed Apple clang/ld with =Bus error: 10=
+while linking the native deduction test, despite serial Cargo build jobs.
+The macOS job now selects the Mach-O LLD shipped with its installed Rust
+toolchain and fails if that executable is absent. It preserves serial jobs,
+the existing tests and all output/batch deadlines; there is no linker retry or
+test fallback. Local Rust/LLD 22.1.2 linked the same native deduction suite,
+and its complete 14 tests passed in 4.94s under the five-second progress and
+45-second total limits in the authorized host environment.
+
+Earlier sandbox invocations of both the original Apple-linked control and the
+LLD-linked executable failed during native initialization. A diagnostic LLD
+run returned =RuntimeUnavailable(4)=; the same Apple-linked control then
+passed on the host in 2.23s. Those environment-specific failed invocations
+remain failures. This comparison does not identify the denied syscall or
+qualify execution inside that sandbox. Local LLD runtime qualification is
+separate from remote exact-head CI, production recovery and latency gates.
