@@ -15,7 +15,7 @@ use crate::{CatalogBoundQuery, ExpressionType, QueryType};
 const QUERY_RESULT_ADMISSION_SCHEMA: &[u8] = b"mrr.query-result-admission.v1";
 use super::scheme;
 
-const QUERY_RESULT_TRANSPORT_SCHEMA: &str = "mrr.query-result-transport.v2";
+const QUERY_RESULT_TRANSPORT_SCHEMA: &str = "mrr.query-result-transport.v1";
 
 /// One self-describing value returned by a physical query engine.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -369,7 +369,7 @@ impl VerifiedQueryResultTransport {
 }
 
 /// Export an already admissible candidate with its exact ordered rows.
-/// Scheme datum v2 only. Encoding is bounded before recursive admission, then
+/// Scheme datum v1 only. Encoding is bounded before recursive admission, then
 /// checked against the exact byte limit while emitting the final receipt.
 pub fn export_query_result_transport(
     query: &CatalogBoundQuery,

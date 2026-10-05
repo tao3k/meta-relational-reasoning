@@ -68,20 +68,24 @@ semantics.
 | =t/mrr-query-provider-test.ss= | =MODULE-OK=, =HARNESS-OK=, =OK= | Valid projection, stale generation, wrong snapshot, forged digest, unsupported scalar checker |
 | =t/temporal-candidate-exchange-test.ss= | =MODULE-OK=, =HARNESS-OK=, =OK= | Incomplete required receipt remains pending |
 
-* Native Scheme result transport v2
+* Native Scheme result transport v1
 
-The facade exports =mrr.query-result-transport.v2= as an inert Scheme datum
-under a caller-owned byte limit. JSON and v1 records are rejected directly;
+The facade exports =mrr.query-result-transport.v1= as an inert Scheme datum
+under a caller-owned byte limit. JSON and unapproved v2 records are rejected directly;
 there is no compatibility decoder. The existing Rust export/verify functions
-retain their names, so consumers must update immutable pins and exchange
-versions together. Context query-selection storage records are version 2 too;
+retain their names. Consumers update immutable source pins while retaining
+protocol version 1. Context query-selection storage records remain version 1;
 an old stored selection must be regenerated from its original admitted inputs.
+=AgenticAiContextQuerySelectionRecord::to_scheme_bytes/from_scheme_bytes=
+use this bounded native codec for the complete storage envelope. Decoding is
+inert and does not bypass original Source/result/selection re-admission. JSON
+and v2 envelopes are rejected; the caller supplies an explicit byte ceiling.
 
-The grammar is the ABI v2 subset =null=, =#t=, =#f=, decimal integers, quoted
+The grammar is the ABI v1 subset =null=, =#t=, =#f=, decimal integers, quoted
 UTF-8 strings, =(list ...)= and =(object ("field" value) ...)=. Escapes are
 only quote, backslash, n, r and t; other control characters, reader extensions,
 comments, duplicate fields, trailing data and unknown envelope fields fail.
-Depth is capped at 64 and datum nodes at 262144. MRR Float and Decimal values
+Depth is capped at 64; datum nodes are bounded by the caller-owned byte ceiling. MRR Float and Decimal values
 remain their original typed canonical strings; the codec does not round them.
 
 The typed Serde projection preserves all result variants, schemas, ordered
@@ -104,7 +108,7 @@ are not reduced to POO's narrower event/position observation profile.
 * Integration gates and ownership
 
 POO PR #34 at =aa04d5738e4cacb81f3d043842ca47144ccb39f4= already consumes
-MRR candidate/receipt owner types in-process and calls Scheme semantic ABI v2.
+MRR candidate/receipt owner types in-process and calls Scheme semantic ABI v1.
 Its narrow event/position bridge uses a typed fixture. The MRR code here supplies
 the owner-side cross-process representation; it does not import POO's runtime
 or become a second Temporal interpreter. The Scheme projection is still declared

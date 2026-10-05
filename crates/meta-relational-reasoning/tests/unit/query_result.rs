@@ -342,8 +342,8 @@ fn transported_result_rechecks_exact_binding_rows_and_digest() {
         Err(QueryResultTransportError::RowCountMismatch)
     );
     let altered_schema = text.replace(
-        "mrr.query-result-transport.v2",
         "mrr.query-result-transport.v1",
+        "mrr.query-result-transport.v2",
     );
     assert_eq!(
         verify_query_result_transport(&bound, altered_schema.as_bytes(), limits(10, 10), max_bytes),

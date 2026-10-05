@@ -131,10 +131,11 @@ recorded arm64 runner the quick-mode medians are =299.99us=, =1.7543ms=, and
 row count, and digest in its receipt; it does not deep-copy the row batch.
 
 
-* Scheme transport version 2
+* Fixed Scheme transport version 1
 
 [[file:0033-poo-query-provider.org][The native handoff contract]] defines the bounded Scheme datum result
 transport, independent of the v1 semantic admission digest. It replaces the
 previous JSON transport without a fallback reader, preserves original typed
 rows, and requires receiver-owned query re-admission. Context selection records
-also advance to v2 so obsolete embedded transport cannot be restored silently.
+remain v1. Native Scheme decoding rejects obsolete JSON embedded transport;
+a format migration does not authorize a protocol version bump.

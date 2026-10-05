@@ -1,6 +1,6 @@
 //! Typed query-result admission and bounded Scheme transport.
 mod api;
-mod scheme;
+pub(crate) mod scheme;
 
 pub use api::{
     CandidateQueryResult, QueryResultAdmissionError, QueryResultAdmissionReceipt,

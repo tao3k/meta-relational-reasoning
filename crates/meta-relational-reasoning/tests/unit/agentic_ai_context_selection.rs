@@ -264,7 +264,7 @@ fn query_selection_storage_round_trip_requires_no_token_feature() {
         .unwrap();
     assert_eq!(
         record.schema,
-        "mrr.agentic-ai-context.query-selection-record.v2"
+        "mrr.agentic-ai-context.query-selection-record.v1"
     );
     assert!(
         std::str::from_utf8(&record.result_transport)
@@ -272,7 +272,7 @@ fn query_selection_storage_round_trip_requires_no_token_feature() {
             .starts_with("(object ")
     );
     let mut legacy = record.clone();
-    legacy.schema = "mrr.agentic-ai-context.query-selection-record.v1".into();
+    legacy.schema = "mrr.agentic-ai-context.query-selection-record.v2".into();
     assert!(matches!(
         crate::restore_agentic_ai_context_query_selection(
             &bundle,
@@ -287,8 +287,28 @@ fn query_selection_storage_round_trip_requires_no_token_feature() {
         ),
         Err(AgenticAiContextAdmissionError::SelectionRecordSchema)
     ));
-    let decoded: crate::AgenticAiContextQuerySelectionRecord =
-        serde_json::from_slice(&serde_json::to_vec(&record).unwrap()).unwrap();
+    let cap = NonZeroUsize::new(131072).unwrap();
+    let encoded = record.to_scheme_bytes(cap).unwrap();
+    let decoded =
+        crate::AgenticAiContextQuerySelectionRecord::from_scheme_bytes(&encoded, cap).unwrap();
+    assert_eq!(decoded, record);
+    let unapproved = String::from_utf8(encoded.clone()).unwrap().replace(
+        "mrr.agentic-ai-context.query-selection-record.v1",
+        "mrr.agentic-ai-context.query-selection-record.v2",
+    );
+    assert!(
+        crate::AgenticAiContextQuerySelectionRecord::from_scheme_bytes(unapproved.as_bytes(), cap)
+            .is_err()
+    );
+    assert!(legacy.to_scheme_bytes(cap).is_err());
+    assert!(crate::AgenticAiContextQuerySelectionRecord::from_scheme_bytes(b"{}", cap).is_err());
+    assert!(
+        crate::AgenticAiContextQuerySelectionRecord::from_scheme_bytes(
+            &encoded,
+            NonZeroUsize::new(encoded.len() - 1).unwrap()
+        )
+        .is_err()
+    );
     let restored = crate::restore_agentic_ai_context_query_selection(
         &bundle,
         &snapshot,

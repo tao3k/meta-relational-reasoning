@@ -22,7 +22,7 @@ fn invalid() -> Error {
     Error::Encoding("invalid or unbounded Scheme result datum".into())
 }
 
-pub(super) fn encode<T: Serialize>(value: &T, limit: usize) -> Result<Vec<u8>, Error> {
+pub(crate) fn encode<T: Serialize>(value: &T, limit: usize) -> Result<Vec<u8>, Error> {
     let mut writer = Writer {
         bytes: Vec::new(),
         size: 0,
@@ -47,7 +47,7 @@ pub(super) fn check<T: Serialize>(value: &T, limit: usize) -> Result<(), Error> 
     value.serialize(&mut writer)
 }
 
-pub(super) fn decode<T: DeserializeOwned>(bytes: &[u8]) -> Result<T, Error> {
+pub(crate) fn decode<T: DeserializeOwned>(bytes: &[u8]) -> Result<T, Error> {
     let input = std::str::from_utf8(bytes).map_err(|_| invalid())?;
     let mut reader = Reader {
         input,
