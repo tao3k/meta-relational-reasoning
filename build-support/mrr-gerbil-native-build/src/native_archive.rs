@@ -137,17 +137,13 @@ impl NativeBuild {
 
     fn package_command(&self, program: &Path) -> Command {
         let mut command = gerbil_command(program);
-        if program == self.gxi.as_path() && gerbil_build_verbose_level() > 0 {
-            // Gerbil's driver appends GSC options after -target, where runtime
-            // diagnostics are ignored. GAMBOPT reaches GXI and child GSC before
-            // argv parsing while retaining the selected SDK directory mappings.
-            let mut options = env::var_os("GAMBOPT").unwrap_or_default();
-            if !options.is_empty() {
-                options.push(",");
-            }
-            options.push("1n,2n,d5qQ");
-            command.env("GAMBOPT", options);
-        }
+        // Both direct GXI and `gxpkg env gxi` enter the Scheme compiler.
+        // Inherit diagnostics through the package launcher as well.
+        configure_runtime_diagnostics(
+            &mut command,
+            gerbil_build_verbose_level() > 0,
+            env::var_os("GAMBOPT"),
+        );
         command
             .current_dir(&self.workspace)
             .env("GERBIL_PATH", &self.package_prefix)
@@ -385,4 +381,46 @@ fn scheme_string(path: &Path) -> String {
             .replace('\\', "\\\\")
             .replace('"', "\\\"")
     )
+}
+
+fn configure_runtime_diagnostics(
+    command: &mut Command,
+    enabled: bool,
+    base: Option<std::ffi::OsString>,
+) {
+    if enabled {
+        let mut options = base.unwrap_or_default();
+        if !options.is_empty() {
+            options.push(",");
+        }
+        options.push("1n,2n,d5qQ");
+        command.env("GAMBOPT", options);
+    }
+}
+#[cfg(test)]
+mod runtime_diagnostics_tests {
+    use super::*;
+    #[test]
+    fn package_launcher_inherits_real_runtime_diagnostics_and_sdk_mappings() {
+        for program in ["gxi", "gxpkg"] {
+            let mut command = Command::new(program);
+            configure_runtime_diagnostics(
+                &mut command,
+                true,
+                Some("~~=/sdk,~~lib=/sdk/lib".into()),
+            );
+            assert_eq!(
+                command
+                    .get_envs()
+                    .find(|(k, _)| *k == "GAMBOPT")
+                    .unwrap()
+                    .1
+                    .unwrap(),
+                "~~=/sdk,~~lib=/sdk/lib,1n,2n,d5qQ"
+            );
+        }
+        let mut quiet = Command::new("gxpkg");
+        configure_runtime_diagnostics(&mut quiet, false, Some("~~=/sdk".into()));
+        assert!(!quiet.get_envs().any(|(k, _)| k == "GAMBOPT"));
+    }
 }
