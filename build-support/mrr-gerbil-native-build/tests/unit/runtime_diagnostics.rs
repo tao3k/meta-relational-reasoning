@@ -4,11 +4,7 @@ use std::process::Command;
 fn package_launcher_inherits_real_runtime_diagnostics_and_sdk_mappings() {
     for program in ["gxi", "gxpkg"] {
         let mut command = Command::new(program);
-        configure_runtime_diagnostics(
-            &mut command,
-            true,
-            Some("~~=/sdk,~~lib=/sdk/lib".into()),
-        );
+        configure_runtime_diagnostics(&mut command, true, Some("~~=/sdk,~~lib=/sdk/lib".into()));
         assert_eq!(
             command
                 .get_envs()
