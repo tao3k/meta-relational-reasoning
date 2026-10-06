@@ -111,7 +111,11 @@ def main() -> int:
             parser.error("TLC jar differs from pinned official v1.7.4")
         command = [
             "java",
+            "-XX:ActiveProcessorCount=1",
             "-XX:+UseParallelGC",
+            # Actual completed JVM class initialization is startup progress;
+            # no timer output resets the unchanged five-second idle deadline.
+            "-Xlog:class+init=info",
             "-Xms32m",
             "-Xmx1g",
             "-XX:MaxDirectMemorySize=64m",
