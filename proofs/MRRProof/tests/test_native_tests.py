@@ -12,6 +12,21 @@ from mrr_proof_validation import native_tests as native
 
 
 class OutputRegression(unittest.TestCase):
+    def test_batch_cannot_consume_callers_stdin(self):
+        runner = (
+            "from mrr_proof_validation.native_tests import qualify; "
+            "import sys; "
+            "raise SystemExit(qualify([sys.executable, '-c', "
+            "\"import sys; raise SystemExit(0 if sys.stdin.read() == '' else 1)\"]))"
+        )
+        result = subprocess.run(
+            [sys.executable, "-c", runner],
+            input=b"caller input must remain private",
+            capture_output=True,
+            timeout=10,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
     @unittest.skipUnless(hasattr(os, "fork"), "requires POSIX process groups")
     def test_exited_parent_does_not_admit_or_leak_pipe_holding_descendant(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -65,7 +80,9 @@ class OutputRegression(unittest.TestCase):
     def test_exit_race_reaps_before_retrying_group_signal(self):
         child = Mock(pid=123)
         child.poll.side_effect = [None, 0]
-        with patch.object(native.os, "killpg", side_effect=[PermissionError(), ProcessLookupError()]) as kill:
+        with patch.object(
+            native.os, "killpg", side_effect=[PermissionError(), ProcessLookupError()]
+        ) as kill:
             native.signal_owned_group(child, native.signal.SIGTERM)
         child.wait.assert_called_once_with()
         self.assertEqual(kill.call_count, 2)
@@ -77,7 +94,6 @@ class OutputRegression(unittest.TestCase):
             with self.assertRaises(PermissionError):
                 native.signal_owned_group(child, native.signal.SIGTERM)
         child.wait.assert_not_called()
-
 
     def test_short_writes_and_backpressure_preserve_exact_bytes(self):
         payload = b"MODULE x\nCASE-OK y\n\xff\nOK\n"

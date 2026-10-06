@@ -98,12 +98,43 @@ def signal_owned_group(child, signum):
             pass
 
 
+def report_owned_processes(child):
+    """Capture the owned process tree once, after qualification has failed."""
+    try:
+        snapshot = subprocess.check_output(
+            ["/bin/ps", "-axo", "pid,ppid,pgid,uid,stat,etime,command"],
+            stderr=subprocess.STDOUT,
+            text=True,
+            timeout=1,
+        )
+    except (OSError, subprocess.SubprocessError) as error:
+        print(f"NATIVE-DIAGNOSTIC: process snapshot unavailable: {error}", flush=True)
+        return
+    lines = snapshot.splitlines()
+    rows = [line.split(None, 6) for line in lines[1:]]
+    owned = {child.pid}
+    while True:
+        descendants = {
+            int(row[0])
+            for row in rows
+            if len(row) == 7 and (int(row[1]) in owned or int(row[2]) == child.pid)
+        }
+        if descendants <= owned:
+            break
+        owned.update(descendants)
+    print("NATIVE-DIAGNOSTIC: " + lines[0], flush=True)
+    for line, row in zip(lines[1:], rows):
+        if len(row) == 7 and int(row[0]) in owned:
+            print("NATIVE-DIAGNOSTIC: " + line, flush=True)
+
+
 def qualify(
     command: list[str], receipt: SchemeReceipt | None = None, *, cwd: str | None = None
 ) -> int:
     child = subprocess.Popen(
         command,
         cwd=cwd,
+        stdin=subprocess.DEVNULL,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         start_new_session=True,
@@ -140,6 +171,7 @@ def qualify(
                         f"output pipe open={bool(selector.get_map())})",
                         flush=True,
                     )
+                    report_owned_processes(child)
                     # A descendant may retain the pipe after its parent exits.
                     signal_owned_group(child, signal.SIGTERM)
                     return 124
@@ -175,7 +207,13 @@ def scheme_command(paths: list[str]) -> list[str]:
         "-e",
         '(load "proofs/MRRProof/fixtures/native-test-progress.ss")',
         "-e",
-        f'(import :gerbil/tools/gxtest) (exit (main "-v" "5" {arguments}))',
+        f"(import :gerbil/tools/gxtest) "
+        f'(let ((status (main "-v" "5" {arguments}))) '
+        '(displayln "mrr-test: harness returned " status) (force-output) '
+        '(displayln "mrr-test: exit cleanup started") (force-output) '
+        "(##exit-cleanup) "
+        '(displayln "mrr-test: exit cleanup returned") (force-output) '
+        "(exit status))",
     ]
 
 
