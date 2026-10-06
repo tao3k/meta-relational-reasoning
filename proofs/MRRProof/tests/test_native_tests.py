@@ -12,6 +12,20 @@ from mrr_proof_validation import native_tests as native
 
 
 class OutputRegression(unittest.TestCase):
+    def test_delivered_output_starts_silence_window_after_backpressure(self):
+        forward = native.forward_output
+
+        def delayed_forward(chunk, deadline):
+            # Model a blocked CI sink that completes within the original
+            # five-second forwarding deadline. Shutdown then remains silent
+            # for less than five seconds after actual log delivery.
+            time.sleep(2)
+            return forward(chunk, deadline)
+
+        producer = "import time; print('completed batch', flush=True); time.sleep(6)"
+        with patch.object(native, "forward_output", side_effect=delayed_forward):
+            self.assertEqual(native.qualify([sys.executable, "-c", producer]), 0)
+
     def test_batch_cannot_consume_callers_stdin(self):
         runner = (
             "from mrr_proof_validation.native_tests import qualify; "

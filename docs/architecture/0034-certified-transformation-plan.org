@@ -1,5 +1,5 @@
 #+title: RFC 0034: Certified Transformation Plan Audit and Delivery Gates
-#+status: contracts, kernel bridge and corpus qualified; exact-head native qualification pending
+#+status: implemented; qualification requires all exact-head PR checks
 #+date: 2026-10-06
 #+options: toc:2
 #+property: header-args :eval never-export :exports code

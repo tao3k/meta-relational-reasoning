@@ -143,6 +143,7 @@ def qualify(
     assert child.stdout is not None
     last_output = time.monotonic()
     started = last_output
+    last_read = last_output
     try:
         with selectors.DefaultSelector() as selector:
             selector.register(child.stdout, selectors.EVENT_READ)
@@ -158,9 +159,13 @@ def qualify(
                     if not chunk:
                         selector.unregister(child.stdout)
                         continue
-                    last_output = time.monotonic()
-                    if not forward_output(chunk, min(last_output + 5, started + 45)):
+                    last_read = time.monotonic()
+                    if not forward_output(chunk, min(last_read + 5, started + 45)):
                         return 124
+                    # CI backpressure can delay delivery after the pipe read.
+                    # Successful real-byte forwarding is observable progress;
+                    # keep the separate forwarding and whole-batch deadlines.
+                    last_output = time.monotonic()
                     if receipt is not None:
                         receipt.observe(chunk)
                 now = time.monotonic()
@@ -168,7 +173,10 @@ def qualify(
                     print(
                         "NATIVE-FAIL: five seconds without output or 45s batch limit "
                         f"(direct child status={child.poll()}, "
-                        f"output pipe open={bool(selector.get_map())})",
+                        f"output pipe open={bool(selector.get_map())}, "
+                        f"last read age={now - last_read:.3f}s, "
+                        f"last forward age={now - last_output:.3f}s, "
+                        f"batch age={now - started:.3f}s)",
                         flush=True,
                     )
                     report_owned_processes(child)
