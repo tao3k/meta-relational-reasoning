@@ -198,3 +198,11 @@ pub use transformation_profiles::{
     FiniteOptimizationTransport, FinitePartialTransport, KernelCheckedDecisionReduction,
     KernelCheckedOptimizationReduction, KernelCheckedPartialTransformation,
 };
+
+#[cfg(feature = "native-inference")]
+mod transformation_native;
+#[cfg(feature = "native-inference")]
+pub use transformation_native::{
+    NativeTransformationExecution, NativeTransformationExecutionRequest,
+    execute_native_transformation_plan,
+};

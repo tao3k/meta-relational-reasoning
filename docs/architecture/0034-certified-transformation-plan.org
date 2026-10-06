@@ -559,3 +559,23 @@ The earlier macOS interpreted gxi batch produced successful case receipts and
 returned from Scheme cleanup, then stalled during native process teardown.
 That batch remains a failed receipt. Native AOT qualification must pass its own
 complete CI gate; it does not establish that interpreted gxi teardown is fixed.
+
+* Native provider discovery and execution bridge
+
+=NativeTransformationExecutionRequest= binds one current admitted cut, a
+concrete ordered plan, actual input, and both transformation/native inference
+limits. =execute_native_transformation_plan= rechecks every source edge and all
+concrete plan premises before calling the real Scheme ASCENT owner. Only the
+exact returned native route can enter execution; no fallback or route
+substitution occurs. Execution repeats current admission and independent answer
+checks and retains the original native closure receipt alongside the completed
+answer. Missing routes remain Unknown, including truncated searches.
+
+This bridge accepts the existing runtime/verifier ports without requiring a
+finite-table runtime implementation. Its first native integration fixture uses
+the actual Scheme provider and the existing finite runtime, with wrong-input,
+missing-cut, invalid-solver, generation-mismatch and revoked-source refusals.
+Physical external provider implementations, authenticated grants and their
+native refinement are still owner obligations. Qualification requires the new
+=native-transformations= integration target to pass on the exact PR head; the
+local private macOS SDK currently retains a dynamic-load startup failure.

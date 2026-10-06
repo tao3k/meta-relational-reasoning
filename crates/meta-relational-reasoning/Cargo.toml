@@ -62,3 +62,8 @@ required-features = ["agentic-ai-context-tokens"]
 [[test]]
 name = "finite-transformations"
 path = "tests/integration/finite_transformations.rs"
+
+[[test]]
+name = "native-transformations"
+path = "tests/integration/native_transformations.rs"
+required-features = ["native-inference"]

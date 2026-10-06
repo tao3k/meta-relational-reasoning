@@ -340,3 +340,11 @@ for setup and the remaining native container-adapter refinement obligations.
 * Certified transformations
 
 See [[file:docs/architecture/0034-certified-transformation-plan.org][the certified transformation contract and implementation]].
+
+Under =native-inference=, =execute_native_transformation_plan= connects actual
+Scheme ASCENT route discovery to the configured transformation runtime. It
+revalidates the current admitted cut and concrete plan, requires the exact
+ordered native route, and retains both the original closure receipt and the
+independently checked execution result. Search absence remains Unknown.
+Physical provider dispatch, solver correctness and current source authority
+remain explicit runtime/verifier responsibilities.
