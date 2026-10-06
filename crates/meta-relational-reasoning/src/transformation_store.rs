@@ -37,12 +37,21 @@ struct ArchivedResult {
 #[derive(Debug)]
 pub struct TransformationResultStore {
     path: PathBuf,
-    _lock: File,
+    _lock: StoreLock,
     archived: Option<ArchivedResult>,
     current: bool,
     authority: Option<FiniteTransformationCatalog>,
     reverse: BTreeMap<[u8; 32], Vec<[u8; 32]>>,
     limits: TransformationLimits,
+}
+#[derive(Debug)]
+struct StoreLock(File);
+impl Drop for StoreLock {
+    fn drop(&mut self) {
+        // A concurrently forked child may retain the open file description until
+        // exec closes it. Closing this descriptor alone then retains the lock.
+        let _ = self.0.unlock();
+    }
 }
 impl TransformationResultStore {
     pub fn open(
@@ -63,6 +72,7 @@ impl TransformationResultStore {
             .open(path.with_extension("lock"))
             .map_err(|_| TransformationError::Encoding)?;
         lock.try_lock().map_err(|_| TransformationError::Conflict)?;
+        let lock = StoreLock(lock);
         let archived = match File::open(&path) {
             Ok(file) => {
                 let mut bytes = Vec::new();
@@ -297,3 +307,7 @@ impl TransformationResultStore {
         Ok(execution)
     }
 }
+
+#[cfg(test)]
+#[path = "../tests/unit/transformation_store_lock.rs"]
+mod lock_tests;

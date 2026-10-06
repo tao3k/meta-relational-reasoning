@@ -361,7 +361,9 @@ The implementation extends MRR PR #9 base
 - [[file:../../crates/meta-relational-reasoning/src/transformation_execution.rs][Execution]] that validates forward instances, solver output, reverse extraction,
   independent endpoint correctness and final source authority before release;
 - [[file:../../crates/meta-relational-reasoning/src/transformation_store.rs][Durable publication]] with an exclusive OS file lock, bounded canonical CBOR,
-  file sync, atomic replacement and directory sync. Reopen is STALE until checked
+  file sync, atomic replacement and directory sync. The lock guard explicitly
+  unlocks on release, including decode failures, so a descriptor inherited before
+  another thread execs a child cannot prolong a released store lock. Reopen is STALE until checked
   replay; reverse support lookup drives durable invalidation. Failed writes retain
   prior history; uncertain directory sync has an explicit error. Request/scope
   isolation rejects what-if replacement of another publication slot;
@@ -405,7 +407,7 @@ stored result; reopening retains history and requires fresh checked replay.
 #+name: transformation-local-implementation-gates
 | Gate | Observed local result | Evidence boundary |
 |------+-----------------------+-------------------|
-| Portable Rust facade and identity | 46 + 7 tests passed | Includes ASP source gates, kernel certificate, corpus composition and revocation |
+| Portable Rust facade and identity | 47 + 7 tests passed | Includes ASP source gates, kernel certificate, corpus composition and revocation |
 | Clippy | Passed with warnings denied | Facade and identity, all targets, no default features |
 | Proof Python suite | 27 passed | Includes real Lean negative fixtures and axiom policy |
 | MRR Lean 4.31.0 | Combined kernel and Org receipt passed | Exact selected model declarations |
