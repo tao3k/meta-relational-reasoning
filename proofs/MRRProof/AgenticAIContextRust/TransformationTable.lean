@@ -1,7 +1,6 @@
 import TransformGenerated.Funs
 
 open Aeneas.Std
-open scoped Aeneas
 open MRR.TransformationRust
 
 namespace MRR.TransformationTableProofs
@@ -53,7 +52,8 @@ theorem missing_source_extraction (table : Slice (alloc.vec.Vec Usize))
 /-- The production byte clone succeeds with precisely the original sequence.
 Allocator behavior and the pinned Aeneas Slice/Vec models remain trust boundaries. -/
 theorem transport_bytes_exact (bytes : Slice U8) :
-    transformation_table.transport_bytes bytes ⦃ copied => bytes = copied.slice ⦄ := by
+    Aeneas.Std.WP.spec (transformation_table.transport_bytes bytes)
+      (fun copied => bytes = copied.slice) := by
   simpa [transformation_table.transport_bytes] using
     (alloc.slice.Slice.to_vec_spec core.clone.CloneU8 bytes (by intro x hx; rfl))
 
