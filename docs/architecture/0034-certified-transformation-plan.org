@@ -682,3 +682,9 @@ this behavior; consumers do not require redundant GSC overrides.
 Feature branches run CI through pull requests; push CI is retained for main.
 This removes duplicate runs for each PR update without removing any gate or
 changing operation budgets, process progress deadlines or build parallelism.
+
+Publication refresh runs immediately before and after the provider's synchronous
+read lease. The write action does not reenter runtime identity, verifier or
+lease checks. This avoids recursive ledger read acquisition while a revocation
+writer waits. The retained owned lease is Send/Sync and observes later source
+revocation; serialized archives cannot recreate that lease.

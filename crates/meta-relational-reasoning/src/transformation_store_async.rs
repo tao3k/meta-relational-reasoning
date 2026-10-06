@@ -49,12 +49,14 @@ impl TransformationResultStore {
         }
         let lease = runtime.publication_lease();
         let mut committed = false;
+        // Provider publication holds its authority read lock. Refresh outside
+        // that action: another read while revocation waits can deadlock.
+        if runtime.identity() != identity
+            || admit_transformation_plan(candidate, self.limits, verifier)? != plan
+        {
+            return Err(TransformationError::BindingMismatch);
+        }
         let published = runtime.publish(&candidate.binding, bytes.len() as u64, || {
-            if runtime.identity() != identity
-                || admit_transformation_plan(candidate, self.limits, verifier)? != plan
-            {
-                return Err(TransformationError::BindingMismatch);
-            }
             self.write(&record)?;
             committed = true;
             Ok(())
@@ -115,15 +117,13 @@ impl TransformationResultStore {
             return Err(TransformationError::BindingMismatch);
         }
         let lease = runtime.publication_lease();
-        runtime.publish(&candidate.binding, 0, || {
-            if !lease.is_current()
-                || runtime.identity() != identity
-                || admit_transformation_plan(candidate, self.limits, verifier)? != plan
-            {
-                return Err(TransformationError::BindingMismatch);
-            }
-            Ok(())
-        })?;
+        if !lease.is_current()
+            || runtime.identity() != identity
+            || admit_transformation_plan(candidate, self.limits, verifier)? != plan
+        {
+            return Err(TransformationError::BindingMismatch);
+        }
+        runtime.publish(&candidate.binding, 0, || Ok(()))?;
         if !lease.is_current()
             || runtime.identity() != identity
             || admit_transformation_plan(candidate, self.limits, verifier) != Ok(plan)

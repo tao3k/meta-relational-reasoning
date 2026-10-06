@@ -20,6 +20,12 @@ struct SuspendedRuntime<'a> {
 }
 impl AsyncTransformationRuntime for SuspendedRuntime<'_> {
     fn identity(&self) -> [u8; 32] {
+        assert!(
+            !self
+                .publication
+                .guarded
+                .load(std::sync::atomic::Ordering::Acquire)
+        );
         self.inner.identity()
     }
     async fn forward(
@@ -197,9 +203,11 @@ fn cancelling_suspended_solver_never_runs_extraction() {
 struct PublicationState {
     revoked: std::sync::atomic::AtomicBool,
     revoke_after_write: std::sync::atomic::AtomicBool,
+    guarded: std::sync::atomic::AtomicBool,
 }
 impl crate::TransformationPublicationLease for PublicationState {
     fn is_current(&self) -> bool {
+        assert!(!self.guarded.load(std::sync::atomic::Ordering::Acquire));
         !self.revoked.load(std::sync::atomic::Ordering::Acquire)
     }
 }
@@ -221,7 +229,10 @@ impl crate::AsyncTransformationPublisher for SuspendedRuntime<'_> {
         if !self.publication.is_current() {
             return Err(TransformationError::Revoked);
         }
-        let result = action()?;
+        self.publication.guarded.store(true, Ordering::Release);
+        let result = action();
+        self.publication.guarded.store(false, Ordering::Release);
+        let result = result?;
         if self.publication.revoke_after_write.load(Ordering::Acquire) {
             self.publication.revoked.store(true, Ordering::Release);
             return Err(TransformationError::PublicationUncertain);
@@ -249,6 +260,10 @@ fn physical_archive_requires_replay_and_retains_durable_support_invalidation() {
         publication: std::sync::Arc::new(PublicationState::default()),
     };
     let plan = concrete_plan(17);
+    let verifier = GuardAwareVerifier {
+        inner: verifier,
+        publication: runtime.publication.clone(),
+    };
     let mut store = crate::TransformationResultStore::open(&path, limits()).unwrap();
     complete(store.execute_and_publish_async(&plan, Value::Integer(17), &verifier, &runtime))
         .unwrap();
@@ -302,6 +317,10 @@ fn physical_archive_uncertain_write_never_becomes_fresh() {
         .publication
         .revoke_after_write
         .store(true, Ordering::Release);
+    let verifier = GuardAwareVerifier {
+        inner: verifier,
+        publication: runtime.publication.clone(),
+    };
     let mut store = crate::TransformationResultStore::open(&path, limits()).unwrap();
     assert_eq!(
         complete(store.execute_and_publish_async(
@@ -320,4 +339,57 @@ fn physical_archive_uncertain_write_never_becomes_fresh() {
     drop(store);
     let _ = std::fs::remove_file(&path);
     let _ = std::fs::remove_file(path.with_extension("lock"));
+}
+
+struct GuardAwareVerifier<'a> {
+    inner: CurrentVerifier<'a>,
+    publication: std::sync::Arc<PublicationState>,
+}
+impl GuardAwareVerifier<'_> {
+    fn outside_guard(&self) {
+        assert!(
+            !self
+                .publication
+                .guarded
+                .load(std::sync::atomic::Ordering::Acquire),
+            "admission must not reenter the publication authority lock"
+        );
+    }
+}
+impl crate::TransformationVerifier for GuardAwareVerifier<'_> {
+    fn policy(&self) -> [u8; 32] {
+        self.outside_guard();
+        self.inner.policy()
+    }
+    fn check_definition(
+        &self,
+        definition: &crate::TransformationDefinition,
+        evidence: &crate::TransformationEvidence,
+        binding: &TransformationBinding,
+    ) -> Result<[u8; 32], TransformationError> {
+        self.outside_guard();
+        self.inner.check_definition(definition, evidence, binding)
+    }
+    fn check_step(
+        &self,
+        step: &TransformationStep,
+        binding: &TransformationBinding,
+        index: usize,
+        prior: &[u8; 32],
+    ) -> Result<[u8; 32], TransformationError> {
+        self.outside_guard();
+        self.inner.check_step(step, binding, index, prior)
+    }
+    fn check_solver(
+        &self,
+        target: &TransformationEndpoint,
+        solver: &[u8; 32],
+        input: &[u8; 32],
+        binding: &TransformationBinding,
+        prior: &[u8; 32],
+    ) -> Result<[u8; 32], TransformationError> {
+        self.outside_guard();
+        self.inner
+            .check_solver(target, solver, input, binding, prior)
+    }
 }

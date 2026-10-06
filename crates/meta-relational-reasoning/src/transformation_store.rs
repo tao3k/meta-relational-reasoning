@@ -56,7 +56,7 @@ impl Drop for StoreLock {
     }
 }
 /// A live provider lease retained only in memory; archives never restore it.
-pub trait TransformationPublicationLease: std::fmt::Debug {
+pub trait TransformationPublicationLease: std::fmt::Debug + Send + Sync {
     fn is_current(&self) -> bool;
 }
 
