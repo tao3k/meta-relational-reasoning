@@ -532,6 +532,19 @@ checker retains its fixed deadline; the slot prevents parallel fixtures from
 spending that deadline competing for macOS runner CPU. Slot poisoning fails
 with the typed KernelUnavailable error.
 
+Generated kernel sources explicitly import the required Lean List/Fin, core
+tactic, proposition and Nat division modules. They retain every model,
+whole-domain table obligation and axiom audit while avoiding the complete
+default Init import. Budget failures report the actual phase, elapsed time,
+output byte count and a bounded partial diagnostic without changing admission.
+The native workflow separates compilation from execution, and a fresh macOS
+finite-kernel job checks all nine actual integration cases independently.
+
+At the earlier =6a71f0a= head both AOT Scheme batches passed. One macOS Rust
+run rejected the first authenticated catalog with Budget while eight other
+kernel cases passed; the independent push run passed all nine. That failed
+receipt is retained. The selective-import implementation requires fresh CI.
+
 The Scheme qualification profile compiles all current test modules with the
 unchanged upstream gxtest into a native executable. Canonical SDK tool SCM is
 compiled only inside a private SDK copy. Preparation binds local Scheme and

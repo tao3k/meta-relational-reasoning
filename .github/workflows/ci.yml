@@ -44,6 +44,36 @@ jobs:
       - name: Execute durable finite workflow
         run: cargo run -p meta-relational-reasoning --no-default-features --locked --example finite_transformation -- "$RUNNER_TEMP/finite-result.cbor"
 
+  macos-finite-kernel:
+    name: Pinned finite kernel (macos-latest)
+    runs-on: macos-latest
+    timeout-minutes: 15
+    env:
+      CARGO_BUILD_JOBS: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: llvm-tools
+      - uses: leanprover/lean-action@v1
+        with:
+          lake-package-directory: proofs/MRRProof/AgenticAIContextRust
+          auto-config: false
+          build: false
+          test: false
+          lint: false
+          use-mathlib-cache: false
+      - name: Select Rust Mach-O LLD
+        shell: bash
+        run: |
+          rust_host="$(rustc -vV | sed -n 's/^host: //p')"
+          rust_macho_linker="$(rustc --print sysroot)/lib/rustlib/$rust_host/bin/gcc-ld/ld64.lld"
+          test -x "$rust_macho_linker"
+          "$rust_macho_linker" --version
+          echo "CARGO_TARGET_AARCH64_APPLE_DARWIN_RUSTFLAGS=-C link-arg=-fuse-ld=$rust_macho_linker" >> "$GITHUB_ENV"
+      - name: Qualify actual finite kernel on a fresh macOS Host
+        run: cargo test -p meta-relational-reasoning --test finite-transformations --no-default-features --locked -- --nocapture
+
   test:
     name: Native Gerbil and Rust (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
@@ -146,6 +176,11 @@ jobs:
 
       - name: Test Gerbil package
         run: gerbil env python3 -m mrr_proof_validation.native_tests scheme
+
+      - name: Compile Rust workspace tests in the Gerbil package environment
+        env:
+          MRR_NATIVE_PROGRESS: "1"
+        run: gerbil env cargo test --workspace --locked --no-run
 
       - name: Verify pinned kernel discovery in the Gerbil package environment
         run: gerbil env sh -c 'command -v elan && ELAN_TOOLCHAIN=leanprover/lean4:v4.31.0 elan which lean && elan run leanprover/lean4:v4.31.0 lean --version'

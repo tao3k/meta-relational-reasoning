@@ -325,12 +325,23 @@ fn run(
     );
     let started = Instant::now();
     let status = loop {
-        if fs::metadata(&files.output)
+        let bytes = fs::metadata(&files.output)
             .map_err(|_| TransformationError::Encoding)?
-            .len()
-            > limits.max_bytes.get() as u64
-            || started.elapsed() > Duration::from_secs(5)
-        {
+            .len();
+        if bytes > limits.max_bytes.get() as u64 || started.elapsed() > Duration::from_secs(5) {
+            let mut diagnostics = std::io::stderr().lock();
+            let _ = writeln!(
+                diagnostics,
+                "MRR-KERNEL-BUDGET: phase={} elapsed={:?} bytes={bytes} limit={}",
+                args.first().copied().unwrap_or("unknown"),
+                started.elapsed(),
+                limits.max_bytes.get(),
+            );
+            let mut partial = String::new();
+            if let Ok(file) = File::open(&files.output) {
+                let _ = file.take(1024).read_to_string(&mut partial);
+            }
+            let _ = writeln!(diagnostics, "MRR-KERNEL-PARTIAL: {partial}");
             let _ = child.0.kill();
             let _ = child.0.wait();
             return Err(TransformationError::Budget);
@@ -415,11 +426,17 @@ fn numbers(values: &[usize], variable: &str) -> String {
     )
 }
 fn kernel_source(transports: &[FiniteTransport]) -> String {
-    let mut source = include_str!("../../../proofs/MRRProof/Transformation.lean")
-        .split("\nnamespace MRRTransformation\n\n-- Nontrivial")
-        .next()
-        .unwrap_or_default()
-        .to_owned();
+    // These exact model proofs need List/Fin and core tactics. Loading the
+    // complete default Init also imports unrelated system, Grind and Sym code.
+    let mut source = String::from(
+        "prelude\nimport Init.Data.List.FinRange\nimport Init.Tactics\nimport Init.PropLemmas\nimport Init.Data.Nat.Div.Lemmas\n",
+    );
+    source.push_str(
+        include_str!("../../../proofs/MRRProof/Transformation.lean")
+            .split("\nnamespace MRRTransformation\n\n-- Nontrivial")
+            .next()
+            .unwrap_or_default(),
+    );
     source.push_str(include_str!(
         "../../../proofs/MRRProof/FiniteTransformation.lean"
     ));
