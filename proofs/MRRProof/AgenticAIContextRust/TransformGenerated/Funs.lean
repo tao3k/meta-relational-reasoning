@@ -64,4 +64,11 @@ def transformation_table.extract
     let s := alloc.vec.Vec.deref row
     transformation_table.forward s answer
 
+/-- [meta_relational_reasoning::transformation_table::transport_bytes]:
+    Source: 'crates/meta-relational-reasoning/src/transformation_table.rs', lines 34:0-36:1
+    Visibility: public -/
+def transformation_table.transport_bytes
+  (bytes : Slice Std.U8) : Result (alloc.vec.Vec Std.U8) := do
+  alloc.slice.Slice.to_vec core.clone.CloneU8 bytes
+
 end MRR.TransformationRust

@@ -22,6 +22,7 @@ run_cmd do
   let environment <- getEnv
   let allowed := #[`propext, `Classical.choice, `Quot.sound]
   let required := #[
+    `MRR.TransformationTableProofs.transport_bytes_exact,
     `MRR.TransformationTableProofs.forward_exact,
     `MRR.TransformationTableProofs.solve_exact,
     `MRR.TransformationTableProofs.extract_exact,

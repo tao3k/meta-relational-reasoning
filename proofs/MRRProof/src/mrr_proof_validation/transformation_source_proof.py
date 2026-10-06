@@ -14,7 +14,7 @@ from .context_source_proof import AENEAS_VERSION, CHARON_REVISION, ROOT
 
 FUNCTIONS = [
     f"meta_relational_reasoning::transformation_table::{name}"
-    for name in ("forward", "solve", "extract")
+    for name in ("forward", "solve", "extract", "transport_bytes")
 ]
 PROJECT = ROOT / "proofs/MRRProof/AgenticAIContextRust"
 
@@ -93,7 +93,7 @@ def main() -> int:
                     "crates/meta-relational-reasoning/src/transformation_finite.rs",
                 )
             },
-            "boundary": "production table access only; standard Slice/Vec models trusted; catalog transport laws, authority, codecs and dispatch are separate obligations",
+            "boundary": "production table access and byte clone only; standard Slice/Vec models trusted; catalog transport laws, authority, codecs and dispatch are separate obligations",
         }, indent=2) + "\n")
     print("TRANSFORMATION-SOURCE-EXTRACTION-OK", flush=True)
     return 0

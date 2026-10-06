@@ -619,3 +619,17 @@ replace the current proof verifier. The portable negative fixture rejects forged
 signatures, changed binding/catalog, denied publication and exhausted budgets;
 revocation survives reopening the ledger. The property provider consumes this
 boundary separately from its already admitted transformation edge.
+
+* Byte identity transport source refinement
+
+The production =transport_transformation_bytes= helper clones an arbitrary byte
+slice using Rust =to_vec=. Charon/Aeneas extracts that exact helper alongside the
+three table access operations. =transport_bytes_exact= proves that the copied
+vector's slice is the original input for every model slice. The existing source
+freshness and axiom audit gate includes this seventh source theorem. Standard
+allocator behavior and pinned Vec/Slice models remain explicit trust roots.
+
+The property provider calls this helper for forward and extraction. This closes
+byte sequence preservation for the actual shared primitive; it does not by
+itself certify the provider's guards, codecs, solver/oracle or authenticated
+admission owner. Those cannot be inferred from an identity transport theorem.

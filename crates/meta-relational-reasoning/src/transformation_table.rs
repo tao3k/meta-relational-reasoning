@@ -27,3 +27,10 @@ pub(crate) fn extract(table: &[Vec<usize>], input: usize, answer: usize) -> Opti
         None => None,
     }
 }
+
+/// Clone a finite byte transport without changing its logical byte sequence.
+/// Allocation failure remains the standard Rust allocator boundary.
+#[must_use]
+pub fn transport_bytes(bytes: &[u8]) -> Vec<u8> {
+    bytes.to_vec()
+}

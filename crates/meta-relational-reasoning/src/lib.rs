@@ -15,6 +15,7 @@ mod transformation_publication;
 #[cfg(feature = "native-inference")]
 mod transformation_route;
 mod transformation_table;
+pub use transformation_table::transport_bytes as transport_transformation_bytes;
 mod truth;
 mod typing;
 pub use admission::{
