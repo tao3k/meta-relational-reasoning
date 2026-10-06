@@ -419,7 +419,7 @@ or global revocation service is claimed.
 | LeanPOO public modules | Library and profile tests passed; PR #9 has 16 exact-head checks passed | Follow-up to merged PR #8, preserving concurrent FiniteDiagnostics work |
 | UCI Iris | All 150 CSV labels matched for sequential and materialized composition | Whole finite domain, not arbitrary external inputs |
 | Durable example | Execution, stale reopen, checked replay and revoke passed | Local OS lock and publication file |
-| Gerbil native build | CI package build and Scheme qualification passed after GraphSyntax migration; Rust kernel Host isolation implemented; latest exact-head native CI required | Native job remains an independent required gate |
+| Gerbil native build | Fresh declared package build; local source-bound AOT passed all 8 modules and 145 cases; five qualification probe classes passed; latest exact-head native CI required | Native job remains an independent required gate |
 
 Reproduce the portable profile from this checkout:
 
@@ -526,3 +526,23 @@ run in a separate integration executable; the embedded native unit executable
 checks explicit mode rejection before any child spawn. Both executables remain
 in =cargo test --workspace=, and portable CI explicitly runs =--tests=. No kernel
 fixture or native gate is skipped, and checker deadlines are unchanged.
+
+Concurrent finite kernel admissions share a process-local slot. Each launched
+checker retains its fixed deadline; the slot prevents parallel fixtures from
+spending that deadline competing for macOS runner CPU. Slot poisoning fails
+with the typed KernelUnavailable error.
+
+The Scheme qualification profile compiles all current test modules with the
+unchanged upstream gxtest into a native executable. Canonical SDK tool SCM is
+compiled only inside a private SDK copy. Preparation binds local Scheme and
+test sources, harness glue, selected SDK inputs and executable bytes, and rejects
+drift before execution. The same executable runs the positive, assertion,
+missing-module and empty-suite qualification probes. Real runtime output,
+nonempty case receipts, upstream status, final OK and actual process exit are
+required under the original five-second silence and 45-second total limits.
+Normal Scheme and Gambit cleanup remains enabled.
+
+The earlier macOS interpreted gxi batch produced successful case receipts and
+returned from Scheme cleanup, then stalled during native process teardown.
+That batch remains a failed receipt. Native AOT qualification must pass its own
+complete CI gate; it does not establish that interpreted gxi teardown is fixed.

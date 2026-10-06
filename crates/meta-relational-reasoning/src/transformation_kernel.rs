@@ -5,7 +5,10 @@ use std::{
     io::{Read, Write},
     path::{Path, PathBuf},
     process::{Command, Stdio},
-    sync::atomic::{AtomicU64, Ordering},
+    sync::{
+        Mutex,
+        atomic::{AtomicU64, Ordering},
+    },
     thread,
     time::{Duration, Instant},
 };
@@ -22,6 +25,9 @@ use super::transformation_execution::TransformationRuntime;
 use super::transformation_finite::{FiniteTransformationCatalog, FiniteTransport};
 
 static NEXT_CHECK: AtomicU64 = AtomicU64::new(0);
+// Each launched kernel retains its fixed deadline. Serial admission avoids
+// competing checkers consuming that budget through local CPU contention.
+static KERNEL_CHECK: Mutex<()> = Mutex::new(());
 const TOOLCHAIN: &str = "leanprover/lean4:v4.31.0";
 
 /// Certificate is created only after the exact generated source is kernel checked.
@@ -85,6 +91,12 @@ impl KernelCheckedFiniteCatalog {
         if source.len() > limits.max_bytes.get() {
             return Err(TransformationError::Budget);
         }
+        let _kernel_slot =
+            KERNEL_CHECK
+                .lock()
+                .map_err(|_| TransformationError::KernelUnavailable {
+                    diagnostics: "kernel admission slot is poisoned".to_owned(),
+                })?;
         let files = CheckFiles::new(temporary, &source)?;
         let located = run(elan, &files, &["which", "lean"], limits)?;
         let kernel = PathBuf::from(located.trim());

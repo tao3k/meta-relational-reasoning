@@ -19,6 +19,7 @@ build:
 # Run the complete local contract suite in canonical dependency order.
 test:
     {{profile}} mrr-gerbil build
+    {{profile}} mrr-gerbil env {{proof_python}} mrr_proof_validation.native_prepare
     {{profile}} mrr-gerbil env {{proof_python}} mrr_proof_validation.native_tests self-test
     {{profile}} mrr-gerbil env {{proof_python}} mrr_proof_validation.native_tests scheme
     {{profile}} mrr-cargo test --workspace --locked
@@ -27,6 +28,7 @@ test:
 test-native:
     {{profile}} mrr-gerbil build
     {{profile}} mrr-cargo test -p mrr-gerbil --tests --locked --offline --no-run
+    {{profile}} mrr-gerbil env {{proof_python}} mrr_proof_validation.native_prepare
     {{profile}} mrr-gerbil env {{proof_python}} mrr_proof_validation.native_tests self-test
     {{profile}} mrr-gerbil env {{proof_python}} mrr_proof_validation.native_tests scheme
     {{profile}} gerbil env {{proof_python}} mrr_proof_validation.native_tests rust

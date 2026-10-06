@@ -129,11 +129,16 @@ def report_owned_processes(child):
 
 
 def qualify(
-    command: list[str], receipt: SchemeReceipt | None = None, *, cwd: str | None = None
+    command: list[str],
+    receipt: SchemeReceipt | None = None,
+    *,
+    cwd: str | None = None,
+    env: dict | None = None,
 ) -> int:
     child = subprocess.Popen(
         command,
         cwd=cwd,
+        env=env,
         stdin=subprocess.DEVNULL,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
@@ -205,24 +210,15 @@ def qualify(
         child.stdout.close()
 
 
-def scheme_command(paths: list[str]) -> list[str]:
-    # String arguments are encoded as Scheme strings; no shell interpolation.
-    import json
+def qualify_scheme(paths: list[str]) -> int:
+    from .native_prepare import prepared_command
 
-    arguments = " ".join(json.dumps(path) for path in paths)
-    return [
-        "gxi",
-        "-e",
-        '(load "proofs/MRRProof/fixtures/native-test-progress.ss")',
-        "-e",
-        f"(import :gerbil/tools/gxtest) "
-        f'(let ((status (main "-v" "5" {arguments}))) '
-        '(displayln "mrr-test: harness returned " status) (force-output) '
-        '(displayln "mrr-test: exit cleanup started") (force-output) '
-        "(##exit-cleanup) "
-        '(displayln "mrr-test: exit cleanup returned") (force-output) '
-        "(exit status))",
-    ]
+    try:
+        command, env = prepared_command(paths)
+    except (OSError, ValueError, RuntimeError) as error:
+        print(f"NATIVE-FAIL: {error}; prepare the native harness first", flush=True)
+        return 65
+    return qualify(command, SchemeReceipt(paths), env=env)
 
 
 def self_test() -> int:
@@ -234,7 +230,7 @@ def self_test() -> int:
     ]:
         path = f"proofs/MRRProof/fixtures/native-qualification/{name}-test.ss"
         print(f"QUALIFICATION-PROBE: {name}", flush=True)
-        actual = qualify(scheme_command([path]), SchemeReceipt([path]))
+        actual = qualify_scheme([path])
         if actual != expected:
             print(f"PROBE-FAIL: {name}: expected {expected}, got {actual}", flush=True)
             return 1
@@ -272,7 +268,7 @@ def main() -> int:
     if not paths:
         print("NATIVE-FAIL: no Scheme test modules", flush=True)
         return 65
-    return qualify(scheme_command(paths), SchemeReceipt(paths))
+    return qualify_scheme(paths)
 
 
 if __name__ == "__main__":
