@@ -338,3 +338,15 @@ head and operation receipt persistence. Exact replay is a historical lookup and
 does not grant permission to release data under a revoked IFC policy. Unknown
 outcomes recover the original operation identity. MRR must not introduce a
 second storage CAS or treat process-local native registration as a durable ledger.
+
+* Installed package owner closure
+
+The original native CI failed on both platforms because the installed POO
+package omitted =src/ffi/scheme-wire= from its declared public entry closure.
+Source-checkout load paths had masked that packaging defect locally. POO
+=c3367536= declares the four embedded wire/policy/proof/proof-Host owner roots.
+The installed-only import control passes with the POO source path removed.
+MRR now pins that published package fix. A full local POO package build remains
+unqualified in the separate SDK until its pinned Orgize dependency is available;
+clean platform package CI remains the final packaging gate. No semantic ABI
+version or native initializer is changed by this packaging fix.
