@@ -653,3 +653,19 @@ The publication port is an owner trust boundary, separate from transformation
 certification. Physical integration must supply a live lease tracking both
 local revocation and durable signed-grant revocation. This API does not turn a
 test verifier or a signed source grant into a production correctness certificate.
+
+* Built-in identity law and production owner boundary
+
+=TransformationByteIdentityProof= is an opaque descriptor of the library's
+single checked byte-copy primitive, generated Lean functions, exact theorem
+source and pinned extraction tools. Callers cannot select another implementation
+or supply arbitrary evidence. The two source theorems preserve an arbitrary
+endpoint relation under copied source bytes and copied answer bytes. They do
+not define the endpoint relation or certify a foreign solver.
+
+MRR Data's selected production owner composes this law with its audited guards
+for one original query/root and one signed source cut. It accepts no arbitrary
+transformation, checker or solver. Byte preservation is machine checked;
+provider guard composition, endpoint semantics, codec and independently checked
+physical query execution remain explicit owner trust boundaries. This is a
+bounded identity admission policy, not whole-provider source refinement.

@@ -57,4 +57,22 @@ theorem transport_bytes_exact (bytes : Slice U8) :
   simpa [transformation_table.transport_bytes] using
     (alloc.slice.Slice.to_vec_spec core.clone.CloneU8 bytes (by intro x hx; rfl))
 
+/-- Byte identity preserves every endpoint relation without defining that relation. -/
+theorem transport_bytes_preserves_source_relation
+    (relation : Slice U8 -> Slice U8 -> Prop) (input : Slice U8) :
+    Aeneas.Std.WP.spec (transformation_table.transport_bytes input)
+      (fun copied => forall answer, relation copied.slice answer <-> relation input answer) := by
+  apply Aeneas.Std.WP.spec_mono (transport_bytes_exact input)
+  intro copied equal answer
+  simp only [equal]
+
+/-- Extraction preserves every witness relation over the original instance. -/
+theorem transport_bytes_preserves_answer_relation
+    (relation : Slice U8 -> Slice U8 -> Prop) (answer : Slice U8) :
+    Aeneas.Std.WP.spec (transformation_table.transport_bytes answer)
+      (fun copied => forall input, relation input copied.slice <-> relation input answer) := by
+  apply Aeneas.Std.WP.spec_mono (transport_bytes_exact answer)
+  intro copied equal input
+  simp only [equal]
+
 end MRR.TransformationTableProofs

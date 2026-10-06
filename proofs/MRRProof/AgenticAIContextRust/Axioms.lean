@@ -23,6 +23,8 @@ run_cmd do
   let allowed := #[`propext, `Classical.choice, `Quot.sound]
   let required := #[
     `MRR.TransformationTableProofs.transport_bytes_exact,
+    `MRR.TransformationTableProofs.transport_bytes_preserves_source_relation,
+    `MRR.TransformationTableProofs.transport_bytes_preserves_answer_relation,
     `MRR.TransformationTableProofs.forward_exact,
     `MRR.TransformationTableProofs.solve_exact,
     `MRR.TransformationTableProofs.extract_exact,
