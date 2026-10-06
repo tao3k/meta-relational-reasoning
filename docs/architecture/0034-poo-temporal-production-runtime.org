@@ -393,9 +393,12 @@ Rust evaluator or legacy transport fallback is introduced. Deadline branches
 and whole-process memory/resource exhaustion still need fault qualification;
 these local cases do not establish provider authentication or atomic effects.
 
-This composition pins POO =4a7705ef= and its maintained Parser revision.
+This composition pins POO =203b5858= and its maintained Parser revision.
 Orgize =cbe3750c= pins the same Parser =4a27d980=, closing the conflicting
 Gerbil package tags encountered in the cold native CI installation.
+The TLA interface imports the maintained Parser grammar and qualification
+modules; its nine original syntax/Temporal projection cases also pass the
+native five-second/45-second gate.
 The local Library gates pass 34 native contracts, 3 isolated worker controls,
 6 original Source cases, 1 embedded composition and 1 configured consumer
 composition; POO passes 24 original Query/Orgize/Evidence cases through its
@@ -417,7 +420,10 @@ worker. Completed JVM class initialization is observable through the VM's
 own trace; no timer heartbeat changes the five-second progress deadline.
 With these options, the ten lifecycle cases and ten MetaImpact cases pass
 locally, including required counterexamples, and Lean checks 166 actual TLC
-states. The local JVM is OpenJDK 25; Java 17 CI remains an independent gate.
+states. The local JVM is OpenJDK 25; Java 17 CI passes on =8c02320=; each newer head remains an independent gate.
+Current Rust/Value source extraction freshness passes with pinned Aeneas/Charon.
+The regenerated difference is source line metadata only. Both Lean builds pass
+with 141 and 29 source-refinement declarations passing their axiom audits.
 
 Library Hosts select the executable explicitly before Source/Search/Temporal
 calls:
