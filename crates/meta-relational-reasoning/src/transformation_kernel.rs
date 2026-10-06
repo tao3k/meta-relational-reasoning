@@ -60,11 +60,28 @@ impl KernelCheckedFiniteCatalog {
         elan: &Path,
         temporary: &Path,
     ) -> Result<Self, TransformationError> {
+        Self::check_with_contract(transports, binding, limits, elan, temporary, "", &[])
+    }
+    pub(super) fn check_with_contract(
+        transports: Vec<FiniteTransport>,
+        binding: TransformationBinding,
+        limits: TransformationLimits,
+        elan: &Path,
+        temporary: &Path,
+        additional_source: &str,
+        additional_obligations: &[&str],
+    ) -> Result<Self, TransformationError> {
+        #[cfg(feature = "native-inference")]
+        if !mrr_gerbil::reserve_native_worker_host() {
+            return Err(TransformationError::KernelUnavailable {
+                diagnostics: "kernel checking requires a Rust process Host; embedded Gambit owns the child reaper. Configure an isolated native worker before embedding".to_owned(),
+            });
+        }
         if !elan.is_absolute() || !temporary.is_absolute() {
             return Err(TransformationError::Rejected);
         }
         let native = FiniteTransformationCatalog::new(transports, binding, limits)?;
-        let source = kernel_source(native.tables());
+        let source = format!("{}{}", kernel_source(native.tables()), additional_source);
         if source.len() > limits.max_bytes.get() {
             return Err(TransformationError::Budget);
         }
@@ -99,6 +116,7 @@ impl KernelCheckedFiniteCatalog {
                         && line.ends_with("depends on axioms: [propext]"))
                         || (line.starts_with("'MRRFiniteKernel.certified_")
                             && line.ends_with("depends on axioms: [propext, Quot.sound]"))
+                        || (additional_obligations.iter().any(|name| line == format!("'{name}' depends on axioms: [propext]")))
                         || line == "'MRRTransformation.finiteCheck_sound' depends on axioms: [propext, Quot.sound]")
             })
         {
@@ -144,6 +162,16 @@ impl KernelCheckedFiniteCatalog {
                 line == format!(
                     "'MRRFiniteKernel.certified_{ordinal}' depends on axioms: [propext, Quot.sound]"
                 )
+            }) {
+                return Err(TransformationError::KernelRejected {
+                    diagnostics: checked,
+                });
+            }
+        }
+        for name in additional_obligations {
+            if !checked.lines().any(|line| {
+                line == format!("'{name}' does not depend on any axioms")
+                    || line == format!("'{name}' depends on axioms: [propext]")
             }) {
                 return Err(TransformationError::KernelRejected {
                     diagnostics: checked,
@@ -323,7 +351,7 @@ fn run(
 }
 // Balanced selection keeps kernel reduction bounded by logarithmic table depth.
 // Equal adjacent subtrees collapse without changing any table cell.
-fn lookup(values: &[String], variable: &str, offset: usize) -> String {
+pub(super) fn lookup(values: &[String], variable: &str, offset: usize) -> String {
     if values.iter().all(|value| value == &values[0]) {
         return values[0].clone();
     }

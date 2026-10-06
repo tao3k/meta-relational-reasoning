@@ -95,6 +95,18 @@ PROOF_OBLIGATIONS = {
         "identity_right",
         "compose_assoc",
         "finiteCheck_sound",
+        "decision_compose_equivalent",
+        "partial_compose_some",
+        "partial_compose_none",
+        "partial_transport_sound",
+        "optimization_compose_optimal",
+        "affine_compose_apply",
+        "affine_monotone",
+        "resource_compose_cost",
+        "resource_compose_assoc",
+        "authorized_trace_append",
+        "measured_composition_bound",
+        "effectful_composition_sound",
     },
 }
 COUNTEREXAMPLE_FIXTURE = (
@@ -234,11 +246,11 @@ theorem replay_counterexample_fixture_valid :
 def proof_source() -> str:
     return "\n".join(
         (ROOT / "proofs/MRRProof" / name).read_text()
-        for name in ("BundleAdmission.lean", "Transformation.lean", "FiniteTransformation.lean")
+        for name in ("BundleAdmission.lean", "Transformation.lean", "FiniteTransformation.lean", "TransformationProfiles.lean", "TransformationResources.lean")
     )
 
 
-def transformation_axiom_report(output: str, finite: bool = False) -> dict[str, list[str]]:
+def transformation_axiom_report(output: str, finite: bool = False, profiles: bool = False) -> dict[str, list[str]]:
     permitted = {
         "compose_sound": set(),
         "compose_forward_assoc": set(),
@@ -252,6 +264,21 @@ def transformation_axiom_report(output: str, finite: bool = False) -> dict[str, 
     }
     if finite:
         permitted["finiteCheck_sound"] = {"propext", "Quot.sound"}
+    if profiles:
+        permitted.update({
+            "decision_compose_equivalent": set(),
+            "partial_compose_some": {"propext"},
+            "partial_compose_none": {"propext"},
+            "partial_transport_sound": set(),
+            "optimization_compose_optimal": set(),
+            "affine_compose_apply": {"propext"},
+            "affine_monotone": set(),
+            "resource_compose_cost": {"propext"},
+            "resource_compose_assoc": {"propext"},
+            "authorized_trace_append": set(),
+            "measured_composition_bound": {"propext"},
+            "effectful_composition_sound": set(),
+        })
     report = {}
     for name, allowed in permitted.items():
         declaration = "MRRTransformation." + name
@@ -316,7 +343,7 @@ def local_lean_check(
     if "sorryAx" in diagnostics or "declaration uses 'sorry'" in diagnostics:
         raise AssertionError("local Lean kernel receipt contains an incomplete proof")
     axioms = (
-        transformation_axiom_report(diagnostics, "def finiteCheck" in lean_source)
+        transformation_axiom_report(diagnostics, "def finiteCheck" in lean_source, "structure DecisionProblem" in lean_source)
         if "namespace MRRTransformation" in lean_source else {}
     )
     return {

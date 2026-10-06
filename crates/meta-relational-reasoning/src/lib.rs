@@ -182,3 +182,19 @@ mod transformation_projection;
 pub use transformation_projection::{
     TransformationRouteCandidate, verify_transformation_projection,
 };
+
+mod transformation_authority;
+pub use transformation_authority::{
+    AuthenticatedFiniteTransformationCatalog, SignedTransformationSourceGrant,
+    TransformationAffineBound, TransformationAuthorityLease, TransformationCapabilities,
+    TransformationExecutionBudget, TransformationGrantLedger, TransformationResourceContract,
+    TransformationSourceGrant, transformation_grant_binding_digest,
+    transformation_grant_catalog_digest,
+};
+
+mod transformation_profiles;
+pub use transformation_profiles::{
+    CompiledFiniteOptimizationRows, FiniteDecisionProblem, FiniteOptimizationProblem,
+    FiniteOptimizationTransport, FinitePartialTransport, KernelCheckedDecisionReduction,
+    KernelCheckedOptimizationReduction, KernelCheckedPartialTransformation,
+};

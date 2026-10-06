@@ -14,10 +14,11 @@ use super::transformation::{
     TransformationError, TransformationLimits, TransformationPlanCandidate,
     admit_transformation_plan, digest,
 };
+use super::transformation_authority::TransformationAuthorityLease;
 use super::transformation_execution::{
     TransformationExecutionReceipt, execute_transformation_plan,
 };
-use super::transformation_finite::{FiniteTransformationCatalog, FiniteTransformationOwner};
+use super::transformation_finite::FiniteTransformationOwner;
 use super::truth::TruthStatus;
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -40,7 +41,7 @@ pub struct TransformationResultStore {
     _lock: StoreLock,
     archived: Option<ArchivedResult>,
     current: bool,
-    authority: Option<FiniteTransformationCatalog>,
+    authority: Option<TransformationAuthorityLease>,
     reverse: BTreeMap<[u8; 32], Vec<[u8; 32]>>,
     limits: TransformationLimits,
 }
@@ -207,8 +208,9 @@ impl TransformationResultStore {
     fn supports(
         &self,
         candidate: &TransformationPlanCandidate,
+        catalog: &impl FiniteTransformationOwner,
     ) -> Result<Vec<[u8; 32]>, TransformationError> {
-        let mut supports = Vec::new();
+        let mut supports = catalog.authority_supports();
         for step in &candidate.steps {
             supports.push(*step.admission.digest());
             supports.extend(&step.admission.definition().dependencies);
@@ -245,7 +247,7 @@ impl TransformationResultStore {
             catalog,
             catalog,
         )?;
-        let supports = self.supports(candidate)?;
+        let supports = self.supports(candidate, catalog)?;
         let record = ArchivedResult {
             version: 1,
             request: candidate.binding.request,
@@ -256,19 +258,26 @@ impl TransformationResultStore {
             supports,
             invalidated: false,
         };
-        catalog.authority().with_current(&candidate.binding, || {
-            if let Err(error) = self.write(&record) {
-                if error == TransformationError::PublicationUncertain {
-                    self.current = false;
-                }
-                return Err(error);
-            }
-            self.archived = Some(record);
-            self.current = true;
-            self.authority = Some(catalog.authority().clone());
-            self.index();
+        let lease = catalog.publication_lease()?;
+        let mut committed = false;
+        let publication = lease.with_current(&candidate.binding, || {
+            self.write(&record)?;
+            committed = true;
             Ok(())
-        })?;
+        });
+        if let Err(error) = publication {
+            if committed || error == TransformationError::PublicationUncertain {
+                self.current = false;
+                // Expiry after replacement cannot be rolled back or acknowledged.
+                // Retain the previous known in-memory result and report uncertainty.
+                return Err(TransformationError::PublicationUncertain);
+            }
+            return Err(error);
+        }
+        self.archived = Some(record);
+        self.current = true;
+        self.authority = Some(lease);
+        self.index();
         Ok(execution)
     }
     /// Recover freshness only through actual replay and exact receipt equality.
@@ -292,16 +301,17 @@ impl TransformationResultStore {
             catalog,
             catalog,
         )?;
-        if archived.supports != self.supports(candidate)?
+        if archived.supports != self.supports(candidate, catalog)?
             || archived.plan != *plan.digest()
             || archived.execution != *execution.digest()
             || archived.answer != *execution.answer()
         {
             return Err(TransformationError::BindingMismatch);
         }
-        catalog.authority().with_current(&candidate.binding, || {
+        let lease = catalog.publication_lease()?;
+        lease.with_current(&candidate.binding, || {
             self.current = true;
-            self.authority = Some(catalog.authority().clone());
+            self.authority = Some(lease.clone());
             Ok(())
         })?;
         Ok(execution)

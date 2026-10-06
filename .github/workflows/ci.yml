@@ -38,7 +38,7 @@ jobs:
           lint: false
           use-mathlib-cache: false
       - name: Qualify finite native tables, actual kernel, corpus and publication
-        run: cargo test -p meta-relational-reasoning -p mrr-identity --lib --no-default-features --locked
+        run: cargo test -p meta-relational-reasoning -p mrr-identity --tests --no-default-features --locked
       - name: Lint finite facade and executable publication example
         run: cargo clippy -p meta-relational-reasoning -p mrr-identity --all-targets --no-default-features --locked -- -D warnings
       - name: Execute durable finite workflow

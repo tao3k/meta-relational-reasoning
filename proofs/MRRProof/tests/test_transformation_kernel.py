@@ -34,3 +34,39 @@ def test_kernel_rejects_unbound_instance_missing_domain_and_incompatible_endpoin
     source = (cli.ROOT / "proofs/MRRProof/Transformation.lean").read_text()
     with pytest.raises(AssertionError, match="local Lean kernel rejected"):
         cli.local_lean_check(source + invalid)
+
+
+@pytest.mark.parametrize("invalid", [
+    """
+def unsoundDecision : MRRTransformation.CertifiedDecisionReduction
+    ⟨Nat, fun _ => True, fun _ => True⟩ ⟨Nat, fun _ => True, fun _ => False⟩ where
+  forward := id
+  preserves := fun _ h => h
+  equivalent := fun _ _ => Iff.rfl
+""",
+    """
+def witnessIsNotOptimal {A B : MRRTransformation.OptimizationProblem}
+    (f : MRRTransformation.CertifiedTransformation A.toProblem B.toProblem) :
+    MRRTransformation.CertifiedOptimizationReduction A B := ⟨f⟩
+""",
+    """
+def unknownIsSuccess {A B : MRRTransformation.Problem} (a : A.Input) :
+    MRRTransformation.TransportAt A B a := none
+""",
+    """
+def skipStateAuthorization (S : MRRTransformation.EffectSystem)
+    (a b : S.State) (e : S.Effect) (transition : S.Transition a e b) :
+    MRRTransformation.AuthorizedTrace S a [e] b := .step transition (.nil b)
+""",
+    """
+def unmeasuredCost {A B : MRRTransformation.MeasuredProblem}
+    (f : MRRTransformation.CertifiedTransformation A.toProblem B.toProblem) :
+    MRRTransformation.CertifiedResourceTransformation A B where
+  transport := f
+  cost := fun _ => 0
+  budget := ⟨⟨1, 0⟩, ⟨0, 0⟩⟩
+""",
+])
+def test_profile_kernel_rejects_missing_equivalence_optimality_success_and_authorization(invalid):
+    with pytest.raises(AssertionError, match="local Lean kernel rejected"):
+        cli.local_lean_check(cli.proof_source() + invalid)

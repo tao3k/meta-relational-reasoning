@@ -24,7 +24,7 @@ pub struct FiniteProblem {
     pub correct: Vec<Vec<usize>>,
 }
 impl FiniteProblem {
-    fn validate(&self, bound: usize) -> Result<(), TransformationError> {
+    pub(super) fn validate(&self, bound: usize) -> Result<(), TransformationError> {
         if self.domain == [0; 32] {
             return Err(TransformationError::InvalidDigest);
         }
@@ -660,6 +660,18 @@ impl TransformationRuntime for FiniteTransformationCatalog {
 /// same immutable catalog authority while retaining their own verifier policy.
 pub trait FiniteTransformationOwner: TransformationVerifier + TransformationRuntime {
     fn authority(&self) -> &FiniteTransformationCatalog;
+    fn authority_supports(&self) -> Vec<[u8; 32]> {
+        Vec::new()
+    }
+    fn authority_lease(&self) -> super::transformation_authority::TransformationAuthorityLease {
+        super::transformation_authority::TransformationAuthorityLease::native(self.authority())
+    }
+    fn publication_lease(
+        &self,
+    ) -> Result<super::transformation_authority::TransformationAuthorityLease, TransformationError>
+    {
+        Ok(self.authority_lease())
+    }
 }
 impl FiniteTransformationOwner for FiniteTransformationCatalog {
     fn authority(&self) -> &FiniteTransformationCatalog {

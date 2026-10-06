@@ -399,30 +399,34 @@ claim is confined to the exact verified complete finite cut. Truncation yields
 INCOMPLETE and source revocation yields STALE. Semantically equivalent composites
 with different ordered lineage have different content identities.
 
-Publication coordinates one configured local source authority. It does not
-claim a distributed transaction, a global revocation ledger, external provider
-authentication, or effect authorization. A revoked catalog cannot refresh a
-stored result; reopening retains history and requires fresh checked replay.
+Publication coordinates one configured source authority. The authenticated
+adapter verifies issuer-signed grants for the exact binding, native tables and
+kernel, checks each permitted operation, and holds a grant read lease during
+final publication. Stored freshness retains that lease and observes expiry and
+persistent nonce revocation. A revoked catalog or grant cannot refresh a stored
+result; reopening retains history and requires fresh checked replay. The local
+ledger and wall clock are configured authority roots; no distributed transaction
+or global revocation service is claimed.
 
 #+name: transformation-local-implementation-gates
 | Gate | Observed local result | Evidence boundary |
 |------+-----------------------+-------------------|
-| Portable Rust facade and identity | 47 + 7 tests passed | Includes ASP source gates, kernel certificate, corpus composition and revocation |
+| Portable Rust facade and identity | 41 unit + 9 isolated integration + 7 identity tests passed | Includes concrete profiles, signed grants, actual expiry, kernel lowering rejection, corpus composition and revocation |
 | Clippy | Passed with warnings denied | Facade and identity, all targets, no default features |
-| Proof Python suite | 27 passed | Includes real Lean negative fixtures and axiom policy |
-| MRR Lean 4.31.0 | Combined kernel and Org receipt passed | Exact selected model declarations |
+| Proof Python suite | 32 passed | Includes real Lean rejection of missing decision, optimality, partial, resource and effect premises |
+| MRR Lean 4.31.0 | Combined kernel and Org receipt passed; all 22 transformation axiom reports admitted | Exact selected model declarations; standard axioms only |
 | Pinned Aeneas source extraction | Refreshed and independently regenerated after identity changes | Only identity source-location comments changed; extracted definitions are identical |
-| LeanPOO public modules | Library and indexed transformation tests passed | Public PR #8, separate exact-head CI required after push |
+| LeanPOO public modules | Library and profile tests passed; PR #9 has 16 exact-head checks passed | Follow-up to merged PR #8, preserving concurrent FiniteDiagnostics work |
 | UCI Iris | All 150 CSV labels matched for sequential and materialized composition | Whole finite domain, not arbitrary external inputs |
 | Durable example | Execution, stale reopen, checked replay and revoke passed | Local OS lock and publication file |
-| Gerbil native build | Unqualified: fixed five-second output silence stopped compilation | No native Scheme route pass or general native refinement claimed |
+| Gerbil native build | CI package build and Scheme qualification passed after GraphSyntax migration; Rust kernel Host isolation implemented; latest exact-head native CI required | Native job remains an independent required gate |
 
 Reproduce the portable profile from this checkout:
 
 #+begin_src sh
-./.devenv/devenv-profile-exec cargo test -p meta-relational-reasoning -p mrr-identity --lib --no-default-features -- --nocapture
+./.devenv/devenv-profile-exec cargo test -p meta-relational-reasoning -p mrr-identity --tests --no-default-features -- --nocapture
 ./.devenv/devenv-profile-exec cargo clippy -p meta-relational-reasoning -p mrr-identity --all-targets --no-default-features -- -D warnings
-env PYTHONPATH=proofs/MRRProof/src ./.devenv/devenv-profile-exec proofs/MRRProof/.venv/bin/python -m pytest -q proofs/MRRProof/tests
+env PYTHONPATH=proofs/MRRProof/src ./.devenv/devenv-profile-exec proofs/MRRProof/.venv/bin/python -m pytest -vv -s proofs/MRRProof/tests
 env PYTHONPATH=proofs/MRRProof/src ./.devenv/devenv-profile-exec proofs/MRRProof/.venv/bin/python -m mrr_proof_validation.cli crates/meta-relational-reasoning/src/transformation.rs crates/mrr-identity/src/api.rs
 ./.devenv/devenv-profile-exec cargo run -p meta-relational-reasoning --no-default-features --example finite_transformation -- /tmp/mrr-finite-result.cbor
 #+end_src
@@ -431,9 +435,94 @@ CI installs the pinned Lean toolchain and separately runs the portable Rust,
 Clippy and durable-example gates. The native job remains an independent gate.
 A local pass does not stand in for exact-head remote checks.
 
-General ASCENT index/mutation/delta/trace refinement, external source/checker
-adapters, partial/decision/optimization/effectful profiles, global closed-world
-WHY-NOT coverage and complexity laws remain separate owner work. Their absence
-is explicit; the finite implementation rejects attempts to infer them from
-reachability or a digest. This completes the bounded finite V1 execution profile,
-not every general mechanism in the delivery roadmap.
+* Concrete profiles, resource laws and authenticated publication
+
+[[file:../../crates/meta-relational-reasoning/src/transformation_profiles.rs][Concrete finite profile factories]] build distinct typed adapters:
+
+- =KernelCheckedDecisionReduction= uses Boolean decision specifications and
+  identity Boolean extraction. The exact finite transport checks agreement on
+  positive and negative decisions.
+- =KernelCheckedOptimizationReduction= lowers feasible answers and natural costs
+  to every minimum-cost answer, retaining ties. Independent Lean obligations
+  compare every lowered row with the original feasibility/cost predicate before
+  issuing the kernel certificate. A feasible but nonoptimal extraction fails.
+- =KernelCheckedPartialTransformation= restricts to explicitly successful original
+  inputs. =source_instance= supplies the required compact-domain adapter; omitted
+  inputs return =Unknown=. The domain map participates in endpoint identity.
+
+The canonical V1 carrier remains exact finite witness transport. Richer profile
+properties are supplied by these checked factories and their endpoint
+specifications, rather than an unchecked wire enum. The source owner still owns
+the meaning of the supplied domain, feasibility, decision and cost tables.
+
+[[file:../../proofs/MRRProof/TransformationProfiles.lean][Generic profile laws]] prove decision equivalence, successful partial
+composition and optimality transport. [[file:../../proofs/MRRProof/TransformationResources.lean][Measured resource and effect laws]] prove
+composition of bounds on actual implementation size/cost functions and of actual
+state-indexed authorized forward/extractor traces. These public interfaces are
+also in [[https://github.com/tao3k/lean-poo/pull/9][LeanPOO PR #9]]. Native consumers must instantiate their premises; a raw
+resource declaration supplies no CPU complexity proof.
+
+[[file:../../crates/meta-relational-reasoning/src/transformation_authority.rs][Authenticated finite publication]] accepts a bounded canonical CBOR signed grant
+from a configured Ed25519 issuer. The grant binds the exact snapshot/request/
+context/scope/time coordinates, complete catalog, pinned kernel, checker/runtime policy, authentication/execution/publication source and dependency lock, nonce,
+validity interval, per-operation capabilities, logical runtime-call budget and
+encoded-value byte budget. The adapter uses =ed25519-dalek= 2.2.0
+[[https://docs.rs/ed25519-dalek/2.2.0/ed25519_dalek/struct.VerifyingKey.html#method.verify_strict][strict signature verification]] and rejects weak issuer keys. Authentication is
+additional to the actual semantic checker. Grant issuance/signing belongs to the
+source owner; this module stores no signing key and admits no foreign code.
+
+For a plan with =n= transport steps, the fixed runtime invokes =n= forwards,
+one solver, =n= extractors, and =n + 1= independent answer checks. Admission
+requires the signed operation limit to cover =3n + 2=. This counts logical
+runtime calls, not machine instructions or checker CPU time. Values are checked
+against the signed encoded-byte limit at actual runtime boundaries; affine
+resource composition uses checked =u64= arithmetic and rejects overflow.
+
+The grant ledger has an exclusive OS lock, canonical bounded state, issuer pin,
+monotone revocation epoch, atomic replacement and directory fsync. Capacity or epoch exhaustion quarantines the authority and persists that state; an idempotent revocation retry repeats the write before acknowledging success. A pending
+revocation file prevents reopening after an uncertain interrupted write. Failed
+persistence never acknowledges durable revocation; the live owner remains
+revoked. Deleting or rolling back owner-controlled ledger files is outside its
+trust model. =revoke_grant= records nonce revocation before invalidating a result;
+policy and nonce support identities enter the durable reverse index. If the
+result write fails, the grant remains revoked.
+
+Each admission and actual forward/solve/extract checks a fresh grant lease.
+Final publication holds the ledger read guard and native source guard while
+writing the result. Stored freshness checks expiry/revocation again. If expiry or a directory-sync failure follows atomic replacement, publication
+returns =PublicationUncertain=, keeps the previous known in-memory result and
+never acknowledges the new bytes as fresh. Historical
+answers survive denied operations, exhausted budgets, expiry and revocation;
+they are never upgraded by reopening serialized records.
+
+#+name: transformation-gap-implementation-map
+| Gap | Executable contract or integration | Qualification |
+|-----+------------------------------------+---------------|
+| G1 | Indexed Lean results; instance digests; explicit partial-domain adapter | Wrong instance and unknown original input rejected |
+| G2 | Distinct decision, partial and optimization factories and generic effect laws | Positive/negative decisions, ties, nonoptimal witness, unknown partial and missing effect permission |
+| G3 | Exact endpoint equality and explicit restricted-domain semantics | Incompatible endpoints and unchecked casts rejected |
+| G4 | Actual pinned kernel, row lowering obligations and authenticated issuer/catalog binding | Forged feasible-row optimization lowering rejected by Lean |
+| G5 | Ordered step receipts; signed capabilities; current grant/source leases | Disabled solve/publication, wrong binding, expiry and persistent revocation |
+| G6 | Measured composition theorem; intermediate-size affine arithmetic; runtime call/value limits | Wrong intermediate growth, overflow, insufficient call and value budgets |
+| G7 | Stable edge identity separated from admission generation | Identity/domain separation and changed selection receipts |
+| G8 | Kernel-checked materialized composition with ordered lineage | Sequential and composed corpus results agree |
+| G9 | Actual solver and independent answer oracle plus resource/permission gates | Missing/bad solver, bad answers and denied capability emit no completed result |
+| G10 | Exact finite coverage and explicit unknown/stale/conflict/what-if states | No false or fresh projection from incomplete, expired or stale evidence |
+| G11 | Ordered receipts and durable dependency/policy/nonce reverse index | Lineage exchange and revoked replay rejected; history retained |
+| G12 | Kernel, native, wire, authorization, corpus and durable negative fixtures | 57 portable Rust tests and 32 proof tests; native CI remains separate |
+
+General ASCENT index/mutation/delta/trace source refinement and arbitrary foreign
+provider effects still require their respective owners' implementations and
+premises. Global closed-world coverage and arbitrary complexity guarantees are
+not consequences of finite table execution. The new code supplies explicit
+profile, measurement, authorization and publication interfaces for those
+integrations; it does not silently certify them.
+
+Kernel checks reserve the SDK's Rust process Host before spawning Elan. A Host
+that has already embedded Gambit cannot own checker children, because Gambit's
+process-wide reaper consumes their exit status (=ECHILD=). Native inference in
+a Rust process Host uses the existing isolated native worker. The kernel tests
+run in a separate integration executable; the embedded native unit executable
+checks explicit mode rejection before any child spawn. Both executables remain
+in =cargo test --workspace=, and portable CI explicitly runs =--tests=. No kernel
+fixture or native gate is skipped, and checker deadlines are unchanged.

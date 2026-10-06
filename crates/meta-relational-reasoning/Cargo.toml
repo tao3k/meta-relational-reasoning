@@ -16,6 +16,7 @@ agentic-ai-context-tokens = ["agentic-ai-context", "mrr-agentic-ai-context/token
 [dependencies]
 mrr-agentic-ai-context = { workspace = true, optional = true, default-features = false }
 ciborium.workspace = true
+ed25519-dalek = "=2.2.0"
 mrr-bundle.workspace = true
 mrr-deduction.workspace = true
 mrr-gerbil = { workspace = true, optional = true }
@@ -58,3 +59,7 @@ required-features = ["agentic-ai-context-tokens"]
 [[example]]
 name = "context_refinement"
 required-features = ["agentic-ai-context-tokens"]
+
+[[test]]
+name = "finite-transformations"
+path = "tests/integration/finite_transformations.rs"

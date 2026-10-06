@@ -17,4 +17,4 @@ mod agentic_ai_context_selection;
 
 mod transformation;
 
-mod transformation_finite;
+mod transformation_fixture;

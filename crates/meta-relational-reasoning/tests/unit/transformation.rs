@@ -1,27 +1,17 @@
 #[cfg(feature = "native-inference")]
 use crate::{ClosureStatus, search_transformation_routes};
 use crate::{
-    EntityId, ExternalRevisionIdentity, GenerationId, RevisionBinding, SemanticSnapshot,
-    TransformationAdmission, TransformationBinding, TransformationDefinition,
+    EntityId, TransformationAdmission, TransformationBinding, TransformationDefinition,
     TransformationEndpoint, TransformationError, TransformationEvidence, TransformationId,
-    TransformationLimits, TransformationPlanCandidate, TransformationProfile,
-    TransformationResultSlot, TransformationRuntime, TransformationStep, TransformationVerifier,
-    TruthStatus, Value, ValueSchema, admit_transformation, admit_transformation_plan,
-    decode_transformation_definition, encode_transformation_definition,
-    execute_transformation_plan, transformation_failure_truth, transformation_identity,
-    transformation_value_digest,
+    TransformationPlanCandidate, TransformationProfile, TransformationResultSlot,
+    TransformationRuntime, TransformationStep, TransformationVerifier, TruthStatus, Value,
+    ValueSchema, admit_transformation, admit_transformation_plan, decode_transformation_definition,
+    encode_transformation_definition, execute_transformation_plan, transformation_failure_truth,
+    transformation_identity, transformation_value_digest,
 };
 use std::num::NonZeroUsize;
 
-pub(super) fn limits() -> TransformationLimits {
-    TransformationLimits {
-        max_bytes: NonZeroUsize::new(16384).unwrap(),
-        max_schema_nodes: NonZeroUsize::new(32).unwrap(),
-        max_schema_depth: NonZeroUsize::new(8).unwrap(),
-        max_dependencies: NonZeroUsize::new(16).unwrap(),
-        max_steps: NonZeroUsize::new(4).unwrap(),
-    }
-}
+pub(super) use super::transformation_fixture::{binding, limits};
 fn endpoint(id: u8) -> TransformationEndpoint {
     TransformationEndpoint {
         semantics: [id; 32],
@@ -43,16 +33,6 @@ fn definition(a: u8, b: u8) -> TransformationDefinition {
         dependencies: vec![[8; 32], [9; 32]],
         requirements: vec![[10; 32]],
     }
-}
-pub(super) fn binding(generation: u8) -> TransformationBinding {
-    let generation = GenerationId::from_canonical_bytes([generation]).unwrap();
-    let revision = RevisionBinding::admit(
-        ExternalRevisionIdentity::new("fixture", "source", "v1").unwrap(),
-        generation,
-    )
-    .unwrap();
-    let snapshot = SemanticSnapshot::admit(generation, vec![revision]).unwrap();
-    TransformationBinding::new(&snapshot, [20; 32], [21; 32], [22; 32], 100, 200).unwrap()
 }
 fn evidence(d: &TransformationDefinition, b: &TransformationBinding) -> TransformationEvidence {
     TransformationEvidence {
@@ -906,5 +886,23 @@ fn transformation_projection_rejects_forged_paths_and_false_completeness() {
         )
         .unwrap_err(),
         TransformationError::EndpointMismatch
+    );
+}
+
+#[cfg(feature = "native-inference")]
+#[test]
+fn embedded_native_owner_rejects_kernel_process_host_before_spawn() {
+    mrr_gerbil::load_reasoning_bundle().expect("actual embedded owner initialized");
+    let error = crate::KernelCheckedFiniteCatalog::check(
+        vec![],
+        binding(1),
+        limits(),
+        std::path::Path::new("/must-not-launch-elan"),
+        &std::env::temp_dir(),
+    )
+    .unwrap_err();
+    assert!(
+        matches!(error, TransformationError::KernelUnavailable { diagnostics }
+        if diagnostics.contains("embedded Gambit owns the child reaper"))
     );
 }

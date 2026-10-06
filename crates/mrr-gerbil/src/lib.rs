@@ -40,3 +40,10 @@ pub use projection::{
 mod tests;
 
 pub use worker_profile::{WorkerFailure, configure_native_worker, shutdown_native_worker};
+
+/// Reserve a Rust process Host before starting external checker children.
+/// Returns false after embedded Gambit has claimed this process. Use an isolated
+/// native worker in a Rust process Host; embedding installs a global child reaper.
+pub fn reserve_native_worker_host() -> bool {
+    native::claim_worker_host()
+}
