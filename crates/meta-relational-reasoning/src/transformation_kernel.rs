@@ -72,7 +72,9 @@ impl KernelCheckedFiniteCatalog {
         let located = run(elan, &files, &["which", "lean"], limits)?;
         let kernel = PathBuf::from(located.trim());
         if !kernel.is_absolute() || located.lines().count() != 1 {
-            return Err(TransformationError::Unknown);
+            return Err(TransformationError::KernelUnavailable {
+                diagnostics: format!("Elan returned an invalid kernel location: {located:?}"),
+            });
         }
         let version = run(&kernel, &files, &["--version"], limits)?;
         if !version.starts_with("Lean (version 4.31.0,") {
@@ -277,7 +279,9 @@ fn run(
             )
             .stderr(output)
             .spawn()
-            .map_err(|_| TransformationError::Unknown)?,
+            .map_err(|error| TransformationError::KernelUnavailable {
+                diagnostics: format!("cannot launch {}: {error}", elan.display()),
+            })?,
     );
     let started = Instant::now();
     let status = loop {
@@ -291,10 +295,13 @@ fn run(
             let _ = child.0.wait();
             return Err(TransformationError::Budget);
         }
-        if let Some(status) = child
-            .0
-            .try_wait()
-            .map_err(|_| TransformationError::Unknown)?
+        if let Some(status) =
+            child
+                .0
+                .try_wait()
+                .map_err(|error| TransformationError::KernelUnavailable {
+                    diagnostics: format!("cannot poll {}: {error}", elan.display()),
+                })?
         {
             break status;
         }

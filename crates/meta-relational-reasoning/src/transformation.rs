@@ -136,6 +136,7 @@ pub enum TransformationError {
     Encoding,
     PublicationUncertain,
     KernelRejected { diagnostics: String },
+    KernelUnavailable { diagnostics: String },
 }
 impl fmt::Display for TransformationError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

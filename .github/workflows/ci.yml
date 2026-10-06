@@ -144,6 +144,9 @@ jobs:
       - name: Test Gerbil package
         run: gerbil env python3 -m mrr_proof_validation.native_tests scheme
 
+      - name: Verify pinned kernel discovery in the Gerbil package environment
+        run: gerbil env sh -c 'command -v elan && ELAN_TOOLCHAIN=leanprover/lean4:v4.31.0 elan which lean && elan run leanprover/lean4:v4.31.0 lean --version'
+
       - name: Test Rust workspace in the Gerbil package environment
         env:
           MRR_NATIVE_PROGRESS: "1"
