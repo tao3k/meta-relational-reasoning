@@ -9,9 +9,9 @@ fn inert_unicode_and_escapes_roundtrip_without_evaluation() {
     );
     assert!(decode("response", frame.as_bytes()).is_none());
     for malformed in [
-        "(mrr.temporal-worker.request.v1 0 4 \"\")\n",
-        "(mrr.temporal-worker.request.v1 1 4 \"\\x\")\n",
-        "(mrr.temporal-worker.request.v1 1 4 \"\") trailing\n",
+        "(mrr.native-worker.request.v1 0 4 \"\")\n",
+        "(mrr.native-worker.request.v1 1 4 \"\\x\")\n",
+        "(mrr.native-worker.request.v1 1 4 \"\") trailing\n",
     ] {
         assert!(decode("request", malformed.as_bytes()).is_none());
     }
@@ -22,4 +22,24 @@ fn oversized_and_truncated_frames_are_rejected() {
     assert!(decode("request", frame.as_bytes()).is_none());
     assert!(read_frame(&mut std::io::Cursor::new(vec![b'x'; FRAME_LIMIT + 1])).is_err());
     assert!(read_frame(&mut std::io::Cursor::new(b"unfinished")).is_err());
+}
+
+#[test]
+fn native_metadata_rejects_reader_extensions_duplicate_keys_and_unbounded_depth() {
+    for value in [
+        r#"(object ("a" 1) ("a" 2))"#,
+        "#.(execute)",
+        "'(list)",
+        "#1=(list #1#)",
+        "(list1)",
+        "(objectevil)",
+        "(list) (list)",
+    ] {
+        assert!(
+            crate::native::datum::decode(value.as_bytes()).is_none(),
+            "{value}"
+        );
+    }
+    let nested = format!("{}null{}", "(list ".repeat(66), ")".repeat(66));
+    assert!(crate::native::datum::decode(nested.as_bytes()).is_none());
 }

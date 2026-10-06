@@ -1,6 +1,6 @@
 //! Real embedded POO calls interleaved with MRR finite inference on one owner.
 use mrr_gerbil::{
-    PARSE_ARTIFACT_SCHEMA_V1, TemporalHost, TemporalWorker, TemporalWorkerError,
+    NativeWorker, NativeWorkerError, PARSE_ARTIFACT_SCHEMA_V1, TemporalHost,
     evaluate_finite_relations, parse_gql_artifact,
 };
 fn text(bytes: Vec<u8>) -> String {
@@ -46,10 +46,10 @@ fn temporal_and_existing_inference_share_the_production_runtime() {
     assert_eq!(parsed.schema, PARSE_ARTIFACT_SCHEMA_V1);
     println!("CASE original GQL parser completed in the production runtime");
     assert!(matches!(
-        TemporalWorker::start(std::path::Path::new(env!(
-            "CARGO_BIN_EXE_mrr-temporal-worker"
+        NativeWorker::start(std::path::Path::new(env!(
+            "CARGO_BIN_EXE_mrr-native-worker"
         ))),
-        Err(TemporalWorkerError::ModeConflict)
+        Err(NativeWorkerError::ModeConflict)
     ));
     println!("CASE embedded mode rejects worker Host mixing before launch");
     let finite = evaluate_finite_relations(3, vec![(0, 1), (1, 2)], vec![0]).unwrap();

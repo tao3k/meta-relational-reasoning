@@ -142,7 +142,9 @@ jobs:
         run: gerbil env cargo clippy -p mrr-agentic-ai-context -p meta-relational-reasoning --all-targets --all-features --locked -- -D warnings
 
       - name: Test source-bound property query integration
-        run: gerbil env cargo test -p mrr-property-source --locked
+        run: |
+          gerbil env cargo build -p mrr-gerbil --bin mrr-native-worker --locked
+          gerbil env cargo test -p mrr-property-source --features native-inference --locked
 
       - name: Lint Rust workspace
         run: gerbil env cargo clippy --all-targets --locked -- -D warnings

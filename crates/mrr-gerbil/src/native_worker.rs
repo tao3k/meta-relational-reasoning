@@ -13,22 +13,26 @@ const IDLE: Duration = Duration::from_secs(5);
 const WALL: Duration = Duration::from_secs(45);
 
 #[derive(Debug)]
-pub enum TemporalWorkerError {
+pub enum NativeWorkerError {
     InvalidInput,
+    Parser(crate::ParseArtifactLoadError),
+    Finite(crate::FiniteInferenceError),
     ModeConflict,
+    AlreadyConfigured,
+    Busy,
     Closed,
     Protocol,
     Timeout,
     Io(io::Error),
     Native(TemporalRuntimeError),
 }
-impl std::fmt::Display for TemporalWorkerError {
+impl std::fmt::Display for NativeWorkerError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{self:?}")
     }
 }
-impl std::error::Error for TemporalWorkerError {}
-impl From<io::Error> for TemporalWorkerError {
+impl std::error::Error for NativeWorkerError {}
+impl From<io::Error> for NativeWorkerError {
     fn from(e: io::Error) -> Self {
         Self::Io(e)
     }
@@ -36,7 +40,7 @@ impl From<io::Error> for TemporalWorkerError {
 
 /// One serialized session, with no automatic restart or embedded fallback.
 /// Closing destroys its process-local proof registry.
-pub struct TemporalWorker {
+pub struct NativeWorker {
     child: Child,
     commands: Option<mpsc::SyncSender<String>>,
     replies: mpsc::Receiver<io::Result<Vec<u8>>>,
@@ -44,14 +48,14 @@ pub struct TemporalWorker {
     progress: Arc<Mutex<Instant>>,
     next: u64,
 }
-impl TemporalWorker {
+impl NativeWorker {
     /// Launch an explicitly selected trusted absolute executable.
-    pub fn start(executable: &Path) -> Result<Self, TemporalWorkerError> {
+    pub fn start(executable: &Path) -> Result<Self, NativeWorkerError> {
         if !executable.is_absolute() {
-            return Err(TemporalWorkerError::InvalidInput);
+            return Err(NativeWorkerError::InvalidInput);
         }
         if !crate::native::claim_worker_host() {
-            return Err(TemporalWorkerError::ModeConflict);
+            return Err(NativeWorkerError::ModeConflict);
         }
         let mut child = Command::new(executable)
             .env("MRR_NATIVE_PROGRESS", "1")
@@ -119,21 +123,25 @@ impl TemporalWorker {
             next: 1,
         })
     }
-    fn invoke(&mut self, operation: i32, payload: &[u8]) -> Result<Vec<u8>, TemporalWorkerError> {
+    pub(crate) fn invoke(
+        &mut self,
+        operation: i32,
+        payload: &[u8],
+    ) -> Result<Vec<u8>, NativeWorkerError> {
         if !wire::valid_payload(payload) {
-            return Err(TemporalWorkerError::InvalidInput);
+            return Err(NativeWorkerError::InvalidInput);
         }
-        let sender = self.commands.as_ref().ok_or(TemporalWorkerError::Closed)?;
+        let sender = self.commands.as_ref().ok_or(NativeWorkerError::Closed)?;
         let id = self.next;
         self.next = self
             .next
             .checked_add(1)
-            .ok_or(TemporalWorkerError::Protocol)?;
+            .ok_or(NativeWorkerError::Protocol)?;
         let start = Instant::now();
         *self
             .progress
             .lock()
-            .map_err(|_| TemporalWorkerError::Closed)? = start;
+            .map_err(|_| NativeWorkerError::Closed)? = start;
         let request = wire::encode(
             "request",
             id,
@@ -141,15 +149,19 @@ impl TemporalWorker {
             std::str::from_utf8(payload).expect("checked UTF8"),
         );
         let result = if sender.try_send(request).is_err() {
-            Err(TemporalWorkerError::Closed)
+            Err(NativeWorkerError::Closed)
         } else {
             self.await_reply(id, start)
         };
         if result.is_err()
             && !matches!(
                 result,
-                Err(TemporalWorkerError::Native(
+                Err(NativeWorkerError::Native(
                     TemporalRuntimeError::NativeRejected(_)
+                )) | Err(NativeWorkerError::Parser(
+                    crate::ParseArtifactLoadError::ParserFailed { .. }
+                )) | Err(NativeWorkerError::Finite(
+                    crate::FiniteInferenceError::NativeRejected(_)
                 ))
             )
         {
@@ -157,45 +169,45 @@ impl TemporalWorker {
         }
         result
     }
-    fn await_reply(&self, id: u64, start: Instant) -> Result<Vec<u8>, TemporalWorkerError> {
+    fn await_reply(&self, id: u64, start: Instant) -> Result<Vec<u8>, NativeWorkerError> {
         loop {
             match self.replies.recv_timeout(Duration::from_millis(50)) {
                 Ok(frame) => {
                     let (received, status, payload) =
-                        wire::decode("response", &frame?).ok_or(TemporalWorkerError::Protocol)?;
+                        wire::decode("response", &frame?).ok_or(NativeWorkerError::Protocol)?;
                     if received != id {
-                        return Err(TemporalWorkerError::Protocol);
+                        return Err(NativeWorkerError::Protocol);
                     }
                     return decode_result(status, payload);
                 }
                 Err(mpsc::RecvTimeoutError::Disconnected) => {
-                    return Err(TemporalWorkerError::Closed);
+                    return Err(NativeWorkerError::Closed);
                 }
                 Err(mpsc::RecvTimeoutError::Timeout) => {
                     let progress = *self
                         .progress
                         .lock()
-                        .map_err(|_| TemporalWorkerError::Closed)?;
+                        .map_err(|_| NativeWorkerError::Closed)?;
                     if start.elapsed() >= WALL || progress.elapsed() >= IDLE {
-                        return Err(TemporalWorkerError::Timeout);
+                        return Err(NativeWorkerError::Timeout);
                     }
                 }
             }
         }
     }
-    pub fn refresh_policy(&mut self, p: &[u8]) -> Result<Vec<u8>, TemporalWorkerError> {
+    pub fn refresh_policy(&mut self, p: &[u8]) -> Result<Vec<u8>, NativeWorkerError> {
         self.invoke(0, p)
     }
-    pub fn refresh_proof_state(&mut self, p: &[u8]) -> Result<Vec<u8>, TemporalWorkerError> {
+    pub fn refresh_proof_state(&mut self, p: &[u8]) -> Result<Vec<u8>, NativeWorkerError> {
         self.invoke(1, p)
     }
-    pub fn register_proof(&mut self, p: &[u8]) -> Result<Vec<u8>, TemporalWorkerError> {
+    pub fn register_proof(&mut self, p: &[u8]) -> Result<Vec<u8>, NativeWorkerError> {
         self.invoke(2, p)
     }
-    pub fn admit_derivation(&mut self, p: &[u8]) -> Result<Vec<u8>, TemporalWorkerError> {
+    pub fn admit_derivation(&mut self, p: &[u8]) -> Result<Vec<u8>, NativeWorkerError> {
         self.invoke(3, p)
     }
-    pub fn current_proof(&mut self, p: &[u8]) -> Result<Vec<u8>, TemporalWorkerError> {
+    pub fn current_proof(&mut self, p: &[u8]) -> Result<Vec<u8>, NativeWorkerError> {
         self.invoke(4, p)
     }
     /// Terminal cancellation reaps the actual worker child.
@@ -208,7 +220,7 @@ impl TemporalWorker {
         }
     }
     /// EOF closes a healthy session; a stuck or unsuccessful exit is rejected.
-    pub fn close(mut self) -> Result<(), TemporalWorkerError> {
+    pub fn close(mut self) -> Result<(), NativeWorkerError> {
         self.commands.take();
         let start = Instant::now();
         loop {
@@ -219,24 +231,34 @@ impl TemporalWorker {
                 return if status.success() {
                     Ok(())
                 } else {
-                    Err(TemporalWorkerError::Closed)
+                    Err(NativeWorkerError::Closed)
                 };
             }
             if start.elapsed() >= IDLE {
                 self.cancel();
-                return Err(TemporalWorkerError::Timeout);
+                return Err(NativeWorkerError::Timeout);
             }
             thread::sleep(Duration::from_millis(10));
         }
     }
 }
-impl Drop for TemporalWorker {
+impl Drop for NativeWorker {
     fn drop(&mut self) {
         self.cancel();
     }
 }
 
-fn decode_result(status: i32, payload: Vec<u8>) -> Result<Vec<u8>, TemporalWorkerError> {
+fn decode_result(status: i32, payload: Vec<u8>) -> Result<Vec<u8>, NativeWorkerError> {
+    if status == -20 {
+        return Err(NativeWorkerError::Parser(
+            crate::worker_errors::decode_parser_error(&payload)?,
+        ));
+    }
+    if status == -30 {
+        return Err(NativeWorkerError::Finite(
+            crate::worker_errors::decode_finite_error(&payload)?,
+        ));
+    }
     let native = match status {
         0 => return Ok(payload),
         -1 if payload.is_empty() => TemporalRuntimeError::InvalidInput,
@@ -245,14 +267,14 @@ fn decode_result(status: i32, payload: Vec<u8>) -> Result<Vec<u8>, TemporalWorke
             let code = std::str::from_utf8(&payload)
                 .ok()
                 .and_then(|s| s.parse::<i32>().ok())
-                .ok_or(TemporalWorkerError::Protocol)?;
+                .ok_or(NativeWorkerError::Protocol)?;
             if status == -3 {
                 TemporalRuntimeError::RuntimeInitialization(NativeRuntimeStatus::from_code(code))
             } else {
                 TemporalRuntimeError::NativeRejected(code)
             }
         }
-        _ => return Err(TemporalWorkerError::Protocol),
+        _ => return Err(NativeWorkerError::Protocol),
     };
-    Err(TemporalWorkerError::Native(native))
+    Err(NativeWorkerError::Native(native))
 }

@@ -346,21 +346,25 @@ package omitted =src/ffi/scheme-wire= from its declared public entry closure.
 Source-checkout load paths had masked that packaging defect locally. POO
 =c3367536= declares the four embedded wire/policy/proof/proof-Host owner roots.
 The installed-only import control passes with the POO source path removed.
-MRR now pins that published package fix. A full local POO package build remains
-unqualified in the separate SDK until its pinned Orgize dependency is available;
-clean platform package CI remains the final packaging gate. No semantic ABI
+MRR now pins that published package fix. The private SDK now has the declared
+Orgize revision and the maintained parser graph API; focused Query dependency
+compilation is exercised separately. A full local POO package build remains
+unqualified; clean platform package CI remains the final packaging gate. No semantic ABI
 version or native initializer is changed by this packaging fix.
 
-* Persistent isolated Temporal owner
+* Persistent isolated native owner
 
-=TemporalWorker= launches an explicitly selected absolute =mrr-temporal-worker=
+=NativeWorker= launches an explicitly selected absolute =mrr-native-worker=
 executable. The Host process irrevocably chooses worker or embedded mode before
 native initialization; worker mode refuses embedded calls, and an already embedded process refuses
-worker Host mode. This is a Temporal worker interface; routing parsing, finite
-inference and Search through isolated owners remains a separate composition
-gate for consumers that need those operations in the same Host process. The child contains
+worker Host mode. =configure_native_worker= routes the maintained Source
+compiler, Scheme finite inference/Search and =TemporalHost= through one
+serialized process profile. Concurrent calls fail with =Busy=; terminal shutdown
+retains the selected profile and subsequent calls cannot fall back to embedded
+execution. Direct grammar metadata inspection remains an embedded-only advanced
+API and is outside this configured consumer path. The child contains
 the canonical compiled Scheme program and one native owner thread. A private
-bounded channel serializes calls; inert =mrr.temporal-worker.request.v1= and
+bounded channel serializes calls; inert =mrr.native-worker.request.v1= and
 =response.v1= frames retain request identity and native error codes. Payloads
 are limited to 1 MiB and frames to 2 MiB plus 256 bytes. No evaluator, restart,
 model dispatcher or JSON transport participates.
@@ -378,15 +382,40 @@ Local gates exercise persistent policy/state/proof calls, late correction,
 stale generation rejection, refusal of embedded initialization in worker mode,
 original Host child exit codes 0/7/23, mismatched responses, graceful EOF,
 terminal cancellation and rejection of old registrations after restart. The
-33 Library cases and transport bounds/escape controls pass. Deadline branches
+34 Library cases and transport bounds/escape controls pass. Parser descriptor
+metadata uses bounded inert Scheme v1 objects. Original GPA1 bytes remain intact
+inside the worker envelope: the parent repeats descriptor, event and source
+digest admission. Finite rows undergo the original candidate admission before
+Search performs its lineage/witness checks. Real GQL/Cypher parsing, finite
+inference, forged child row rejection and a configured Source/Search/Temporal
+consumer are exercised; no
+Rust evaluator or legacy transport fallback is introduced. Deadline branches
 and whole-process memory/resource exhaustion still need fault qualification;
 these local cases do not establish provider authentication or atomic effects.
+
+This composition pins POO =4977152d= and its maintained Parser revision.
+The local Library gates pass 34 native contracts, 3 isolated worker controls,
+6 original Source cases, 1 embedded composition and 1 configured consumer
+composition; POO passes 24 original Query/Orgize/Evidence cases through its
+heap-fenced native gxtest entry. No raw runtime log is a Git artifact. The
+interpreted POO =just test-file= startup remains a five-second idle failure on
+this host; the compiled entry does not relax that gate. These are Library
+receipts, not a new real-model or Data transaction qualification.
 
 The TLC launch now specifies a 32 MiB initial heap, 1 GiB maximum heap and
 64 MiB direct-memory ceiling rather than inheriting host-sized JVM defaults.
 Eight existing lifecycle scenarios and both required mutation counterexamples
-pass the original five-second/45-second watchdog locally. This does not yet
-prove the earlier CI startup silence resolved; exact-head CI remains required.
+pass the original five-second/45-second watchdog locally. Exact-head CI on =519d0ea= also passes the TLA/Lean conformance and shared
+C4 replay jobs. New worker changes require their own exact-head CI.
+
+Library Hosts select the executable explicitly before Source/Search/Temporal
+calls:
+
+#+begin_src rust
+configure_native_worker(std::path::Path::new("/absolute/path/mrr-native-worker"))?;
+// Existing Source compiler, Search and TemporalHost APIs use the selected owner.
+shutdown_native_worker()?; // terminal: this process cannot switch to embedded mode
+#+end_src
 
 MRR retains source/Temporal/IFC authority. Data Backend/Protocols still owns
 protected atomic publication, operation ledger, ACK and recovery. Worker

@@ -10,6 +10,7 @@ use std::{ffi::CString, fmt};
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum TemporalRuntimeError {
     InvalidInput,
+    Worker(crate::worker_profile::WorkerFailure),
     RuntimeUnavailable,
     RuntimeInitialization(NativeRuntimeStatus),
     NativeRejected(i32),
@@ -28,6 +29,14 @@ impl std::error::Error for TemporalRuntimeError {}
 pub struct TemporalHost;
 impl TemporalHost {
     fn invoke(self, operation: i32, payload: &[u8]) -> Result<Vec<u8>, TemporalRuntimeError> {
+        if let Some(result) =
+            crate::worker_profile::with_worker(|worker| worker.invoke(operation, payload))
+        {
+            return result.map_err(|error| match error {
+                crate::NativeWorkerError::Native(error) => error,
+                error => TemporalRuntimeError::Worker(error.failure()),
+            });
+        }
         if payload.len() > 1_048_576 || std::str::from_utf8(payload).is_err() {
             return Err(TemporalRuntimeError::InvalidInput);
         }

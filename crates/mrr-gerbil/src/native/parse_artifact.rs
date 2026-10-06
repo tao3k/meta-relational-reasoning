@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 use std::ffi::CString;
 use std::sync::{Arc, OnceLock};
 
-use serde_json::Value;
+use super::datum::{self, Value};
 use sha2::{Digest, Sha256};
 
 use super::{
@@ -79,6 +79,7 @@ pub struct ParserKindCatalog {
     terminals: BTreeMap<String, u16>,
     terminal_names: Vec<String>,
     field_names: Vec<String>,
+    pub(crate) descriptor: Value,
 }
 
 impl ParserKindCatalog {
@@ -172,6 +173,7 @@ pub struct ParseArtifact {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ParseArtifactLoadError {
     InteriorNul,
+    Worker(crate::worker_profile::WorkerFailure),
     RuntimeUnavailable,
     RuntimeStatus(super::NativeRuntimeStatus),
     ParserFailed {
@@ -215,6 +217,14 @@ fn parse_artifact(
     language: ParserLanguage,
     source: &str,
 ) -> Result<ParseArtifact, ParseArtifactLoadError> {
+    if let Some(result) =
+        crate::worker_profile::with_worker(|worker| worker.parse_artifact(language, source))
+    {
+        return result.map_err(|error| match error {
+            crate::NativeWorkerError::Parser(error) => error,
+            error => ParseArtifactLoadError::Worker(error.failure()),
+        });
+    }
     let (payload, kind_catalog) = request_parse_artifact(language, source)?;
     let artifact = decode_parse_artifact(&payload, source, kind_catalog)?;
     validate_source_digest(&artifact, source)?;
@@ -287,7 +297,7 @@ pub(crate) fn decode_parse_artifact(
     })
 }
 
-fn request_parse_artifact(
+pub(crate) fn request_parse_artifact(
     language: ParserLanguage,
     source: &str,
 ) -> Result<(Vec<u8>, Arc<ParserKindCatalog>), ParseArtifactLoadError> {
@@ -425,7 +435,8 @@ fn load_native_kind_catalog(
             diagnostic,
         }
     })?;
-    let descriptor = serde_json::from_slice(&payload)
+    let descriptor = datum::decode(&payload)
+        .ok_or(())
         .map_err(|_| ParseArtifactLoadError::InvalidHostDescriptor)?;
     load_kind_catalog(&descriptor, language).map(Arc::new)
 }
@@ -560,6 +571,7 @@ pub(crate) fn load_kind_catalog(
         terminals,
         terminal_names,
         field_names,
+        descriptor: payload.clone(),
     })
 }
 

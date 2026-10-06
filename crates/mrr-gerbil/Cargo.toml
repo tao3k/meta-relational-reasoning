@@ -17,7 +17,6 @@ mrr-query.workspace = true
 mrr-relation.workspace = true
 rowan.workspace = true
 sha2.workspace = true
-serde_json.workspace = true
 
 [build-dependencies]
 mrr-gerbil-native-build.workspace = true
@@ -39,5 +38,5 @@ name = "temporal_runtime"
 path = "tests/integration/temporal_runtime.rs"
 
 [[test]]
-name = "temporal_worker"
-path = "tests/integration/temporal_worker.rs"
+name = "native_worker"
+path = "tests/integration/native_worker.rs"

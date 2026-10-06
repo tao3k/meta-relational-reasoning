@@ -11,6 +11,7 @@ use super::{
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum FiniteInferenceError {
     CoordinateOverflow,
+    Worker(crate::worker_profile::WorkerFailure),
     ForeignNode,
     RuntimeUnavailable,
     RuntimeInitialization(NativeRuntimeStatus),
@@ -43,6 +44,14 @@ pub fn evaluate_finite_relations(
     edges: Vec<(usize, usize)>,
     observation_factors: Vec<usize>,
 ) -> Result<FiniteInferenceCandidate, FiniteInferenceError> {
+    if let Some(result) = crate::worker_profile::with_worker(|worker| {
+        worker.evaluate_finite_relations(node_count, edges.clone(), observation_factors.clone())
+    }) {
+        return result.map_err(|error| match error {
+            crate::NativeWorkerError::Finite(error) => error,
+            error => FiniteInferenceError::Worker(error.failure()),
+        });
+    }
     let native_nodes =
         i64::try_from(node_count).map_err(|_| FiniteInferenceError::CoordinateOverflow)?;
     let edge_count =
@@ -84,44 +93,7 @@ pub fn evaluate_finite_relations(
             check(ffi::finite_solve())?;
             let paths = rows::<3>(0, pair_bound)?;
             let influences = rows::<4>(1, influence_bound)?;
-            let mut pairs = BTreeSet::new();
-            for &[from, to, distance] in &paths {
-                if from >= node_count
-                    || to >= node_count
-                    || distance == 0
-                    || distance > node_count
-                    || !pairs.insert((from, to))
-                {
-                    return Err(FiniteInferenceError::InvalidNativeCandidate);
-                }
-            }
-            let mut projected = BTreeSet::new();
-            for &[index, from, to, distance] in &influences {
-                if observation_factors.get(index) != Some(&from)
-                    || to >= node_count
-                    || distance >= node_count
-                    || !projected.insert((index, to))
-                {
-                    return Err(FiniteInferenceError::InvalidNativeCandidate);
-                }
-                if from == to {
-                    if distance != 0 {
-                        return Err(FiniteInferenceError::InvalidNativeCandidate);
-                    }
-                } else if !paths.contains(&[from, to, distance]) {
-                    return Err(FiniteInferenceError::InvalidNativeCandidate);
-                }
-            }
-            Ok(FiniteInferenceCandidate {
-                paths: paths
-                    .into_iter()
-                    .map(|[from, to, distance]| (from, to, distance))
-                    .collect(),
-                influences: influences
-                    .into_iter()
-                    .map(|[index, from, to, distance]| (index, from, to, distance))
-                    .collect(),
-            })
+            admit_candidate(node_count, &observation_factors, paths, influences)
         })();
         ffi::finite_reset();
         result
@@ -156,4 +128,55 @@ fn rows<const N: usize>(table: i32, bound: usize) -> Result<Vec<[usize; N]>, Fin
         values.push(value);
     }
     Ok(values)
+}
+
+pub(crate) fn admit_candidate(
+    node_count: usize,
+    observation_factors: &[usize],
+    paths: Vec<[usize; 3]>,
+    influences: Vec<[usize; 4]>,
+) -> Result<FiniteInferenceCandidate, FiniteInferenceError> {
+    if paths.len() > node_count.saturating_mul(node_count)
+        || influences.len() > node_count.saturating_mul(observation_factors.len())
+    {
+        return Err(FiniteInferenceError::InvalidNativeCandidate);
+    }
+    let mut pairs = BTreeSet::new();
+    for &[from, to, distance] in &paths {
+        if from >= node_count
+            || to >= node_count
+            || distance == 0
+            || distance > node_count
+            || !pairs.insert((from, to))
+        {
+            return Err(FiniteInferenceError::InvalidNativeCandidate);
+        }
+    }
+    let mut projected = BTreeSet::new();
+    for &[index, from, to, distance] in &influences {
+        if observation_factors.get(index) != Some(&from)
+            || to >= node_count
+            || distance >= node_count
+            || !projected.insert((index, to))
+        {
+            return Err(FiniteInferenceError::InvalidNativeCandidate);
+        }
+        if from == to {
+            if distance != 0 {
+                return Err(FiniteInferenceError::InvalidNativeCandidate);
+            }
+        } else if !paths.contains(&[from, to, distance]) {
+            return Err(FiniteInferenceError::InvalidNativeCandidate);
+        }
+    }
+    Ok(FiniteInferenceCandidate {
+        paths: paths
+            .into_iter()
+            .map(|[from, to, distance]| (from, to, distance))
+            .collect(),
+        influences: influences
+            .into_iter()
+            .map(|[index, from, to, distance]| (index, from, to, distance))
+            .collect(),
+    })
 }

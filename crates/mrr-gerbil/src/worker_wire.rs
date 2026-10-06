@@ -13,7 +13,7 @@ pub(crate) fn valid_payload(value: &[u8]) -> bool {
 }
 
 pub(crate) fn encode(kind: &str, id: u64, operation: i32, payload: &str) -> String {
-    let mut frame = format!("(mrr.temporal-worker.{kind}.v1 {id} {operation} \"");
+    let mut frame = format!("(mrr.native-worker.{kind}.v1 {id} {operation} \"");
     for c in payload.chars() {
         match c {
             '\\' => frame.push_str("\\\\"),
@@ -30,7 +30,7 @@ pub(crate) fn encode(kind: &str, id: u64, operation: i32, payload: &str) -> Stri
 
 pub(crate) fn decode(kind: &str, frame: &[u8]) -> Option<(u64, i32, Vec<u8>)> {
     let text = std::str::from_utf8(frame).ok()?;
-    let rest = text.strip_prefix(&format!("(mrr.temporal-worker.{kind}.v1 "))?;
+    let rest = text.strip_prefix(&format!("(mrr.native-worker.{kind}.v1 "))?;
     let (id, rest) = rest.split_once(' ')?;
     let (operation, rest) = rest.split_once(' ')?;
     let id = id.parse::<u64>().ok().filter(|n| *n != 0)?;

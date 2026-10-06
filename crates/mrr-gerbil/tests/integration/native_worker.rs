@@ -1,5 +1,5 @@
 //! Persistent isolated POO owner preserves Host child statuses and proof state.
-use mrr_gerbil::{TemporalHost, TemporalRuntimeError, TemporalWorker, TemporalWorkerError};
+use mrr_gerbil::{NativeWorker, NativeWorkerError, TemporalHost, TemporalRuntimeError};
 fn text(bytes: Vec<u8>) -> String {
     String::from_utf8(bytes).unwrap()
 }
@@ -37,14 +37,33 @@ fn current(registration: &str, state: i32, policy: i32, digest: &str) -> String 
 }
 #[test]
 fn persistent_worker_preserves_proofs_and_host_children() {
-    let mut host = TemporalWorker::start(std::path::Path::new(env!(
-        "CARGO_BIN_EXE_mrr-temporal-worker"
+    let mut host = NativeWorker::start(std::path::Path::new(env!(
+        "CARGO_BIN_EXE_mrr-native-worker"
     )))
     .unwrap();
     assert_eq!(
         TemporalHost.refresh_policy(policy(1, 1).as_bytes()),
         Err(TemporalRuntimeError::RuntimeUnavailable)
     );
+    let source = "MATCH (n) RETURN n\n";
+    for language in [
+        mrr_gerbil::ParserLanguage::Gql,
+        mrr_gerbil::ParserLanguage::Cypher,
+    ] {
+        let artifact = host.parse_artifact(language, source).unwrap();
+        assert_eq!(artifact.language, language);
+        assert_eq!(
+            artifact.to_rowan_cst().unwrap().root().text().to_string(),
+            source
+        );
+        println!("CASE original {language:?} parser and catalog admitted across Scheme v1");
+    }
+    let finite = host
+        .evaluate_finite_relations(3, vec![(0, 1), (1, 2)], vec![0])
+        .unwrap();
+    assert!(finite.paths.contains(&(0, 2, 2)));
+    assert!(finite.influences.contains(&(0, 0, 2, 2)));
+    println!("CASE original Scheme finite candidate re-admitted by parent");
     for exit in [0, 7, 23] {
         let mut child = std::process::Command::new("/bin/sh")
             .args(["-c", &format!("sleep 0.1; exit {exit}")])
@@ -56,7 +75,7 @@ fn persistent_worker_preserves_proofs_and_host_children() {
     }
     assert!(matches!(
         host.refresh_policy(b"\0"),
-        Err(TemporalWorkerError::InvalidInput)
+        Err(NativeWorkerError::InvalidInput)
     ));
     let p = text(host.refresh_policy(policy(1, 1).as_bytes()).unwrap());
     let pd = digest_field(&p, "policyDigest");
@@ -101,21 +120,26 @@ fn persistent_worker_preserves_proofs_and_host_children() {
     assert!(host.refresh_proof_state(state).is_err());
     assert!(host.register_proof(request.as_bytes()).is_err());
     println!("CASE late correction and stale generations reject on the same owner");
+    assert_eq!(
+        host.evaluate_finite_relations(3, vec![(0, 1), (1, 2)], vec![0])
+            .unwrap(),
+        finite
+    );
     host.close().unwrap();
     println!("CASE worker graceful EOF reaped");
-    let mut cancelled = TemporalWorker::start(std::path::Path::new(env!(
-        "CARGO_BIN_EXE_mrr-temporal-worker"
+    let mut cancelled = NativeWorker::start(std::path::Path::new(env!(
+        "CARGO_BIN_EXE_mrr-native-worker"
     )))
     .unwrap();
     assert!(matches!(
         cancelled.current_proof(query.as_bytes()),
-        Err(TemporalWorkerError::Native(_))
+        Err(NativeWorkerError::Native(_))
     ));
     println!("CASE restarted worker cannot reuse prior proof registration");
     cancelled.cancel();
     assert!(matches!(
         cancelled.current_proof(b"()"),
-        Err(TemporalWorkerError::Closed)
+        Err(NativeWorkerError::Closed)
     ));
     println!("CASE worker cancellation is terminal");
 }
@@ -128,17 +152,44 @@ fn mismatched_reply_closes_the_session() {
         std::env::temp_dir().join(format!("mrr-worker-invalid-reply-{}", std::process::id()));
     std::fs::write(
         &path,
-        b"#!/bin/sh\nread request\nprintf '(mrr.temporal-worker.response.v1 99 0 \"\")\\n'\n",
+        b"#!/bin/sh\nread request\nprintf '(mrr.native-worker.response.v1 99 0 \"\")\\n'\n",
     )
     .unwrap();
     std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o700)).unwrap();
-    let mut worker = TemporalWorker::start(&path).unwrap();
+    let mut worker = NativeWorker::start(&path).unwrap();
     let result = worker.current_proof(b"()");
     std::fs::remove_file(path).unwrap();
-    assert!(matches!(result, Err(TemporalWorkerError::Protocol)));
+    assert!(matches!(result, Err(NativeWorkerError::Protocol)));
     assert!(matches!(
         worker.current_proof(b"()"),
-        Err(TemporalWorkerError::Closed)
+        Err(NativeWorkerError::Closed)
     ));
     println!("CASE mismatched reply terminally rejects and reaps worker");
+}
+
+#[cfg(unix)]
+#[test]
+fn forged_finite_rows_fail_parent_admission_and_close_session() {
+    use std::os::unix::fs::PermissionsExt;
+    let path =
+        std::env::temp_dir().join(format!("mrr-worker-forged-finite-{}", std::process::id()));
+    std::fs::write(
+        &path,
+        b"#!/bin/sh\nread request\nprintf '(mrr.native-worker.response.v1 1 0 \"(list (list (list 0 99 1)) (list))\")\\n'\n",
+    ).unwrap();
+    std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o700)).unwrap();
+    let mut worker = NativeWorker::start(&path).unwrap();
+    let result = worker.evaluate_finite_relations(2, vec![(0, 1)], vec![]);
+    std::fs::remove_file(path).unwrap();
+    assert!(matches!(
+        result,
+        Err(NativeWorkerError::Finite(
+            mrr_gerbil::FiniteInferenceError::InvalidNativeCandidate
+        ))
+    ));
+    assert!(matches!(
+        worker.evaluate_finite_relations(2, vec![(0, 1)], vec![]),
+        Err(NativeWorkerError::Closed)
+    ));
+    println!("CASE forged child rows fail original parent candidate admission and close worker");
 }

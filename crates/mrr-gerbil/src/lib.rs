@@ -5,13 +5,16 @@
 
 mod driver_cli;
 mod native;
+mod native_worker;
 mod projection;
-mod temporal_worker;
+mod worker_errors;
+mod worker_profile;
+mod worker_projection;
 mod worker_server;
 mod worker_wire;
 
-pub use temporal_worker::{TemporalWorker, TemporalWorkerError};
-pub use worker_server::run_temporal_worker;
+pub use native_worker::{NativeWorker, NativeWorkerError};
+pub use worker_server::run_native_worker;
 
 pub use driver_cli::run_driver_cli;
 pub use native::{
@@ -35,3 +38,5 @@ pub use projection::{
 #[cfg(test)]
 #[path = "../tests/unit/mod.rs"]
 mod tests;
+
+pub use worker_profile::{WorkerFailure, configure_native_worker, shutdown_native_worker};

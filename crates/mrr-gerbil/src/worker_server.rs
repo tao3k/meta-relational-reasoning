@@ -1,12 +1,12 @@
 //! Isolated native process entry and Gambit standard descriptor adaptation.
-use crate::{TemporalHost, TemporalRuntimeError, worker_wire as wire};
+use crate::{NativeWorkerError, TemporalHost, TemporalRuntimeError, worker_wire as wire};
 use std::{
     io::{self, BufReader, Read, Write},
     thread,
     time::Duration,
 };
 /// Binary entry point. Never evaluates transport source or grants Data effects.
-pub fn run_temporal_worker() -> io::Result<()> {
+pub fn run_native_worker() -> io::Result<()> {
     let mut input = BufReader::new(NativeStdio(io::stdin().lock()));
     let mut output = NativeStdio(io::stdout().lock());
     let mut previous = 0;
@@ -17,11 +17,23 @@ pub fn run_temporal_worker() -> io::Result<()> {
         previous = id;
         let host = TemporalHost;
         let result = match op {
-            0 => host.refresh_policy(&payload),
-            1 => host.refresh_proof_state(&payload),
-            2 => host.register_proof(&payload),
-            3 => host.admit_derivation(&payload),
-            4 => host.current_proof(&payload),
+            0 => host
+                .refresh_policy(&payload)
+                .map_err(NativeWorkerError::Native),
+            1 => host
+                .refresh_proof_state(&payload)
+                .map_err(NativeWorkerError::Native),
+            2 => host
+                .register_proof(&payload)
+                .map_err(NativeWorkerError::Native),
+            3 => host
+                .admit_derivation(&payload)
+                .map_err(NativeWorkerError::Native),
+            4 => host
+                .current_proof(&payload)
+                .map_err(NativeWorkerError::Native),
+            5 | 6 => crate::worker_projection::parser_request(op, &payload),
+            7 => crate::worker_projection::finite_request(&payload),
             _ => {
                 return Err(io::Error::new(
                     io::ErrorKind::InvalidData,
@@ -31,12 +43,28 @@ pub fn run_temporal_worker() -> io::Result<()> {
         };
         let (status, bytes) = match result {
             Ok(bytes) => (0, bytes),
-            Err(TemporalRuntimeError::InvalidInput) => (-1, Vec::new()),
-            Err(TemporalRuntimeError::RuntimeUnavailable) => (-2, Vec::new()),
-            Err(TemporalRuntimeError::RuntimeInitialization(s)) => {
+            Err(NativeWorkerError::Native(TemporalRuntimeError::InvalidInput)) => (-1, Vec::new()),
+            Err(NativeWorkerError::Native(TemporalRuntimeError::RuntimeUnavailable)) => {
+                (-2, Vec::new())
+            }
+            Err(NativeWorkerError::Native(TemporalRuntimeError::RuntimeInitialization(s))) => {
                 (-3, s.code().to_string().into_bytes())
             }
-            Err(TemporalRuntimeError::NativeRejected(code)) => (-4, code.to_string().into_bytes()),
+            Err(NativeWorkerError::Native(TemporalRuntimeError::NativeRejected(code))) => {
+                (-4, code.to_string().into_bytes())
+            }
+            Err(NativeWorkerError::Parser(error)) => {
+                (-20, crate::worker_errors::parser_error(&error).into_bytes())
+            }
+            Err(NativeWorkerError::Finite(error)) => {
+                (-30, crate::worker_errors::finite_error(error).into_bytes())
+            }
+            Err(error) => {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    error.to_string(),
+                ));
+            }
         };
         if !wire::valid_payload(&bytes) {
             return Err(io::Error::new(

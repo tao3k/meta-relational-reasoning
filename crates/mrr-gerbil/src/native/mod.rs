@@ -1,10 +1,11 @@
 //! Native AOT grammar binding interface.
+pub(crate) mod datum;
 
 mod driver;
 mod enhanced_query;
 #[allow(unsafe_code)]
 mod ffi;
-mod finite;
+pub(crate) mod finite;
 mod model;
 pub(crate) mod parse_artifact;
 mod parser_cst;
