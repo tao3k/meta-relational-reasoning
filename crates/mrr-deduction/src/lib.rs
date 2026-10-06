@@ -11,3 +11,11 @@ pub use api::{
 
 #[cfg(feature = "native-inference")]
 pub use api::evaluate_transitive_closure;
+
+/// Native process Host controls owned by the inference backend.
+/// The caller remains responsible for source and external-effect authorization.
+#[cfg(feature = "native-inference")]
+pub use mrr_gerbil::{
+    NativeWorker, NativeWorkerError, TemporalHost, TemporalRuntimeError, configure_native_worker,
+    shutdown_native_worker,
+};

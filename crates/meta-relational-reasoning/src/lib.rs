@@ -157,7 +157,7 @@ pub use mrr_search::evaluate_search_factors;
 /// Advanced native Host projection of the POO Library's inert Scheme v1 ABI.
 /// These process-local proof operations do not authorize external effects.
 #[cfg(feature = "native-inference")]
-pub use mrr_gerbil::{
+pub use mrr_deduction::{
     NativeWorker, NativeWorkerError, TemporalHost, TemporalRuntimeError, configure_native_worker,
     shutdown_native_worker,
 };
