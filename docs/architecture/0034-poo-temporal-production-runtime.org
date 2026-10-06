@@ -313,3 +313,28 @@ Local qualification passes the 31 existing library cases and the real Temporal
 integration case under the unchanged five-second output/45-second batch gates.
 Both native and no-default-feature facade checks pass. These are local runtime
 and build receipts; remote exact-head CI remains an independent gate.
+
+* Original source execution retention
+
+=BoundPropertySourceQuery::execute_with= returns
+=AdmittedPropertySourceExecution<E>=. Its private construction retains the
+original parser compilation receipt, bound query, admitted result, result limits
+and backend-owned physical evidence. Dropping the request cannot detach its
+source receipt. Scheme v1 export uses the retained query and limits, rather than
+accepting a replacement query supplied after execution. The lower catalog-only
+dispatch remains the provider-neutral MRR port; physical root interpretation
+continues to belong to Data.
+
+This value is the input evidence for subsequent Temporal source correspondence.
+It grants no source authentication, coverage, clock correspondence, currentness
+or publication authorization. The source Library gate re-admits exported rows,
+rejects substituted query bindings and enforces the byte budget.
+
+For production publication the Host must enroll separately identified source,
+Temporal policy and IFC/action authority versions in the Data profile's protected
+transaction. Fresh validation consumes the retained original source evidence and
+the native current proof; the adapter keeps those authorities synchronized until
+head and operation receipt persistence. Exact replay is a historical lookup and
+does not grant permission to release data under a revoked IFC policy. Unknown
+outcomes recover the original operation identity. MRR must not introduce a
+second storage CAS or treat process-local native registration as a durable ledger.

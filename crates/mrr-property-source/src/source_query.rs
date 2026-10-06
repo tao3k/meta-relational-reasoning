@@ -21,7 +21,7 @@ use meta_relational_reasoning::{
 pub struct CompiledPropertySourceQuery(ParserOwnedCompilation);
 
 /// One original source bound to the caller's admitted catalogs and generation.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct BoundPropertySourceQuery {
     compilation: ParserOwnedCompilationReceipt,
     query: CatalogBoundQuery,

@@ -4,6 +4,8 @@
 mod execution;
 mod source_query;
 
+pub use execution::AdmittedPropertySourceExecution;
+
 pub use meta_relational_reasoning::{
     AdmittedPropertyExecution, PropertyExecutionCandidate, PropertyExecutionError,
     PropertyQueryBackend,

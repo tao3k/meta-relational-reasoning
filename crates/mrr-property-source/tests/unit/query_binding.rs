@@ -104,3 +104,98 @@ fn candidate_for_a_different_binding_cannot_be_admitted() {
         Err(PropertySourceQueryError::Admission(_))
     ));
 }
+
+struct Physical {
+    substitute_binding: bool,
+}
+impl meta_relational_reasoning::PropertyQueryBackend for Physical {
+    type PhysicalEvidence = meta_relational_reasoning::CatalogBoundQuery;
+    type Error = std::io::Error;
+
+    async fn execute<'a>(
+        &'a self,
+        query: &'a meta_relational_reasoning::CatalogBoundQuery,
+    ) -> Result<
+        meta_relational_reasoning::PropertyExecutionCandidate<Self::PhysicalEvidence>,
+        Self::Error,
+    > {
+        let binding = QueryResultBinding::for_query(query);
+        let binding = if self.substitute_binding {
+            QueryResultBinding::new(
+                [0; 32],
+                binding.generation(),
+                binding.relation_catalog_digest(),
+                binding.entity_catalog_digest(),
+                *binding.snapshot_digest(),
+            )
+        } else {
+            binding
+        };
+        Ok(meta_relational_reasoning::PropertyExecutionCandidate {
+            candidate: CandidateQueryResult::new(binding, Vec::new(), Vec::new()),
+            physical_evidence: query.clone(),
+        })
+    }
+}
+
+// This adapter completes synchronously; pending means the fixture is broken.
+fn ready<T>(future: impl std::future::Future<Output = T>) -> T {
+    let mut future = std::pin::pin!(future);
+    let mut context = std::task::Context::from_waker(std::task::Waker::noop());
+    match future.as_mut().poll(&mut context) {
+        std::task::Poll::Ready(value) => value,
+        std::task::Poll::Pending => panic!("fixture must complete without I/O"),
+    }
+}
+
+#[test]
+fn source_execution_retains_original_receipts_after_request_drop() {
+    let (relations, entities) = catalogs("KNOWS");
+    let bound = compiled().bind(&relations, &entities, &snapshot()).unwrap();
+    let original = bound.compilation().clone();
+    let query = bound.query().clone();
+    let output = ready(bound.execute_with(
+        &Physical {
+            substitute_binding: false,
+        },
+        limits(),
+    ))
+    .unwrap();
+    drop(bound);
+    assert_eq!(output.compilation(), &original);
+    assert_eq!(output.query(), &query);
+    assert_eq!(output.physical_evidence(), &query);
+    let bytes = output
+        .export_result_transport(NonZeroUsize::new(16384).unwrap())
+        .unwrap();
+    let verified = meta_relational_reasoning::verify_query_result_transport(
+        &query,
+        &bytes,
+        limits(),
+        NonZeroUsize::new(16384).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(verified.receipt(), output.receipt());
+    assert_eq!(verified.candidate(), output.candidate());
+    assert!(
+        output
+            .export_result_transport(NonZeroUsize::new(1).unwrap())
+            .is_err()
+    );
+    println!("CASE original parser/query/physical evidence retained and Scheme v1 re-admitted");
+}
+
+#[test]
+fn source_execution_rejects_substituted_result_before_retention() {
+    let (relations, entities) = catalogs("KNOWS");
+    let bound = compiled().bind(&relations, &entities, &snapshot()).unwrap();
+    assert!(matches!(
+        ready(bound.execute_with(
+            &Physical {
+                substitute_binding: true
+            },
+            limits()
+        )),
+        Err(meta_relational_reasoning::PropertyExecutionError::Admission(_))
+    ));
+}
