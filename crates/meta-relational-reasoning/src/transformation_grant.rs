@@ -23,6 +23,7 @@ pub struct AuthenticatedTransformationGrant {
     ledger: Arc<TransformationGrantLedger>,
     grant: TransformationSourceGrant,
     support: [u8; 32],
+    identity: [u8; 32],
 }
 impl AuthenticatedTransformationGrant {
     /// Authenticate exactly the caller's expected physical binding and catalog.
@@ -50,6 +51,7 @@ impl AuthenticatedTransformationGrant {
             .key
             .verify_strict(&bytes, &Signature::from_bytes(&signature))
             .map_err(|_| TransformationError::Rejected)?;
+        let identity = digest(&("mrr.authenticated-source-grant.v1", &bytes), limits)?;
         let support = digest(
             &(
                 "mrr.source-grant.nonce-support.v1",
@@ -63,7 +65,13 @@ impl AuthenticatedTransformationGrant {
             ledger,
             grant,
             support,
+            identity,
         })
+    }
+    /// Exact signed statement identity, including expiry, permissions and bounds.
+    #[must_use]
+    pub fn identity(&self) -> &[u8; 32] {
+        &self.identity
     }
     #[must_use]
     pub fn binding_digest(&self) -> &[u8; 32] {
