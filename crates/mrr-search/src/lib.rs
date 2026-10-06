@@ -15,3 +15,6 @@ mod tests;
 
 #[cfg(feature = "native-inference")]
 pub use reasoning::evaluate_search_factors;
+
+#[cfg(feature = "native-inference")]
+pub use mrr_gerbil::reserve_native_worker_host;

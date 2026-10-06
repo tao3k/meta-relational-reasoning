@@ -72,7 +72,7 @@ impl KernelCheckedFiniteCatalog {
         additional_obligations: &[&str],
     ) -> Result<Self, TransformationError> {
         #[cfg(feature = "native-inference")]
-        if !mrr_gerbil::reserve_native_worker_host() {
+        if !mrr_search::reserve_native_worker_host() {
             return Err(TransformationError::KernelUnavailable {
                 diagnostics: "kernel checking requires a Rust process Host; embedded Gambit owns the child reaper. Configure an isolated native worker before embedding".to_owned(),
             });
@@ -379,6 +379,23 @@ fn correctness(rows: &[Vec<usize>]) -> String {
     )
 }
 fn numbers(values: &[usize], variable: &str) -> String {
+    // Compress only progressions matched against every original table cell.
+    // The finite input coordinate starts at zero for both forwards and extractors.
+    let first = values[0];
+    if values
+        .iter()
+        .enumerate()
+        .all(|(i, value)| first.checked_add(i) == Some(*value))
+    {
+        return format!("({variable} + {first})");
+    }
+    if values
+        .iter()
+        .enumerate()
+        .all(|(i, value)| first.checked_sub(i) == Some(*value))
+    {
+        return format!("({first} - {variable})");
+    }
     lookup(
         &values.iter().map(usize::to_string).collect::<Vec<_>>(),
         variable,
@@ -404,7 +421,7 @@ fn kernel_source(transports: &[FiniteTransport]) -> String {
             t.target.correct.len(),
             t.target.answers,
         );
-        source.push_str(&format!("def source_{i} : FiniteSpecification {n} {m} := ⟨fun input answer => {source}⟩\ndef target_{i} : FiniteSpecification {p} {q} := ⟨fun input answer => {target}⟩\ndef forward_{i} (input : Fin {n}) : Fin {p} := ⟨({forward}) % {p}, Nat.mod_lt _ (by decide)⟩\ndef extract_{i} (input : Fin {n}) (answer : Fin {q}) : Fin {m} := ⟨({extract}) % {m}, Nat.mod_lt _ (by decide)⟩\ntheorem transport_{i} : finiteCheck source_{i} target_{i} forward_{i} extract_{i} = true := by decide\n#print axioms transport_{i}\ndef certified_{i} : CertifiedTransformation source_{i}.problem target_{i}.problem := certifyFinite source_{i} target_{i} forward_{i} extract_{i} transport_{i}\n#print axioms certified_{i}\n", source=correctness(&t.source.correct), target=correctness(&t.target.correct), forward=numbers(&t.forward, "input.val"), extract=lookup(&t.extract.iter().map(|row| numbers(row, "answer.val")).collect::<Vec<_>>(), "input.val", 0)));
+        source.push_str(&format!("def source_{i} : FiniteSpecification {n} {m} := \u{27e8}fun input answer => {source}\u{27e9}\ndef target_{i} : FiniteSpecification {p} {q} := \u{27e8}fun input answer => {target}\u{27e9}\ndef forward_{i} (input : Fin {n}) : Fin {p} := \u{27e8}({forward}) % {p}, Nat.mod_lt _ (by decide)\u{27e9}\ndef extract_{i} (input : Fin {n}) (answer : Fin {q}) : Fin {m} := \u{27e8}({extract}) % {m}, Nat.mod_lt _ (by decide)\u{27e9}\ntheorem transport_{i} : finiteCheck source_{i} target_{i} forward_{i} extract_{i} = true := by decide\n#print axioms transport_{i}\ndef certified_{i} : CertifiedTransformation source_{i}.problem target_{i}.problem := certifyFinite source_{i} target_{i} forward_{i} extract_{i} transport_{i}\n#print axioms certified_{i}\n", source=correctness(&t.source.correct), target=correctness(&t.target.correct), forward=numbers(&t.forward, "input.val"), extract=lookup(&t.extract.iter().map(|row| numbers(row, "answer.val")).collect::<Vec<_>>(), "input.val", 0)));
     }
     source.push_str("end MRRFiniteKernel\n");
     source

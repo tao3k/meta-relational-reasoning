@@ -3,7 +3,7 @@
 namespace MRRTransformation
 
 structure FiniteSpecification (inputs answers : Nat) where
-  correct : Fin inputs → Fin answers → Bool
+  correct : Fin inputs -> Fin answers -> Bool
 
 def FiniteSpecification.problem (spec : FiniteSpecification n m) : Problem where
   Input := Fin n
@@ -12,14 +12,14 @@ def FiniteSpecification.problem (spec : FiniteSpecification n m) : Problem where
   Correct := fun input answer => spec.correct input answer = true
 
 def finiteCheck (source : FiniteSpecification n m) (target : FiniteSpecification p q)
-    (forward : Fin n → Fin p) (extract : Fin n → Fin q → Fin m) : Bool :=
+    (forward : Fin n -> Fin p) (extract : Fin n -> Fin q -> Fin m) : Bool :=
   (List.finRange n).all fun input => (List.finRange q).all fun answer =>
     !target.correct (forward input) answer || source.correct input (extract input answer)
 
 theorem finiteCheck_sound (source : FiniteSpecification n m) (target : FiniteSpecification p q)
-    (forward : Fin n → Fin p) (extract : Fin n → Fin q → Fin m)
+    (forward : Fin n -> Fin p) (extract : Fin n -> Fin q -> Fin m)
     (checked : finiteCheck source target forward extract = true) :
-    ∀ input answer, target.correct (forward input) answer = true →
+    forall input answer, target.correct (forward input) answer = true ->
       source.correct input (extract input answer) = true := by
   intro input answer correct
   have inputCheck := (List.all_eq_true.mp checked) input (List.mem_finRange input)
@@ -28,7 +28,7 @@ theorem finiteCheck_sound (source : FiniteSpecification n m) (target : FiniteSpe
 
 /-- Only an exhaustive successful check constructs a certified transformation. -/
 def certifyFinite (source : FiniteSpecification n m) (target : FiniteSpecification p q)
-    (forward : Fin n → Fin p) (extract : Fin n → Fin q → Fin m)
+    (forward : Fin n -> Fin p) (extract : Fin n -> Fin q -> Fin m)
     (checked : finiteCheck source target forward extract = true) :
     CertifiedTransformation source.problem target.problem where
   forward := forward

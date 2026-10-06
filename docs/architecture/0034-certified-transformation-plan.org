@@ -1,5 +1,5 @@
 #+title: RFC 0034: Certified Transformation Plan Audit and Delivery Gates
-#+status: first MRR implementation qualified locally; native proof bridge and corpus qualification open
+#+status: contracts, kernel bridge and corpus qualified; exact-head native qualification pending
 #+date: 2026-10-06
 #+options: toc:2
 #+property: header-args :eval never-export :exports code
@@ -149,15 +149,15 @@ namespace TransformationAudit
 
 structure Problem where
   Input : Type
-  Result : Input → Type
-  Valid : Input → Prop
-  Correct : (a : Input) → Result a → Prop
+  Result : Input -> Type
+  Valid : Input -> Prop
+  Correct : (a : Input) -> Result a -> Prop
 
 structure CertifiedTransformation (A B : Problem) where
-  forward : A.Input → B.Input
-  preserves : ∀ a, A.Valid a → B.Valid (forward a)
-  extract : (a : A.Input) → B.Result (forward a) → A.Result a
-  sound : ∀ a, A.Valid a → ∀ r, B.Correct (forward a) r →
+  forward : A.Input -> B.Input
+  preserves : forall a, A.Valid a -> B.Valid (forward a)
+  extract : (a : A.Input) -> B.Result (forward a) -> A.Result a
+  sound : forall a, A.Valid a -> forall r, B.Correct (forward a) r ->
     A.Correct a (extract a r)
 
 def identity (A : Problem) : CertifiedTransformation A A where

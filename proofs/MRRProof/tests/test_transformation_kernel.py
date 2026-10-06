@@ -39,7 +39,7 @@ def test_kernel_rejects_unbound_instance_missing_domain_and_incompatible_endpoin
 @pytest.mark.parametrize("invalid", [
     """
 def unsoundDecision : MRRTransformation.CertifiedDecisionReduction
-    ⟨Nat, fun _ => True, fun _ => True⟩ ⟨Nat, fun _ => True, fun _ => False⟩ where
+    \u27e8Nat, fun _ => True, fun _ => True\u27e9 \u27e8Nat, fun _ => True, fun _ => False\u27e9 where
   forward := id
   preserves := fun _ h => h
   equivalent := fun _ _ => Iff.rfl
@@ -47,7 +47,7 @@ def unsoundDecision : MRRTransformation.CertifiedDecisionReduction
     """
 def witnessIsNotOptimal {A B : MRRTransformation.OptimizationProblem}
     (f : MRRTransformation.CertifiedTransformation A.toProblem B.toProblem) :
-    MRRTransformation.CertifiedOptimizationReduction A B := ⟨f⟩
+    MRRTransformation.CertifiedOptimizationReduction A B := \u27e8f\u27e9
 """,
     """
 def unknownIsSuccess {A B : MRRTransformation.Problem} (a : A.Input) :
@@ -64,7 +64,7 @@ def unmeasuredCost {A B : MRRTransformation.MeasuredProblem}
     MRRTransformation.CertifiedResourceTransformation A B where
   transport := f
   cost := fun _ => 0
-  budget := ⟨⟨1, 0⟩, ⟨0, 0⟩⟩
+  budget := \u27e8\u27e81, 0\u27e9, \u27e80, 0\u27e9\u27e9
 """,
 ])
 def test_profile_kernel_rejects_missing_equivalence_optimality_success_and_authorization(invalid):

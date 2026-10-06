@@ -1,7 +1,7 @@
 use crate::worker_wire::{FRAME_LIMIT, PAYLOAD_LIMIT, decode, encode, read_frame};
 #[test]
 fn inert_unicode_and_escapes_roundtrip_without_evaluation() {
-    let payload = "(object \"因果\" \"a\\b\")\n\t";
+    let payload = "(object \"\u{56e0}\u{679c}\" \"a\\b\")\n\t";
     let frame = encode("request", 7, 4, payload);
     assert_eq!(
         decode("request", frame.as_bytes()),

@@ -6,13 +6,13 @@ universe u v
 
 structure DecisionProblem where
   Input : Type u
-  Valid : Input → Prop
-  Yes : Input → Prop
+  Valid : Input -> Prop
+  Yes : Input -> Prop
 
 structure CertifiedDecisionReduction (A B : DecisionProblem.{u}) where
-  forward : A.Input → B.Input
-  preserves : ∀ a, A.Valid a → B.Valid (forward a)
-  equivalent : ∀ a, A.Valid a → (A.Yes a ↔ B.Yes (forward a))
+  forward : A.Input -> B.Input
+  preserves : forall a, A.Valid a -> B.Valid (forward a)
+  equivalent : forall a, A.Valid a -> (A.Yes a <-> B.Yes (forward a))
 
 def CertifiedDecisionReduction.identity (A : DecisionProblem) : CertifiedDecisionReduction A A where
   forward := id
@@ -30,14 +30,14 @@ def CertifiedDecisionReduction.compose {A B C : DecisionProblem}
 theorem decision_compose_equivalent {A B C : DecisionProblem}
     (f : CertifiedDecisionReduction A B) (g : CertifiedDecisionReduction B C)
     (a : A.Input) (valid : A.Valid a) :
-    A.Yes a ↔ C.Yes ((f.compose g).forward a) := (f.compose g).equivalent a valid
+    A.Yes a <-> C.Yes ((f.compose g).forward a) := (f.compose g).equivalent a valid
 
 /-- A successful partial step carries its actual target input and dependent extractor. -/
 structure TransportAt (A B : Problem.{u, v}) (a : A.Input) where
   input : B.Input
-  preserves : A.Valid a → B.Valid input
-  extract : B.Result input → A.Result a
-  sound : ∀ _valid : A.Valid a, ∀ r, B.Correct input r → A.Correct a (extract r)
+  preserves : A.Valid a -> B.Valid input
+  extract : B.Result input -> A.Result a
+  sound : forall _valid : A.Valid a, forall r, B.Correct input r -> A.Correct a (extract r)
 
 def TransportAt.compose {A B C : Problem} {a : A.Input}
     (f : TransportAt A B a) (g : TransportAt B C f.input) : TransportAt A C a where
@@ -47,7 +47,7 @@ def TransportAt.compose {A B C : Problem} {a : A.Input}
   sound := fun valid r correct => f.sound valid _ (g.sound (f.preserves valid) r correct)
 
 structure CertifiedPartialTransformation (A B : Problem.{u, v}) where
-  forward : (a : A.Input) → Option (TransportAt A B a)
+  forward : (a : A.Input) -> Option (TransportAt A B a)
 
 def CertifiedPartialTransformation.compose {A B C : Problem}
     (f : CertifiedPartialTransformation A B) (g : CertifiedPartialTransformation B C) :
@@ -73,15 +73,15 @@ theorem partial_transport_sound {A B : Problem} {a : A.Input}
   step.sound valid r correct
 
 structure OptimizationProblem extends Problem.{u, v} where
-  cost : (a : Input) → Result a → Nat
+  cost : (a : Input) -> Result a -> Nat
 
 def OptimizationProblem.Optimal (A : OptimizationProblem) (a : A.Input) (r : A.Result a) : Prop :=
-  A.Correct a r ∧ ∀ s, A.Correct a s → A.cost a r ≤ A.cost a s
+  And (A.Correct a r) (forall s, A.Correct a s -> A.cost a r <= A.cost a s)
 
 /-- Optimality transport is an additional law, separate from witness correctness. -/
 structure CertifiedOptimizationReduction (A B : OptimizationProblem.{u, v}) where
   transport : CertifiedTransformation A.toProblem B.toProblem
-  optimal : ∀ a, A.Valid a → ∀ r, B.Optimal (transport.forward a) r →
+  optimal : forall a, A.Valid a -> forall r, B.Optimal (transport.forward a) r ->
     A.Optimal a (transport.extract a r)
 
 def CertifiedOptimizationReduction.compose {A B C : OptimizationProblem}

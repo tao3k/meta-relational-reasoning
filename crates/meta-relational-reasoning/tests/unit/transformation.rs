@@ -892,7 +892,18 @@ fn transformation_projection_rejects_forged_paths_and_false_completeness() {
 #[cfg(feature = "native-inference")]
 #[test]
 fn embedded_native_owner_rejects_kernel_process_host_before_spawn() {
-    mrr_gerbil::load_reasoning_bundle().expect("actual embedded owner initialized");
+    let bound = std::num::NonZeroUsize::new(4).unwrap();
+    mrr_search::evaluate_search_factors(
+        crate::GenerationId::from_canonical_bytes(b"embedded-host-probe").unwrap(),
+        &[crate::SearchFactor::new(
+            crate::QueryOperatorId::from_canonical_bytes(b"embedded-host-probe-factor").unwrap(),
+            crate::SearchFactorRole::Reasoning,
+        )],
+        &[],
+        &[],
+        crate::SearchFrameworkLimits::new(bound, bound, bound, bound, bound),
+    )
+    .expect("actual embedded owner initialized through Search");
     let error = crate::KernelCheckedFiniteCatalog::check(
         vec![],
         binding(1),

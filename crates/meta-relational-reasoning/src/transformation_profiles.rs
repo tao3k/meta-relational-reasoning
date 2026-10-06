@@ -151,7 +151,7 @@ fn optimization_contract(
     for (name, problem) in [("source", source), ("target", target)] {
         let n = problem.costs.len();
         let m = problem.costs[0].len();
-        result.push_str(&format!("def {name}Feasible (input : Fin {n}) (answer : Fin {m}) : Bool := {}\ndef {name}Cost (input : Fin {n}) (answer : Fin {m}) : Nat := {}\ntheorem {name}_optimal : ((List.finRange {n}).all fun input => (List.finRange {m}).all fun answer => MRRFiniteKernel.{name}_0.correct input answer == ({name}Feasible input answer && (List.finRange {m}).all (fun other => !{name}Feasible input other || decide ({name}Cost input answer ≤ {name}Cost input other)))) = true := by decide\n#print axioms {name}_optimal\n", matrix(&problem.feasible), matrix(&problem.costs)));
+        result.push_str(&format!("def {name}Feasible (input : Fin {n}) (answer : Fin {m}) : Bool := {}\ndef {name}Cost (input : Fin {n}) (answer : Fin {m}) : Nat := {}\ntheorem {name}_optimal : ((List.finRange {n}).all fun input => (List.finRange {m}).all fun answer => MRRFiniteKernel.{name}_0.correct input answer == ({name}Feasible input answer && (List.finRange {m}).all (fun other => !{name}Feasible input other || decide ({name}Cost input answer \u{2264} {name}Cost input other)))) = true := by decide\n#print axioms {name}_optimal\n", matrix(&problem.feasible), matrix(&problem.costs)));
     }
     result.push_str("end MRRFiniteProfile\n");
     result

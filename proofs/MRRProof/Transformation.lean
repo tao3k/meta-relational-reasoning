@@ -6,15 +6,15 @@ universe u v
 
 structure Problem where
   Input : Type u
-  Result : Input → Type v
-  Valid : Input → Prop
-  Correct : (a : Input) → Result a → Prop
+  Result : Input -> Type v
+  Valid : Input -> Prop
+  Correct : (a : Input) -> Result a -> Prop
 
 structure CertifiedTransformation (A B : Problem.{u, v}) where
-  forward : A.Input → B.Input
-  preserves : ∀ a, A.Valid a → B.Valid (forward a)
-  extract : (a : A.Input) → B.Result (forward a) → A.Result a
-  sound : ∀ a, A.Valid a → ∀ r, B.Correct (forward a) r →
+  forward : A.Input -> B.Input
+  preserves : forall a, A.Valid a -> B.Valid (forward a)
+  extract : (a : A.Input) -> B.Result (forward a) -> A.Result a
+  sound : forall a, A.Valid a -> forall r, B.Correct (forward a) r ->
     A.Correct a (extract a r)
 
 def identity (A : Problem) : CertifiedTransformation A A where
@@ -100,7 +100,7 @@ theorem two_shift_source_answer (input : Nat) :
       ((compose (shift 1) (shift 2)).forward input) = input :=
   compose_sound (shift 1) (shift 2) input True.intro _ rfl
 
-theorem incorrect_extractor_rejected : (7 : Nat) ≠ 5 := by decide
+theorem incorrect_extractor_rejected : Ne (7 : Nat) 5 := by decide
 
 -- The finite oracle checks actual forward/solver/reverse extraction, not IDs.
 #guard (List.range 32).all (fun input =>

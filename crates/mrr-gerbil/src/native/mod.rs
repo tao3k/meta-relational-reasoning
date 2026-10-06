@@ -16,7 +16,7 @@ mod temporal;
 pub use temporal::{TemporalHost, TemporalRuntimeError};
 
 pub use finite::{FiniteInferenceCandidate, FiniteInferenceError, evaluate_finite_relations};
-pub use runtime::NativeRuntimeStatus;
+pub use runtime::{NativeRuntimeStatus, reserve_native_worker_host};
 
 pub use driver::{
     DriverError, DriverPhase, DriverResource, DriverStatus, DriverTransition, driver_request,

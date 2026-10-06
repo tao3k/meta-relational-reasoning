@@ -9,7 +9,7 @@ repository.workspace = true
 
 [features]
 default = ["native-inference"]
-native-inference = ["mrr-deduction/native-inference", "mrr-search/native-inference", "dep:mrr-gerbil"]
+native-inference = ["mrr-deduction/native-inference", "mrr-search/native-inference"]
 agentic-ai-context = ["dep:mrr-agentic-ai-context"]
 agentic-ai-context-tokens = ["agentic-ai-context", "mrr-agentic-ai-context/token-layout"]
 
@@ -19,7 +19,6 @@ ciborium.workspace = true
 ed25519-dalek = "=2.2.0"
 mrr-bundle.workspace = true
 mrr-deduction.workspace = true
-mrr-gerbil = { workspace = true, optional = true }
 mrr-identity.workspace = true
 mrr-intent.workspace = true
 mrr-lineage.workspace = true

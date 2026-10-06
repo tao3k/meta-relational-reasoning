@@ -910,7 +910,6 @@ dependencies = [
  "mrr-asp-rust-build-support",
  "mrr-bundle",
  "mrr-deduction",
- "mrr-gerbil",
  "mrr-identity",
  "mrr-intent",
  "mrr-lineage",
