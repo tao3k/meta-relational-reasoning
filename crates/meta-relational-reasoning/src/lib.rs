@@ -8,10 +8,13 @@ mod binding;
 mod counterexample;
 mod query_result;
 mod transformation;
+mod transformation_async;
 mod transformation_execution;
+pub use transformation_async::{AsyncTransformationRuntime, execute_transformation_plan_async};
 mod transformation_publication;
 #[cfg(feature = "native-inference")]
 mod transformation_route;
+mod transformation_table;
 mod truth;
 mod typing;
 pub use admission::{
@@ -204,5 +207,5 @@ mod transformation_native;
 #[cfg(feature = "native-inference")]
 pub use transformation_native::{
     NativeTransformationExecution, NativeTransformationExecutionRequest,
-    execute_native_transformation_plan,
+    execute_native_transformation_plan, execute_native_transformation_plan_async,
 };

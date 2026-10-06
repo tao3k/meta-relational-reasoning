@@ -12,6 +12,8 @@ use crate::{
 use std::num::NonZeroUsize;
 
 pub(super) use super::transformation_fixture::{binding, limits};
+#[path = "transformation_async.rs"]
+mod asynchronous;
 fn endpoint(id: u8) -> TransformationEndpoint {
     TransformationEndpoint {
         semantics: [id; 32],

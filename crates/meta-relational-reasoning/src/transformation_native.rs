@@ -2,10 +2,11 @@
 //! The runtime owns physical provider dispatch; native reachability supplies no
 //! solver, source authority or answer correctness by itself.
 use crate::{
-    TransformationAdmission, TransformationError, TransformationExecutionReceipt,
-    TransformationLimits, TransformationPlanCandidate, TransformationRouteSearch,
-    TransformationRuntime, TransformationVerifier, Value, admit_transformation,
-    admit_transformation_plan, execute_transformation_plan, search_transformation_routes,
+    AsyncTransformationRuntime, TransformationAdmission, TransformationError,
+    TransformationExecutionReceipt, TransformationLimits, TransformationPlanAdmission,
+    TransformationPlanCandidate, TransformationRouteSearch, TransformationRuntime,
+    TransformationVerifier, Value, admit_transformation, admit_transformation_plan,
+    execute_transformation_plan, execute_transformation_plan_async, search_transformation_routes,
 };
 
 /// Original native search evidence and checked physical execution kept together.
@@ -44,6 +45,42 @@ pub fn execute_native_transformation_plan(
     verifier: &impl TransformationVerifier,
     runtime: &impl TransformationRuntime,
 ) -> Result<NativeTransformationExecution, TransformationError> {
+    let (search, admitted) = admit_native_plan(&request, verifier)?;
+    let execution = execute_transformation_plan(
+        request.candidate,
+        &admitted,
+        request.input,
+        request.limits,
+        verifier,
+        runtime,
+    )?;
+    Ok(NativeTransformationExecution { search, execution })
+}
+
+/// Discover the same exact native route, then dispatch its physical operations
+/// asynchronously. Cancellation returns no completed execution receipt.
+pub async fn execute_native_transformation_plan_async(
+    request: NativeTransformationExecutionRequest<'_>,
+    verifier: &impl TransformationVerifier,
+    runtime: &impl AsyncTransformationRuntime,
+) -> Result<NativeTransformationExecution, TransformationError> {
+    let (search, admitted) = admit_native_plan(&request, verifier)?;
+    let execution = execute_transformation_plan_async(
+        request.candidate,
+        &admitted,
+        request.input,
+        request.limits,
+        verifier,
+        runtime,
+    )
+    .await?;
+    Ok(NativeTransformationExecution { search, execution })
+}
+
+fn admit_native_plan(
+    request: &NativeTransformationExecutionRequest<'_>,
+    verifier: &impl TransformationVerifier,
+) -> Result<(TransformationRouteSearch, TransformationPlanAdmission), TransformationError> {
     let NativeTransformationExecutionRequest {
         edges,
         candidate,
@@ -51,7 +88,9 @@ pub fn execute_native_transformation_plan(
         limits,
         closure_limits,
     } = request;
-    if crate::transformation_value_digest(&candidate.source.input, &input, limits)?
+    let limits = *limits;
+    let closure_limits = *closure_limits;
+    if crate::transformation_value_digest(&candidate.source.input, input, limits)?
         != candidate.input
     {
         return Err(TransformationError::InstanceMismatch);
@@ -59,7 +98,7 @@ pub fn execute_native_transformation_plan(
     if edges.len() > limits.max_dependencies.get() {
         return Err(TransformationError::Budget);
     }
-    for edge in edges {
+    for edge in *edges {
         if edge.binding() != &candidate.binding {
             return Err(TransformationError::BindingMismatch);
         }
@@ -95,7 +134,5 @@ pub fn execute_native_transformation_plan(
     }) {
         return Err(TransformationError::Unknown);
     }
-    let execution =
-        execute_transformation_plan(candidate, &admitted, input, limits, verifier, runtime)?;
-    Ok(NativeTransformationExecution { search, execution })
+    Ok((search, admitted))
 }

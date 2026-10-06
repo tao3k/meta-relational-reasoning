@@ -12,6 +12,7 @@ import Rejection
 import DeclaredForward
 import RevisionProjection
 import BindingEquality
+import TransformationTable
 import Lean.Util.CollectAxioms
 import Lean.Elab.Command
 
@@ -21,6 +22,12 @@ run_cmd do
   let environment <- getEnv
   let allowed := #[`propext, `Classical.choice, `Quot.sound]
   let required := #[
+    `MRR.TransformationTableProofs.forward_exact,
+    `MRR.TransformationTableProofs.solve_exact,
+    `MRR.TransformationTableProofs.extract_exact,
+    `MRR.TransformationTableProofs.solve_is_zero_answer_extraction,
+    `MRR.TransformationTableProofs.missing_forward,
+    `MRR.TransformationTableProofs.missing_source_extraction,
     `MRR.ContextRustProofs.admission_accepted_iff,
     `MRR.ContextRustProofs.invalid_evidence_rejected,
     `MRR.ContextRustProofs.required_incomplete_rejected,

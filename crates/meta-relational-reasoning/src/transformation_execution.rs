@@ -48,11 +48,11 @@ pub trait TransformationRuntime {
 /// Opaque and non-deserializable; no partial or unknown result has this type.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TransformationExecutionReceipt {
-    plan: [u8; 32],
-    input: [u8; 32],
-    answer: Value,
-    answer_checks: Vec<[u8; 32]>,
-    digest: [u8; 32],
+    pub(super) plan: [u8; 32],
+    pub(super) input: [u8; 32],
+    pub(super) answer: Value,
+    pub(super) answer_checks: Vec<[u8; 32]>,
+    pub(super) digest: [u8; 32],
 }
 impl TransformationExecutionReceipt {
     #[must_use]

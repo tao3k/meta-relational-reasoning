@@ -589,8 +589,7 @@ impl TransformationRuntime for FiniteTransformationCatalog {
         self.with_current(binding, || {
             let t = &self.transports[self.index(step.admission.definition())?];
             value(
-                *t.forward
-                    .get(index(input)?)
+                super::transformation_table::forward(&t.forward, index(input)?)
                     .ok_or(TransformationError::Rejected)?,
             )
         })
@@ -608,9 +607,7 @@ impl TransformationRuntime for FiniteTransformationCatalog {
             }
             let p = self.problem(target)?;
             value(
-                *p.correct
-                    .get(index(input)?)
-                    .and_then(|row| row.first())
+                super::transformation_table::solve(&p.correct, index(input)?)
                     .ok_or(TransformationError::Rejected)?,
             )
         })
@@ -625,10 +622,12 @@ impl TransformationRuntime for FiniteTransformationCatalog {
         self.with_current(binding, || {
             let t = &self.transports[self.index(step.admission.definition())?];
             value(
-                *t.extract
-                    .get(index(source_input)?)
-                    .and_then(|row| row.get(index(target_answer).ok()?))
-                    .ok_or(TransformationError::Rejected)?,
+                super::transformation_table::extract(
+                    &t.extract,
+                    index(source_input)?,
+                    index(target_answer).map_err(|_| TransformationError::Rejected)?,
+                )
+                .ok_or(TransformationError::Rejected)?,
             )
         })
     }

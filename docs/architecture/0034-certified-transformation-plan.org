@@ -518,6 +518,28 @@ not consequences of finite table execution. The new code supplies explicit
 profile, measurement, authorization and publication interfaces for those
 integrations; it does not silently certify them.
 
+* Production table source refinement and asynchronous dispatch
+
+The finite runtime now calls the production =transformation_table= functions
+for forward, solver and extraction access. The pinned Charon/Aeneas gate
+regenerates these three functions from the actual facade crate. Six Lean
+declarations establish exact selected-cell semantics, first-answer selection,
+the solver/extractor correspondence and rejection of missing source indices.
+The axiom audit admits only =propext=, =Classical.choice= and =Quot.sound=.
+Slice and Vec access use the pinned Aeneas library models. Catalog admission,
+value codecs, source leases and the overall execution driver remain separate
+source-refinement obligations; these access theorems do not certify them.
+
+=AsyncTransformationRuntime= supports the existing asynchronous physical query
+backend without blocking a native owner thread. Each returned operation
+revalidates the plan and runtime identity before proceeding to the next
+operation. Cancellation issues no completed receipt; effect cancellation and
+recovery remain backend responsibilities. Qualification checks synchronous /
+asynchronous receipt equality, revocation during a suspended solver and
+cancellation before extraction. The concrete property-query provider is being
+connected to MRR Data's existing =RestoredPropertyBackend=; the async port alone
+is not that provider implementation.
+
 Kernel checks reserve the SDK's Rust process Host before spawning Elan. A Host
 that has already embedded Gambit cannot own checker children, because Gambit's
 process-wide reaper consumes their exit status (=ECHILD=). Native inference in
