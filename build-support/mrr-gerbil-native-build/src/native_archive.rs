@@ -12,8 +12,8 @@ use std::time::Duration;
 use gerbil_scheme_native_build::{
     NativeHeaderInput, ProgramArchiveContract, ProgramArchiveObservation, ProgramArchiveObserver,
     ProgramArchiveOperation, ProgramArchiveRequest, build_program_archive_with_contract,
-    gerbil_command, observe_program_archive_operation, prepare_gsc_progress_launcher,
-    run_native_process, source_workspace,
+    discover_gambit_gsc_from_env, gerbil_command, observe_program_archive_operation,
+    prepare_gsc_progress_launcher, run_native_process, source_workspace,
 };
 
 const REQUIRED_MODULES: &[&str] = &[
@@ -132,7 +132,7 @@ impl NativeBuild {
             package_load_path,
             gxi: resolve_program(env::var_os("GERBIL_GXI").unwrap_or_else(|| "gxi".into())),
             workspace,
-            gsc: resolve_program(env::var_os("GERBIL_GSC").unwrap_or_else(|| "gsc".into())),
+            gsc: discover_gambit_gsc_from_env().expect("discover SDK paired Gambit compiler"),
             gxpkg: resolve_program(env::var_os("GERBIL_GXPKG").unwrap_or_else(|| "gxpkg".into())),
         }
     }
