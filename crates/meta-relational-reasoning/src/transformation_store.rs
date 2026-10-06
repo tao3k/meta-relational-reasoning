@@ -5,6 +5,7 @@ use std::{
     fs::{self, File, OpenOptions},
     io::{Read, Write},
     path::{Path, PathBuf},
+    sync::Arc,
 };
 
 use mrr_relation::Value;
@@ -41,7 +42,7 @@ pub struct TransformationResultStore {
     _lock: StoreLock,
     archived: Option<ArchivedResult>,
     current: bool,
-    authority: Option<TransformationAuthorityLease>,
+    authority: Option<PublicationAuthority>,
     reverse: BTreeMap<[u8; 32], Vec<[u8; 32]>>,
     limits: TransformationLimits,
 }
@@ -54,6 +55,41 @@ impl Drop for StoreLock {
         let _ = self.0.unlock();
     }
 }
+/// A live provider lease retained only in memory; archives never restore it.
+pub trait TransformationPublicationLease: std::fmt::Debug {
+    fn is_current(&self) -> bool;
+}
+
+/// Physical publication owner. The synchronous action must run under current
+/// source authority and report uncertainty if authorization changes after write.
+pub trait AsyncTransformationPublisher:
+    super::transformation_async::AsyncTransformationRuntime
+{
+    fn publication_supports(&self) -> Vec<[u8; 32]>;
+    fn publication_lease(&self) -> Arc<dyn TransformationPublicationLease>;
+    fn publish<T>(
+        &self,
+        binding: &super::transformation::TransformationBinding,
+        bytes: u64,
+        action: impl FnOnce() -> Result<T, TransformationError>,
+    ) -> Result<T, TransformationError>;
+}
+#[derive(Debug)]
+enum PublicationAuthority {
+    Finite(Box<TransformationAuthorityLease>),
+    Physical(Arc<dyn TransformationPublicationLease>),
+}
+impl PublicationAuthority {
+    fn is_current(&self) -> bool {
+        match self {
+            Self::Finite(lease) => lease.is_current(),
+            Self::Physical(lease) => lease.is_current(),
+        }
+    }
+}
+#[path = "transformation_store_async.rs"]
+mod asynchronous;
+
 impl TransformationResultStore {
     pub fn open(
         path: impl AsRef<Path>,
@@ -210,7 +246,13 @@ impl TransformationResultStore {
         candidate: &TransformationPlanCandidate,
         catalog: &impl FiniteTransformationOwner,
     ) -> Result<Vec<[u8; 32]>, TransformationError> {
-        let mut supports = catalog.authority_supports();
+        self.support_cut(candidate, catalog.authority_supports())
+    }
+    fn support_cut(
+        &self,
+        candidate: &TransformationPlanCandidate,
+        mut supports: Vec<[u8; 32]>,
+    ) -> Result<Vec<[u8; 32]>, TransformationError> {
         for step in &candidate.steps {
             supports.push(*step.admission.digest());
             supports.extend(&step.admission.definition().dependencies);
@@ -276,7 +318,7 @@ impl TransformationResultStore {
         }
         self.archived = Some(record);
         self.current = true;
-        self.authority = Some(lease);
+        self.authority = Some(PublicationAuthority::Finite(Box::new(lease)));
         self.index();
         Ok(execution)
     }
@@ -311,7 +353,7 @@ impl TransformationResultStore {
         let lease = catalog.publication_lease()?;
         lease.with_current(&candidate.binding, || {
             self.current = true;
-            self.authority = Some(lease.clone());
+            self.authority = Some(PublicationAuthority::Finite(Box::new(lease.clone())));
             Ok(())
         })?;
         Ok(execution)

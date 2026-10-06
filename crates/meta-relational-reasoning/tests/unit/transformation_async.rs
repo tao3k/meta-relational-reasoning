@@ -16,6 +16,7 @@ struct SuspendedRuntime<'a> {
     inner: NaturalRuntime<'a>,
     revoke_during_solve: bool,
     extracted: Cell<usize>,
+    publication: std::sync::Arc<PublicationState>,
 }
 impl AsyncTransformationRuntime for SuspendedRuntime<'_> {
     fn identity(&self) -> [u8; 32] {
@@ -96,6 +97,7 @@ fn async_receipt_matches_sync_execution_after_suspension() {
         },
         revoke_during_solve: false,
         extracted: Cell::new(0),
+        publication: std::sync::Arc::new(PublicationState::default()),
     };
     let plan = concrete_plan(17);
     let admitted = admit_transformation_plan(&plan, limits(), &verifier).unwrap();
@@ -135,6 +137,7 @@ fn async_revocation_during_solver_releases_no_completed_receipt() {
         },
         revoke_during_solve: true,
         extracted: Cell::new(0),
+        publication: std::sync::Arc::new(PublicationState::default()),
     };
     let plan = concrete_plan(17);
     let admitted = admit_transformation_plan(&plan, limits(), &verifier).unwrap();
@@ -167,6 +170,7 @@ fn cancelling_suspended_solver_never_runs_extraction() {
         },
         revoke_during_solve: false,
         extracted: Cell::new(0),
+        publication: std::sync::Arc::new(PublicationState::default()),
     };
     let plan = concrete_plan(17);
     let admitted = admit_transformation_plan(&plan, limits(), &verifier).unwrap();
@@ -187,4 +191,133 @@ fn cancelling_suspended_solver_never_runs_extraction() {
         );
     }
     assert_eq!(runtime.extracted.get(), 0);
+}
+
+#[derive(Debug, Default)]
+struct PublicationState {
+    revoked: std::sync::atomic::AtomicBool,
+    revoke_after_write: std::sync::atomic::AtomicBool,
+}
+impl crate::TransformationPublicationLease for PublicationState {
+    fn is_current(&self) -> bool {
+        !self.revoked.load(std::sync::atomic::Ordering::Acquire)
+    }
+}
+impl crate::AsyncTransformationPublisher for SuspendedRuntime<'_> {
+    fn publication_supports(&self) -> Vec<[u8; 32]> {
+        vec![[91; 32]]
+    }
+    fn publication_lease(&self) -> std::sync::Arc<dyn crate::TransformationPublicationLease> {
+        self.publication.clone()
+    }
+    fn publish<T>(
+        &self,
+        _: &TransformationBinding,
+        _: u64,
+        action: impl FnOnce() -> Result<T, TransformationError>,
+    ) -> Result<T, TransformationError> {
+        use crate::TransformationPublicationLease;
+        use std::sync::atomic::Ordering;
+        if !self.publication.is_current() {
+            return Err(TransformationError::Revoked);
+        }
+        let result = action()?;
+        if self.publication.revoke_after_write.load(Ordering::Acquire) {
+            self.publication.revoked.store(true, Ordering::Release);
+            return Err(TransformationError::PublicationUncertain);
+        }
+        Ok(result)
+    }
+}
+#[test]
+fn physical_archive_requires_replay_and_retains_durable_support_invalidation() {
+    let path = std::env::temp_dir().join(format!("mrr-physical-store-{}.cbor", std::process::id()));
+    let _ = std::fs::remove_file(&path);
+    let revoked = Cell::new(false);
+    let verifier = CurrentVerifier {
+        revoked: &revoked,
+        failed_step: None,
+        solver_missing: false,
+    };
+    let runtime = SuspendedRuntime {
+        inner: NaturalRuntime {
+            mode: 0,
+            revoked: &revoked,
+        },
+        revoke_during_solve: false,
+        extracted: Cell::new(0),
+        publication: std::sync::Arc::new(PublicationState::default()),
+    };
+    let plan = concrete_plan(17);
+    let mut store = crate::TransformationResultStore::open(&path, limits()).unwrap();
+    complete(store.execute_and_publish_async(&plan, Value::Integer(17), &verifier, &runtime))
+        .unwrap();
+    assert_eq!(store.freshness(), crate::TruthStatus::True);
+    assert_eq!(store.affected_plans(&[91; 32]).len(), 1);
+    drop(store);
+    let mut store = crate::TransformationResultStore::open(&path, limits()).unwrap();
+    assert_eq!(store.freshness(), crate::TruthStatus::Stale);
+    complete(store.replay_async(&plan, Value::Integer(17), &verifier, &runtime)).unwrap();
+    assert_eq!(store.freshness(), crate::TruthStatus::True);
+    assert!(store.invalidate(&[91; 32]).unwrap());
+    drop(store);
+    let mut store = crate::TransformationResultStore::open(&path, limits()).unwrap();
+    {
+        let mut future = pin!(store.replay_async(&plan, Value::Integer(17), &verifier, &runtime));
+        assert!(matches!(
+            future
+                .as_mut()
+                .poll(&mut Context::from_waker(Waker::noop())),
+            Poll::Ready(Err(TransformationError::Revoked))
+        ));
+    }
+    drop(store);
+    let _ = std::fs::remove_file(&path);
+    let _ = std::fs::remove_file(path.with_extension("lock"));
+}
+#[test]
+fn physical_archive_uncertain_write_never_becomes_fresh() {
+    use std::sync::atomic::Ordering;
+    let path = std::env::temp_dir().join(format!(
+        "mrr-physical-uncertain-{}.cbor",
+        std::process::id()
+    ));
+    let _ = std::fs::remove_file(&path);
+    let revoked = Cell::new(false);
+    let verifier = CurrentVerifier {
+        revoked: &revoked,
+        failed_step: None,
+        solver_missing: false,
+    };
+    let runtime = SuspendedRuntime {
+        inner: NaturalRuntime {
+            mode: 0,
+            revoked: &revoked,
+        },
+        revoke_during_solve: false,
+        extracted: Cell::new(0),
+        publication: std::sync::Arc::new(PublicationState::default()),
+    };
+    runtime
+        .publication
+        .revoke_after_write
+        .store(true, Ordering::Release);
+    let mut store = crate::TransformationResultStore::open(&path, limits()).unwrap();
+    assert_eq!(
+        complete(store.execute_and_publish_async(
+            &concrete_plan(17),
+            Value::Integer(17),
+            &verifier,
+            &runtime
+        )),
+        Err(TransformationError::PublicationUncertain)
+    );
+    assert_ne!(store.freshness(), crate::TruthStatus::True);
+    drop(store);
+    let store = crate::TransformationResultStore::open(&path, limits()).unwrap();
+    assert_eq!(store.freshness(), crate::TruthStatus::Stale);
+    assert!(store.historical_answer().is_some());
+    drop(store);
+    let _ = std::fs::remove_file(&path);
+    let _ = std::fs::remove_file(path.with_extension("lock"));
 }

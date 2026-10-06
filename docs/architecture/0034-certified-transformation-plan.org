@@ -633,3 +633,23 @@ The property provider calls this helper for forward and extraction. This closes
 byte sequence preservation for the actual shared primitive; it does not by
 itself certify the provider's guards, codecs, solver/oracle or authenticated
 admission owner. Those cannot be inferred from an identity transport theorem.
+
+* Physical durable publication and restart recovery
+
+=TransformationResultStore::execute_and_publish_async= executes the selected
+physical runtime and independent answer checker before its synchronous owner
+publication lease. The existing process lock, bounded canonical archive,
+atomic replacement and file/directory fsync implement persistence.
+
+The support cut includes provider authority supports, runtime identity, admitted
+edges, dependencies, requirements, source revisions, solver and binding.
+Reopening exposes historical data only. =replay_async= repeats admission,
+physical execution and answer checking and compares the exact archived support,
+plan, execution and answer before recovering freshness. Durable invalidation
+survives restart. Cancellation releases no fresh record; loss of authorization
+after replacement reports =PublicationUncertain=.
+
+The publication port is an owner trust boundary, separate from transformation
+certification. Physical integration must supply a live lease tracking both
+local revocation and durable signed-grant revocation. This API does not turn a
+test verifier or a signed source grant into a production correctness certificate.

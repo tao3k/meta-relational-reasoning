@@ -177,7 +177,9 @@ mod transformation_store;
 pub use transformation_finite::{
     FiniteProblem, FiniteTransformationCatalog, FiniteTransformationOwner, FiniteTransport,
 };
-pub use transformation_store::TransformationResultStore;
+pub use transformation_store::{
+    AsyncTransformationPublisher, TransformationPublicationLease, TransformationResultStore,
+};
 
 mod transformation_kernel;
 pub use transformation_kernel::{FiniteKernelCertificate, KernelCheckedFiniteCatalog};
