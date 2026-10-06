@@ -6,6 +6,12 @@
 mod driver_cli;
 mod native;
 mod projection;
+mod temporal_worker;
+mod worker_server;
+mod worker_wire;
+
+pub use temporal_worker::{TemporalWorker, TemporalWorkerError};
+pub use worker_server::run_temporal_worker;
 
 pub use driver_cli::run_driver_cli;
 pub use native::{

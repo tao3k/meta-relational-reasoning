@@ -47,7 +47,16 @@ def main() -> int:
         jar_hash = hashlib.sha256(args.tlc_jar.read_bytes()).hexdigest()
         if jar_hash != TLC_HASH:
             parser.error("TLC jar differs from pinned official v1.7.4")
-        command = ["java", "-XX:+UseParallelGC", "-cp", str(args.tlc_jar.resolve()), "tlc2.TLC"]
+        command = [
+            "java",
+            "-XX:+UseParallelGC",
+            "-Xms32m",
+            "-Xmx1g",
+            "-XX:MaxDirectMemorySize=64m",
+            "-cp",
+            str(args.tlc_jar.resolve()),
+            "tlc2.TLC",
+        ]
 
     cases = [(name, "none", None) for name in
              ("alternative", "last", "incomplete", "absence", "newEdge", "temporal")]

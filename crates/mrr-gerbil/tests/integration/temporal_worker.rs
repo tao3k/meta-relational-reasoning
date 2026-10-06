@@ -1,8 +1,5 @@
-//! Real embedded POO calls interleaved with MRR finite inference on one owner.
-use mrr_gerbil::{
-    PARSE_ARTIFACT_SCHEMA_V1, TemporalHost, TemporalWorker, TemporalWorkerError,
-    evaluate_finite_relations, parse_gql_artifact,
-};
+//! Persistent isolated POO owner preserves Host child statuses and proof state.
+use mrr_gerbil::{TemporalHost, TemporalRuntimeError, TemporalWorker, TemporalWorkerError};
 fn text(bytes: Vec<u8>) -> String {
     String::from_utf8(bytes).unwrap()
 }
@@ -39,22 +36,28 @@ fn current(registration: &str, state: i32, policy: i32, digest: &str) -> String 
     )
 }
 #[test]
-fn temporal_and_existing_inference_share_the_production_runtime() {
-    let host = TemporalHost;
-    let source = "MATCH (n) RETURN n\n";
-    let parsed = parse_gql_artifact(source).unwrap();
-    assert_eq!(parsed.schema, PARSE_ARTIFACT_SCHEMA_V1);
-    println!("CASE original GQL parser completed in the production runtime");
+fn persistent_worker_preserves_proofs_and_host_children() {
+    let mut host = TemporalWorker::start(std::path::Path::new(env!(
+        "CARGO_BIN_EXE_mrr-temporal-worker"
+    )))
+    .unwrap();
+    assert_eq!(
+        TemporalHost.refresh_policy(policy(1, 1).as_bytes()),
+        Err(TemporalRuntimeError::RuntimeUnavailable)
+    );
+    for exit in [0, 7, 23] {
+        let mut child = std::process::Command::new("/bin/sh")
+            .args(["-c", &format!("sleep 0.1; exit {exit}")])
+            .spawn()
+            .unwrap();
+        host.refresh_policy(policy(1, 1).as_bytes()).unwrap();
+        assert_eq!(child.wait().unwrap().code(), Some(exit));
+        println!("CASE Host child exit {exit} preserved");
+    }
     assert!(matches!(
-        TemporalWorker::start(std::path::Path::new(env!(
-            "CARGO_BIN_EXE_mrr-temporal-worker"
-        ))),
-        Err(TemporalWorkerError::ModeConflict)
+        host.refresh_policy(b"\0"),
+        Err(TemporalWorkerError::InvalidInput)
     ));
-    println!("CASE embedded mode rejects worker Host mixing before launch");
-    let finite = evaluate_finite_relations(3, vec![(0, 1), (1, 2)], vec![0]).unwrap();
-    assert!(finite.paths.iter().any(|&(a, b, _)| a == 0 && b == 2));
-    println!("CASE existing Scheme finite inference completed");
     let p = text(host.refresh_policy(policy(1, 1).as_bytes()).unwrap());
     let pd = digest_field(&p, "policyDigest");
     let state = include_bytes!("../fixtures/temporal-state-v1.ss");
@@ -98,10 +101,44 @@ fn temporal_and_existing_inference_share_the_production_runtime() {
     assert!(host.refresh_proof_state(state).is_err());
     assert!(host.register_proof(request.as_bytes()).is_err());
     println!("CASE late correction and stale generations reject on the same owner");
-    assert_eq!(
-        evaluate_finite_relations(3, vec![(0, 1), (1, 2)], vec![0]).unwrap(),
-        finite
-    );
-    assert_eq!(parse_gql_artifact(source).unwrap().schema, parsed.schema);
-    println!("CASE existing parser and inference remain healthy after Temporal rejections");
+    host.close().unwrap();
+    println!("CASE worker graceful EOF reaped");
+    let mut cancelled = TemporalWorker::start(std::path::Path::new(env!(
+        "CARGO_BIN_EXE_mrr-temporal-worker"
+    )))
+    .unwrap();
+    assert!(matches!(
+        cancelled.current_proof(query.as_bytes()),
+        Err(TemporalWorkerError::Native(_))
+    ));
+    println!("CASE restarted worker cannot reuse prior proof registration");
+    cancelled.cancel();
+    assert!(matches!(
+        cancelled.current_proof(b"()"),
+        Err(TemporalWorkerError::Closed)
+    ));
+    println!("CASE worker cancellation is terminal");
+}
+
+#[cfg(unix)]
+#[test]
+fn mismatched_reply_closes_the_session() {
+    use std::os::unix::fs::PermissionsExt;
+    let path =
+        std::env::temp_dir().join(format!("mrr-worker-invalid-reply-{}", std::process::id()));
+    std::fs::write(
+        &path,
+        b"#!/bin/sh\nread request\nprintf '(mrr.temporal-worker.response.v1 99 0 \"\")\\n'\n",
+    )
+    .unwrap();
+    std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o700)).unwrap();
+    let mut worker = TemporalWorker::start(&path).unwrap();
+    let result = worker.current_proof(b"()");
+    std::fs::remove_file(path).unwrap();
+    assert!(matches!(result, Err(TemporalWorkerError::Protocol)));
+    assert!(matches!(
+        worker.current_proof(b"()"),
+        Err(TemporalWorkerError::Closed)
+    ));
+    println!("CASE mismatched reply terminally rejects and reaps worker");
 }

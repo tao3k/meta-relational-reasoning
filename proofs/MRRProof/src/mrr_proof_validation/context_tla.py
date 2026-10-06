@@ -112,6 +112,9 @@ def main() -> int:
         command = [
             "java",
             "-XX:+UseParallelGC",
+            "-Xms32m",
+            "-Xmx1g",
+            "-XX:MaxDirectMemorySize=64m",
             "-cp",
             str(args.tlc_jar.resolve()),
             "tlc2.TLC",

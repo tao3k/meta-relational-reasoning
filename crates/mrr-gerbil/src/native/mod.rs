@@ -10,6 +10,7 @@ pub(crate) mod parse_artifact;
 mod parser_cst;
 mod reasoning;
 mod runtime;
+pub(crate) use runtime::claim_worker_host;
 mod temporal;
 pub use temporal::{TemporalHost, TemporalRuntimeError};
 

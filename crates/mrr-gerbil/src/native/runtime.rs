@@ -17,6 +17,12 @@ fn progress(stage: &str) {
 
 type NativeJob = Box<dyn FnOnce() + Send + 'static>;
 
+// A worker Host must never install Gambit's process-wide child reaper.
+static EMBEDDED_MODE: OnceLock<bool> = OnceLock::new();
+pub(crate) fn claim_worker_host() -> bool {
+    !*EMBEDDED_MODE.get_or_init(|| false)
+}
+
 static NATIVE_RUNTIME: OnceLock<Result<mpsc::Sender<NativeJob>, NativeRuntimeError>> =
     OnceLock::new();
 
@@ -71,6 +77,9 @@ where
     T: Send + 'static,
     F: FnOnce() -> T + Send + 'static,
 {
+    if !*EMBEDDED_MODE.get_or_init(|| true) {
+        return Err(NativeRuntimeError::Unavailable);
+    }
     let runtime = NATIVE_RUNTIME.get_or_init(|| {
         let (sender, receiver) = mpsc::channel::<NativeJob>();
         let (ready_sender, ready_receiver) = mpsc::sync_channel(0);

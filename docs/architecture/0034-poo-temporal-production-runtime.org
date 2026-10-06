@@ -350,3 +350,44 @@ MRR now pins that published package fix. A full local POO package build remains
 unqualified in the separate SDK until its pinned Orgize dependency is available;
 clean platform package CI remains the final packaging gate. No semantic ABI
 version or native initializer is changed by this packaging fix.
+
+* Persistent isolated Temporal owner
+
+=TemporalWorker= launches an explicitly selected absolute =mrr-temporal-worker=
+executable. The Host process irrevocably chooses worker or embedded mode before
+native initialization; worker mode refuses embedded calls, and an already embedded process refuses
+worker Host mode. This is a Temporal worker interface; routing parsing, finite
+inference and Search through isolated owners remains a separate composition
+gate for consumers that need those operations in the same Host process. The child contains
+the canonical compiled Scheme program and one native owner thread. A private
+bounded channel serializes calls; inert =mrr.temporal-worker.request.v1= and
+=response.v1= frames retain request identity and native error codes. Payloads
+are limited to 1 MiB and frames to 2 MiB plus 256 bytes. No evaluator, restart,
+model dispatcher or JSON transport participates.
+
+The parent includes enqueue, startup, write and read in a five-second genuine
+native progress/45-second total operation deadline. Only named native execution
+boundaries reset the idle clock. Transport failure, malformed or mismatched
+response, initialization failure and timeout close and reap the child. Native
+semantic rejection retains the session. Explicit cancellation is terminal;
+graceful EOF requires successful child exit. A new worker has a new registry
+and cannot reuse prior proof registrations. Gambit's standard descriptor
+nonblocking changes are handled inside the child without modifying Host flags.
+
+Local gates exercise persistent policy/state/proof calls, late correction,
+stale generation rejection, refusal of embedded initialization in worker mode,
+original Host child exit codes 0/7/23, mismatched responses, graceful EOF,
+terminal cancellation and rejection of old registrations after restart. The
+33 Library cases and transport bounds/escape controls pass. Deadline branches
+and whole-process memory/resource exhaustion still need fault qualification;
+these local cases do not establish provider authentication or atomic effects.
+
+The TLC launch now specifies a 32 MiB initial heap, 1 GiB maximum heap and
+64 MiB direct-memory ceiling rather than inheriting host-sized JVM defaults.
+Eight existing lifecycle scenarios and both required mutation counterexamples
+pass the original five-second/45-second watchdog locally. This does not yet
+prove the earlier CI startup silence resolved; exact-head CI remains required.
+
+MRR retains source/Temporal/IFC authority. Data Backend/Protocols still owns
+protected atomic publication, operation ledger, ACK and recovery. Worker
+currentness cannot bypass that transaction or become a durable receipt.

@@ -37,3 +37,7 @@ unsafe_code = "deny"
 [[test]]
 name = "temporal_runtime"
 path = "tests/integration/temporal_runtime.rs"
+
+[[test]]
+name = "temporal_worker"
+path = "tests/integration/temporal_worker.rs"
