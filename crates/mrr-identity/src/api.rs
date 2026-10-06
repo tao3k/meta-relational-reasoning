@@ -31,6 +31,7 @@ pub enum IdentityDomain {
     LineageNode,
     LineageEdge,
     ReasoningBundle,
+    Transformation,
 }
 
 impl IdentityDomain {
@@ -54,6 +55,7 @@ impl IdentityDomain {
             Self::LineageNode => "lineage-node",
             Self::LineageEdge => "lineage-edge",
             Self::ReasoningBundle => "reasoning-bundle",
+            Self::Transformation => "transformation",
         }
     }
 }
@@ -252,3 +254,5 @@ identity_type!(RulePackId, RulePack);
 identity_type!(LineageNodeId, LineageNode);
 identity_type!(LineageEdgeId, LineageEdge);
 identity_type!(ReasoningBundleId, ReasoningBundle);
+
+identity_type!(TransformationId, Transformation);

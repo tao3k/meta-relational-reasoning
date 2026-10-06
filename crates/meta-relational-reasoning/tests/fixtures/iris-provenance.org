@@ -1,0 +1,16 @@
+#+title: UCI Iris corpus provenance
+
+Source: https://archive.ics.uci.edu/dataset/53/iris
+Download: https://archive.ics.uci.edu/static/public/53/iris.zip
+Retrieved: 2026-10-06. File =iris.data= is preserved without modifications.
+Citation: Fisher, R. (1936). Iris [Dataset]. UCI Machine Learning Repository.
+DOI: https://doi.org/10.24432/C56C76
+License: Creative Commons Attribution 4.0 International
+https://creativecommons.org/licenses/by/4.0/
+
+SHA-256: 6f608b71a7317216319b4d27b4d9bc84e6abd734eda7872b71a458569e2656c0
+
+The qualification task is exact transport of the corpus's recorded class
+witnesses through row reversal and class-code relabeling. It evaluates witness
+transport and independent CSV-label equality. It does not train a classifier,
+claim predictive accuracy, or correct the historical data's reported errors.

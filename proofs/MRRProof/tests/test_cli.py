@@ -176,7 +176,7 @@ $ A => B $
 
     def test_current_workspace_and_proof_contract_are_locally_admitted(self) -> None:
         graph = cli.dependency_graph()
-        lean_source = (cli.ROOT / "proofs/MRRProof/BundleAdmission.lean").read_text()
+        lean_source = cli.proof_source()
         obligations = cli.validate_proof_obligations(set(cli.CORE_CRATES), lean_source)
         babel = org_babel.validate_org_babel_contract(cli.ROOT)
         self.assertIn("mrr-bundle", graph)
@@ -198,9 +198,14 @@ $ A => B $
                 "admitted_rule_uses_only_admitted_relations",
                 "admitted_search_cause_cannot_follow_its_effect",
                 "closure_admission_rejects_any_failed_owner",
+                "compose_assoc",
+                "compose_extract_assoc",
+                "compose_forward_assoc",
+                "compose_sound",
                 "explicit_search_merge_requires_product_boundary",
                 "filter_for_admission_is_typed",
                 "filter_for_rejection_emits_no_ir",
+                "finiteCheck_sound",
                 "frontend_common_surface_normalizes_across_languages",
                 "frontend_receipt_retains_selected_language",
                 "graph_element_predicate_admission_is_typed",
@@ -208,6 +213,9 @@ $ A => B $
                 "graph_match_path_prefix_admission_is_typed",
                 "graph_match_path_prefix_rejection_emits_no_ir",
                 "identity_domain_separation",
+                "identity_extract",
+                "identity_left",
+                "identity_right",
                 "inserted_fact_has_admitted_schema",
                 "order_page_admission_is_typed",
                 "order_page_rejection_emits_no_ir",

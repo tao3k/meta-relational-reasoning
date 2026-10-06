@@ -7,6 +7,11 @@ mod api;
 mod binding;
 mod counterexample;
 mod query_result;
+mod transformation;
+mod transformation_execution;
+mod transformation_publication;
+#[cfg(feature = "native-inference")]
+mod transformation_route;
 mod truth;
 mod typing;
 pub use admission::{
@@ -75,7 +80,7 @@ pub use mrr_deduction::{
 pub use mrr_identity::{
     ActionId, DerivationId, EntityId, FactId, GenerationId, LineageEdgeId, LineageNodeId, QueryId,
     QueryOperatorId, ReasoningBundleId, RelationId, RevisionId, RuleId, RulePackId, StateId,
-    TransitionId,
+    TransformationId, TransitionId,
 };
 pub use mrr_intent::{
     IntentBindingStatus, IntentBundleBinding, IntentProjectionError, IntentSemanticModel,
@@ -123,6 +128,25 @@ pub use query_result::{
 };
 pub use truth::{TruthStatus, conflict_truth, intent_binding_truth, safety_truth, why_not_truth};
 pub use typing::{ExpressionType, ParameterType, QueryType, ResultField, StaticQueryTyping};
+
+pub use transformation::{
+    TransformationAdmission, TransformationBinding, TransformationDefinition,
+    TransformationEndpoint, TransformationError, TransformationEvidence, TransformationLimits,
+    TransformationPlanAdmission, TransformationPlanCandidate, TransformationProfile,
+    TransformationStep, TransformationVerifier, admit_transformation, admit_transformation_plan,
+    decode_transformation_definition, encode_transformation_definition,
+    transformation_failure_truth, transformation_identity,
+};
+
+pub use transformation_execution::{
+    TransformationExecutionReceipt, TransformationRuntime, execute_transformation_plan,
+    transformation_value_digest,
+};
+#[cfg(feature = "native-inference")]
+pub use transformation_route::{TransformationRouteSearch, search_transformation_routes};
+
+pub use transformation_publication::{PublishedTransformationResult, TransformationResultSlot};
+
 #[cfg(test)]
 #[path = "../tests/unit/mod.rs"]
 mod tests;
@@ -142,4 +166,19 @@ mod property_execution;
 pub use property_execution::{
     AdmittedPropertyExecution, PropertyExecutionCandidate, PropertyExecutionError,
     PropertyQueryBackend,
+};
+
+mod transformation_finite;
+mod transformation_store;
+pub use transformation_finite::{
+    FiniteProblem, FiniteTransformationCatalog, FiniteTransformationOwner, FiniteTransport,
+};
+pub use transformation_store::TransformationResultStore;
+
+mod transformation_kernel;
+pub use transformation_kernel::{FiniteKernelCertificate, KernelCheckedFiniteCatalog};
+
+mod transformation_projection;
+pub use transformation_projection::{
+    TransformationRouteCandidate, verify_transformation_projection,
 };

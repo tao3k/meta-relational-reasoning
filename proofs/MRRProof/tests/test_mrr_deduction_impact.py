@@ -4,7 +4,7 @@ from mrr_proof_validation import cli
 def obligations_for(changed: list[str]) -> tuple[set[str], set[str], set[str]]:
     seeds = cli.changed_crates(changed)
     impacted = cli.downstream_closure(cli.dependency_graph(), seeds)
-    lean_source = (cli.ROOT / "proofs/MRRProof/BundleAdmission.lean").read_text()
+    lean_source = cli.proof_source()
     obligations = cli.validate_proof_obligations(impacted, lean_source)
     return seeds, impacted, obligations
 

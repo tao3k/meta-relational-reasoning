@@ -14,3 +14,7 @@ mod agentic_ai_context_receipts;
 
 #[cfg(feature = "agentic-ai-context")]
 mod agentic_ai_context_selection;
+
+mod transformation;
+
+mod transformation_finite;

@@ -69,6 +69,10 @@ structure ReasoningBundleId where
   digest : Digest256
   deriving DecidableEq
 
+structure TransformationId where
+  digest : Digest256
+  deriving DecidableEq
+
 structure RevisionId where
   digest : Digest256
   deriving DecidableEq
@@ -88,6 +92,7 @@ inductive StableIdentity where
   | lineageNode : LineageNodeId -> StableIdentity
   | lineageEdge : LineageEdgeId -> StableIdentity
   | reasoningBundle : ReasoningBundleId -> StableIdentity
+  | transformation : TransformationId -> StableIdentity
   | revision : RevisionId -> StableIdentity
   | state : StateId -> StableIdentity
   deriving DecidableEq

@@ -330,3 +330,7 @@ the existing Vec/Slice library models. The separate
 Lean 4.31 project pins the extractor; the existing system proofs use Lean 4.34.
 See [[file:proofs/MRRProof/AgenticAIContextRust/README.org][the source extraction boundary]]
 for setup and the remaining native container-adapter refinement obligations.
+
+* Certified transformations
+
+See [[file:docs/architecture/0034-certified-transformation-plan.org][the certified transformation contract and implementation]].
