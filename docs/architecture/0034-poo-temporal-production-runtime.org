@@ -393,11 +393,13 @@ Rust evaluator or legacy transport fallback is introduced. Deadline branches
 and whole-process memory/resource exhaustion still need fault qualification;
 these local cases do not establish provider authentication or atomic effects.
 
-This composition pins POO =4977152d= and its maintained Parser revision.
+This composition pins POO =bb78f2c7= and its maintained Parser revision.
 The local Library gates pass 34 native contracts, 3 isolated worker controls,
 6 original Source cases, 1 embedded composition and 1 configured consumer
 composition; POO passes 24 original Query/Orgize/Evidence cases through its
-heap-fenced native gxtest entry. No raw runtime log is a Git artifact. The
+heap-fenced native gxtest entry. Native and Bazel Parser revisions are synchronized, and 12 dependency/license
+automation controls plus the read-only Bazel lock gate pass. No raw runtime log
+is a Git artifact. The
 interpreted POO =just test-file= startup remains a five-second idle failure on
 this host; the compiled entry does not relax that gate. These are Library
 receipts, not a new real-model or Data transaction qualification.

@@ -1,4 +1,4 @@
 (package:
  meta-relational-reasoning
 depend:
- ("github.com/tao3k/poo-flow@4977152db0d64f888300687f7e61ed02301f0306"))
+ ("github.com/tao3k/poo-flow@bb78f2c7bd84714a32ae8007321266bc81c1c114"))
