@@ -352,6 +352,8 @@ The implementation extends MRR PR #9 base
   it with Lean 4.31.0. Each child has a fixed five-second deadline and a bounded
   output buffer; checking uses one worker and a 1024 MiB Lean memory limit.
   Balanced selection avoids expanding entire arrays during kernel reduction.
+  Every table constructs a concrete =CertifiedTransformation=; admission requires
+  its axiom report and all generic identity/composition/finite-soundness reports.
   Failed checks cannot construct an opaque certificate or admission;
 - [[file:../../crates/meta-relational-reasoning/src/transformation_projection.rs][Independent closure verification]] of ordered supports, endpoint continuity,
   soundness and exact finite completeness. [[file:../../crates/meta-relational-reasoning/src/transformation_route.rs][Scheme ASCENT routing]] consumes those

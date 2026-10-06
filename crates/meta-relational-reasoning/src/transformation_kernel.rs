@@ -95,9 +95,35 @@ impl KernelCheckedFiniteCatalog {
                 line.contains("depends on axioms:")
                     && !((line.starts_with("'MRRFiniteKernel.transport_")
                         && line.ends_with("depends on axioms: [propext]"))
+                        || (line.starts_with("'MRRFiniteKernel.certified_")
+                            && line.ends_with("depends on axioms: [propext, Quot.sound]"))
                         || line == "'MRRTransformation.finiteCheck_sound' depends on axioms: [propext, Quot.sound]")
             })
         {
+            return Err(TransformationError::KernelRejected {
+                diagnostics: checked,
+            });
+        }
+        for name in [
+            "compose_sound",
+            "compose_forward_assoc",
+            "compose_extract_assoc",
+            "identity_extract",
+            "identity_left",
+            "identity_right",
+            "compose_assoc",
+        ] {
+            if !checked.lines().any(|line| {
+                line == format!("'MRRTransformation.{name}' does not depend on any axioms")
+            }) {
+                return Err(TransformationError::KernelRejected {
+                    diagnostics: checked,
+                });
+            }
+        }
+        if !checked.lines().any(|line| {
+            line == "'MRRTransformation.finiteCheck_sound' depends on axioms: [propext, Quot.sound]"
+        }) {
             return Err(TransformationError::KernelRejected {
                 diagnostics: checked,
             });
@@ -108,6 +134,15 @@ impl KernelCheckedFiniteCatalog {
             )) && !checked.contains(&format!(
                 "'MRRFiniteKernel.transport_{ordinal}' depends on axioms: [propext]"
             )) {
+                return Err(TransformationError::KernelRejected {
+                    diagnostics: checked,
+                });
+            }
+            if !checked.lines().any(|line| {
+                line == format!(
+                    "'MRRFiniteKernel.certified_{ordinal}' depends on axioms: [propext, Quot.sound]"
+                )
+            }) {
                 return Err(TransformationError::KernelRejected {
                     diagnostics: checked,
                 });
@@ -334,7 +369,7 @@ fn kernel_source(transports: &[FiniteTransport]) -> String {
             t.target.correct.len(),
             t.target.answers,
         );
-        source.push_str(&format!("def source_{i} : FiniteSpecification {n} {m} := ⟨fun input answer => {source}⟩\ndef target_{i} : FiniteSpecification {p} {q} := ⟨fun input answer => {target}⟩\ndef forward_{i} (input : Fin {n}) : Fin {p} := ⟨({forward}) % {p}, Nat.mod_lt _ (by decide)⟩\ndef extract_{i} (input : Fin {n}) (answer : Fin {q}) : Fin {m} := ⟨({extract}) % {m}, Nat.mod_lt _ (by decide)⟩\ntheorem transport_{i} : finiteCheck source_{i} target_{i} forward_{i} extract_{i} = true := by decide\n#print axioms transport_{i}\n", source=correctness(&t.source.correct), target=correctness(&t.target.correct), forward=numbers(&t.forward, "input.val"), extract=lookup(&t.extract.iter().map(|row| numbers(row, "answer.val")).collect::<Vec<_>>(), "input.val", 0)));
+        source.push_str(&format!("def source_{i} : FiniteSpecification {n} {m} := ⟨fun input answer => {source}⟩\ndef target_{i} : FiniteSpecification {p} {q} := ⟨fun input answer => {target}⟩\ndef forward_{i} (input : Fin {n}) : Fin {p} := ⟨({forward}) % {p}, Nat.mod_lt _ (by decide)⟩\ndef extract_{i} (input : Fin {n}) (answer : Fin {q}) : Fin {m} := ⟨({extract}) % {m}, Nat.mod_lt _ (by decide)⟩\ntheorem transport_{i} : finiteCheck source_{i} target_{i} forward_{i} extract_{i} = true := by decide\n#print axioms transport_{i}\ndef certified_{i} : CertifiedTransformation source_{i}.problem target_{i}.problem := certifyFinite source_{i} target_{i} forward_{i} extract_{i} transport_{i}\n#print axioms certified_{i}\n", source=correctness(&t.source.correct), target=correctness(&t.target.correct), forward=numbers(&t.forward, "input.val"), extract=lookup(&t.extract.iter().map(|row| numbers(row, "answer.val")).collect::<Vec<_>>(), "input.val", 0)));
     }
     source.push_str("end MRRFiniteKernel\n");
     source
