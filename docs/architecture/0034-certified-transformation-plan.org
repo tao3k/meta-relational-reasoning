@@ -407,6 +407,7 @@ stored result; reopening retains history and requires fresh checked replay.
 | Clippy | Passed with warnings denied | Facade and identity, all targets, no default features |
 | Proof Python suite | 27 passed | Includes real Lean negative fixtures and axiom policy |
 | MRR Lean 4.31.0 | Combined kernel and Org receipt passed | Exact selected model declarations |
+| Pinned Aeneas source extraction | Refreshed and independently regenerated after identity changes | Only identity source-location comments changed; extracted definitions are identical |
 | LeanPOO public modules | Library and indexed transformation tests passed | Public PR #8, separate exact-head CI required after push |
 | UCI Iris | All 150 CSV labels matched for sequential and materialized composition | Whole finite domain, not arbitrary external inputs |
 | Durable example | Execution, stale reopen, checked replay and revoke passed | Local OS lock and publication file |

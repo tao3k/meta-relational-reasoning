@@ -22,7 +22,7 @@ local infixr:35 " ** " => Prod
 namespace MRR.ContextValue
 
 /-- [mrr_identity::api::EntityId]
-    Source: 'crates/mrr-identity/src/api.rs', lines 174:8-174:45
+    Source: 'crates/mrr-identity/src/api.rs', lines 176:8-176:45
     Name pattern: [mrr_identity::api::EntityId]
     Visibility: public -/
 @[reducible, rust_type "mrr_identity::api::EntityId"]

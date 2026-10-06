@@ -81,7 +81,7 @@ impl_def
 }
 
 /-- [mrr_identity::api::{impl core::clone::Clone for mrr_identity::api::FactId}::clone]:
-    Source: 'crates/mrr-identity/src/api.rs', lines 173:17-173:22
+    Source: 'crates/mrr-identity/src/api.rs', lines 175:17-175:22
     Name pattern: [mrr_identity::api::{core::clone::Clone<mrr_identity::api::FactId>}::clone]
     Visibility: public -/
 @[rust_fun
@@ -91,7 +91,7 @@ def mrr_identity.api.FactId.Insts.CoreCloneClone.clone
   ok self
 
 /-- Trait implementation: [mrr_identity::api::{impl core::clone::Clone for mrr_identity::api::FactId}]
-    Source: 'crates/mrr-identity/src/api.rs', lines 173:17-173:22
+    Source: 'crates/mrr-identity/src/api.rs', lines 175:17-175:22
     Name pattern: [core::clone::Clone<mrr_identity::api::FactId>] -/
 @[reducible, rust_trait_impl "core::clone::Clone<mrr_identity::api::FactId>"]
 def mrr_identity.api.FactId.Insts.CoreCloneClone : core.clone.Clone
@@ -100,7 +100,7 @@ def mrr_identity.api.FactId.Insts.CoreCloneClone : core.clone.Clone
 }
 
 /-- [mrr_identity::api::{impl core::cmp::PartialEq<mrr_identity::api::FactId> for mrr_identity::api::FactId}::eq]:
-    Source: 'crates/mrr-identity/src/api.rs', lines 173:45-173:54
+    Source: 'crates/mrr-identity/src/api.rs', lines 175:45-175:54
     Name pattern: [mrr_identity::api::{core::cmp::PartialEq<mrr_identity::api::FactId, mrr_identity::api::FactId>}::eq]
     Visibility: public -/
 @[rust_fun
@@ -112,7 +112,7 @@ def mrr_identity.api.FactId.Insts.CoreCmpPartialEqFactId.eq
   core.array.equality.PartialEqArray.eq core.cmp.PartialEqU8 self other
 
 /-- Trait implementation: [mrr_identity::api::{impl core::cmp::PartialEq<mrr_identity::api::FactId> for mrr_identity::api::FactId}]
-    Source: 'crates/mrr-identity/src/api.rs', lines 173:45-173:54
+    Source: 'crates/mrr-identity/src/api.rs', lines 175:45-175:54
     Name pattern: [core::cmp::PartialEq<mrr_identity::api::FactId, mrr_identity::api::FactId>] -/
 @[reducible, rust_trait_impl
   "core::cmp::PartialEq<mrr_identity::api::FactId, mrr_identity::api::FactId>"]
@@ -124,7 +124,7 @@ impl_def mrr_identity.api.FactId.Insts.CoreCmpPartialEqFactId :
 }
 
 /-- [mrr_identity::api::{impl core::cmp::Eq for mrr_identity::api::FactId}::assert_fields_are_eq]:
-    Source: 'crates/mrr-identity/src/api.rs', lines 173:30-173:32
+    Source: 'crates/mrr-identity/src/api.rs', lines 175:30-175:32
     Name pattern: [mrr_identity::api::{core::cmp::Eq<mrr_identity::api::FactId>}::assert_fields_are_eq]
     Visibility: public -/
 @[rust_fun
@@ -134,7 +134,7 @@ def mrr_identity.api.FactId.Insts.CoreCmpEq.assert_fields_are_eq
   ok ()
 
 /-- Trait implementation: [mrr_identity::api::{impl core::cmp::Eq for mrr_identity::api::FactId}]
-    Source: 'crates/mrr-identity/src/api.rs', lines 173:30-173:32
+    Source: 'crates/mrr-identity/src/api.rs', lines 175:30-175:32
     Name pattern: [core::cmp::Eq<mrr_identity::api::FactId>] -/
 @[reducible, rust_trait_impl "core::cmp::Eq<mrr_identity::api::FactId>"]
 def mrr_identity.api.FactId.Insts.CoreCmpEq : core.cmp.Eq
@@ -145,7 +145,7 @@ def mrr_identity.api.FactId.Insts.CoreCmpEq : core.cmp.Eq
 }
 
 /-- [mrr_identity::api::{impl core::cmp::Ord for mrr_identity::api::FactId}::cmp]:
-    Source: 'crates/mrr-identity/src/api.rs', lines 173:40-173:43
+    Source: 'crates/mrr-identity/src/api.rs', lines 175:40-175:43
     Name pattern: [mrr_identity::api::{core::cmp::Ord<mrr_identity::api::FactId>}::cmp]
     Visibility: public -/
 @[rust_fun
@@ -157,7 +157,7 @@ def mrr_identity.api.FactId.Insts.CoreCmpOrd.cmp
   Array.Insts.CoreCmpOrd.cmp core.cmp.OrdU8 self other
 
 /-- [mrr_identity::api::{impl core::cmp::PartialOrd<mrr_identity::api::FactId> for mrr_identity::api::FactId}::partial_cmp]:
-    Source: 'crates/mrr-identity/src/api.rs', lines 173:56-173:66
+    Source: 'crates/mrr-identity/src/api.rs', lines 175:56-175:66
     Name pattern: [mrr_identity::api::{core::cmp::PartialOrd<mrr_identity::api::FactId, mrr_identity::api::FactId>}::partial_cmp]
     Visibility: public -/
 @[rust_fun
@@ -170,7 +170,7 @@ def mrr_identity.api.FactId.Insts.CoreCmpPartialOrdFactId.partial_cmp
   ok (some o)
 
 /-- Trait implementation: [mrr_identity::api::{impl core::cmp::PartialOrd<mrr_identity::api::FactId> for mrr_identity::api::FactId}]
-    Source: 'crates/mrr-identity/src/api.rs', lines 173:56-173:66
+    Source: 'crates/mrr-identity/src/api.rs', lines 175:56-175:66
     Name pattern: [core::cmp::PartialOrd<mrr_identity::api::FactId, mrr_identity::api::FactId>] -/
 @[reducible, rust_trait_impl
   "core::cmp::PartialOrd<mrr_identity::api::FactId, mrr_identity::api::FactId>"]
@@ -182,7 +182,7 @@ def mrr_identity.api.FactId.Insts.CoreCmpPartialOrdFactId : core.cmp.PartialOrd
 }
 
 /-- Trait implementation: [mrr_identity::api::{impl core::cmp::Ord for mrr_identity::api::FactId}]
-    Source: 'crates/mrr-identity/src/api.rs', lines 173:40-173:43
+    Source: 'crates/mrr-identity/src/api.rs', lines 175:40-175:43
     Name pattern: [core::cmp::Ord<mrr_identity::api::FactId>] -/
 @[reducible, rust_trait_impl "core::cmp::Ord<mrr_identity::api::FactId>"]
 def mrr_identity.api.FactId.Insts.CoreCmpOrd : core.cmp.Ord
@@ -193,7 +193,7 @@ def mrr_identity.api.FactId.Insts.CoreCmpOrd : core.cmp.Ord
 }
 
 /-- [mrr_identity::api::{impl core::cmp::PartialEq<mrr_identity::api::GenerationId> for mrr_identity::api::GenerationId}::eq]:
-    Source: 'crates/mrr-identity/src/api.rs', lines 173:45-173:54
+    Source: 'crates/mrr-identity/src/api.rs', lines 175:45-175:54
     Name pattern: [mrr_identity::api::{core::cmp::PartialEq<mrr_identity::api::GenerationId, mrr_identity::api::GenerationId>}::eq]
     Visibility: public -/
 @[rust_fun
@@ -206,7 +206,7 @@ def mrr_identity.api.GenerationId.Insts.CoreCmpPartialEqGenerationId.eq
   core.array.equality.PartialEqArray.eq core.cmp.PartialEqU8 self other
 
 /-- [mrr_identity::api::{impl core::cmp::PartialEq<mrr_identity::api::QueryId> for mrr_identity::api::QueryId}::eq]:
-    Source: 'crates/mrr-identity/src/api.rs', lines 173:45-173:54
+    Source: 'crates/mrr-identity/src/api.rs', lines 175:45-175:54
     Name pattern: [mrr_identity::api::{core::cmp::PartialEq<mrr_identity::api::QueryId, mrr_identity::api::QueryId>}::eq]
     Visibility: public -/
 @[rust_fun
@@ -218,7 +218,7 @@ def mrr_identity.api.QueryId.Insts.CoreCmpPartialEqQueryId.eq
   core.array.equality.PartialEqArray.eq core.cmp.PartialEqU8 self other
 
 /-- [mrr_identity::api::{impl core::cmp::PartialEq<mrr_identity::api::EntityId> for mrr_identity::api::EntityId}::eq]:
-    Source: 'crates/mrr-identity/src/api.rs', lines 173:45-173:54
+    Source: 'crates/mrr-identity/src/api.rs', lines 175:45-175:54
     Name pattern: [mrr_identity::api::{core::cmp::PartialEq<mrr_identity::api::EntityId, mrr_identity::api::EntityId>}::eq]
     Visibility: public -/
 @[rust_fun
@@ -230,7 +230,7 @@ def mrr_identity.api.EntityId.Insts.CoreCmpPartialEqEntityId.eq
   core.array.equality.PartialEqArray.eq core.cmp.PartialEqU8 self other
 
 /-- [mrr_identity::api::{impl core::cmp::PartialEq<mrr_identity::api::StateId> for mrr_identity::api::StateId}::eq]:
-    Source: 'crates/mrr-identity/src/api.rs', lines 173:45-173:54
+    Source: 'crates/mrr-identity/src/api.rs', lines 175:45-175:54
     Name pattern: [mrr_identity::api::{core::cmp::PartialEq<mrr_identity::api::StateId, mrr_identity::api::StateId>}::eq]
     Visibility: public -/
 @[rust_fun
@@ -242,7 +242,7 @@ def mrr_identity.api.StateId.Insts.CoreCmpPartialEqStateId.eq
   core.array.equality.PartialEqArray.eq core.cmp.PartialEqU8 self other
 
 /-- [mrr_identity::api::{impl core::cmp::PartialEq<mrr_identity::api::RevisionId> for mrr_identity::api::RevisionId}::eq]:
-    Source: 'crates/mrr-identity/src/api.rs', lines 173:45-173:54
+    Source: 'crates/mrr-identity/src/api.rs', lines 175:45-175:54
     Name pattern: [mrr_identity::api::{core::cmp::PartialEq<mrr_identity::api::RevisionId, mrr_identity::api::RevisionId>}::eq]
     Visibility: public -/
 @[rust_fun
