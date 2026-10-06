@@ -10,7 +10,11 @@ mod query_result;
 mod transformation;
 mod transformation_async;
 mod transformation_execution;
+mod transformation_identity_proof;
 pub use transformation_async::{AsyncTransformationRuntime, execute_transformation_plan_async};
+pub use transformation_identity_proof::{
+    TransformationByteIdentityProof, transformation_byte_identity_proof,
+};
 mod transformation_publication;
 #[cfg(feature = "native-inference")]
 mod transformation_route;
