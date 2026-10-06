@@ -2,6 +2,7 @@
 
 (import ./native
         ../reasoning/finite-native
+        ../temporal/native
         :gerbil-parser/src/ffi/parse-artifact-v1-native)
 (export main)
 

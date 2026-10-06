@@ -10,6 +10,8 @@ pub(crate) mod parse_artifact;
 mod parser_cst;
 mod reasoning;
 mod runtime;
+mod temporal;
+pub use temporal::{TemporalHost, TemporalRuntimeError};
 
 pub use finite::{FiniteInferenceCandidate, FiniteInferenceError, evaluate_finite_relations};
 pub use runtime::NativeRuntimeStatus;

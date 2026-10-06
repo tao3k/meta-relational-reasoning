@@ -33,3 +33,7 @@ harness = false
 
 [lints.rust]
 unsafe_code = "deny"
+
+[[test]]
+name = "temporal_runtime"
+path = "tests/integration/temporal_runtime.rs"

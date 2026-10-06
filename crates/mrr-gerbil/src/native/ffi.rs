@@ -16,6 +16,11 @@ pub(super) struct ParserNativeResult {
 }
 
 unsafe extern "C" {
+    fn mrr_temporal_abi_version() -> u32;
+    fn mrr_temporal_call(operation: i32, payload: *const c_char) -> i32;
+    fn mrr_temporal_result_size() -> i64;
+    fn mrr_temporal_result_byte(index: i64) -> i32;
+    fn mrr_temporal_reset() -> i32;
     fn mrr_finite_abi_version() -> u32;
     fn mrr_finite_start(nodes: i64, edges: i64, observations: i64) -> i32;
     fn mrr_finite_edge(from: i64, to: i64) -> i32;
@@ -256,5 +261,32 @@ unsafe fn parser_native_result(
         call_status,
         result_status,
         payload,
+    }
+}
+
+/// Called only inside the existing native owner job; copy then release on every path.
+pub(super) fn temporal(operation: i32, payload: &CStr) -> Result<Vec<u8>, i32> {
+    unsafe {
+        if mrr_temporal_abi_version() != 1 {
+            return Err(-1);
+        }
+        let status = mrr_temporal_call(operation, payload.as_ptr());
+        let result = if status != 0 {
+            Err(status)
+        } else {
+            let length = mrr_temporal_result_size();
+            if !(0..=1_048_576).contains(&length) {
+                Err(-2)
+            } else {
+                (0..length)
+                    .map(|i| u8::try_from(mrr_temporal_result_byte(i)).map_err(|_| -2))
+                    .collect()
+            }
+        };
+        let released = mrr_temporal_reset();
+        if released != 0 {
+            return Err(released);
+        }
+        result
     }
 }

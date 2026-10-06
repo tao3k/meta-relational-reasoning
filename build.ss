@@ -19,6 +19,7 @@
     "scheme/reasoning/default"
     "scheme/reasoning/finite"
     "scheme/reasoning/finite-native"
+    "scheme/temporal/native"
     "scheme/search/enhanced-tree-sitter-query"
     "scheme/search/projection"
     "scheme/query/provider/config"

@@ -21,6 +21,8 @@ const REQUIRED_MODULES: &[&str] = &[
     "meta-relational-reasoning/scheme/grammar/native",
     "meta-relational-reasoning/scheme/reasoning/finite-native",
     "gerbil-ascent/table/expression",
+    "meta-relational-reasoning/scheme/temporal/native",
+    "poo-flow/src/ffi/temporal-proof-host",
     "gerbil-parser/src/ffi/parse-artifact-v1-native",
 ];
 

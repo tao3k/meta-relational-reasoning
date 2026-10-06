@@ -45,7 +45,8 @@ flowchart TB
 | Provenance and derivation support | MRR lineage contracts | MRR admits complete support against the bound generation |
 | Physical data roots, rows and query execution | MRR Data | MRR consumes original physical and query admission receipts |
 | Policy meaning and authorization decisions | POO Flow IFC and authorization owners | MRR enforces the checked decision at the effect boundary |
-| Durable commit, recovery, concurrency and effect delivery | MRR with explicit storage/runtime adapters | Production runtime supplies executable guarantees |
+| Admission, scheduling and effect coordination | MRR production runtime | Select original typed inputs, run Scheme and enforce authorization |
+| Atomic head/operation commit, durable ACK and recovery | MRR Data Backend/Protocols | Execute the protected conditional transaction and retain original operation identity |
 
 Rust preserves identities and checks receipts; Scheme remains the executable
 owner of the POO algorithms. Reimplementing Temporal or finite inference in
@@ -281,3 +282,34 @@ The original proof pin and source remain unchanged; no proof is skipped and
 the published default branch, whose C4 source differs, is not substituted.
 Local bootstrap qualification verifies the fetched and checked-out commit.
 Remote proof execution on the new CI commit remains a separate required gate.
+
+* Temporal Host production entry
+
+The canonical =scheme/grammar/native-program.ss= now imports
+=scheme/temporal/native.ss=. Its advanced Host projection calls the pinned POO
+Library proof/policy owners using bounded inert Scheme datum v1. =TemporalHost=
+in =mrr-gerbil= uses the existing initializer and owner queue; it does not load
+the standalone POO dynamic-library runtime or initialize another Gambit program.
+The native archive contract requires both the MRR entry and original POO proof
+Host module. The POO dependency is fixed at =4d113752=; Gerbil remains v0.19.
+
+This entry owns no Backend, transport credentials, storage head or Data retry
+loop. MRR Data's =ConditionalContentCommitPort= owns the protected head and
+operation-ledger transaction. MRR supplies its current Temporal/IFC validation;
+that authority must remain valid through persistence by synchronization or
+atomic version comparison. A sampled current proof is not a commit permit.
+
+The public =meta-relational-reasoning= facade exports =TemporalHost= only with
+=native-inference=. Disabling default features preserves the portable contract
+graph used by MRR Data without activating the native SDK dependency.
+
+The real integration gate interleaves original parsing and Scheme finite inference with
+proof registration, current verification, a late correction and rejected stale
+calls on the same owner. Source-provider binding, IFC authorization, protected
+Data publication, crash recovery and lifecycle resource limits remain separate
+gates. Raw logs remain local or CI artifacts.
+
+Local qualification passes the 31 existing library cases and the real Temporal
+integration case under the unchanged five-second output/45-second batch gates.
+Both native and no-default-feature facade checks pass. These are local runtime
+and build receipts; remote exact-head CI remains an independent gate.
