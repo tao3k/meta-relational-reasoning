@@ -13,7 +13,7 @@ mod fixture {
         FiniteProblem, FiniteTransformationCatalog, FiniteTransport, TransformationPlanCandidate,
         TransformationStep, Value, ValueSchema, admit_transformation, transformation_value_digest,
     };
-    use transformation::{binding, limits};
+    use crate::transformation::{binding, limits};
     pub(super) fn finite_catalog() -> (FiniteTransformationCatalog, TransformationPlanCandidate) {
         let p = FiniteProblem {
             domain: [81; 32],
