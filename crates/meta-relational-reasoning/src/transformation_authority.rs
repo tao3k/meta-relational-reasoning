@@ -1,5 +1,9 @@
 //! Authenticated source grants for the kernel-qualified finite runtime.
 //! The configured issuer key and persistent ledger are explicit trust roots.
+#[path = "transformation_grant.rs"]
+mod grant;
+pub use grant::{AuthenticatedTransformationGrant, TransformationGrantOperation};
+
 use super::{
     transformation::{
         TransformationBinding, TransformationDefinition, TransformationEndpoint,

@@ -14,6 +14,8 @@ use std::num::NonZeroUsize;
 pub(super) use super::transformation_fixture::{binding, limits};
 #[path = "transformation_async.rs"]
 mod asynchronous;
+#[path = "transformation_grant.rs"]
+mod grants;
 fn endpoint(id: u8) -> TransformationEndpoint {
     TransformationEndpoint {
         semantics: [id; 32],

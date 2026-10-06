@@ -188,11 +188,11 @@ pub use transformation_projection::{
 
 mod transformation_authority;
 pub use transformation_authority::{
-    AuthenticatedFiniteTransformationCatalog, SignedTransformationSourceGrant,
-    TransformationAffineBound, TransformationAuthorityLease, TransformationCapabilities,
-    TransformationExecutionBudget, TransformationGrantLedger, TransformationResourceContract,
-    TransformationSourceGrant, transformation_grant_binding_digest,
-    transformation_grant_catalog_digest,
+    AuthenticatedFiniteTransformationCatalog, AuthenticatedTransformationGrant,
+    SignedTransformationSourceGrant, TransformationAffineBound, TransformationAuthorityLease,
+    TransformationCapabilities, TransformationExecutionBudget, TransformationGrantLedger,
+    TransformationGrantOperation, TransformationResourceContract, TransformationSourceGrant,
+    transformation_grant_binding_digest, transformation_grant_catalog_digest,
 };
 
 mod transformation_profiles;

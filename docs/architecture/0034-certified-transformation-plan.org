@@ -601,3 +601,21 @@ Physical external provider implementations, authenticated grants and their
 native refinement are still owner obligations. Qualification requires the new
 =native-transformations= integration target to pass on the exact PR head; the
 local private macOS SDK currently retains a dynamic-load startup failure.
+
+* Physical-provider signed grant boundary
+
+=AuthenticatedTransformationGrant= authenticates an Ed25519 grant against a
+separately configured ledger issuer and the caller's exact expected binding and
+catalog digests. It reuses the durable nonce ledger and its exclusive lock,
+quarantine, expiry and atomic persistence rules. Operation capabilities and
+cumulative operation/value budgets are checked before a guarded action.
+=with_current= holds a synchronous read lease and checks expiry after the action;
+providers refresh before and after asynchronous work rather than holding a lock
+across await. Publication must use the guarded action at the physical owner.
+
+This grant is source authority, not a transformation certificate. It does not
+invent an issuer, prove an arbitrary provider, authenticate an unsigned cut or
+replace the current proof verifier. The portable negative fixture rejects forged
+signatures, changed binding/catalog, denied publication and exhausted budgets;
+revocation survives reopening the ledger. The property provider consumes this
+boundary separately from its already admitted transformation edge.
