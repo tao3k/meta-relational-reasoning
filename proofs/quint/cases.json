@@ -1,0 +1,121 @@
+{
+  "schema": "mrr.quint-cases.v1",
+  "revision": {
+    "cycle": {
+      "oldEdges": [[0, 1], [1, 0]],
+      "newEdges": [[1, 2], [2, 1]],
+      "unequal": [2],
+      "global": false
+    },
+    "removed": {
+      "oldEdges": [[0, 1], [1, 2]],
+      "newEdges": [],
+      "unequal": [2],
+      "global": false
+    },
+    "added": {
+      "oldEdges": [],
+      "newEdges": [[0, 1], [1, 2]],
+      "unequal": [2],
+      "global": false
+    },
+    "diamond": {
+      "oldEdges": [[0, 1], [0, 2], [1, 3]],
+      "newEdges": [[2, 3]],
+      "unequal": [3],
+      "global": false
+    },
+    "self": {
+      "oldEdges": [[0, 0]],
+      "newEdges": [],
+      "unequal": [0],
+      "global": false
+    },
+    "global": {
+      "oldEdges": [],
+      "newEdges": [],
+      "unequal": [2],
+      "global": true
+    },
+    "equal": {
+      "oldEdges": [],
+      "newEdges": [],
+      "unequal": [],
+      "global": false
+    },
+    "selection": {
+      "oldEdges": [],
+      "newEdges": [],
+      "unequal": [2],
+      "global": false,
+      "oldSelected": [0, 1],
+      "newSelected": [1, 2]
+    }
+  },
+  "revisionMutations": [
+    {"scenario": "added", "bug": "oldEdgesOnly", "invariant": "completeBeforePublish"},
+    {"scenario": "removed", "bug": "publishEarly", "invariant": "completeBeforePublish"}
+  ],
+  "metaImpact": {
+    "alternative": {
+      "oldSupports": [[0, 0], [1, 1]],
+      "newSupports": [[0, 0], [1, 1]],
+      "oldPresent": [0, 1],
+      "newPresent": [1],
+      "supportComplete": true,
+      "coverageComplete": true,
+      "ownerClaim": "structural"
+    },
+    "last": {
+      "oldSupports": [[0, 0]],
+      "newSupports": [[0, 0]],
+      "oldPresent": [0],
+      "newPresent": [],
+      "supportComplete": true,
+      "coverageComplete": true,
+      "ownerClaim": "structural"
+    },
+    "incomplete": {
+      "oldSupports": [[0, 0]],
+      "newSupports": [[0, 0]],
+      "oldPresent": [0],
+      "newPresent": [],
+      "supportComplete": false,
+      "coverageComplete": true,
+      "ownerClaim": "structural"
+    },
+    "absence": {
+      "oldSupports": [],
+      "newSupports": [],
+      "oldPresent": [],
+      "newPresent": [],
+      "supportComplete": true,
+      "coverageComplete": false,
+      "ownerClaim": "structural"
+    },
+    "newEdge": {
+      "oldSupports": [],
+      "newSupports": [[0, 2]],
+      "oldPresent": [],
+      "newPresent": [2],
+      "supportComplete": true,
+      "coverageComplete": true,
+      "ownerClaim": "structural"
+    },
+    "temporal": {
+      "oldSupports": [],
+      "newSupports": [],
+      "oldPresent": [],
+      "newPresent": [],
+      "supportComplete": true,
+      "coverageComplete": true,
+      "ownerClaim": "contrast"
+    }
+  },
+  "metaImpactMutations": [
+    {"scenario": "alternative", "bug": "dropAlternative", "invariant": "noFalseRetraction"},
+    {"scenario": "newEdge", "bug": "dropNewEdges", "invariant": "frontierSound"},
+    {"scenario": "absence", "bug": "uncertifiedAbsence", "invariant": "noUncertifiedAbsence"},
+    {"scenario": "temporal", "bug": "promoteCausal", "invariant": "noTemporalPromotion"}
+  ]
+}

@@ -409,17 +409,17 @@ interpreted POO =just test-file= startup remains a five-second idle failure on
 this host; the compiled entry does not relax that gate. These are Library
 receipts, not a new real-model or Data transaction qualification.
 
-The TLC launch now specifies a 32 MiB initial heap, 1 GiB maximum heap and
+At the earlier =519d0ea= qualification head, the TLC launch specified a 32 MiB initial heap, 1 GiB maximum heap and
 64 MiB direct-memory ceiling rather than inheriting host-sized JVM defaults.
 Eight existing lifecycle scenarios and both required mutation counterexamples
 pass the original five-second/45-second watchdog locally. Exact-head CI on =519d0ea= also passes the TLA/Lean conformance and shared
 C4 replay jobs. New worker changes require their own exact-head CI.
 
-Cold JVM startup also uses one active processor, matching the single TLC
+At that earlier qualification head, cold JVM startup also used one active processor, matching the single TLC
 worker. Completed JVM class initialization is observable through the VM's
 own trace; no timer heartbeat changes the five-second progress deadline.
-With these options, the ten lifecycle cases and ten MetaImpact cases pass
-locally, including required counterexamples, and Lean checks 166 actual TLC
+With those options, the ten lifecycle cases and ten MetaImpact cases passed
+locally at that head, including required counterexamples, and Lean checked 166 actual TLC
 states. The local JVM is OpenJDK 25; Java 17 CI passes on =8c02320=; each newer head remains an independent gate.
 Current Rust/Value source extraction freshness passes with pinned Aeneas/Charon.
 The regenerated difference is source line metadata only. Both Lean builds pass

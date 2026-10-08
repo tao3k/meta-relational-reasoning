@@ -62,7 +62,7 @@ levels, not a claim that every source graph should be loaded into MRR.
 
 These remain implementation hypotheses, not measured runtime results.  The
 [[file:../proofs/MRRProof/AgenticAIContext/MRR/AgenticAIContext/MetaImpact.lean][Lean model]] proves conditional support and absence laws; the
-[[file:../proofs/MRRProof/AgenticAIContextTLA/MetaImpact.tla][TLA+ model]] checks finite cases with explicit counterexample mutants.  An
+[[file:../proofs/quint/MetaImpact.qnt][Quint model]] checks finite cases with explicit counterexample mutants.  An
 integration fixture must still show that actual producers and effect owners
 enforce the cut and authority checks.
 

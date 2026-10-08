@@ -388,8 +388,9 @@ change classification, revision assembly, state validation/publication,
 serialization/hash, unsafe stdlib and compilation/provider obligations remain
 separate gates.
 
-The complementary [[file:../AgenticAIContextTLA/README.org][TLA+/Lean gate]] checks phase
+The complementary [[file:../../quint/README.org][Quint/Lean gate]] checks phase
 ordering, weak-fair termination, complete invalidation before publication, and
-real fault counterexamples. Actual exported TLC states are checked against Lean
-publication/closure/reuse definitions. This cross-model conformance is distinct
+real fault counterexamples. Covered Quint simulation states and actual checker
+counterexample final states are checked against Lean publication/closure/reuse
+definitions. This cross-model conformance is distinct
 from the universal production-source obligations above.

@@ -110,9 +110,16 @@ fn compare_with_quint(fixture: &OracleFixture) {
     let stderr = forward_checker_lines(child.stderr.take().expect("Quint stderr pipe"), sender);
     let mut combined = String::new();
     let mut last_cpu = HashMap::new();
+    let started = Instant::now();
     let mut last_progress = Instant::now();
     loop {
-        match receiver.recv_timeout(Duration::from_secs(3)) {
+        let remaining = Duration::from_secs(45).saturating_sub(started.elapsed());
+        if remaining.is_zero() {
+            let _ = child.kill();
+            let _ = child.wait();
+            panic!("{}: checker exceeded 45 seconds", fixture.name);
+        }
+        match receiver.recv_timeout(Duration::from_secs(3).min(remaining)) {
             Ok(line) => {
                 let line = line.expect("read Quint checker output");
                 eprintln!("QUINT-ORACLE {}: {line}", fixture.name);
@@ -122,6 +129,11 @@ fn compare_with_quint(fixture: &OracleFixture) {
             }
             Err(mpsc::RecvTimeoutError::Disconnected) => break,
             Err(mpsc::RecvTimeoutError::Timeout) => {
+                if started.elapsed() >= Duration::from_secs(45) {
+                    let _ = child.kill();
+                    let _ = child.wait();
+                    panic!("{}: checker exceeded 45 seconds", fixture.name);
+                }
                 let cpu = checker_process_cpu(child.id()).expect("sample Quint process CPU");
                 if cpu.iter().any(|(pid, seconds)| {
                     *seconds > last_cpu.get(pid).copied().unwrap_or_default() + 0.01
@@ -134,11 +146,11 @@ fn compare_with_quint(fixture: &OracleFixture) {
                     last_progress = Instant::now();
                 }
                 last_cpu = cpu;
-                if last_progress.elapsed() >= Duration::from_secs(8) {
+                if last_progress.elapsed() >= Duration::from_secs(5) {
                     let _ = child.kill();
                     let _ = child.wait();
                     panic!(
-                        "{}: no checker output or measured CPU progress for 8 seconds",
+                        "{}: no checker output or measured CPU progress for 5 seconds",
                         fixture.name
                     );
                 }

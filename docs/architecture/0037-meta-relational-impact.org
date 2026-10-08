@@ -222,7 +222,7 @@ temporal classification is relative to its declared family, clock, and bound.
 The [[file:../../proofs/MRRProof/AgenticAIContext/MRR/AgenticAIContext/MetaImpact.lean][Lean model]] formalizes conditional positive-branch eligibility, the
 complete-inventory premise for retraction, old/new direct support seeds,
 certified finite-domain absence, and preservation of a verified Temporal
-claim level.  The [[file:../../proofs/MRRProof/AgenticAIContextTLA/MetaImpact.tla][TLA+ model]] checks six finite scenarios and requires four named
+claim level.  The [[file:../../proofs/quint/MetaImpact.qnt][Quint model]] checks six finite scenarios and requires four named
 mutation counterexamples.  The =meta-impact= recipe runs both gates and emits
 local receipts.  They specify and test this RFC's boundary; neither is an
 implementation or source refinement of =MetaImpactReceipt=.

@@ -61,14 +61,16 @@ context-source-proof toolchain_dir:
     {{profile}} bash -c 'cd proofs/MRRProof/AgenticAIContextValue && lake build ValueEquality && lake env lean Axioms.lean'
 
 # Check finite revision interleavings, fairness and required negative controls.
-context-tla receipt:
-    {{profile}} bash -c 'cd proofs/MRRProof/AgenticAIContext && lake build MRR agentic-ai-context-tla-replay && lake env lean Checks/Axioms.lean'
-    {{profile}} {{proof_python}} mrr_proof_validation.context_tla --lean-replay proofs/MRRProof/AgenticAIContext/.lake/build/bin/agentic-ai-context-tla-replay --receipt {{receipt}}
+context-quint receipt:
+    {{profile}} npm ci --prefix proofs/quint
+    {{profile}} bash -c 'cd proofs/MRRProof/AgenticAIContext && lake build MRR agentic-ai-context-quint-replay && lake env lean Checks/Axioms.lean'
+    {{profile}} {{proof_python}} mrr_proof_validation.context_quint --lean-replay proofs/MRRProof/AgenticAIContext/.lake/build/bin/agentic-ai-context-quint-replay --receipt {{receipt}}
 
 # Qualify the finite Meta Impact model and its required counterexamples.
 meta-impact receipt:
+    {{profile}} npm ci --prefix proofs/quint
     {{profile}} bash -c 'cd proofs/MRRProof/AgenticAIContext && lake build MRR && lake env lean Checks/Axioms.lean'
-    {{profile}} {{proof_python}} mrr_proof_validation.meta_impact_tla --receipt {{receipt}}
+    {{profile}} {{proof_python}} mrr_proof_validation.meta_impact_quint --receipt {{receipt}}
 
 # Record time, peak RSS, bounded rejection and actual declared reuse eligibility.
 context-scale:

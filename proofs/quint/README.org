@@ -1,0 +1,53 @@
+#+title: Finite Quint proof models
+#+options: toc:nil
+
+This directory owns the MRR finite transition models. =RevisionLifecycle.qnt=
+models four semantic identities, changed classification, dependency impact,
+sealing and publication. =MetaImpact.qnt= models finite support alternatives,
+frontier changes, certified absence and Temporal claim preservation. The
+scenario inputs and named broken variants live in =cases.json=. The Node
+package lock pins Quint 0.33.0. The transition parity oracle is separately
+owned by =crates/mrr-transition/quint/MrrTransitionOracle.qnt=.
+
+* Revision lifecycle gate
+
+From the repository root:
+
+#+begin_src sh
+./.devenv/devenv-profile-exec just context-quint .ci/quint/receipt.json
+#+end_src
+The gate checks safety and weak-fair eventual publication on eight finite
+scenarios using Quint's TLC backend. Two named broken variants must yield real
+checker invariant counterexamples: ignoring newly added dependency edges and
+sealing before impact propagation completes.
+
+For each positive case, a fixed 512-trace Quint simulation exports ITF states.
+The gate requires its distinct projected state count to equal the exhaustive
+checker count, then replays every covered state through the Lean publication,
+closure and reuse definitions. The actual final checker counterexample states
+are also replayed and rejected by Lean. Count equality does not establish that
+the simulator and checker enumerated identical state sets; the two backends
+and their encodings are a remaining evidence boundary. The gate records exact
+model, generated instance, checker log, state projection and Lean executable
+hashes in its receipt.
+
+* Meta Impact gate
+
+From the repository root:
+
+#+begin_src sh
+./.devenv/devenv-profile-exec just meta-impact .ci/quint/meta-impact-receipt.json
+#+end_src
+
+Six finite scenarios must satisfy safety
+and eventual publication. Four named mutations must produce actual checker
+counterexamples: dropping an alternative support, ignoring newly added edges,
+admitting uncertified absence and upgrading an unverified Temporal claim. The
+receipt records model, generated instance and checker log hashes and state
+counts. This model is not replayed against Lean states.
+
+Both gates use real checker output or measured process CPU as progress, with
+a five-second idle and 45-second total limit for each Quint command. They
+qualify bounded model behavior, not Rust source refinement, universal fairness,
+or deployed serving behavior. The Lean source laws and Rust source evidence
+remain separate gates under =proofs/MRRProof=.

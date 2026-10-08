@@ -106,7 +106,7 @@ end MRR.AgenticAIContext
 
 namespace MRR.AgenticAIContext
 
-/-- Protocol publication gate mirrored by the TLA+ Seal/Publish actions.
+/-- Protocol publication gate mirrored by the Quint Seal/Publish actions.
 This model gate is not yet a source theorem for complete Rust publication. -/
 def publishRevision {Value : Type} [DecidableEq Value]
     (domain changed oldSelected newSelected invalidated : List Nat)

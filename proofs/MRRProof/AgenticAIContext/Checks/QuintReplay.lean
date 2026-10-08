@@ -16,7 +16,7 @@ private def edgeList (entry : Lean.Json) (key : String) : IO (List (Prod Nat Nat
   let items <- result (<- result (entry.getObjVal? key)).getArr?
   items.toList.mapM fun pair => do
     let values <- result pair.getArr?
-    if values.size != 2 then throw (IO.userError "invalid TLC edge")
+    if values.size != 2 then throw (IO.userError "invalid Quint edge")
     return (<- result values[0]!.getNat?, <- result values[1]!.getNat?)
 
 private def canonicalSet (items : List Nat) : List Nat :=
@@ -28,10 +28,10 @@ private def check (name : String) (condition : Bool) : IO Unit := do
 def main (args : List String) : IO UInt32 := do
   let path <- match args with
     | [path] => pure path
-    | _ => throw (IO.userError "expected actual TLC state JSON")
+    | _ => throw (IO.userError "expected covered Quint state JSON")
   let document <- result (Lean.Json.parse (<- IO.FS.readFile path))
   let states <- result document.getArr?
-  if states.isEmpty then throw (IO.userError "empty TLC state export")
+  if states.isEmpty then throw (IO.userError "empty Quint state projection")
   for index in [:states.size] do
     let entry := states[index]!
     let source <- numbers entry "source"
@@ -57,20 +57,20 @@ def main (args : List String) : IO UInt32 := do
     let impact := expandRequired exactChanges reverse source.length
     let complete := checkRequiredClosure source changed reverse source.length source.length invalidated
     if expected == "reject" then
-      check "TLA counterexample rejected by Lean publication guard" (!complete)
+      check "Quint counterexample rejected by Lean publication guard" (!complete)
     else
-      check "TLA change classification equals Lean" (canonicalSet changed == canonicalSet expectedChanges)
-      check "TLA impact sound in Lean" (invalidated.all (fun id => impact.contains id))
-      check "TLA graph admission in Lean"
+      check "Quint change classification equals Lean" (canonicalSet changed == canonicalSet expectedChanges)
+      check "Quint impact sound in Lean" (invalidated.all (fun id => impact.contains id))
+      check "Quint graph admission in Lean"
         (decide source.Nodup && source.all (fun id => (deps id).all source.contains) &&
           oldSelected.all source.contains && newSelected.all source.contains)
       if phase == "ready" || phase == "published" then
-        check "TLA seal establishes complete Lean impact" complete
+        check "Quint seal establishes complete Lean impact" complete
       if phase == "published" then
         let published := publishRevision source changed oldSelected newSelected invalidated
           oldValue newValue global deps source.length source.length
-        check "TLA publication equals Lean gate"
+        check "Quint publication equals Lean gate"
           (published.map canonicalSet == some (canonicalSet reusable))
-    IO.println s!"PASS: TLA/Lean state {index} ({phase}, {expected})"
-  IO.println s!"CONTEXT-TLA-LEAN-OK: {states.size} actual TLC states"
+    IO.println s!"PASS: Quint/Lean state {index} ({phase}, {expected})"
+  IO.println s!"CONTEXT-QUINT-LEAN-OK: {states.size} covered Quint states"
   return 0

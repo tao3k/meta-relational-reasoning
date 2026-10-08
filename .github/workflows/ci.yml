@@ -291,21 +291,25 @@ jobs:
             .ci/transformation-source-proof.json
           if-no-files-found: error
 
-  agentic-ai-context-tla:
-    name: Agentic AI Context TLA and Lean conformance
+  agentic-ai-context-quint:
+    name: Agentic AI Context Quint and Lean conformance
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 17
-      - name: Prepare pinned official TLC
+          java-version: '21'
+      - name: Install pinned Quint and typecheck models
         run: |
-          mkdir -p .ci/tla
-          curl --fail --location --retry 3 https://github.com/tlaplus/tlaplus/releases/download/v1.7.4/tla2tools.jar -o .ci/tla/tla2tools.jar
-          echo '936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88  .ci/tla/tla2tools.jar' | sha256sum --check
+          npm ci --prefix proofs/quint
+          test "$(proofs/quint/node_modules/.bin/quint --version)" = 0.33.0
+          proofs/quint/node_modules/.bin/quint typecheck proofs/quint/RevisionLifecycle.qnt
+          proofs/quint/node_modules/.bin/quint typecheck proofs/quint/MetaImpact.qnt
       - uses: leanprover/lean-action@v1
         with:
           lake-package-directory: proofs/MRRProof/AgenticAIContext
@@ -313,24 +317,29 @@ jobs:
           build: false
           test: false
           lint: false
-      - name: Build Lean publication laws and actual TLC-state replay
+      - name: Build Lean publication laws and Quint-state replay
         working-directory: proofs/MRRProof/AgenticAIContext
         run: |
           python3 ../src/mrr_proof_validation/lean_dependency_pin.py .
-          lake build MRR agentic-ai-context-tla-replay
+          lake build MRR agentic-ai-context-quint-replay
           lake env lean Checks/Axioms.lean
       - name: Check safety, liveness, counterexamples and Lean state conformance
+        env:
+          MRR_QUINT_BIN: ${{ github.workspace }}/proofs/quint/node_modules/.bin/quint
+          QUINT_HOME: ${{ runner.temp }}/mrr-quint-backend
+          OUT_DIR: ${{ runner.temp }}/mrr-quint-output
         run: |
-          python3 -m mrr_proof_validation.context_tla --tlc-jar .ci/tla/tla2tools.jar --lean-replay proofs/MRRProof/AgenticAIContext/.lake/build/bin/agentic-ai-context-tla-replay --receipt .ci/tla/receipt.json
-          python3 -m mrr_proof_validation.meta_impact_tla --tlc-jar .ci/tla/tla2tools.jar --receipt .ci/tla/meta-impact-receipt.json
-      - name: Save TLA receipt and actual TLC logs
+          mkdir -p "$QUINT_HOME" "$OUT_DIR"
+          python3 -m mrr_proof_validation.context_quint --lean-replay proofs/MRRProof/AgenticAIContext/.lake/build/bin/agentic-ai-context-quint-replay --receipt .ci/quint/receipt.json
+          python3 -m mrr_proof_validation.meta_impact_quint --receipt .ci/quint/meta-impact-receipt.json
+      - name: Save Quint receipts and checker logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: context-tla-${{ github.event_name }}
+          name: context-quint-${{ github.event_name }}
           path: |
-            .ci/tla/*.json
-            .ci/tla/*.log
+            .ci/quint/*.json
+            .ci/quint/*.log
           if-no-files-found: error
 
   agentic-ai-context-proof:

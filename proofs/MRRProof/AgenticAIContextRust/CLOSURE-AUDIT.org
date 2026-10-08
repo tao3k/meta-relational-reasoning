@@ -110,18 +110,19 @@ construction, state validation/publication and serialization remain open.
 
 ** Complementary temporal and value evidence
 
-The [[file:../AgenticAIContextTLA/README.org][TLA+/Lean lifecycle gate]] checks eight
+The [[file:../../quint/README.org][Quint/Lean lifecycle gate]] checks eight
 finite four-identity graphs and two required real invariant counterexamples.
-Every distinct positive TLC state and both final counterexample states are
-projected into the Lean publication gate. TLC checks the phase transition
-safety/liveness under weak fairness; three universal Lean publication laws
+The fixed Quint simulation covers the same number of distinct positive states
+as the exhaustive checker for each scenario. All covered states and both actual
+checker counterexample final states are projected into the Lean publication
+gate. Quint checks phase transition safety/liveness under weak fairness; three universal Lean publication laws
 establish guards, complete impact and dependency-safe reuse within the model.
 
 This executable cross-model conformance does not replace the remaining Rust
-source equality/classification/assembly proof, prove a TLA-to-Lean translator,
+source equality/classification/assembly proof, prove a Quint-to-Lean translator,
 or establish universal lifecycle fairness or physical serving behavior. The CI
-gate retains five-second silence and 45-second qualification limits and exact
-model/config/log/Lean-binary hashes.
+gate retains a five-second idle and 45-second qualification limit and exact
+model/instance/log/Lean-binary hashes.
 
 ** Recursive Value source scope
 

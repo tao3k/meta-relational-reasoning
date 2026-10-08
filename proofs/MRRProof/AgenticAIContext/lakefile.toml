@@ -20,5 +20,5 @@ name = "agentic-ai-context-refinement"
 root = "Checks.Refinement"
 
 [[lean_exe]]
-name = "agentic-ai-context-tla-replay"
-root = "Checks.TLAReplay"
+name = "agentic-ai-context-quint-replay"
+root = "Checks.QuintReplay"

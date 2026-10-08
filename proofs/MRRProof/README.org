@@ -2,7 +2,7 @@
 #+options: toc:nil
 
 The Python package =src/mrr_proof_validation= owns native Gerbil test
-qualification, Context checks, source proof evidence, and TLA+ receipts.
+qualification, Context checks, source proof evidence, and Quint receipts.
 Tests and fixtures live in =tests/= and =fixtures/=. The repository
 =justfile= and CI call package modules directly.
 
@@ -13,7 +13,7 @@ development environment:
 ./.devenv/devenv-profile-exec env PYTHONPATH=proofs/MRRProof/src python3 -m pytest -q proofs/MRRProof/tests
 #+end_src
 
-The package exposes CLI entry points in =pyproject.toml=. The =context-tla=
+The package exposes CLI entry points in =pyproject.toml=. The =context-quint=
 just recipe checks the revision model against Lean replay; =meta-impact=
 checks the finite Meta Impact model and required counterexamples. These are
 bounded model checks, not source refinement or deployed behavior evidence.
