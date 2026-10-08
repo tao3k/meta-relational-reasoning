@@ -326,3 +326,13 @@ Current raw Scheme receipts, output and build/input digests are in
 remain archived. This closes the local read-only correction/re-query gate for
 this exact graph, while authenticated current cuts, effect publication,
 withdrawal/recovery and new real-model qualification remain separate gates.
+
+* Durable grant controls
+
+The independent =publication-revocation= home exercises the original current
+native proof and verified physical root while only the durable grant changes.
+Same-byte ABA, terminal retirement, attempted resurrection and grant alias
+bypass refuse fresh publication. Provider restart preserves retirement and
+acknowledged original history; exact replay still succeeds after the original
+proof becomes stale, without reading a fresh clock. No second delivery or
+external business effect is created.

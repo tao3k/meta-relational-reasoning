@@ -10,6 +10,7 @@ use mrr_runtime::{
     SemanticRuntime, datum,
     mrr::{MrrObservationEvidence, ObservationScope, SourceRegistrationContext},
 };
+mod revocation;
 use sha2::{Digest, Sha256};
 use std::{num::NonZeroUsize, sync::Arc};
 
@@ -472,6 +473,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         cid: *snapshot.cid(),
         cache: mrr_data_content::CacheAdmission::Stored,
     };
+    let retired_publication = revocation::qualify(
+        &publication_port,
+        &historical,
+        &runtime,
+        &flow,
+        &physical_ack,
+    )
+    .await?;
     let first_commit = fixture(
         plan.commit(
             PublicationHost {
@@ -912,6 +921,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .unwrap()
         .acknowledged
     );
+    retired_publication
+        .verify_recovered(
+            &reopened.profile("poo-temporal.v1", "qualification")?,
+            &historical,
+            &runtime,
+        )
+        .await?;
     reopened.shutdown().await?;
     println!("NATIVE-TO-DATA-STALE-REFUTED-RESTART-OK");
     println!("PHYSICAL-CORRECTION -> MRR-REQUERY -> HISTORICAL-STALE -> NATIVE-READMISSION OK");
@@ -938,7 +954,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 "committedRevision":first_head.revision,"committedRoot":first_head.root.to_string(),
                 "deliveryAcknowledged":true,"metadataRecovered":true,"leaseRefusal":true,
                 "staleRefusal":true,"refutedRefusal":true,"actorSubstitutionRefused":true,
-                "payloadSubstitutionRefused":true,"missingSourceGuardRefused":true,"mixedSourceFenceRefused":true,"externalEffectExecuted":false},
+                "payloadSubstitutionRefused":true,"missingSourceGuardRefused":true,"mixedSourceFenceRefused":true,"grantAbaRefused":true,"grantRetirementRefused":true,"grantAliasRefused":true,"retiredGrantHistoryRecovered":true,"externalEffectExecuted":false},
             "mrrGeneration":generation.to_string(),"temporalGeneration":1,
             "nativeResultDigest":hex(admitted.receipt().digest()),
             "originalMrrTransport":original_transport,"temporalRequest":request.clone(),"temporalResult":result.clone(),

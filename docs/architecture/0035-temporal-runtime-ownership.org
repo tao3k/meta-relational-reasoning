@@ -65,3 +65,27 @@ changing SDK or protocol versions. No execution timeout was relaxed.
 
 Exact delivered-owner CI remains a separate gate. This migration did not call a
 new real model or execute external business effects.
+
+* Durable grant retirement acceptance
+
+The native physical producer now has an independent publication home for grant
+controls. The original proof and physical root remain eligible while Data alone
+changes the grant. It rejects a previously captured generation after an active
+commitment is rotated away and restored to identical bytes (ABA). Retirement
+then rejects fresh use, refuses resurrection of the same authority identity,
+and remains mandatory when a differently named grant is enrolled. Each refusal
+occurs before the fresh clock/native validator; no revision-two delivery exists.
+
+After real provider shutdown/reopen and a genuine native source correction,
+that grant remains retired. The original acknowledged delivery and exact old
+operation replay survive; a stale native proof does not trigger revalidation,
+a new clock or a new effect. This is historical recovery, not fresh authority.
+Required markers are =NATIVE-TO-DATA-GRANT-ABA-RETIREMENT-ALIAS-REFUSED= and
+=NATIVE-TO-DATA-RETIRED-GRANT-HISTORICAL-REPLAY-RECOVERED=.
+
+The full physical gate and strict Clippy pass on the unchanged official native
+artifact, with five-second idle and 45-second execution limits. The MRR CI
+ASCII-source failure is repaired with equivalent Rust Unicode escapes; both
+the Unicode datum roundtrip and the exact failing repository policy test pass.
+The repository policy remains enforced. No semantic producer pin, provider
+implementation, Scheme/ABI version or external effect path is changed.
