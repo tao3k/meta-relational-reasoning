@@ -220,6 +220,14 @@ jobs:
           gerbil env cargo build -p mrr-gerbil --bin mrr-native-worker --locked
           gerbil env cargo test -p mrr-property-source --features native-inference --locked
 
+      - name: Compile MRR-owned POO Library runtime and verify producer graph
+        run: |
+          gerbil env python3 runtime/tools/check_mrr_dependency_graph.py
+          gerbil env python3 -m unittest discover -s runtime/tools/tests -v
+          gerbil env cargo test --manifest-path runtime/Cargo.toml --features mrr-context,orgize-source --locked --no-run
+          gerbil env cargo clippy --manifest-path runtime/Cargo.toml --features mrr-context,data-publication,orgize-source --tests --locked -- -D warnings
+          gerbil env timeout --foreground --signal=TERM --kill-after=1s 5s cargo test --manifest-path runtime/Cargo.toml --features mrr-context,orgize-source --test org_source --locked -- --nocapture
+
       - name: Lint Rust workspace
         run: gerbil env cargo clippy --all-targets --locked -- -D warnings
 

@@ -1,0 +1,88 @@
+# SPDX-FileCopyrightText: 2026 tao3k team and Contributors
+# SPDX-License-Identifier: Apache-2.0 AND LGPL-2.1-or-later
+"""Reject consumer pin drift and a second producer in the actual lock."""
+import importlib.util
+from pathlib import Path
+import shutil
+import tempfile
+import unittest
+from unittest.mock import patch
+from types import SimpleNamespace
+
+SOURCE = Path(__file__).resolve().parents[1] / 'check_mrr_dependency_graph.py'
+spec = importlib.util.spec_from_file_location('mrr_graph', SOURCE)
+graph = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(graph)
+
+
+class GraphTest(unittest.TestCase):
+    def copy_graph(self, root):
+        for directory in ('.', 'qualification/physical-roundtrip'):
+            target = root / directory
+            target.mkdir(parents=True, exist_ok=True)
+            for name in ('Cargo.toml', 'Cargo.lock'):
+                shutil.copyfile(graph.ROOT / directory / name, target / name)
+
+    def test_current_manifests_and_locks_agree(self):
+        graph.check()
+
+    def test_divergent_consumer_revision_rejects(self):
+        with tempfile.TemporaryDirectory() as work:
+            root = Path(work)
+            self.copy_graph(root)
+            path = root / 'qualification/physical-roundtrip/Cargo.toml'
+            mrr, _ = graph.check(root)
+            path.write_text(path.read_text().replace(mrr, '0' * 40, 1))
+            with self.assertRaisesRegex(ValueError, 'divergent'):
+                graph.check(root)
+
+    def test_parent_publication_pin_cannot_hide_behind_physical_owner(self):
+        with tempfile.TemporaryDirectory() as work:
+            root = Path(work)
+            self.copy_graph(root)
+            path = root / './Cargo.toml'
+            _, data = graph.check(root)
+            path.write_text(path.read_text().replace(data, '0' * 40, 1))
+            with self.assertRaisesRegex(ValueError, 'divergent'):
+                graph.check(root)
+
+    def test_stale_locked_producer_rejects(self):
+        with tempfile.TemporaryDirectory() as work:
+            root = Path(work)
+            self.copy_graph(root)
+            path = root / './Cargo.lock'
+            mrr, _ = graph.check(root)
+            path.write_text(path.read_text().replace(mrr, '0' * 40, 1))
+            with self.assertRaisesRegex(ValueError, 'stale or duplicate'):
+                graph.check(root)
+
+    def test_resolved_provider_cannot_drift_from_original_data_lock(self):
+        with tempfile.TemporaryDirectory() as work:
+            root = Path(work)
+            self.copy_graph(root)
+            mrr, data = graph.check(root)
+            owner = root / 'data'
+            core = owner / 'crates/mrr-data-core/Cargo.toml'
+            core.parent.mkdir(parents=True)
+            core.write_text('[package]\nname="mrr-data-core"\nversion="0.1.0"\n')
+            (owner / 'Cargo.lock').write_text('[[package]]\nname="turso_core"\nversion="0.8.1"\n')
+            packages = [
+                {'name': 'mrr-data-core', 'manifest_path': str(core),
+                 'source': f'git+{graph.DATA}?rev={data}#{data}'},
+                {'name': 'mrr-identity', 'source': f'git+{graph.MRR}?rev={mrr}#{mrr}'},
+                {'name': 'turso_core', 'version': '0.8.2', 'source': 'registry+crates.io'},
+            ]
+            with patch.object(graph.subprocess, 'run', return_value=SimpleNamespace(stdout=data)):
+                with self.assertRaisesRegex(ValueError, 'provider differs'):
+                    graph.check(root, {'packages': packages})
+
+    def test_implicit_head_cannot_hide_a_second_producer(self):
+        with tempfile.TemporaryDirectory() as work:
+            root = Path(work)
+            self.copy_graph(root)
+            path = root / './Cargo.lock'
+            with path.open('a') as output:
+                output.write('\n[[package]]\nname = "mrr-identity"\nversion = "0.1.0"\n'
+                             f'source = "git+{graph.MRR}#{"0" * 40}"\n')
+            with self.assertRaisesRegex(ValueError, 'stale or duplicate'):
+                graph.check(root)

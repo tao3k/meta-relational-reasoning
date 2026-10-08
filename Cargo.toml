@@ -1,4 +1,5 @@
 [workspace]
+exclude = ["runtime"]
 members = [
   "build-support/mrr-asp-rust-project-policy",
   "build-support/mrr-gerbil-native-build",

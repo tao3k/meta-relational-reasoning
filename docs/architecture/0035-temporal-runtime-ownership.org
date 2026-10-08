@@ -1,0 +1,67 @@
+#+title: Temporal Runtime Ownership
+#+begin_comment
+SPDX-FileCopyrightText: 2026 tao3k team and Contributors
+SPDX-License-Identifier: Apache-2.0 AND LGPL-2.1-or-later
+#+end_comment
+
+* Responsibilities
+
+| Owner | Responsibility |
+|-------+----------------|
+| POO Flow | Scheme Temporal/causal/IFC engines, functional Library, shared C ABI, Python Library |
+| MRR | Rust owner-thread lifecycle, bounded requests, typed evidence/source adapters, publication orchestration |
+| MRR Data | Physical queries/content, native backend transactions, authority fences, durable head/delivery/recovery |
+
+MRR =runtime/= loads the exact POO-produced native Library. It does not port the
+Scheme solver into Rust. =mrr_publication= sends an original conditional content
+commit through Data's configured port, with native validation inside the held
+transaction. There is no MRR-owned database implementation or new persistence
+engine. Native admission, source currentness and authorized disclosure remain
+separate gates.
+
+* Migration
+
+Runtime source, tests, release-pair locks and original physical roundtrip producer
+move from POO into this repository. The crate is =mrr-runtime=; the physical
+producer is =mrr-temporal-physical-roundtrip=. No old crate alias is provided.
+POO checks out an immutable MRR owner commit to exercise its current Library;
+MRR CI compiles the runtime and rejects release-pair drift. Actual native
+acceptance is separate from compilation.
+
+The runtime has its own Cargo workspace and lock, rather than implicitly
+combining the enclosing development kernel with Data's already qualified Git
+kernel. MRR producer ffde2798 and Data 513d6781 remain the actual tested pair.
+The owner checkout revision identifies the runtime implementation; the producer
+revision identifies the typed semantic contract. Updating that pair is an
+explicit multi-repository qualification step, not a consequence of moving files.
+
+* Evidence boundaries
+
+Scheme datum/ABI version remains v1 and Gerbil remains v0.19. Python model IO
+and POO Library tests stay under POO's existing packages. Rust assertions belong
+to MRR or Data. Raw logs and compiler outputs remain local/CI artifacts.
+
+Moving ownership does not establish source issuer authenticity, external effect
+exactly-once execution, universal Quint/native refinement or production clock
+security. These require their own executable acceptance.
+
+* Local migration acceptance
+
+The moved crate compiled with =mrr-context,orgize-source= and strict Clippy passed
+with =mrr-context,data-publication,orgize-source=. Fifteen parent tests plus the
+independent fresh-process archive replay passed against the same native Library:
+=36c5c6f2c305109cc227db5caa4a10839d0288e28c6b1daf9bac67043e8d1a3b=.
+
+The MRR-owned physical binary executed original GQL/Arrow/MRR result admission,
+native Temporal classification, atomic Data commit/replay/ACK, expired lease and
+mixed source fence refusals, physical source correction, stale/refuted refusal,
+and provider restart recovery. All required original markers and exit status
+passed within the existing five-second idle / 45-second execution gates.
+Six release-graph guard cases passed, including duplicate semantic owner and
+Turso provider version drift refusal. Compilation is outside execution gates.
+The first physical preparation selected Homebrew Ghostscript's =gsc=; selecting
+the declared Gerbil v0.19 SDK's paired Gambit compiler fixed preparation without
+changing SDK or protocol versions. No execution timeout was relaxed.
+
+Exact delivered-owner CI remains a separate gate. This migration did not call a
+new real model or execute external business effects.

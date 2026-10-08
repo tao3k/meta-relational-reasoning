@@ -20,3 +20,7 @@ manifest.ss
 /proofs/MRRProof/AgenticAIContextValue/.lake/
 /proofs/quint/node_modules/
 /.cache/
+
+# Independently locked production runtime and physical qualification outputs.
+/runtime/target/
+/runtime/qualification/physical-roundtrip/target/
