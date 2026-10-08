@@ -66,6 +66,7 @@ def main() -> int:
                 command += ["--temporal", "eventuallyPublished,publishedStable"]
             checked = quint_runner.run(command, cwd=work, log=log)
             output = checked.output.decode(errors="replace")
+            coverage_receipt = {}
             try:
                 generated, distinct, remaining = quint_cases.checker_counts(output)
                 if invariant is None:
@@ -98,6 +99,39 @@ def main() -> int:
                     if not any(state["phase"] == "published" for state in unique.values()):
                         raise ValueError("Quint covered no published state")
                     projected = list(unique.values())
+                    coverage_dir = work / f"{name}-coverage"
+                    coverage_dir.mkdir()
+                    coverage_source = quint_cases.revision_coverage_instance(
+                        source, projected, coverage_dir
+                    )
+                    coverage_log = receipt.parent / f"context-quint-{name}-coverage.log"
+                    coverage = quint_runner.run([
+                        str(quint), "verify", coverage_source.name,
+                        "--main", "RevisionCase", "--backend", "tlc",
+                        "--apalache-version", "0.62.1",
+                        "--invariant", "allStatesReplayed",
+                        "--tlc-config", str(config), "--verbosity", "3",
+                    ], cwd=coverage_dir, log=coverage_log)
+                    coverage_output = coverage.output.decode(errors="replace")
+                    coverage_generated, coverage_distinct, coverage_remaining = (
+                        quint_cases.checker_counts(coverage_output)
+                    )
+                    if not (coverage.status == 0
+                            and "[ok] No violation found" in coverage_output
+                            and coverage_remaining == 0
+                            and coverage_distinct == distinct):
+                        raise ValueError("exhaustive Quint replay-set coverage failed")
+                    coverage_receipt = {
+                        "coverage_exit": coverage.status,
+                        "coverage_generated": coverage_generated,
+                        "coverage_distinct": coverage_distinct,
+                        "coverage_remaining": coverage_remaining,
+                        "coverage_instance_sha256": quint_cases.sha256(
+                            coverage_source.read_bytes()
+                        ),
+                        "coverage_log": str(coverage_log),
+                        "coverage_log_sha256": quint_cases.sha256(coverage.output),
+                    }
                 else:
                     if not (checked.status == 1 and "Error: Invariant q_inv is violated." in output
                             and "[violation] Found an issue" in output
@@ -121,6 +155,7 @@ def main() -> int:
                 "instance_sha256": quint_cases.sha256(source.read_bytes()),
                 "log": str(log),
                 "log_sha256": quint_cases.sha256(checked.output),
+                **coverage_receipt,
             })
 
     state_path = receipt.parent / "context-quint-states.json"
@@ -131,7 +166,7 @@ def main() -> int:
     if native_tests.qualify([str(args.lean_replay.resolve()), str(state_path)], lean) != 0:
         return 1
     receipt.write_text(json.dumps({
-        "schema": "mrr.context.quint-revision.v1",
+        "schema": "mrr.context.quint-revision.v2",
         "quint": {"version": version, "backend": "tlc", "apalache": "0.62.1"},
         "lean_replay": {
             "states": len(all_states),

@@ -112,11 +112,12 @@ construction, state validation/publication and serialization remain open.
 
 The [[file:../../quint/README.org][Quint/Lean lifecycle gate]] checks eight
 finite four-identity graphs and two required real invariant counterexamples.
-The fixed Quint simulation covers the same number of distinct positive states
-as the exhaustive checker for each scenario. All covered states and both actual
-checker counterexample final states are projected into the Lean publication
-gate. Quint checks phase transition safety/liveness under weak fairness; three universal Lean publication laws
-establish guards, complete impact and dependency-safe reuse within the model.
+An exhaustive Quint coverage invariant proves the fixed simulation state set
+equals the checker reachable set in each positive scenario. All those states
+and both actual checker counterexample final states are projected into the Lean
+publication gate. Quint checks phase transition safety/liveness under weak
+fairness; three universal Lean publication laws establish guards, complete
+impact and dependency-safe reuse within the model.
 
 This executable cross-model conformance does not replace the remaining Rust
 source equality/classification/assembly proof, prove a Quint-to-Lean translator,

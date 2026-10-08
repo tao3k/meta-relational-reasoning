@@ -22,14 +22,15 @@ checker invariant counterexamples: ignoring newly added dependency edges and
 sealing before impact propagation completes.
 
 For each positive case, a fixed 512-trace Quint simulation exports ITF states.
-The gate requires its distinct projected state count to equal the exhaustive
-checker count, then replays every covered state through the Lean publication,
-closure and reuse definitions. The actual final checker counterexample states
-are also replayed and rejected by Lean. Count equality does not establish that
-the simulator and checker enumerated identical state sets; the two backends
-and their encodings are a remaining evidence boundary. The gate records exact
-model, generated instance, checker log, state projection and Lean executable
-hashes in its receipt.
+The gate creates a Quint invariant from their distinct state set and checks
+exhaustively that every reachable checker state belongs to that set. It also
+requires the checker and replay sets to have the same cardinality, establishing
+equality for each finite scenario. Lean then replays every reachable state
+through its publication, closure and reuse definitions. The actual final
+checker counterexample states are also replayed and rejected by Lean. The
+receipt records both checker passes, the generated coverage invariant, state
+projection, model and Lean executable hashes. This finite cross-model check
+does not prove a general Quint-to-Lean translation theorem.
 
 * Meta Impact gate
 

@@ -76,6 +76,37 @@ def instance(model: str, scenario: str, bug: str, directory: Path) -> Path:
     return path
 
 
+def revision_coverage_instance(source: Path, states: list[dict], directory: Path) -> Path:
+    """Add a pure invariant to the exact instance used for the first check."""
+    if not states:
+        raise ValueError("empty Quint replay state set")
+    entries = []
+    for state in states:
+        if state.get("expected") != "accept":
+            raise ValueError("counterexample in positive Quint replay state set")
+        entries.append("(" + ", ".join([
+            json.dumps(state["phase"]),
+            quint_set(state["todo"]),
+            quint_set(state["changed"]),
+            quint_set(state["invalidated"]),
+            quint_set(state["reusable"]),
+        ]) + ")")
+    original = source.read_text()
+    if not original.endswith("}\n"):
+        raise ValueError("unexpected Quint instance ending")
+    path = directory / source.name
+    path.write_text(
+        original[:-2]
+        + "  val replayedStates = Set(\n    "
+        + ",\n    ".join(entries)
+        + "\n  )\n"
+        + "  val allStatesReplayed = replayedStates.contains("
+        + "(phase, todo, changed, invalidated, reusable))\n"
+        + "}\n"
+    )
+    return path
+
+
 def checker_counts(output: str) -> tuple[int, int, int]:
     counts = re.findall(
         r"([\d,]+) states generated, ([\d,]+) distinct states found, "
