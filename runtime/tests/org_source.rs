@@ -6,15 +6,15 @@
 use std::{
     fs,
     path::PathBuf,
+    sync::atomic::{AtomicU64, Ordering},
     time::{SystemTime, UNIX_EPOCH},
 };
 
+use mrr_runtime::org_source::{OrgSourceBridgeError, WorktreeOrgSelection, WorktreeOrgSourceKey};
 use orgize::ParseConfig;
-use mrr_runtime::org_source::{
-    OrgSourceBridgeError, WorktreeOrgSelection, WorktreeOrgSourceKey,
-};
 
 struct Fixture(PathBuf);
+static NEXT_FIXTURE_ID: AtomicU64 = AtomicU64::new(0);
 
 impl Fixture {
     fn new() -> Self {
@@ -22,10 +22,19 @@ impl Fixture {
             .duration_since(UNIX_EPOCH)
             .expect("system time")
             .as_nanos();
-        let path =
-            std::env::temp_dir().join(format!("poo-org-source-{}-{nonce}", std::process::id()));
-        fs::create_dir(&path).expect("fixture root");
-        Self(path)
+        for _ in 0..32 {
+            let sequence = NEXT_FIXTURE_ID.fetch_add(1, Ordering::Relaxed);
+            let path = std::env::temp_dir().join(format!(
+                "poo-org-source-{}-{nonce}-{sequence}",
+                std::process::id()
+            ));
+            match fs::create_dir(&path) {
+                Ok(()) => return Self(path),
+                Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
+                Err(error) => panic!("fixture root: {error}"),
+            }
+        }
+        panic!("unable to allocate fixture root")
     }
 
     fn key(&self, cut: &str) -> WorktreeOrgSourceKey {
