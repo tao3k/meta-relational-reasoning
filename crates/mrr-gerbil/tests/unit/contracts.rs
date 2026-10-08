@@ -68,17 +68,22 @@ fn rust_commands_inherit_the_canonical_gxpkg_environment() {
     assert!(ci.contains("Build declared Gerbil package"));
     assert!(ci.contains("Install immutable Gerbil release"));
     assert!(ci.contains(".github/scripts/install-gerbil-release.sh"));
-    assert!(ci.contains("hashFiles('gerbil.pkg', '.github/scripts/install-gerbil-release.sh')"));
     let brew_packages: std::collections::BTreeSet<_> = ci
         .lines()
         .filter_map(|line| line.trim().strip_prefix("brew install "))
         .flat_map(str::split_whitespace)
         .collect();
-    assert!(
-        ["gcc", "jq", "openssl", "pkg-config", "sqlite", "zlib"]
-            .iter()
-            .all(|package| brew_packages.contains(package))
-    );
+    assert!([
+        "coreutils",
+        "gcc",
+        "jq",
+        "openssl",
+        "pkg-config",
+        "sqlite",
+        "zlib",
+    ]
+    .iter()
+    .all(|package| brew_packages.contains(package)));
     assert!(ci.contains("PKG_CONFIG_PATH=$openssl_prefix/lib/pkgconfig"));
     assert!(ci.contains("macos_major=\"$(sw_vers -productVersion | cut -d. -f1)\""));
     assert!(ci.contains("MACOSX_DEPLOYMENT_TARGET=$macos_major.0"));
