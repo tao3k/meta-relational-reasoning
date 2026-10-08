@@ -1,4 +1,4 @@
-import ValueEquality
+import ValueRecursive
 import Lean.Util.CollectAxioms
 import Lean.Elab.Command
 
@@ -36,7 +36,13 @@ run_cmd do
     `MRR.ContextValueProofs.native_record_key_match,
     `MRR.ContextValueProofs.native_list_value_delegates,
     `MRR.ContextValueProofs.native_record_value_delegates,
-    `MRR.ContextValueProofs.native_atomic_value_equality_exact]
+    `MRR.ContextValueProofs.native_atomic_value_equality_exact,
+    `MRR.ContextValueProofs.native_value_list_loop_exact,
+    `MRR.ContextValueProofs.native_value_record_loop_exact,
+    `MRR.ContextValueProofs.native_value_lists_exact,
+    `MRR.ContextValueProofs.native_value_records_exact,
+    `MRR.ContextValueProofs.native_record_fields_exact,
+    `MRR.ContextValueProofs.native_value_equality_total]
   required.forM fun declarationName => do
     unless environment.contains declarationName do
       throwError "Missing source theorem: {declarationName}"

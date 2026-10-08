@@ -22,8 +22,8 @@ Generated external-template axioms are never imported.
 
 ** Current laws
 
-The audit requires 29 declarations: 26 actual source branch/composition laws and
-three concrete byte-array or generic list/Vec composition laws. Source laws cover
+The audit requires 35 declarations, including the original 29 source branch and
+library composition laws and six total-correctness/composition laws. Source laws cover
 all twelve atomic variants, constructor mismatches, key short circuit, list/record
 delegation, unequal lengths, empty inputs, exhausted loops and an already-false
 loop accumulator. These quantify over all inputs in their stated domains.
@@ -31,9 +31,19 @@ loop accumulator. These quantify over all inputs in their stated domains.
 logical equality against any right-hand value, with no comparison oracle premise.
 Its classical DecidableEq instance is proof-only and supplies no Rust implementation.
 
-The full nonempty recursive list/record total-correctness theorem remains open.
-Delegation and stop laws do not establish recursive equality correctness. The
-changed-set construction and complete revision result are still separate gates.
+=ValueLoops.lean= proves totality and exact suffix equality for both actual index
+loops, including checked reads and increments, and exact whole-slice equality
+for their length-check wrappers. =ValueRecursive.lean= discharges all indexed
+child premises by the generated eight-motive nested =Value.rec= recursor.
+=native_value_equality_total= establishes that actual Rust equality returns
+~.ok (decide (left = right))~ for every pair of recursive Values, including
+nonempty lists and ordered records with duplicate keys. It has no child-equality
+or final comparison oracle premise. The key-first record comparator is exact as
+well. This is logical termination of the extracted pure function within the
+admitted library interfaces, not a native stack-capacity guarantee.
+
+The element/Facts equality, exact changed-set construction and complete revision
+result remain separate gates.
 [[file:../../quint/README.org][Quint lifecycle checking]] and Lean publication proofs continue to guard scheduling
 and publication; they do not discharge these Rust equality obligations.
 
@@ -46,7 +56,7 @@ From the repository root, through the captured profile:
   --value-equality --toolchain-dir "$AENEAS_TOOLCHAIN_DIR" \
   --receipt .ci/value-source-proof.json
 ./.devenv/devenv-profile-exec bash -c \
-  'cd proofs/MRRProof/AgenticAIContextValue && lake build ValueEquality && lake env lean Axioms.lean'
+  'cd proofs/MRRProof/AgenticAIContextValue && lake build ValueEquality ValueLoops ValueRecursive && lake env lean Axioms.lean'
 #+end_src
 
 =--update= regenerates the source modules. The normal gate refuses stale generated
