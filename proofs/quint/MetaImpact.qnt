@@ -90,7 +90,8 @@ module MetaImpact {
     live' = live,
     frontier' = frontier,
     verdict' = if (live.size() > 0) (if (oldAlive) "revalidated" else "added")
-      else if (and { oldAlive, supportComplete }) "retracted" else "unknown",
+      else if (and { oldAlive, or { supportComplete, BUG == "retractIncomplete" } })
+        "retracted" else "unknown",
     absence' = if (BUG == "uncertifiedAbsence") true
       else and { coverageComplete, not(observed.contains(negativeTarget)) },
     claim' = if (BUG == "promoteCausal") "effect" else ownerClaim,
@@ -117,6 +118,10 @@ module MetaImpact {
   val frontierSound = or { and { phase != "ready", phase != "published" },
     not(frontierExpected), frontier }
   val noFalseRetraction = or { phase != "published", verdict != "retracted", not(newAlive) }
+  val retractionCertified = or {
+    phase != "published", verdict != "retracted",
+    and { oldAlive, supportComplete, not(newAlive) },
+  }
   val noUncertifiedAbsence = or {
     phase != "published",
     not(absence),
@@ -125,7 +130,7 @@ module MetaImpact {
   val noTemporalPromotion = or { phase != "published", claim == ownerClaim }
   val supportCompleteBeforePublish = or { phase != "published", todo.size() == 0 }
   val safety = and {
-    typeOK, frontierSound, noFalseRetraction, noUncertifiedAbsence,
+    typeOK, frontierSound, noFalseRetraction, retractionCertified, noUncertifiedAbsence,
     noTemporalPromotion, supportCompleteBeforePublish,
   }
   temporal eventuallyPublished =

@@ -123,6 +123,7 @@
   },
   "metaImpactMutations": [
     {"scenario": "alternative", "bug": "dropAlternative", "invariant": "noFalseRetraction"},
+    {"scenario": "incomplete", "bug": "retractIncomplete", "invariant": "retractionCertified"},
     {"scenario": "newEdge", "bug": "dropNewEdges", "invariant": "frontierSound"},
     {"scenario": "oldEdge", "bug": "dropOldEdges", "invariant": "frontierSound"},
     {"scenario": "absence", "bug": "uncertifiedAbsence", "invariant": "noUncertifiedAbsence"},
