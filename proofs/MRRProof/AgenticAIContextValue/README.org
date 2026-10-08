@@ -34,7 +34,7 @@ Its classical DecidableEq instance is proof-only and supplies no Rust implementa
 The full nonempty recursive list/record total-correctness theorem remains open.
 Delegation and stop laws do not establish recursive equality correctness. The
 changed-set construction and complete revision result are still separate gates.
-TLA lifecycle checking and Lean publication proofs continue to guard scheduling
+[[file:../../quint/README.org][Quint lifecycle checking]] and Lean publication proofs continue to guard scheduling
 and publication; they do not discharge these Rust equality obligations.
 
 ** Verification
