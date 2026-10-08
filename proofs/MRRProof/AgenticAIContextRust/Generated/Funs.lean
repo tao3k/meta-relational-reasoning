@@ -569,7 +569,7 @@ impl_def
 }
 
 /-- [mrr_agentic_ai_context::state::revision_bindings_changed]:
-    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 311:0-324:1 -/
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 319:0-332:1 -/
 def state.revision_bindings_changed
   (old_snapshot : mrr_revision.snapshot.SemanticSnapshot)
   (new_snapshot : mrr_revision.snapshot.SemanticSnapshot)
@@ -602,7 +602,7 @@ def state.revision_bindings_changed
           old_contract new_contract
 
 /-- [mrr_agentic_ai_context::state::revision_source_ids]: loop body 0:
-    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 332:4-334:5 -/
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 340:4-342:5 -/
 @[rust_loop_body]
 def state.revision_source_ids_loop0.body
   (iter : alloc.collections.btree.map.Iter mrr_identity.api.FactId
@@ -627,7 +627,7 @@ def state.revision_source_ids_loop0.body
     ok (cont (iter1, all1))
 
 /-- [mrr_agentic_ai_context::state::revision_source_ids]: loop 0:
-    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 332:4-334:5 -/
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 340:4-342:5 -/
 @[rust_loop]
 def state.revision_source_ids_loop0
   (iter : alloc.collections.btree.map.Iter mrr_identity.api.FactId
@@ -640,7 +640,7 @@ def state.revision_source_ids_loop0
     (iter, all)
 
 /-- [mrr_agentic_ai_context::state::revision_source_ids]: loop body 1:
-    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 335:4-337:5 -/
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 343:4-345:5 -/
 @[rust_loop_body]
 def state.revision_source_ids_loop1.body
   (iter : alloc.collections.btree.map.Iter mrr_identity.api.FactId
@@ -665,7 +665,7 @@ def state.revision_source_ids_loop1.body
     ok (cont (iter1, all1))
 
 /-- [mrr_agentic_ai_context::state::revision_source_ids]: loop 1:
-    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 335:4-337:5 -/
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 343:4-345:5 -/
 @[rust_loop]
 def state.revision_source_ids_loop1
   (iter : alloc.collections.btree.map.Iter mrr_identity.api.FactId
@@ -678,7 +678,7 @@ def state.revision_source_ids_loop1
     (iter, all)
 
 /-- [mrr_agentic_ai_context::state::revision_source_ids]:
-    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 327:0-339:1 -/
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 335:0-347:1 -/
 def state.revision_source_ids
   (old : alloc.collections.btree.map.BTreeMap mrr_identity.api.FactId
   state.AgenticAiContextElement Global)
@@ -698,7 +698,7 @@ def state.revision_source_ids
   state.revision_source_ids_loop1 iter1 all1
 
 /-- [mrr_agentic_ai_context::state::revision_reusable_ids]: loop body 0:
-    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 347:4-349:5 -/
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 355:4-357:5 -/
 @[rust_loop_body]
 def state.revision_reusable_ids_loop0.body
   (iter : core.slice.iter.Iter mrr_identity.api.FactId)
@@ -719,7 +719,7 @@ def state.revision_reusable_ids_loop0.body
     ok (cont (iter1, old_selected1))
 
 /-- [mrr_agentic_ai_context::state::revision_reusable_ids]: loop 0:
-    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 347:4-349:5 -/
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 355:4-357:5 -/
 @[rust_loop]
 def state.revision_reusable_ids_loop0
   (iter : core.slice.iter.Iter mrr_identity.api.FactId)
@@ -733,7 +733,7 @@ def state.revision_reusable_ids_loop0
     (iter, old_selected)
 
 /-- [mrr_agentic_ai_context::state::revision_reusable_ids]: loop body 1:
-    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 351:4-353:5 -/
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 359:4-361:5 -/
 @[rust_loop_body]
 def state.revision_reusable_ids_loop1.body
   (iter : core.slice.iter.Iter mrr_identity.api.FactId)
@@ -754,7 +754,7 @@ def state.revision_reusable_ids_loop1.body
     ok (cont (iter1, new_selected1))
 
 /-- [mrr_agentic_ai_context::state::revision_reusable_ids]: loop 1:
-    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 351:4-353:5 -/
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 359:4-361:5 -/
 @[rust_loop]
 def state.revision_reusable_ids_loop1
   (iter : core.slice.iter.Iter mrr_identity.api.FactId)
@@ -768,7 +768,7 @@ def state.revision_reusable_ids_loop1
     (iter, new_selected)
 
 /-- [mrr_agentic_ai_context::state::revision_reusable_ids]: loop body 2:
-    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 355:4-359:5 -/
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 363:4-367:5 -/
 @[rust_loop_body]
 def state.revision_reusable_ids_loop2.body
   (invalidated : alloc.collections.btree.set.BTreeSet mrr_identity.api.FactId
@@ -808,7 +808,7 @@ def state.revision_reusable_ids_loop2.body
     else ok (cont (iter1, reusable))
 
 /-- [mrr_agentic_ai_context::state::revision_reusable_ids]: loop 2:
-    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 355:4-359:5 -/
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 363:4-367:5 -/
 @[rust_loop]
 def state.revision_reusable_ids_loop2
   (iter : alloc.collections.btree.set.Iter mrr_identity.api.FactId)
@@ -824,7 +824,7 @@ def state.revision_reusable_ids_loop2
     (iter, reusable)
 
 /-- [mrr_agentic_ai_context::state::revision_reusable_ids]:
-    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 341:0-361:1 -/
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 349:0-369:1 -/
 def state.revision_reusable_ids
   (old : Slice mrr_identity.api.FactId) (new : Slice mrr_identity.api.FactId)
   (invalidated : alloc.collections.btree.set.BTreeSet mrr_identity.api.FactId
@@ -918,7 +918,7 @@ def worklist.pop_identity
     ok (some id, pending1)
 
 /-- [mrr_agentic_ai_context::state::expand_identity]:
-    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 479:0-505:1 -/
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 487:0-513:1 -/
 def state.expand_identity
   (id : mrr_identity.api.FactId)
   (element : Option state.AgenticAiContextElement) (require_complete : Bool)
@@ -951,7 +951,7 @@ def state.expand_identity
         (state.AgenticAiContextError.IncompleteEvidence id))
 
 /-- [mrr_agentic_ai_context::state::advance_closure]:
-    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 462:0-477:1 -/
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 470:0-485:1 -/
 def state.advance_closure
   (traversal : state.ClosureTraversal) :
   Result (Bool ** state.ClosureTraversal)
@@ -984,7 +984,7 @@ def state.advance_closure
     else ok (true, { traversal with pending := v, selected := bs })
 
 /-- [mrr_agentic_ai_context::state::{impl mrr_agentic_ai_context::worklist::Worklist for mrr_agentic_ai_context::state::ClosureTraversal<'_0>}::advance]:
-    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 457:4-459:5 -/
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 465:4-467:5 -/
 def state.ClosureTraversal.Insts.Mrr_agentic_ai_contextWorklistWorklist.advance
   (self : state.ClosureTraversal) :
   Result (Bool ** state.ClosureTraversal)
@@ -992,7 +992,7 @@ def state.ClosureTraversal.Insts.Mrr_agentic_ai_contextWorklistWorklist.advance
   state.advance_closure self
 
 /-- Trait implementation: [mrr_agentic_ai_context::state::{impl mrr_agentic_ai_context::worklist::Worklist for mrr_agentic_ai_context::state::ClosureTraversal<'_0>}]
-    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 456:0-460:1 -/
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 464:0-468:1 -/
 @[reducible]
 def state.ClosureTraversal.Insts.Mrr_agentic_ai_contextWorklistWorklist :
   worklist.Worklist state.ClosureTraversal := {
@@ -1001,7 +1001,7 @@ def state.ClosureTraversal.Insts.Mrr_agentic_ai_contextWorklistWorklist :
 }
 
 /-- [mrr_agentic_ai_context::state::run_closure]:
-    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 452:0-454:1 -/
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 460:0-462:1 -/
 def state.run_closure
   (traversal : state.ClosureTraversal) : Result state.ClosureTraversal := do
   worklist.run
@@ -1009,7 +1009,7 @@ def state.run_closure
     traversal
 
 /-- [mrr_agentic_ai_context::state::compute_required_closure]:
-    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 416:0-441:1 -/
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 424:0-449:1 -/
 def state.compute_required_closure
   (query : state.AgenticAiContextQuery)
   (contract : state.AgenticAiContextContract)
@@ -1050,7 +1050,7 @@ def state.compute_required_closure
   | some error => ok (core.result.Result.Err error)
 
 /-- [mrr_agentic_ai_context::state::advance_impact]: loop body 0:
-    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 583:8-587:9 -/
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 591:8-595:9 -/
 @[rust_loop_body]
 def state.advance_impact_loop.body
   (iter : alloc.collections.btree.set.Iter mrr_identity.api.FactId)
@@ -1078,7 +1078,7 @@ def state.advance_impact_loop.body
     else ok (cont (iter1, bs1, v))
 
 /-- [mrr_agentic_ai_context::state::advance_impact]: loop 0:
-    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 583:8-587:9 -/
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 591:8-595:9 -/
 @[rust_loop]
 def state.advance_impact_loop
   (iter : alloc.collections.btree.set.Iter mrr_identity.api.FactId)
@@ -1092,7 +1092,7 @@ def state.advance_impact_loop
     (iter, bs, v)
 
 /-- [mrr_agentic_ai_context::state::advance_impact]:
-    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 578:0-590:1 -/
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 586:0-598:1 -/
 def state.advance_impact
   (traversal : state.ImpactTraversal) :
   Result (Bool ** state.ImpactTraversal)
@@ -1117,13 +1117,13 @@ def state.advance_impact
       ok (true, { traversal with invalidated := bs, pending := v1 })
 
 /-- [mrr_agentic_ai_context::state::{impl mrr_agentic_ai_context::worklist::Worklist for mrr_agentic_ai_context::state::ImpactTraversal}::advance]:
-    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 573:4-575:5 -/
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 581:4-583:5 -/
 def state.ImpactTraversal.Insts.Mrr_agentic_ai_contextWorklistWorklist.advance
   (self : state.ImpactTraversal) : Result (Bool ** state.ImpactTraversal) := do
   state.advance_impact self
 
 /-- Trait implementation: [mrr_agentic_ai_context::state::{impl mrr_agentic_ai_context::worklist::Worklist for mrr_agentic_ai_context::state::ImpactTraversal}]
-    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 572:0-576:1 -/
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 580:0-584:1 -/
 @[reducible]
 def state.ImpactTraversal.Insts.Mrr_agentic_ai_contextWorklistWorklist :
   worklist.Worklist state.ImpactTraversal := {
@@ -1132,7 +1132,7 @@ def state.ImpactTraversal.Insts.Mrr_agentic_ai_contextWorklistWorklist :
 }
 
 /-- [mrr_agentic_ai_context::state::run_impact]:
-    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 568:0-570:1 -/
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 576:0-578:1 -/
 def state.run_impact
   (traversal : state.ImpactTraversal) : Result state.ImpactTraversal := do
   worklist.run
@@ -1140,7 +1140,7 @@ def state.run_impact
     traversal
 
 /-- [mrr_agentic_ai_context::state::insert_reverse_edge]:
-    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 554:0-560:1 -/
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 562:0-568:1 -/
 def state.insert_reverse_edge
   (reverse : alloc.collections.btree.map.BTreeMap mrr_identity.api.FactId
   (alloc.collections.btree.set.BTreeSet mrr_identity.api.FactId Global) Global)
@@ -1167,7 +1167,7 @@ def state.insert_reverse_edge
   ok (entry_back e1)
 
 /-- [mrr_agentic_ai_context::state::add_reverse_dependencies]: loop body 1:
-    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 548:8-550:9 -/
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 556:8-558:9 -/
 @[rust_loop_body]
 def state.add_reverse_dependencies_loop0_loop0.body
   (id : mrr_identity.api.FactId)
@@ -1190,7 +1190,7 @@ def state.add_reverse_dependencies_loop0_loop0.body
     ok (cont (iter1, reverse1))
 
 /-- [mrr_agentic_ai_context::state::add_reverse_dependencies]: loop 1:
-    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 548:8-550:9 -/
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 556:8-558:9 -/
 @[rust_loop]
 def state.add_reverse_dependencies_loop0_loop0
   (iter : core.slice.iter.Iter mrr_identity.api.FactId)
@@ -1207,7 +1207,7 @@ def state.add_reverse_dependencies_loop0_loop0
     (iter, reverse)
 
 /-- [mrr_agentic_ai_context::state::add_reverse_dependencies]: loop body 0:
-    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 547:4-551:5 -/
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 555:4-559:5 -/
 @[rust_loop_body]
 def state.add_reverse_dependencies_loop0.body
   (iter : alloc.collections.btree.map.Iter mrr_identity.api.FactId
@@ -1237,7 +1237,7 @@ def state.add_reverse_dependencies_loop0.body
     ok (cont (iter1, reverse1))
 
 /-- [mrr_agentic_ai_context::state::add_reverse_dependencies]: loop 0:
-    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 547:4-551:5 -/
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 555:4-559:5 -/
 @[rust_loop]
 def state.add_reverse_dependencies_loop0
   (iter : alloc.collections.btree.map.Iter mrr_identity.api.FactId
@@ -1255,7 +1255,7 @@ def state.add_reverse_dependencies_loop0
     (iter, reverse)
 
 /-- [mrr_agentic_ai_context::state::add_reverse_dependencies]:
-    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 543:0-552:1 -/
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 551:0-560:1 -/
 def state.add_reverse_dependencies
   (elements : alloc.collections.btree.map.BTreeMap mrr_identity.api.FactId
   state.AgenticAiContextElement Global)
@@ -1272,7 +1272,7 @@ def state.add_reverse_dependencies
   state.add_reverse_dependencies_loop0 iter reverse
 
 /-- [mrr_agentic_ai_context::state::build_reverse_index]:
-    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 533:0-541:1 -/
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 541:0-549:1 -/
 def state.build_reverse_index
   (old : alloc.collections.btree.map.BTreeMap mrr_identity.api.FactId
   state.AgenticAiContextElement Global)
@@ -1289,7 +1289,7 @@ def state.build_reverse_index
   state.add_reverse_dependencies new reverse1
 
 /-- [mrr_agentic_ai_context::state::declared_dependency_impact]: loop body 0:
-    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 522:4-524:5 -/
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 530:4-532:5 -/
 @[rust_loop_body]
 def state.declared_dependency_impact_loop.body
   (iter : alloc.collections.btree.set.Iter mrr_identity.api.FactId)
@@ -1308,7 +1308,7 @@ def state.declared_dependency_impact_loop.body
     ok (cont (iter1, pending1))
 
 /-- [mrr_agentic_ai_context::state::declared_dependency_impact]: loop 0:
-    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 522:4-524:5 -/
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 530:4-532:5 -/
 @[rust_loop]
 def state.declared_dependency_impact_loop
   (iter : alloc.collections.btree.set.Iter mrr_identity.api.FactId)
@@ -1321,7 +1321,7 @@ def state.declared_dependency_impact_loop
     (iter, pending)
 
 /-- [mrr_agentic_ai_context::state::declared_dependency_impact]:
-    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 515:0-531:1 -/
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 523:0-539:1 -/
 def state.declared_dependency_impact
   (old : alloc.collections.btree.map.BTreeMap mrr_identity.api.FactId
   state.AgenticAiContextElement Global)

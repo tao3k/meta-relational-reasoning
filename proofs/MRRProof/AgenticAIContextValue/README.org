@@ -1,10 +1,12 @@
-#+title: Agentic AI Context Value proof
+#+title: Agentic AI Context Value and element equality proof
 #+options: toc:nil
 
 * Actual Rust Value equality source proof
 
 This scope extracts the production =equal_value_lists=, =equal_value_records=,
-=equal_record_fields= and recursive =Value::eq= from =mrr-relation=. Charon and
+=equal_record_fields=, recursive =Value::eq= and derived =Fact::eq= from
+=mrr-relation=, plus actual =AgenticAiContextElement::eq= and
+=revision_elements_differ= from =mrr-agentic-ai-context=. Charon and
 Aeneas versions match the Context Rust source proof. Generated files are checked
 byte for byte; only the documented ASCII conversion is applied.
 
@@ -14,16 +16,18 @@ hand-written replacement implementation or a proof of complete revision assembly
 
 ** Admitted interface
 
-There are no external type obligations. The sole generated external function is
-exact String value equality, modeled as ~.ok (decide (left = right))~. Aeneas's
+There are no external type obligations. Two generated external functions are
+admitted: exact String equality and primitive Bool inequality, both computable
+value models. The extracted core Option equality also uses the logical Option
+discriminant model (None = 0, Some = 1). Aeneas's
 existing array, byte, Vec, Slice and machine-integer value models remain trusted
 interfaces. No Rust unsafe storage or allocation implementation is verified.
 Generated external-template axioms are never imported.
 
 ** Current laws
 
-The audit requires 35 declarations, including the original 29 source branch and
-library composition laws and six total-correctness/composition laws. Source laws cover
+The audit requires 53 declarations, including the original 35 Value laws and
+18 identity, context, Fact, element and classification composition laws. Source laws cover
 all twelve atomic variants, constructor mismatches, key short circuit, list/record
 delegation, unequal lengths, empty inputs, exhausted loops and an already-false
 loop accumulator. These quantify over all inputs in their stated domains.
@@ -42,8 +46,15 @@ or final comparison oracle premise. The key-first record comparator is exact as
 well. This is logical termination of the extracted pure function within the
 admitted library interfaces, not a native stack-capacity guarantee.
 
-The element/Facts equality, exact changed-set construction and complete revision
-result remain separate gates.
+=FactEquality.lean= proves all Fact fields (id, relation, recursive values and
+context), all context fields, ordered dependencies and actual element equality.
+It then proves imported core Option equality and the actual production
+=revision_elements_differ= predicate: it returns exact inequality of optional
+elements, including added/removed elements, without any equality premise.
+The caller retains its original global-change short circuit before map lookup.
+
+Exact changed-set construction from the actual source maps and complete revision
+assembly remain separate gates. This predicate theorem does not prove either.
 [[file:../../quint/README.org][Quint lifecycle checking]] and Lean publication proofs continue to guard scheduling
 and publication; they do not discharge these Rust equality obligations.
 
@@ -56,7 +67,7 @@ From the repository root, through the captured profile:
   --value-equality --toolchain-dir "$AENEAS_TOOLCHAIN_DIR" \
   --receipt .ci/value-source-proof.json
 ./.devenv/devenv-profile-exec bash -c \
-  'cd proofs/MRRProof/AgenticAIContextValue && lake build ValueEquality ValueLoops ValueRecursive && lake env lean Axioms.lean'
+  'cd proofs/MRRProof/AgenticAIContextValue && lake build ValueEquality ValueLoops ValueRecursive FactEquality && lake env lean Axioms.lean'
 #+end_src
 
 =--update= regenerates the source modules. The normal gate refuses stale generated

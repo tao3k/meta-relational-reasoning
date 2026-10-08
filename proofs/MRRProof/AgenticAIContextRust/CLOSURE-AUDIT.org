@@ -24,7 +24,8 @@ fast-forward; it does not supply new proof evidence.
 | Revision selected intersection minus invalidation | =native_revision_reusable_exact= | Actual production helper; exact membership and uniqueness, arbitrary input duplicates; old-list Usize bound. Does not establish that its invalidated argument is correct. |
 | Revision global binding classification | =native_revision_bindings_changed_exact= | Actual production helper and derived snapshot/query/contract equality; exact force or field inequality. String/Vec value models are explicit; digest equality is byte equality, not collision freedom. |
 | Recursive payload equality | =AgenticAIContextValue/ValueRecursive.lean= | Independent actual-source scope; total and exact equality for all nested Values, including nonempty list/record loops. No equality oracle premise. |
-| Revision element change classification | Unproved | Prove actual element/Facts equality and exact changed membership from actual source maps. No assumed equality oracle. |
+| Revision element change classification | =AgenticAIContextValue/FactEquality.lean= | Actual Fact/context/element equality and production option inequality predicate; added/removed/changed entries, no equality oracle premise. |
+| Revision changed-set construction | Unproved | Prove exact changed membership from actual old/new maps and global drift. Classification alone does not prove the set-building loop. |
 | Complete revision assembly | Unproved | Connect actual changed construction to reverse impact and reusable helper, including global drift and removed/new dependencies. |
 | Source indexing and state validation/publication | Unproved as a whole Rust source theorem | Prove actual validation, budgets, duplicate/generation/dependency refusals and published-state invariant, then connect to selection/closure/revision. Existing model proofs and Rust tests are narrower evidence. |
 | Serialization and cryptographic implementation | Bounded Rust/Lean replay only | Universal encoder correspondence is separate from hash injectivity/collision assumptions. Exact-reference profile avoids treating equal digests as identical contents. |
@@ -48,11 +49,11 @@ an open obligation.
 
 ** Next implementation sequence
 
-1. Compose proved recursive payload equality into element/Facts equality and exact changed-set
+1. Compose the proved actual element classification into exact changed-set
    construction. Full comparison extraction and isolated Lean compilation now
    pass; the extra computable library candidates still require explicit admission
    into the strict full-source gate. Compilation is not a refinement theorem.
-2. Prove each actual equality/changed-construction effect and connect it to the
+2. Prove each actual changed-construction effect and connect it to the
    already proved index, impact and reusable projections. Run the required
    source audit and source-extraction gate, then the existing Rust/replay gates.
 3. Extract and prove state validation/publication, with actual rejection paths,
@@ -89,7 +90,7 @@ option in diagnostic mode, avoiding a nested-loop monotonicity failure within
 mutual recursion. Both extraction stages and complete isolated Lean compilation
 pass with explicit computable library candidates. No generated-source patch,
 equality oracle or custom axiom is used. The compile candidates remain outside
-the admitted default interface; element/Facts equality correctness and complete
+the admitted default interface; exact changed-set construction and complete
 revision assembly are still open refinement obligations.
 
 ** Actual global binding equality
@@ -124,18 +125,24 @@ qualification limit and exact model, instance and checker log hashes.
 ** Recursive Value source scope
 
 =../AgenticAIContextValue= admits an independently extracted actual production
-Value equality scope with zero external type obligations and one exact String
-value-equality function. This avoids additional full-State/NonZero obligations
+Value/Fact/element equality and actual revision element-classification scope,
+with zero external type obligations, exact String equality and Bool inequality
+functions, and explicit logical Option discriminants. This avoids additional
+full-State/NonZero obligations
 and does not rewrite the existing 141-declaration control scope. The generated
 modules use =-loops-to-rec= and a separate Lean project to avoid global generated
 instance-name collisions. The source gate checks exact current generation.
 
-The 35 audited declarations include the original 29 branch/composition laws,
+The first 35 audited declarations include the original 29 branch/composition laws,
 two total index-loop laws, two whole-slice wrapper laws, exact key-first record
 field composition and universal recursive Value equality. The generated nested
 recursor discharges the loop child premises: =native_value_equality_total= has no
 child or final equality oracle premise, and returns exact logical equality for
 every pair of Values. Native stack capacity and unsafe library internals are
-outside this extracted pure-function proof. Element/Facts equality, the exact
-changed set and complete revision assembly remain open. This scope does not
-close those separate obligations.
+outside this extracted pure-function proof. Eighteen additional audited laws
+close all context/Fact fields, ordered dependency vectors, actual element and
+Option equality, and actual =revision_elements_differ= total correctness and
+exact changed classification. The caller retains global drift short circuiting.
+The full 53-declaration audit admits no equality oracle. Exact changed-set
+construction and complete revision assembly remain open; the predicate theorem
+does not close the actual map/set construction loop.

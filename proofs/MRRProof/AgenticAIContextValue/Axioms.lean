@@ -1,4 +1,4 @@
-import ValueRecursive
+import FactEquality
 import Lean.Util.CollectAxioms
 import Lean.Elab.Command
 
@@ -42,7 +42,25 @@ run_cmd do
     `MRR.ContextValueProofs.native_value_lists_exact,
     `MRR.ContextValueProofs.native_value_records_exact,
     `MRR.ContextValueProofs.native_record_fields_exact,
-    `MRR.ContextValueProofs.native_value_equality_total]
+    `MRR.ContextValueProofs.native_value_equality_total,
+    `MRR.ContextValueProofs.native_fact_id_equality_exact,
+    `MRR.ContextValueProofs.native_relation_id_equality_exact,
+    `MRR.ContextValueProofs.native_generation_equality_exact,
+    `MRR.ContextValueProofs.native_rule_id_equality_exact,
+    `MRR.ContextValueProofs.native_rule_pack_id_equality_exact,
+    `MRR.ContextValueProofs.native_derivation_id_equality_exact,
+    `MRR.ContextValueProofs.native_authority_equality_exact,
+    `MRR.ContextValueProofs.native_provenance_equality_exact,
+    `MRR.ContextValueProofs.native_completeness_equality_exact,
+    `MRR.ContextValueProofs.native_validity_equality_exact,
+    `MRR.ContextValueProofs.native_relation_context_equality_exact,
+    `MRR.ContextValueProofs.native_value_vec_equality_exact,
+    `MRR.ContextValueProofs.native_fact_equality_exact,
+    `MRR.ContextValueProofs.native_fact_id_vec_equality_exact,
+    `MRR.ContextValueProofs.native_element_equality_exact,
+    `MRR.ContextValueProofs.native_element_option_equality_exact,
+    `MRR.ContextValueProofs.native_revision_elements_differ_exact,
+    `MRR.ContextValueProofs.native_revision_elements_changed_iff]
   required.forM fun declarationName => do
     unless environment.contains declarationName do
       throwError "Missing source theorem: {declarationName}"

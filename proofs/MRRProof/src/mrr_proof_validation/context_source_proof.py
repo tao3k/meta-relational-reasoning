@@ -107,7 +107,7 @@ def main() -> int:
     parser.add_argument(
         "--value-equality",
         action="store_true",
-        help="Extract actual recursive Value equality into its independent source scope",
+        help="Extract actual Value/Fact/element equality and revision element classification",
     )
     args = parser.parse_args()
     if args.value_equality and (
@@ -142,7 +142,7 @@ def main() -> int:
     sysroot = subprocess.check_output(
         [charon, "toolchain-path"], env=environment, text=True
     ).strip()
-    # The selected pure functions import no standard-library function bodies. Pin the
+    # The admitted scopes need no Miri-only standard-library bodies. Pin the
     # ordinary compiler sysroot explicitly, avoiding Miri setup/fallback drift.
     environment["CHARON_MIRI_SYSROOTS"] = sysroot
     receipt = args.receipt.resolve()
@@ -153,6 +153,9 @@ def main() -> int:
         [
             "mrr_relation::api::equal_value_lists",
             "mrr_relation::api::equal_value_records",
+            "{impl core::cmp::PartialEq for mrr_relation::api::Fact}::eq",
+            "{impl core::cmp::PartialEq for mrr_agentic_ai_context::state::AgenticAiContextElement}::eq",
+            "mrr_agentic_ai_context::state::revision_elements_differ",
         ]
         if args.value_equality
         else ["mrr_agentic_ai_context::state::compare_revisions"]
@@ -234,6 +237,7 @@ def main() -> int:
                 "mrr_revision",
                 "--include",
                 "core::borrow",
+                *(["--include", "core::option"] if args.value_equality else []),
                 *(
                     ["--include", "alloc::collections::btree"]
                     if args.probe_btree_source
@@ -244,7 +248,7 @@ def main() -> int:
                 str(llbc),
                 "--",
                 "--package",
-                "mrr-relation" if args.value_equality else "mrr-agentic-ai-context",
+                "mrr-agentic-ai-context",
                 "--lib",
                 "--no-default-features",
                 "--locked",
@@ -355,7 +359,8 @@ def main() -> int:
         if args.value_equality:
             allowed = {
                 "FunsExternal_Template.lean": [
-                    "alloc.string.String.Insts.CoreCmpPartialEqString.eq"
+                    "Bool.Insts.CoreCmpPartialEqBool.ne",
+                    "alloc.string.String.Insts.CoreCmpPartialEqString.eq",
                 ]
             }
         for filename, declarations in allowed.items():
@@ -385,7 +390,7 @@ def main() -> int:
                     "aeneas": version.strip(),
                     "charon": charon_version.strip(),
                     "functions": functions,
-                    "scope": "recursive-value-equality"
+                    "scope": "value-element-change-predicate"
                     if args.value_equality
                     else "context-control",
                     "llbc_sha256": hashlib.sha256(llbc.read_bytes()).hexdigest(),
@@ -401,7 +406,7 @@ def main() -> int:
                         )
                     },
                     "library_model_interfaces": allowed,
-                    "library_model_boundary": "trusted exact string value equality; no unsafe stdlib proof"
+                    "library_model_boundary": "trusted exact String equality, Bool inequality and Option discriminants; no unsafe stdlib proof"
                     if args.value_equality
                     else "trusted extensional BTree membership/lookup and entry restoration, map/set enumeration, element clone, checked lengths and lexicographic array ordering; no unsafe stdlib or sorted iteration proof",
                     "trait_model_filter": "-filter-trait-methods: retain only target Iterator fields; collect.default remains a modeled call",

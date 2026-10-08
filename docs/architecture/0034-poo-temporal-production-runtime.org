@@ -424,10 +424,13 @@ states. The local JVM is OpenJDK 25; Java 17 CI passes on =8c02320=; each newer 
 The current MRR lifecycle and Meta Impact checks use the [[file:../../proofs/quint/README.org][Quint proof gate]];
 the TLA/TLC receipts above describe only those earlier qualification heads.
 Current Rust/Value source extraction freshness passes with pinned Aeneas/Charon.
-The regenerated difference is source line metadata only. The independent Value scope now passes its Lean build and 35-declaration axiom
+The control scope refresh changes source line metadata only. The independent
+Value scope now extracts Fact/element and core Option equality plus the actual
+revision element-change predicate, and passes its Lean build and 53-declaration axiom
 audit, including universal total and exact production =Value::eq= for nonempty
 nested lists and ordered records. Its generated nested recursor discharges all
-child comparison premises. Element/Facts equality, exact changed construction
+child comparison premises. Actual context/Fact/element equality and the option
+change predicate are also proved. Exact changed construction
 and complete revision assembly remain separate source-proof obligations.
 
 Library Hosts select the executable explicitly before Source/Search/Temporal

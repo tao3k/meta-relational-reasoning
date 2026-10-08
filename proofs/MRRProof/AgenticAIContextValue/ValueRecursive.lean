@@ -10,7 +10,7 @@ private def Exact (left : Value) : Prop :=
 
 theorem native_record_fields_exact (key otherKey : String) (left right : Value)
     (child : forall other, valueEq left other = .ok (decide (left = other))) :
-    api.equal_record_fields key otherKey left right =
+    mrr_relation.api.equal_record_fields key otherKey left right =
       .ok (decide ((key, left) = (otherKey, right))) := by
   by_cases same : key = otherKey
   case pos =>
@@ -25,7 +25,7 @@ theorem native_record_fields_exact (key otherKey : String) (left right : Value)
 All indexed child premises are discharged by the generated nested recursor. -/
 theorem native_value_equality_total (left : Value) :
     forall right, valueEq left right = .ok (decide (left = right)) := by
-  apply api.Value.rec
+  apply mrr_relation.api.Value.rec
     (motive_1 := Exact)
     (motive_2 := fun vec => forall child, Membership.mem vec.val child -> Exact child)
     (motive_3 := fun vec => forall entry, Membership.mem vec.val entry -> Exact entry.2)
@@ -50,7 +50,7 @@ theorem native_value_equality_total (left : Value) :
         have hrv : i < other.val.length := by simpa only [alloc.vec.Vec.deref, Slice.from_val] using hr
         simpa only [alloc.vec.Vec.deref, Slice.from_val] using
           children vec.val[i] (List.getElem_mem hlv) other.val[i])
-    simpa only [alloc.vec.Vec.deref, Slice.from_val, api.Value.List.injEq, alloc.vec.Vec.eq_iff] using exactLoop
+    simpa only [alloc.vec.Vec.deref, Slice.from_val, mrr_relation.api.Value.List.injEq, alloc.vec.Vec.eq_iff] using exactLoop
   next =>
     intro vec children right
     cases right <;> try (simpa using native_value_variant_mismatch (.Record vec) _ (by simp [valueTag]))
@@ -64,7 +64,7 @@ theorem native_value_equality_total (left : Value) :
         simpa only [alloc.vec.Vec.deref, Slice.from_val, Prod.mk.eta] using
           native_record_fields_exact vec.val[i].1 other.val[i].1 vec.val[i].2 other.val[i].2
             (children vec.val[i] (List.getElem_mem hlv)))
-    simpa only [alloc.vec.Vec.deref, Slice.from_val, api.Value.Record.injEq, alloc.vec.Vec.eq_iff] using exactLoop
+    simpa only [alloc.vec.Vec.deref, Slice.from_val, mrr_relation.api.Value.Record.injEq, alloc.vec.Vec.eq_iff] using exactLoop
   next =>
     intro slice children
     exact children

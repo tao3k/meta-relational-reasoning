@@ -12,7 +12,7 @@ theorem native_value_list_loop_exact (left right : Slice Value)
     (children : forall (i : Nat) (hl : i < left.val.length) (hr : i < right.val.length),
       valueEq left.val[i] right.val[i] = .ok (decide (left.val[i] = right.val[i])))
     (index : Usize) (equal : Bool) :
-    api.equal_value_lists_loop left right index equal =
+    mrr_relation.api.equal_value_lists_loop left right index equal =
       .ok (equal && decide (left.val.drop index.val = right.val.drop index.val)) := by
   generalize distance : left.val.length - index.val = remaining
   induction remaining using Nat.strong_induction_on generalizing index equal with
@@ -55,7 +55,7 @@ theorem native_value_list_loop_exact (left right : Slice Value)
         unfold valueEq at compare
         have smaller : left.val.length - next.val < remaining := by omega
         have recurse := induction (left.val.length - next.val) smaller next true rfl
-        rw [api.equal_value_lists_loop.eq_def]
+        rw [mrr_relation.api.equal_value_lists_loop.eq_def]
         simp only [if_pos active, if_true, readLeft, readRight, compare, bind_ok, addCall]
         by_cases same : left.val[index.val] = right.val[index.val]
         case pos =>
@@ -75,9 +75,9 @@ The final recursive equality proof must discharge those laws by induction. -/
 theorem native_value_record_loop_exact (left right : Slice (Prod String Value))
     (sizes : left.val.length = right.val.length)
     (children : forall (i : Nat) (hl : i < left.val.length) (hr : i < right.val.length),
-      api.equal_record_fields left.val[i].1 right.val[i].1 left.val[i].2 right.val[i].2 = .ok (decide (left.val[i] = right.val[i])))
+      mrr_relation.api.equal_record_fields left.val[i].1 right.val[i].1 left.val[i].2 right.val[i].2 = .ok (decide (left.val[i] = right.val[i])))
     (index : Usize) (equal : Bool) :
-    api.equal_value_records_loop left right index equal =
+    mrr_relation.api.equal_value_records_loop left right index equal =
       .ok (equal && decide (left.val.drop index.val = right.val.drop index.val)) := by
   generalize distance : left.val.length - index.val = remaining
   induction remaining using Nat.strong_induction_on generalizing index equal with
@@ -119,13 +119,13 @@ theorem native_value_record_loop_exact (left right : Slice (Prod String Value))
         have compare := children index.val hl hr
         have smaller : left.val.length - next.val < remaining := by omega
         have recurse := induction (left.val.length - next.val) smaller next true rfl
-        rw [api.equal_value_records_loop.eq_def]
+        rw [mrr_relation.api.equal_value_records_loop.eq_def]
         simp only [if_pos active, if_true, readLeft, readRight, bind_ok, addCall]
         cases leftEntry : left.val[index.val]
         rename_i key child
         cases rightEntry : right.val[index.val]
         rename_i otherKey otherChild
-        have compareCall : api.equal_record_fields key otherKey child otherChild =
+        have compareCall : mrr_relation.api.equal_record_fields key otherKey child otherChild =
             .ok (decide (left.val[index.val] = right.val[index.val])) := by
           simpa only [leftEntry, rightEntry] using compare
         simp only [uncurry, compareCall, bind_ok]
@@ -145,11 +145,11 @@ theorem native_value_record_loop_exact (left right : Slice (Prod String Value))
 theorem native_value_lists_exact (left right : Slice (Value))
     (children : forall (i : Nat) (hl : i < left.val.length) (hr : i < right.val.length),
       valueEq left.val[i] right.val[i] = .ok (decide (left.val[i] = right.val[i]))) :
-    api.equal_value_lists left right = .ok (decide (left.val = right.val)) := by
+    mrr_relation.api.equal_value_lists left right = .ok (decide (left.val = right.val)) := by
   by_cases sizes : left.val.length = right.val.length
   case pos =>
     have lengths : Slice.len left = Slice.len right := by scalar_tac
-    rw [api.equal_value_lists.eq_def]
+    rw [mrr_relation.api.equal_value_lists.eq_def]
     simp only [lengths, bne_self_eq_false, Bool.false_eq_true, if_false]
     simpa using native_value_list_loop_exact left right sizes children 0#usize true
   case neg =>
@@ -163,12 +163,12 @@ theorem native_value_lists_exact (left right : Slice (Value))
 
 theorem native_value_records_exact (left right : Slice (Prod String Value))
     (children : forall (i : Nat) (hl : i < left.val.length) (hr : i < right.val.length),
-      api.equal_record_fields left.val[i].1 right.val[i].1 left.val[i].2 right.val[i].2 = .ok (decide (left.val[i] = right.val[i]))) :
-    api.equal_value_records left right = .ok (decide (left.val = right.val)) := by
+      mrr_relation.api.equal_record_fields left.val[i].1 right.val[i].1 left.val[i].2 right.val[i].2 = .ok (decide (left.val[i] = right.val[i]))) :
+    mrr_relation.api.equal_value_records left right = .ok (decide (left.val = right.val)) := by
   by_cases sizes : left.val.length = right.val.length
   case pos =>
     have lengths : Slice.len left = Slice.len right := by scalar_tac
-    rw [api.equal_value_records.eq_def]
+    rw [mrr_relation.api.equal_value_records.eq_def]
     simp only [lengths, bne_self_eq_false, Bool.false_eq_true, if_false]
     simpa using native_value_record_loop_exact left right sizes children 0#usize true
   case neg =>

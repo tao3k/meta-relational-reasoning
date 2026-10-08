@@ -313,7 +313,7 @@ structure worklist.Worklist (Self : Type) where
   advance : Self -> Result (Bool ** Self)
 
 /-- [mrr_agentic_ai_context::state::ClosureTraversal]
-    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 443:0-450:1 -/
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 451:0-458:1 -/
 structure state.ClosureTraversal where
   elements : alloc.collections.btree.map.BTreeMap mrr_identity.api.FactId
     state.AgenticAiContextElement Global
@@ -325,7 +325,7 @@ structure state.ClosureTraversal where
   error : Option state.AgenticAiContextError
 
 /-- [mrr_agentic_ai_context::state::ImpactTraversal]
-    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 562:0-566:1 -/
+    Source: 'crates/mrr-agentic-ai-context/src/state.rs', lines 570:0-574:1 -/
 structure state.ImpactTraversal where
   reverse : alloc.collections.btree.map.BTreeMap mrr_identity.api.FactId
     (alloc.collections.btree.set.BTreeSet mrr_identity.api.FactId Global)

@@ -293,7 +293,7 @@ fn compare_revisions(
     );
     let mut changed = BTreeSet::new();
     for id in &all {
-        if global_change || old.elements.get(id) != new.elements.get(id) {
+        if global_change || revision_elements_differ(old.elements.get(id), new.elements.get(id)) {
             changed.insert(*id);
         }
     }
@@ -306,6 +306,14 @@ fn compare_revisions(
         invalidated: invalidated.into_iter().collect(),
         reusable,
     }
+}
+
+// Keep the actual option/borrowed-element comparison available to source proof.
+fn revision_elements_differ(
+    old: Option<&AgenticAiContextElement>,
+    new: Option<&AgenticAiContextElement>,
+) -> bool {
+    old != new
 }
 
 fn revision_bindings_changed(

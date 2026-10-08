@@ -278,7 +278,7 @@ jobs:
           lake build Evidence Driver NativeFacts Stack Expansion Forward Reverse ReverseIndex ImpactWrapper Coverage Rejection ForwardWrapper GeneralForward GeneralWrapper DeclaredForward RevisionProjection BindingEquality TransformationTable
           lake env lean Axioms.lean
           cd ../AgenticAIContextValue
-          lake build ValueEquality ValueLoops ValueRecursive
+          lake build ValueEquality ValueLoops ValueRecursive FactEquality
           lake env lean Axioms.lean
       - name: Save current source extraction receipt
         if: always()

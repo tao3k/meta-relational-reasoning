@@ -380,8 +380,10 @@ computable NonZero and library candidates outside the admitted default interface
 No generated code is patched and no equality axiom is admitted.
 The independent =../AgenticAIContextValue/ValueRecursive.lean= scope now proves
 universal total and exact recursive Value equality, with all child comparison
-premises discharged by the generated nested recursor and 35 declarations checked
-by its separate axiom audit. Element/Facts equality, exact changed construction
+premises discharged by the generated nested recursor and 53 declarations checked
+by its separate axiom audit. Actual context/Fact/element equality and the option
+change predicate are also proved in =../AgenticAIContextValue/FactEquality.lean=.
+Exact changed construction
 and revision assembly remain open.
 All 141 required declarations are checked for
 custom axioms by =Axioms.lean=.

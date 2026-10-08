@@ -1,6 +1,6 @@
 name = "MRRContextValueProofs"
 version = "0.1.0"
-defaultTargets = ["ValueEquality", "ValueLoops", "ValueRecursive"]
+defaultTargets = ["ValueEquality", "ValueLoops", "ValueRecursive", "FactEquality"]
 moreLeanArgs = ["-DautoImplicit=false", "-DwarningAsError=true"]
 
 [[require]]
@@ -20,3 +20,6 @@ name = "ValueLoops"
 
 [[lean_lib]]
 name = "ValueRecursive"
+
+[[lean_lib]]
+name = "FactEquality"
