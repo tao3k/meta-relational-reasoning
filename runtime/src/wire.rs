@@ -364,7 +364,7 @@ mod tests {
     use super::*;
     #[test]
     fn inert_bounded_roundtrip() {
-        let v = crate::datum!({"empty":[],"unicode":"时态\n\"\\","flag":false,"integer":-3});
+        let v = crate::datum!({"empty":[],"unicode":"\u{65f6}\u{6001}\n\"\\","flag":false,"integer":-3});
         assert_eq!(from_slice(&to_vec(&v).unwrap()).unwrap(), v);
         for bytes in [
             b"{}".as_slice(),
