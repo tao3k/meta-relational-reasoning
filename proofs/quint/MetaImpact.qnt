@@ -29,6 +29,7 @@ module MetaImpact {
     graph.exists(edge => changed.contains(edge._2))
   val frontierExpected = touched(oldSupports.union(newSupports))
   val usedFrontier = touched(if (BUG == "dropNewEdges") oldSupports
+    else if (BUG == "dropOldEdges") newSupports
     else oldSupports.union(newSupports))
   def ready(branch: int, graph: Set[(int, int)], present: Set[int]): bool = and {
     admitted.contains(branch),

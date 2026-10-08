@@ -102,6 +102,15 @@
       "coverageComplete": true,
       "ownerClaim": "structural"
     },
+    "oldEdge": {
+      "oldSupports": [[0, 2]],
+      "newSupports": [],
+      "oldPresent": [2],
+      "newPresent": [],
+      "supportComplete": true,
+      "coverageComplete": true,
+      "ownerClaim": "structural"
+    },
     "temporal": {
       "oldSupports": [],
       "newSupports": [],
@@ -115,6 +124,7 @@
   "metaImpactMutations": [
     {"scenario": "alternative", "bug": "dropAlternative", "invariant": "noFalseRetraction"},
     {"scenario": "newEdge", "bug": "dropNewEdges", "invariant": "frontierSound"},
+    {"scenario": "oldEdge", "bug": "dropOldEdges", "invariant": "frontierSound"},
     {"scenario": "absence", "bug": "uncertifiedAbsence", "invariant": "noUncertifiedAbsence"},
     {"scenario": "temporal", "bug": "promoteCausal", "invariant": "noTemporalPromotion"}
   ]

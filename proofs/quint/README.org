@@ -34,12 +34,11 @@ From the repository root:
 ./.devenv/devenv-profile-exec just meta-impact .ci/quint/meta-impact-receipt.json
 #+end_src
 
-Six finite scenarios must satisfy safety
-and eventual publication. Four named mutations must produce actual checker
-counterexamples: dropping an alternative support, ignoring newly added edges,
-admitting uncertified absence and upgrading an unverified Temporal claim. The
-receipt records model, generated instance and checker log hashes and state
-counts.
+Seven finite scenarios must satisfy safety and eventual publication. Five
+named mutations must produce actual checker counterexamples: dropping an
+alternative support, ignoring newly added or removed support edges, admitting
+uncertified absence and upgrading an unverified Temporal claim. The receipt
+records model, generated instance and checker log hashes and state counts.
 
 Both gates use real checker output or measured process CPU as progress, with
 a five-second idle and 45-second total limit for each Quint command. They
