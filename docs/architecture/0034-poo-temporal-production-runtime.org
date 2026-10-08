@@ -421,6 +421,8 @@ own trace; no timer heartbeat changes the five-second progress deadline.
 With those options, the ten lifecycle cases and ten MetaImpact cases passed
 locally at that head, including required counterexamples, and Lean checked 166 actual TLC
 states. The local JVM is OpenJDK 25; Java 17 CI passes on =8c02320=; each newer head remains an independent gate.
+The current MRR lifecycle and Meta Impact checks use the [[file:../../proofs/quint/README.org][Quint proof gate]];
+the TLA/TLC receipts above describe only those earlier qualification heads.
 Current Rust/Value source extraction freshness passes with pinned Aeneas/Charon.
 The regenerated difference is source line metadata only. Both Lean builds pass
 with 141 and 29 source-refinement declarations passing their axiom audits.
