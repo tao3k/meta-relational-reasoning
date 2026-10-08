@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0 AND LGPL-2.1-or-later
 * Contract
 
 Python runtime implementation and its Python qualification tools live under
-=packages/python-runtime=. MRR owns this Rust consumer of the shared
+=packages/python-runtime= in POO Flow. MRR owns this Rust consumer of the shared
 C/Scheme ABI and Rust assertions for that consumer. Temporal semantics remain
 in the POO/Scheme core. Python and Rust call the shared ABI as separate callers.
 
@@ -394,3 +394,21 @@ SHA256, using =POO_FLOW_SEMANTIC_LIBRARY= and =POO_FLOW_SEMANTIC_SHA256=. These
 ABI environment names identify the Library producer, not Rust code ownership.
 POO CI may check out a pinned MRR commit to test an external consumer against
 its just-built Library; there is no copy or compatibility crate in POO.
+
+* Consumer CI ownership
+
+MRR consumes the immutable POO Flow dependency declared in =gerbil.pkg=.
+POO CI has no MRR checkout or runtime pin. Run the consumer gate in MRR:
+
+#+begin_src sh
+gerbil env bash runtime/tools/qualify-library.sh .gerbil/pkg/github.com/tao3k/poo-flow .ci/library
+#+end_src
+
+This reuses the installed Gerbil SDK and package graph, builds POO's official
+native artifact, prepares the locked Rust consumers and installs the Python
+wheel. Rust and Python replay the same artifact and eight original Scheme
+oracles; the physical producer then exercises the authoritative Data port.
+Preparation is outside the existing five-second idle/45-second execution bounds.
+Only Scheme receipts are uploaded. Local logs stay outside Git. The optional
+=--prepared= mode reuses prepared executables/wheel/artifact while still checking
+the POO checkout pin, artifact digest, source bindings and all execution gates.
