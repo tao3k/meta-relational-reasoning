@@ -144,12 +144,6 @@ jobs:
           gerbil --version
           "$GERBIL_PREFIX/bin/gsc" -v
 
-      - name: Restore Gerbil package graph
-        uses: actions/cache@v4
-        with:
-          path: .gerbil
-          key: gxpkg-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('gerbil.pkg', '.github/scripts/install-gerbil-release.sh') }}
-
       - name: Prefetch declared native commit objects
         run: python3 -m mrr_proof_validation.prepare_gerbil_dependencies
 
