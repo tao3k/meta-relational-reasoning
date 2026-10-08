@@ -34,10 +34,11 @@ From the repository root:
 ./.devenv/devenv-profile-exec just meta-impact .ci/quint/meta-impact-receipt.json
 #+end_src
 
-Seven finite scenarios must satisfy safety and eventual publication. Six
+Eight finite scenarios must satisfy safety and eventual publication. Eight
 named mutations must produce actual checker counterexamples: dropping an
 alternative support, retracting without a complete support inventory, ignoring
-newly added or removed support edges, admitting uncertified absence and
+newly added or removed support edges, missing a new negative match in the
+reevaluation frontier, using stale observations or uncertified absence, and
 upgrading an unverified Temporal claim. The receipt
 records model, generated instance and checker log hashes and state counts.
 

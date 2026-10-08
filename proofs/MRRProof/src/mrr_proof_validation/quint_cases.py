@@ -59,6 +59,8 @@ def instance(model: str, scenario: str, bug: str, directory: Path) -> Path:
             "NEW_SUPPORTS": quint_set(case["newSupports"]),
             "OLD_PRESENT": quint_set(case["oldPresent"]),
             "NEW_PRESENT": quint_set(case["newPresent"]),
+            "OLD_OBSERVED": quint_set(case.get("oldObserved", [])),
+            "NEW_OBSERVED": quint_set(case.get("newObserved", [])),
             "SUPPORT_COMPLETE": str(case["supportComplete"]).lower(),
             "COVERAGE_COMPLETE": str(case["coverageComplete"]).lower(),
             "OWNER_CLAIM": json.dumps(case["ownerClaim"]),

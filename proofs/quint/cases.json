@@ -93,6 +93,17 @@
       "coverageComplete": false,
       "ownerClaim": "structural"
     },
+    "negativeAddition": {
+      "oldSupports": [],
+      "newSupports": [],
+      "oldPresent": [],
+      "newPresent": [],
+      "oldObserved": [],
+      "newObserved": [2],
+      "supportComplete": true,
+      "coverageComplete": true,
+      "ownerClaim": "structural"
+    },
     "newEdge": {
       "oldSupports": [],
       "newSupports": [[0, 2]],
@@ -127,6 +138,8 @@
     {"scenario": "newEdge", "bug": "dropNewEdges", "invariant": "frontierSound"},
     {"scenario": "oldEdge", "bug": "dropOldEdges", "invariant": "frontierSound"},
     {"scenario": "absence", "bug": "uncertifiedAbsence", "invariant": "noUncertifiedAbsence"},
+    {"scenario": "negativeAddition", "bug": "dropNegativeDelta", "invariant": "frontierSound"},
+    {"scenario": "negativeAddition", "bug": "ignoreNewObservation", "invariant": "noUncertifiedAbsence"},
     {"scenario": "temporal", "bug": "promoteCausal", "invariant": "noTemporalPromotion"}
   ]
 }
