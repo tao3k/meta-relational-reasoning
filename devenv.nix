@@ -32,7 +32,8 @@ in
     pkgs.fd
     pkgs.ripgrep
     pkgs.mermaid-cli
-    pkgs.tlaplus
+    pkgs.nodejs_22
+    pkgs.jdk21
     pkgs.eza
   ];
 

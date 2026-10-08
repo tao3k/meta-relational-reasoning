@@ -195,7 +195,7 @@ model. GraphQL is a separate API language.
   ABI and preserves typed upstream runtime failures.
 - =meta-relational-reasoning= is the stable Rust consumer facade; it owns no
   duplicate semantics.
-- =mrr-conformance=, Lean proofs, TLA+/TLC models, and differential oracles
+- =mrr-conformance=, Lean proofs, Quint models, and differential oracles
   provide independent evidence for their stated contracts.
 
 ** Design references

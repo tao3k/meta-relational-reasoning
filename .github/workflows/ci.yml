@@ -98,6 +98,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
       - uses: typst-community/setup-typst@v4
 
       - name: Install documentation proof dependencies
@@ -197,6 +201,19 @@ jobs:
 
       - name: Lint optional Context features
         run: gerbil env cargo clippy -p mrr-agentic-ai-context -p meta-relational-reasoning --all-targets --all-features --locked -- -D warnings
+
+      - name: Verify transition parity with Quint
+        env:
+          MRR_QUINT_ORACLE_VERIFY: "1"
+          MRR_QUINT_BIN: ${{ github.workspace }}/proofs/quint/node_modules/.bin/quint
+          QUINT_HOME: ${{ runner.temp }}/mrr-quint-backend
+          OUT_DIR: ${{ runner.temp }}/mrr-quint-output
+        run: |
+          npm ci --prefix proofs/quint
+          test "$(proofs/quint/node_modules/.bin/quint --version)" = 0.33.0
+          mkdir -p "$QUINT_HOME" "$OUT_DIR"
+          proofs/quint/node_modules/.bin/quint typecheck crates/mrr-transition/quint/MrrTransitionOracle.qnt
+          gerbil env cargo test -p mrr-transition --locked ten_transition_fixtures_match_quint_status_and_counterexample_length -- --nocapture
 
       - name: Test source-bound property query integration
         run: |

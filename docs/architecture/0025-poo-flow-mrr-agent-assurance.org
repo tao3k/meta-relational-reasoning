@@ -143,7 +143,7 @@ of them as this repository's semantic authority:
 | strategy and composition | POO Flow | POO/C3 policy objects, profiles, workflows, sessions, loops, resource ordering, retry policy, runtime handoff | fixed-point fact derivation and live effect execution |
 | semantic reasoning | MRR | identity, relations, queries, rules, lineage, generations, transitions, bounded safety, admission | Agent lifecycle, sandbox placement, scheduling, persistence |
 | candidate evaluation | Scheme ASCENT via MRR native dispatch | bounded Datalog-style fixed point | identity allocation, lineage admission, publication |
-| specification and checking | TLA+/TLC and Lean | finite transition/composition counterexamples and kernel-checked contract theorems | production scheduling or runtime authority |
+| specification and checking | Quint and Lean | finite transition/composition counterexamples and kernel-checked contract theorems | production scheduling or runtime authority |
 | durable execution | Rust, Marlin, or another admitted runtime | concurrency, persistence, subprocesses, IO, checkpoints, external effects | manufacturing POO Flow policy facts or MRR semantic receipts |
 
 #+begin_src mermaid
@@ -157,7 +157,7 @@ flowchart TD
   A[Scheme ASCENT bounded candidates]
   M[MRR lineage + transition admission]
   R[Durable runtime<br/>concurrency + persistence + effects]
-  V[TLA+/TLC composition scenarios]
+  V[Quint composition scenarios]
   L[Lean contract proofs]
 
   S -->|source-owned revisions| C
@@ -209,7 +209,7 @@ domain library support at build time; they do not select a running backend or
 grant execution authority. An application backend such as Marlin composes the
 selected libraries and owns runtime execution, persistence, and effects.
 
-* Why TLA+ crosses both layers
+* Why Quint crosses both layers
 
 Agent safety properties commonly span more than one component.  Delegation,
 revocation, cancellation, retry, checkpoint recovery, and exactly-once effect
@@ -217,10 +217,10 @@ commit begin in the POO Flow control plane, while semantic generation and
 lineage validity belong to MRR.  A local unit test in either repository cannot
 establish that the composed state machine preserves the property.
 
-TLA+ is therefore most useful at the composition boundary.  It can model the
+Quint is therefore most useful at the composition boundary.  It can model the
 POO Flow protocol state, MRR semantic state, runtime/environment actions, and
 adversary actions in one finite scenario without moving runtime authority into
-the specification.  TLC counterexamples can then become source-linked
+the specification.  Model-checker counterexamples can then become source-linked
 cross-repository regression scenarios.
 
 This follows the assurance shape described by
@@ -247,7 +247,7 @@ composition machinery:
   =modules/query= API as a library dependency.
 
 The implemented evidence is still narrower than the complete diagram.  Current
-TLC parity covers committed MRR transition fixtures.  It does not yet prove a
+Quint parity covers committed MRR transition fixtures.  It does not yet prove a
 composed POO Flow session/retry/effect protocol, all AgentRFC invariants, or a
 live runtime replay.  Those require source-linked cross-layer scenarios and
 receipts rather than a documentation-only conformance claim.
@@ -259,7 +259,7 @@ A future end-to-end scenario is admitted only when it identifies:
 1. the POO Flow policy/profile and control-plane generation;
 2. the exact MRR bundle, semantic generation, and admission receipt;
 3. the runtime/environment/adversary actions admitted by the scenario;
-4. the TLA+ invariant and TLC counterexample or safe finite-model receipt;
+4. the Quint invariant and model-checker counterexample or safe finite-model receipt;
 5. the implementation replay result and causal lineage back to source
    requirements.
 
@@ -281,7 +281,7 @@ MRR, and the admitted runtime together.
 | semantic world | Ontology objects, links, properties, actions, and functions | MRR facts, relations, rules, generations, and transitions |
 | operational change | Ontology Actions and external-system writeback | POO Flow-authorized handoff to a durable runtime |
 | reasoning boundary | logic services and functions integrated with the Ontology | Scheme ASCENT proposes; MRR lineage and transition owners admit |
-| verification evidence | platform security, audit, lineage, and scenario facilities | typed receipts, Lean contracts, and TLA+/TLC differential scenarios |
+| verification evidence | platform security, audit, lineage, and scenario facilities | typed receipts, Lean contracts, and Quint differential scenarios |
 
 Palantir's Ontology is closest to the combined Content Graph plus operational
 world model, while AIP consumes scoped views of that world for human/Agent
