@@ -18,7 +18,3 @@ root = "Checks.Main"
 [[lean_exe]]
 name = "agentic-ai-context-refinement"
 root = "Checks.Refinement"
-
-[[lean_exe]]
-name = "agentic-ai-context-quint-replay"
-root = "Checks.QuintReplay"

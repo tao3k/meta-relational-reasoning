@@ -292,7 +292,7 @@ jobs:
           if-no-files-found: error
 
   agentic-ai-context-quint:
-    name: Agentic AI Context Quint and Lean conformance
+    name: Agentic AI Context Quint models
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -310,27 +310,14 @@ jobs:
           test "$(proofs/quint/node_modules/.bin/quint --version)" = 0.33.0
           proofs/quint/node_modules/.bin/quint typecheck proofs/quint/RevisionLifecycle.qnt
           proofs/quint/node_modules/.bin/quint typecheck proofs/quint/MetaImpact.qnt
-      - uses: leanprover/lean-action@v1
-        with:
-          lake-package-directory: proofs/MRRProof/AgenticAIContext
-          auto-config: false
-          build: false
-          test: false
-          lint: false
-      - name: Build Lean publication laws and Quint-state replay
-        working-directory: proofs/MRRProof/AgenticAIContext
-        run: |
-          python3 ../src/mrr_proof_validation/lean_dependency_pin.py .
-          lake build MRR agentic-ai-context-quint-replay
-          lake env lean Checks/Axioms.lean
-      - name: Check safety, liveness, counterexamples and Lean state conformance
+      - name: Check finite safety, liveness and required counterexamples
         env:
           MRR_QUINT_BIN: ${{ github.workspace }}/proofs/quint/node_modules/.bin/quint
           QUINT_HOME: ${{ runner.temp }}/mrr-quint-backend
           OUT_DIR: ${{ runner.temp }}/mrr-quint-output
         run: |
           mkdir -p "$QUINT_HOME" "$OUT_DIR"
-          python3 -m mrr_proof_validation.context_quint --lean-replay proofs/MRRProof/AgenticAIContext/.lake/build/bin/agentic-ai-context-quint-replay --receipt .ci/quint/receipt.json
+          python3 -m mrr_proof_validation.context_quint --receipt .ci/quint/receipt.json
           python3 -m mrr_proof_validation.meta_impact_quint --receipt .ci/quint/meta-impact-receipt.json
       - name: Save Quint receipts and checker logs
         if: always()

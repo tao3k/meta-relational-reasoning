@@ -14,7 +14,7 @@ development environment:
 #+end_src
 
 The package exposes CLI entry points in =pyproject.toml=. The =context-quint=
-just recipe checks the revision model against Lean replay; =meta-impact=
-checks the finite Meta Impact model and required counterexamples. These are
-bounded model checks, not source refinement or deployed behavior evidence.
+and =meta-impact= just recipes check their finite Quint models and required
+counterexamples. Lean proofs run independently. These are bounded model checks,
+not source refinement or deployed behavior evidence.
 The neighboring proof projects state each gate's assumptions and receipts.

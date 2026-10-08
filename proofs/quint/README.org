@@ -21,16 +21,10 @@ scenarios using Quint's TLC backend. Two named broken variants must yield real
 checker invariant counterexamples: ignoring newly added dependency edges and
 sealing before impact propagation completes.
 
-For each positive case, a fixed 512-trace Quint simulation exports ITF states.
-The gate creates a Quint invariant from their distinct state set and checks
-exhaustively that every reachable checker state belongs to that set. It also
-requires the checker and replay sets to have the same cardinality, establishing
-equality for each finite scenario. Lean then replays every reachable state
-through its publication, closure and reuse definitions. The actual final
-checker counterexample states are also replayed and rejected by Lean. The
-receipt records both checker passes, the generated coverage invariant, state
-projection, model and Lean executable hashes. This finite cross-model check
-does not prove a general Quint-to-Lean translation theorem.
+The checker exhausts each finite scenario and records generated and distinct
+state counts. The receipt binds the model, scenario inputs, generated instance
+and checker log hashes. Quint owns the lifecycle transition properties here;
+its states are not translated into Lean obligations.
 
 * Meta Impact gate
 
@@ -45,10 +39,10 @@ and eventual publication. Four named mutations must produce actual checker
 counterexamples: dropping an alternative support, ignoring newly added edges,
 admitting uncertified absence and upgrading an unverified Temporal claim. The
 receipt records model, generated instance and checker log hashes and state
-counts. This model is not replayed against Lean states.
+counts.
 
 Both gates use real checker output or measured process CPU as progress, with
 a five-second idle and 45-second total limit for each Quint command. They
 qualify bounded model behavior, not Rust source refinement, universal fairness,
-or deployed serving behavior. The Lean source laws and Rust source evidence
-remain separate gates under =proofs/MRRProof=.
+or deployed serving behavior. Lean independently proves publication and reuse
+laws; Rust source evidence has its own gate under =proofs/MRRProof=.

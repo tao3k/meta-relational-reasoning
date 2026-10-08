@@ -110,20 +110,16 @@ construction, state validation/publication and serialization remain open.
 
 ** Complementary temporal and value evidence
 
-The [[file:../../quint/README.org][Quint/Lean lifecycle gate]] checks eight
-finite four-identity graphs and two required real invariant counterexamples.
-An exhaustive Quint coverage invariant proves the fixed simulation state set
-equals the checker reachable set in each positive scenario. All those states
-and both actual checker counterexample final states are projected into the Lean
-publication gate. Quint checks phase transition safety/liveness under weak
-fairness; three universal Lean publication laws establish guards, complete
-impact and dependency-safe reuse within the model.
+The [[file:../../quint/README.org][Quint lifecycle gate]] checks eight finite
+four-identity graphs and two required real invariant counterexamples. It owns
+phase transition safety and liveness under weak fairness. Separately, Lean
+proves publication guards, complete impact and dependency-safe reuse in its
+own model. Quint states are not replayed through the Lean definitions.
 
-This executable cross-model conformance does not replace the remaining Rust
-source equality/classification/assembly proof, prove a Quint-to-Lean translator,
-or establish universal lifecycle fairness or physical serving behavior. The CI
-gate retains a five-second idle and 45-second qualification limit and exact
-model/instance/log/Lean-binary hashes.
+Neither model gate closes the remaining Rust source equality, classification
+and assembly proof or establishes universal lifecycle fairness or physical
+serving behavior. The Quint CI gate retains a five-second idle and 45-second
+qualification limit and exact model, instance and checker log hashes.
 
 ** Recursive Value source scope
 
