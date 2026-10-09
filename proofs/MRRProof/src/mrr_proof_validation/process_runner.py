@@ -58,7 +58,7 @@ def _owned_cpu(group: int) -> dict[int, float]:
 def _finish_owned_group(child: subprocess.Popen[bytes]) -> None:
     """Ignore Darwin's refusal to signal an already-dead process group only."""
     try:
-        native_tests.signal_owned_group(child, signal.SIGKILL)
+        _signal_owned_group(child, signal.SIGKILL)
     except PermissionError:
         snapshot = subprocess.check_output(
             ["ps", "-Ao", "pgid=,stat="], text=True, timeout=1
@@ -69,6 +69,43 @@ def _finish_owned_group(child: subprocess.Popen[bytes]) -> None:
             if len(fields := line.split()) == 2
         ):
             raise
+
+
+def _signal_owned_group(child: subprocess.Popen[bytes], signum: int) -> None:
+    try:
+        native_tests.signal_owned_group(child, signum)
+        return
+    except PermissionError:
+        # Darwin may reject a negative-PID group signal for a live, owned
+        # session. Verify the exact group and UID before signalling each PID.
+        snapshot = subprocess.check_output(
+            ["ps", "-Ao", "pid=,ppid=,pgid=,uid=,stat="], text=True, timeout=1
+        )
+        processes = {}
+        for line in snapshot.splitlines():
+            fields = line.split()
+            if len(fields) != 5:
+                continue
+            pid, ppid, pgid, uid, stat = fields
+            processes[int(pid)] = (int(ppid), int(pgid), int(uid), stat)
+        owned = {child.pid}
+        while True:
+            previous = len(owned)
+            owned.update(pid for pid, (parent, pgid, _, _) in processes.items()
+                         if parent in owned or pgid == child.pid)
+            if len(owned) == previous:
+                break
+        live = [pid for pid in owned if pid in processes
+                and not processes[pid][3].startswith("Z")]
+        if child.pid not in live and child.poll() is None:
+            raise PermissionError("live child missing from owned process snapshot")
+        if any(processes[pid][2] != os.getuid() for pid in live):
+            raise PermissionError("owned process group contains a different UID")
+        for pid in sorted(live, key=lambda value: value == child.pid):
+            try:
+                os.kill(pid, signum)
+            except ProcessLookupError:
+                pass
 
 
 def run(command: list[str], *, cwd: Path, log: Path | None = None,
@@ -146,16 +183,16 @@ def run(command: list[str], *, cwd: Path, log: Path | None = None,
                               f"{label}-FAIL: {total_limit}s total limit")
                     print(reason, flush=True)
                     native_tests.report_owned_processes(child)
-                    native_tests.signal_owned_group(child, signal.SIGTERM)
+                    _signal_owned_group(child, signal.SIGTERM)
                     return Result(124, bytes(data), log)
         return Result(child.wait(), bytes(data), log)
     finally:
         if child.poll() is None:
-            native_tests.signal_owned_group(child, signal.SIGTERM)
+            _signal_owned_group(child, signal.SIGTERM)
             try:
                 child.wait(timeout=1)
             except subprocess.TimeoutExpired:
-                native_tests.signal_owned_group(child, signal.SIGKILL)
+                _signal_owned_group(child, signal.SIGKILL)
                 child.wait()
         _finish_owned_group(child)
         child.stdout.close()
