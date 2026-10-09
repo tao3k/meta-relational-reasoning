@@ -7,12 +7,12 @@
 }:
 
 let
-  gerbilCommand = ''
-    exec env -u CC -u CFLAGS -u CPPFLAGS -u LDFLAGS \
-      -u CPATH -u C_INCLUDE_PATH -u CPLUS_INCLUDE_PATH -u LIBRARY_PATH \
-      -u NIX_CFLAGS_COMPILE -u NIX_LDFLAGS -u DEVELOPER_DIR -u SDKROOT \
-      gerbil "$@"
-  '';
+  gerbilSdkRev =
+    (builtins.fromTOML (builtins.readFile ./Cargo.toml)).workspace.dependencies."gerbil-scheme-native-build".rev;
+  gerbilBuildCommand = pkgs.fetchurl {
+    url = "https://raw.githubusercontent.com/tao3k/gerbil-scheme-rust/${gerbilSdkRev}/tools/gerbil-build-command.sh";
+    hash = "sha256-KRty/WH1SXcqb0RQtbTBRPT7O75ykyB+uBRiM969rtk=";
+  };
 in
 {
   dotenv.enable = true;
@@ -64,7 +64,9 @@ in
   '';
   # Homebrew Gerbil/Gambit must use the host SDK.  Keep Nix's compiler
   # environment for Rust, and quarantine it only at the standard Gerbil edge.
-  scripts.mrr-gerbil.exec = gerbilCommand;
+  scripts.mrr-gerbil.exec = ''
+    exec ${pkgs.bash}/bin/bash ${gerbilBuildCommand} gerbil "$@"
+  '';
   scripts.mrr-gerbil-deps.exec = "mrr-gerbil deps --install";
   # Preserve devenv's Rust compiler/SDK while inheriting gxpkg's canonical
   # project package path. Cargo's AOT adapter sanitizes its Gerbil children.

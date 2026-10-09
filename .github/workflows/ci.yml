@@ -112,11 +112,15 @@ jobs:
           PUPPETEER_SKIP_DOWNLOAD: "true"
         run: npm install --global @mermaid-js/mermaid-cli@11.12.0 @bazel/bazelisk@1.28.1
 
+      - name: Set up immutable Gerbil release
+        uses: tao3k/gerbil-scheme-rust/.github/actions/setup-gerbil@8ce2642d46fb693e9791c2a3d75e5bf3342deaa9
+        with:
+          release-root: ${{ env.GERBIL_PREFIX }}
+
       - name: Install Linux dependencies
         if: runner.os == 'Linux'
         run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential libsqlite3-dev libssl-dev pkg-config zlib1g-dev
+          sudo apt-get install -y libsqlite3-dev libssl-dev pkg-config zlib1g-dev
 
       - name: Install macOS dependencies
         if: runner.os == 'macOS'
@@ -124,28 +128,12 @@ jobs:
           HOMEBREW_NO_AUTO_UPDATE: 1
           HOMEBREW_NO_INSTALL_CLEANUP: 1
         run: |
-          # The pinned Gerbil AOT release selects GCC 16; the runner supplies
-          # that host executable. gerbil-scheme-rust discovers the paired GSC
-          # and owns its GCC diagnostics and native archive construction.
-          brew install coreutils gcc jq lld openssl pkg-config sqlite zlib
+          brew install coreutils lld openssl pkg-config sqlite zlib
           openssl_prefix="$(brew --prefix openssl@3 2>/dev/null || brew --prefix openssl)"
           macos_major="$(sw_vers -productVersion | cut -d. -f1)"
           echo "PKG_CONFIG_PATH=$openssl_prefix/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}" >> "$GITHUB_ENV"
           echo "MACOSX_DEPLOYMENT_TARGET=$macos_major.0" >> "$GITHUB_ENV"
           echo "CARGO_TARGET_AARCH64_APPLE_DARWIN_RUSTFLAGS=-C link-arg=-fuse-ld=$(brew --prefix lld)/bin/ld64.lld" >> "$GITHUB_ENV"
-
-      - name: Install immutable Gerbil release
-        shell: bash
-        run: .github/scripts/install-gerbil-release.sh "$GERBIL_PREFIX"
-
-      - name: Activate Gerbil build controls
-        shell: bash
-        run: |
-          test -x "$GERBIL_PREFIX/bin/gsc"
-          cores="$(getconf _NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.ncpu)"
-          echo "GERBIL_BUILD_CORES=$cores" >> "$GITHUB_ENV"
-          gerbil --version
-          "$GERBIL_PREFIX/bin/gsc" -v
 
       - name: Prefetch declared native commit objects
         run: python3 -m mrr_proof_validation.prepare_gerbil_dependencies

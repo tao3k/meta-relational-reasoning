@@ -242,6 +242,9 @@ Verbose package preparation now preserves inherited SDK directory mappings in
 GXI and its GSC children report actual collector work without changing heap
 limits or inserting timed output. Quiet builds retain the inherited settings.
 Compiler diagnostic termination policy is not an embedded-host runtime policy.
+The current adapter calls the pinned =gerbil-scheme-rust= helper for this
+runtime-option composition; its compiler isolation and CI release setup are
+also supplied by that SDK.
 
 A direct owned GSC experiment showed that placing =-:= and =-verbose= after
 Gerbil's =-target C= causes both to be warned as improperly placed and ignored.

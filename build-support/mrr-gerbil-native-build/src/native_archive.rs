@@ -2,7 +2,6 @@
 
 use sha2::{Digest, Sha256};
 use std::env;
-use std::ffi::OsStr;
 use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
@@ -12,8 +11,9 @@ use std::time::Duration;
 use gerbil_scheme_native_build::{
     NativeHeaderInput, ProgramArchiveContract, ProgramArchiveObservation, ProgramArchiveObserver,
     ProgramArchiveOperation, ProgramArchiveRequest, build_program_archive_with_contract,
-    discover_gambit_gsc_from_env, gerbil_command, observe_program_archive_operation,
-    prepare_gsc_progress_launcher, run_native_process, source_workspace,
+    configure_gerbil_runtime_diagnostics, discover_gambit_gsc_from_env, gerbil_command,
+    observe_program_archive_operation, prepare_gsc_progress_launcher, resolve_gerbil_executable,
+    run_native_process, source_workspace,
 };
 
 const REQUIRED_MODULES: &[&str] = &[
@@ -130,10 +130,10 @@ impl NativeBuild {
             program_stage,
             package_prefix,
             package_load_path,
-            gxi: resolve_program(env::var_os("GERBIL_GXI").unwrap_or_else(|| "gxi".into())),
+            gxi: selected_gerbil_tool("GERBIL_GXI", "gxi"),
             workspace,
             gsc: discover_gambit_gsc_from_env().expect("discover SDK paired Gambit compiler"),
-            gxpkg: resolve_program(env::var_os("GERBIL_GXPKG").unwrap_or_else(|| "gxpkg".into())),
+            gxpkg: selected_gerbil_tool("GERBIL_GXPKG", "gxpkg"),
         }
     }
 
@@ -141,11 +141,7 @@ impl NativeBuild {
         let mut command = gerbil_command(program);
         // Both direct GXI and `gxpkg env gxi` enter the Scheme compiler.
         // Inherit diagnostics through the package launcher as well.
-        configure_runtime_diagnostics(
-            &mut command,
-            gerbil_build_verbose_level() > 0,
-            env::var_os("GAMBOPT"),
-        );
+        configure_gerbil_runtime_diagnostics(&mut command, gerbil_build_verbose_level() > 0);
         command
             .current_dir(&self.workspace)
             .env("GERBIL_PATH", &self.package_prefix)
@@ -365,15 +361,10 @@ pub(crate) fn run_with_progress(
     run_native_process(command, operation, stream)
 }
 
-fn resolve_program(program: impl AsRef<OsStr>) -> PathBuf {
-    let program = PathBuf::from(program.as_ref());
-    if program.components().count() > 1 {
-        return program;
-    }
-    env::split_paths(&env::var_os("PATH").expect("PATH"))
-        .map(|directory| directory.join(&program))
-        .find(|path| path.is_file())
-        .expect("locate Gerbil tool on PATH")
+fn selected_gerbil_tool(variable: &str, default: &str) -> PathBuf {
+    let program = env::var_os(variable).map_or_else(|| PathBuf::from(default), PathBuf::from);
+    resolve_gerbil_executable(&program)
+        .unwrap_or_else(|| panic!("locate {variable} tool: {}", program.display()))
 }
 
 fn scheme_string(path: &Path) -> String {
@@ -384,21 +375,3 @@ fn scheme_string(path: &Path) -> String {
             .replace('"', "\\\"")
     )
 }
-
-fn configure_runtime_diagnostics(
-    command: &mut Command,
-    enabled: bool,
-    base: Option<std::ffi::OsString>,
-) {
-    if enabled {
-        let mut options = base.unwrap_or_default();
-        if !options.is_empty() {
-            options.push(",");
-        }
-        options.push("1n,2n,d5qQ");
-        command.env("GAMBOPT", options);
-    }
-}
-#[cfg(test)]
-#[path = "../tests/unit/runtime_diagnostics.rs"]
-mod runtime_diagnostics_tests;
