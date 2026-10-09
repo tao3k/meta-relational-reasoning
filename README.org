@@ -361,3 +361,5 @@ An unconfigured transport host fails closed. Closing an owner retains its
 selected profile without embedded fallback or automatic restart. Separate
 process ownership permits built-in parsers with independent Scheme closures to
 remain in the host without interposing their generated module symbols.
+Parser frontends retain their existing default producer profile. Transport-only
+search facades do not depend on that frontend.

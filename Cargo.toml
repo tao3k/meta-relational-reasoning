@@ -51,7 +51,7 @@ mrr-revision = { path = "crates/mrr-revision", version = "0.1.0" }
 mrr-search = { path = "crates/mrr-search", version = "0.1.0", default-features = false }
 mrr-query = { path = "crates/mrr-query", version = "0.1.0" }
 mrr-property-source = { path = "crates/mrr-property-source", version = "0.1.0" }
-mrr-frontends = { path = "crates/mrr-frontends", version = "0.1.0", default-features = false }
+mrr-frontends = { path = "crates/mrr-frontends", version = "0.1.0" }
 mrr-logic = { path = "crates/mrr-logic", version = "0.1.0" }
 mrr-conformance = { path = "crates/mrr-conformance", version = "0.1.0" }
 mrr-lineage = { path = "crates/mrr-lineage", version = "0.1.0" }
