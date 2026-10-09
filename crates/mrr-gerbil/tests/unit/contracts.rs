@@ -75,7 +75,6 @@ fn rust_commands_inherit_the_canonical_gxpkg_environment() {
         .collect();
     assert!([
         "coreutils",
-        "gcc",
         "jq",
         "openssl",
         "pkg-config",
@@ -107,6 +106,8 @@ fn native_aot_reuses_the_upstream_program_builder_and_runtime() {
     let ffi = include_str!("../../src/native/ffi.rs");
 
     assert!(adapter.contains("build_program_archive_with_contract"));
+    assert!(adapter.contains("discover_gambit_gsc_from_env"));
+    assert!(adapter.contains("prepare_gsc_progress_launcher"));
     assert!(adapter.contains("ProgramArchiveObserver"));
     assert!(adapter.contains("gerbil-parser/src/ffi/parse-artifact-v1-native"));
     assert!(!adapter.contains("Command::new(\"gxc\")"));
