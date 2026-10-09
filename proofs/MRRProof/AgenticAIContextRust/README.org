@@ -409,7 +409,15 @@ concurrently while building the same pinned Aeneas dependencies once. Both
 axiom audit files still run against the completed graph. Value's standalone
 workspace remains available for focused development.
 
-CI caches only =.lake/packages=, keyed by the platform, Lean toolchain and Lake
-dependency configuration. Cache publication occurs after the proof steps, rather
-than inside a setup action that has not built the dependencies. Production
-extraction, root proof modules and both axiom audits remain checked on every run.
+CI caches =.lake/packages= separately from the root =.lake/build= artifacts.
+Both caches are scoped to the platform, Lean toolchain and Lake dependency
+configuration. Root artifact keys additionally include the current Lean sources,
+after production extraction has regenerated the source modules. A compatible
+earlier root cache can supply unchanged modules; =lake --rehash build= hashes
+all source and dependency traces instead of trusting stored =.hash= files,
+rebuilding changed modules and their dependents. The local recipe uses the same
+default target graph, including transformation proofs.
+
+Cache publication occurs after the proof steps. Production extraction and both
+axiom audits still execute on every run, including exact root-cache hits.
+Incremental reuse does not replace source extraction or declaration admission.

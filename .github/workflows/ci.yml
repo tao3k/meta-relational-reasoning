@@ -298,6 +298,13 @@ jobs:
           python3 -m mrr_proof_validation.context_source_proof --toolchain-dir .ci/aeneas --receipt .ci/context-source-proof.json
           python3 -m mrr_proof_validation.context_source_proof --value-equality --toolchain-dir .ci/aeneas --receipt .ci/value-source-proof.json
           python3 -m mrr_proof_validation.transformation_source_proof --toolchain-dir .ci/aeneas --receipt .ci/transformation-source-proof.json
+      - name: Reuse source-traced Lean proof artifacts
+        uses: actions/cache@v4
+        with:
+          path: proofs/MRRProof/AgenticAIContextRust/.lake/build
+          key: mrr-source-lean-proofs-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('proofs/MRRProof/AgenticAIContextRust/lean-toolchain', 'proofs/MRRProof/AgenticAIContextRust/lakefile.toml') }}-${{ hashFiles('proofs/MRRProof/AgenticAIContextRust/**/*.lean', 'proofs/MRRProof/AgenticAIContextValue/**/*.lean', 'proofs/MRRProof/AgenticAIContext/**/*.lean', '!proofs/**/.lake/**') }}
+          restore-keys: |
+            mrr-source-lean-proofs-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('proofs/MRRProof/AgenticAIContextRust/lean-toolchain', 'proofs/MRRProof/AgenticAIContextRust/lakefile.toml') }}-
       - name: Prepare pinned Lean source proof dependencies
         working-directory: proofs/MRRProof/AgenticAIContextRust
         env:
@@ -309,7 +316,7 @@ jobs:
       - name: Prove generated production functions and audit axioms
         working-directory: proofs/MRRProof/AgenticAIContextRust
         run: |
-          lake build
+          lake --rehash build
           lake env lean Axioms.lean
           lake env lean ../AgenticAIContextValue/Axioms.lean
       - name: Save current source extraction receipt
