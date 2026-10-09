@@ -40,6 +40,7 @@ def main() -> int:
             command = [
                 str(quint), "verify", source.name, "--main", "MetaImpactCase",
                 "--backend", "tlc", "--apalache-version", "0.62.1",
+                "--server-endpoint", "127.0.0.1:8822",
                 "--invariant", invariant or "safety", "--tlc-config", str(config),
                 "--verbosity", "3",
             ]
