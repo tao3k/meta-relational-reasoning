@@ -18,3 +18,6 @@ mod agentic_ai_context_selection;
 mod transformation;
 
 mod transformation_fixture;
+
+#[cfg(feature = "agentic-ai-context")]
+mod agentic_ai_context_use;

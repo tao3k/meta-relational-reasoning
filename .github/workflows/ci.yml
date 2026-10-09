@@ -325,6 +325,7 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -338,6 +339,7 @@ jobs:
           test "$(proofs/quint/node_modules/.bin/quint --version)" = 0.33.0
           proofs/quint/node_modules/.bin/quint typecheck proofs/quint/RevisionLifecycle.qnt
           proofs/quint/node_modules/.bin/quint typecheck proofs/quint/MetaImpact.qnt
+          proofs/quint/node_modules/.bin/quint typecheck proofs/quint/ContextUse.qnt
       - name: Check finite safety, liveness and required counterexamples
         env:
           MRR_QUINT_BIN: ${{ github.workspace }}/proofs/quint/node_modules/.bin/quint
@@ -347,6 +349,7 @@ jobs:
           mkdir -p "$QUINT_HOME" "$OUT_DIR"
           python3 -m mrr_proof_validation.context_quint --receipt .ci/quint/receipt.json
           python3 -m mrr_proof_validation.meta_impact_quint --receipt .ci/quint/meta-impact-receipt.json
+          python3 -m mrr_proof_validation.context_use_quint --receipt .ci/quint/context-use-receipt.json
       - name: Save Quint receipts and checker logs
         if: always()
         uses: actions/upload-artifact@v4

@@ -1,0 +1,524 @@
+{
+  "schema": "mrr.context-use-cases.v1",
+  "checks": [
+    "source",
+    "query",
+    "contract",
+    "observation",
+    "authorization",
+    "expiry"
+  ],
+  "cases": [
+    {
+      "valid": [],
+      "accepted": false
+    },
+    {
+      "valid": [
+        0
+      ],
+      "accepted": false
+    },
+    {
+      "valid": [
+        1
+      ],
+      "accepted": false
+    },
+    {
+      "valid": [
+        0,
+        1
+      ],
+      "accepted": false
+    },
+    {
+      "valid": [
+        2
+      ],
+      "accepted": false
+    },
+    {
+      "valid": [
+        0,
+        2
+      ],
+      "accepted": false
+    },
+    {
+      "valid": [
+        1,
+        2
+      ],
+      "accepted": false
+    },
+    {
+      "valid": [
+        0,
+        1,
+        2
+      ],
+      "accepted": false
+    },
+    {
+      "valid": [
+        3
+      ],
+      "accepted": false
+    },
+    {
+      "valid": [
+        0,
+        3
+      ],
+      "accepted": false
+    },
+    {
+      "valid": [
+        1,
+        3
+      ],
+      "accepted": false
+    },
+    {
+      "valid": [
+        0,
+        1,
+        3
+      ],
+      "accepted": false
+    },
+    {
+      "valid": [
+        2,
+        3
+      ],
+      "accepted": false
+    },
+    {
+      "valid": [
+        0,
+        2,
+        3
+      ],
+      "accepted": false
+    },
+    {
+      "valid": [
+        1,
+        2,
+        3
+      ],
+      "accepted": false
+    },
+    {
+      "valid": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "accepted": false
+    },
+    {
+      "valid": [
+        4
+      ],
+      "accepted": false
+    },
+    {
+      "valid": [
+        0,
+        4
+      ],
+      "accepted": false
+    },
+    {
+      "valid": [
+        1,
+        4
+      ],
+      "accepted": false
+    },
+    {
+      "valid": [
+        0,
+        1,
+        4
+      ],
+      "accepted": false
+    },
+    {
+      "valid": [
+        2,
+        4
+      ],
+      "accepted": false
+    },
+    {
+      "valid": [
+        0,
+        2,
+        4
+      ],
+      "accepted": false
+    },
+    {
+      "valid": [
+        1,
+        2,
+        4
+      ],
+      "accepted": false
+    },
+    {
+      "valid": [
+        0,
+        1,
+        2,
+        4
+      ],
+      "accepted": false
+    },
+    {
+      "valid": [
+        3,
+        4
+      ],
+      "accepted": false
+    },
+    {
+      "valid": [
+        0,
+        3,
+        4
+      ],
+      "accepted": false
+    },
+    {
+      "valid": [
+        1,
+        3,
+        4
+      ],
+      "accepted": false
+    },
+    {
+      "valid": [
+        0,
+        1,
+        3,
+        4
+      ],
+      "accepted": false
+    },
+    {
+      "valid": [
+        2,
+        3,
+        4
+      ],
+      "accepted": false
+    },
+    {
+      "valid": [
+        0,
+        2,
+        3,
+        4
+      ],
+      "accepted": false
+    },
+    {
+      "valid": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "accepted": false
+    },
+    {
+      "valid": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "accepted": false
+    },
+    {
+      "valid": [
+        5
+      ],
+      "accepted": false
+    },
+    {
+      "valid": [
+        0,
+        5
+      ],
+      "accepted": false
+    },
+    {
+      "valid": [
+        1,
+        5
+      ],
+      "accepted": false
+    },
+    {
+      "valid": [
+        0,
+        1,
+        5
+      ],
+      "accepted": false
+    },
+    {
+      "valid": [
+        2,
+        5
+      ],
+      "accepted": false
+    },
+    {
+      "valid": [
+        0,
+        2,
+        5
+      ],
+      "accepted": false
+    },
+    {
+      "valid": [
+        1,
+        2,
+        5
+      ],
+      "accepted": false
+    },
+    {
+      "valid": [
+        0,
+        1,
+        2,
+        5
+      ],
+      "accepted": false
+    },
+    {
+      "valid": [
+        3,
+        5
+      ],
+      "accepted": false
+    },
+    {
+      "valid": [
+        0,
+        3,
+        5
+      ],
+      "accepted": false
+    },
+    {
+      "valid": [
+        1,
+        3,
+        5
+      ],
+      "accepted": false
+    },
+    {
+      "valid": [
+        0,
+        1,
+        3,
+        5
+      ],
+      "accepted": false
+    },
+    {
+      "valid": [
+        2,
+        3,
+        5
+      ],
+      "accepted": false
+    },
+    {
+      "valid": [
+        0,
+        2,
+        3,
+        5
+      ],
+      "accepted": false
+    },
+    {
+      "valid": [
+        1,
+        2,
+        3,
+        5
+      ],
+      "accepted": false
+    },
+    {
+      "valid": [
+        0,
+        1,
+        2,
+        3,
+        5
+      ],
+      "accepted": false
+    },
+    {
+      "valid": [
+        4,
+        5
+      ],
+      "accepted": false
+    },
+    {
+      "valid": [
+        0,
+        4,
+        5
+      ],
+      "accepted": false
+    },
+    {
+      "valid": [
+        1,
+        4,
+        5
+      ],
+      "accepted": false
+    },
+    {
+      "valid": [
+        0,
+        1,
+        4,
+        5
+      ],
+      "accepted": false
+    },
+    {
+      "valid": [
+        2,
+        4,
+        5
+      ],
+      "accepted": false
+    },
+    {
+      "valid": [
+        0,
+        2,
+        4,
+        5
+      ],
+      "accepted": false
+    },
+    {
+      "valid": [
+        1,
+        2,
+        4,
+        5
+      ],
+      "accepted": false
+    },
+    {
+      "valid": [
+        0,
+        1,
+        2,
+        4,
+        5
+      ],
+      "accepted": false
+    },
+    {
+      "valid": [
+        3,
+        4,
+        5
+      ],
+      "accepted": false
+    },
+    {
+      "valid": [
+        0,
+        3,
+        4,
+        5
+      ],
+      "accepted": false
+    },
+    {
+      "valid": [
+        1,
+        3,
+        4,
+        5
+      ],
+      "accepted": false
+    },
+    {
+      "valid": [
+        0,
+        1,
+        3,
+        4,
+        5
+      ],
+      "accepted": false
+    },
+    {
+      "valid": [
+        2,
+        3,
+        4,
+        5
+      ],
+      "accepted": false
+    },
+    {
+      "valid": [
+        0,
+        2,
+        3,
+        4,
+        5
+      ],
+      "accepted": false
+    },
+    {
+      "valid": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "accepted": false
+    },
+    {
+      "valid": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "accepted": true
+    }
+  ]
+}

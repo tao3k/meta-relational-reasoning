@@ -12,6 +12,7 @@ mod selection;
 mod selection_restore;
 #[cfg(feature = "agentic-ai-context-tokens")]
 mod tokens;
+mod use_gate;
 
 pub use admission::{
     AdmittedAgenticAiContext, AdmittedAgenticAiContextMaterialization,
@@ -52,4 +53,9 @@ pub use selection_restore::{
 pub use exact_restore::{
     AdmittedExactAgenticAiContextQuerySelection, AgenticAiContextExactSelectionRestoreRequest,
     restore_agentic_ai_context_query_selection_exact, select_agentic_ai_context_from_query_exact,
+};
+
+pub use use_gate::{
+    AgenticAiContextUseAuthority, AgenticAiContextUseDecision, AgenticAiContextUseError,
+    AgenticAiContextUseObservation, AgenticAiContextUsePurpose,
 };

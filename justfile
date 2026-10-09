@@ -92,3 +92,8 @@ check: test lint evidence
 clean:
     {{profile}} mrr-gerbil clean
     {{profile}} mrr-cargo clean
+
+# Re-enter Context use against current source and authority; check finite races.
+context-use receipt:
+    {{profile}} npm ci --prefix proofs/quint
+    {{profile}} {{proof_python}} mrr_proof_validation.context_use_quint --receipt {{receipt}}

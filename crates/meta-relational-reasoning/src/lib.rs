@@ -40,10 +40,12 @@ pub use agentic_ai_context::{
     AgenticAiContextManifestRecord, AgenticAiContextMaterializationRequest,
     AgenticAiContextQuerySelectionRecord, AgenticAiContextQuerySelectionRequest,
     AgenticAiContextQuerySelectionRestoreRequest, AgenticAiContextRestoreRequest,
-    AgenticAiContextRevisionReceipt, AgenticAiContextRevisionRequest, admit_agentic_ai_context,
-    compare_agentic_ai_context_revision, restore_agentic_ai_context,
-    restore_agentic_ai_context_query_selection, restore_agentic_ai_context_query_selection_exact,
-    select_agentic_ai_context_from_query, select_agentic_ai_context_from_query_exact,
+    AgenticAiContextRevisionReceipt, AgenticAiContextRevisionRequest, AgenticAiContextUseAuthority,
+    AgenticAiContextUseDecision, AgenticAiContextUseError, AgenticAiContextUseObservation,
+    AgenticAiContextUsePurpose, admit_agentic_ai_context, compare_agentic_ai_context_revision,
+    restore_agentic_ai_context, restore_agentic_ai_context_query_selection,
+    restore_agentic_ai_context_query_selection_exact, select_agentic_ai_context_from_query,
+    select_agentic_ai_context_from_query_exact,
 };
 #[cfg(feature = "agentic-ai-context-tokens")]
 pub use agentic_ai_context::{

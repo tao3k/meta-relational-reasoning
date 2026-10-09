@@ -279,3 +279,16 @@ crate split or external model-runtime dependency is required by this RFC.
 The cross-layer hypotheses, alternative designs, and controlled evaluation
 protocol are recorded in
 [[file:../../research/content-context-compliance-agenda.org][Content, Context, and Compliance: Research Agenda]].
+
+* Implemented first slice
+
+The Context facade now exposes =check_current_use= on semantic, presentation
+and token stages. It combines exact source/Query revalidation with one
+external current-use observation bound to manifest, purpose and the full
+effective contract. Revocation, expiry, changed scope/policy and foreign
+observations reject with typed errors. The finite Quint model and shared Rust
+input replay are described in [[file:agentic-ai-context.org][the implementation contract]].
+The current authorization/time observation and atomic runtime disclosure or
+commit remain upstream premises. This slice does not implement the working
+hypothesis overlay, a hard-obligation compiler, Session publication or a live
+serving cache.

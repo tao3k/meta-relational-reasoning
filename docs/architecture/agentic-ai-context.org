@@ -1014,3 +1014,53 @@ pending in that snapshot. A new commit requires independent exact-head CI.
 A separate retained `--monomorphize-mut=all` revision diagnostic also has stage
 exits 0/2 at the same Iterator signature assertion; it is not a successful
 translation or implementation proof.
+
+* Current-use and invalidation boundary
+
+=check_current_use= is available on the admitted selection, materialization
+and source-bound token stages. It first re-enters the existing exact source
+bundle and catalog/snapshot Query checks. It then invokes an
+=AgenticAiContextUseAuthority= adapter once for that manifest and either
+=Display= or =Action=. The observation must name the exact manifest and use
+purpose, and its current effective contract must equal the admitted contract
+including actor, task, policy, required facts, temporal receipts and
+completeness. =Denied=, =Revoked=, =Expired=, changed contracts, foreign
+observations and adapter errors return distinct typed refusals.
+
+Every use needs a fresh observation. Restore, byte equality and token-prefix
+eligibility do not bypass this gate. A successful check returns unit; it
+creates no persistable permit or Session identity. POO Flow/the designated
+runtime authenticates the observation and supplies the current source cut.
+The runtime must coordinate a change between observation and disclosure or
+an effect commit. This API is a point-in-time contract check, not an atomic
+runtime transaction or an implementation of a live authorization service.
+Existing immutable accessors remain available; consumers must call the use
+gate before external disclosure/use. No claim of enforced runtime routing is
+made until the owning integration calls this API.
+
+=proofs/quint/ContextUse.qnt= models changes after projection and before use
+across six predicates: source bundle, Query binding, effective contract,
+observation binding, permission, and expiry. Its finite state space has 64
+pending predicate assignments and 64 used states. The shared
+=fixtures/agentic-ai-context/use.json= is replayed through the actual Rust
+facade, with replaced source payloads under the same fact IDs, a changed
+snapshot under the same generation, changed policy, foreign manifest,
+revocation and expiry. Further Rust cases cover all contract fields, distinct
+use purposes, authority errors and byte-identical stored materializations.
+
+The =context-use= gate checks exhaustive Quint safety and replay coverage,
+requires counterexamples for all six disabled predicates, and independently
+requires a counterexample when one replayed input is omitted. It writes no
+success receipt until the Rust tests and all eight model checks finish.
+The receipt binds model, fixture, Rust gate/test and runner source hashes and
+checker logs. This is finite input parity, not a proof of the Rust source or
+of external observation authenticity. Existing Lean/Aeneas source proofs
+retain their separately stated scope.
+
+#+begin_src sh
+./.devenv/devenv-profile-exec just context-use .ci/context-use/receipt.json
+#+end_src
+
+The CI Quint job includes this Rust replay and its seven negative controls.
+RFC 0038's POO Flow Session protocol and physical conditional publication
+remain separate integration work.
