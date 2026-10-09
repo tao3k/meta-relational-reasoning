@@ -423,7 +423,7 @@ jobs:
           use-mathlib-cache: false
       - name: Verify immutable producer and run producer/consumer proofs
         run: |
-          python3 -m mrr_proof_validation.lean_dependency_pin proofs/MRRProof/SearchComposition
+          python3 -m mrr_proof_validation.poo_dependency_pin proofs/MRRProof/SearchComposition
           python3 -m mrr_proof_validation.composition_producer --project proofs/MRRProof/SearchComposition --log .ci/search-quint/poo-producer.log
           cd proofs/MRRProof/SearchComposition
           lake update POOFlowCompositionProofs

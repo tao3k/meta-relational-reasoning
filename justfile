@@ -76,7 +76,7 @@ meta-impact receipt:
 
 # Check actual C3/C4 compilation and finite search publication safety.
 search-composition-proof:
-    {{profile}} {{proof_python}} mrr_proof_validation.lean_dependency_pin proofs/MRRProof/SearchComposition
+    {{profile}} {{proof_python}} mrr_proof_validation.poo_dependency_pin proofs/MRRProof/SearchComposition
     {{profile}} env PYTHONPATH=proofs/MRRProof/src python3 -m mrr_proof_validation.composition_producer --project proofs/MRRProof/SearchComposition --log .ci/search-model/poo-producer.log
     {{profile}} bash -c 'cd proofs/MRRProof/SearchComposition && lake build && lake env lean --run Checks.lean && lake env lean --run ProtocolChecks.lean && lake env lean --run ReflectionChecks.lean && lake env lean Axioms.lean'
 
