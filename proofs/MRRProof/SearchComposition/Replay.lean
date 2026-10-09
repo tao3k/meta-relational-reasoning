@@ -16,18 +16,19 @@ structure Snapshot where
   deriving DecidableEq, BEq
 
 def binding (generation : Nat) : Binding :=
-  ⟨"0", "0", "0", "0", toString generation⟩
+  Binding.mk "0" "0" "0" "0" (toString generation)
 
 def decode (snapshot : Snapshot) : State Nat :=
-  ⟨snapshot.phase, binding snapshot.current, binding snapshot.observed,
-    snapshot.complete, snapshot.truncated, snapshot.secondaryComplete,
-    snapshot.secondaryTruncated, snapshot.inferred, fun candidate => candidate ∈ snapshot.output⟩
+  State.mk snapshot.phase (binding snapshot.current) (binding snapshot.observed)
+    snapshot.complete snapshot.truncated snapshot.secondaryComplete
+    snapshot.secondaryTruncated snapshot.inferred (fun candidate => Membership.mem snapshot.output candidate)
 
 def secondary (scenario : String) : List Nat :=
   if scenario = "disjointTruth" then [2] else [1]
 
 def search (mode : Mode) (scenario : String) : Search Nat :=
-  ⟨mode, fun candidate => candidate ∈ [0, 1], fun candidate => candidate ∈ secondary scenario⟩
+  Search.mk mode (fun candidate => Membership.mem [0, 1] candidate)
+    (fun candidate => Membership.mem (secondary scenario) candidate)
 
 def expected (mode : Mode) (scenario : String) : List Nat :=
   match mode with
@@ -35,13 +36,13 @@ def expected (mode : Mode) (scenario : String) : List Nat :=
   | .intersect => [0, 1].filter (fun candidate => (secondary scenario).contains candidate)
 
 theorem expected_exact (mode : Mode) (scenario : String) (candidate : Nat) :
-    candidate ∈ expected mode scenario ↔ (search mode scenario).truth candidate := by
+    Membership.mem (expected mode scenario) candidate <-> (search mode scenario).truth candidate := by
   cases mode <;> simp [expected, search, Search.truth, intersection]
 
 def accepted (mode : Mode) (scenario : String) (snapshot : Snapshot) : Bool :=
-  if snapshot.phase = .ready ∨ snapshot.phase = .published then
-    decide (snapshot.observed = snapshot.current ∧ truthReady (search mode scenario) (decode snapshot) ∧
-      snapshot.inferred = true ∧ snapshot.output = expected mode scenario)
+  if snapshot.phase = .ready \/ snapshot.phase = .published then
+    decide (snapshot.observed = snapshot.current /\ truthReady (search mode scenario) (decode snapshot) /\
+      snapshot.inferred = true /\ snapshot.output = expected mode scenario)
   else true
 
 /-- An executable replay acceptance check discharges the original protocol invariant. -/
@@ -49,19 +50,20 @@ theorem acceptance_sound (mode : Mode) (scenario : String) (snapshot : Snapshot)
     (checked : accepted mode scenario snapshot = true) :
     valid (search mode scenario) (decode snapshot) := by
   intro active
-  change snapshot.phase = .ready ∨ snapshot.phase = .published at active
-  have fields : snapshot.observed = snapshot.current ∧
-      truthReady (search mode scenario) (decode snapshot) ∧ snapshot.inferred = true ∧
+  change snapshot.phase = .ready \/ snapshot.phase = .published at active
+  have fields : snapshot.observed = snapshot.current /\
+      truthReady (search mode scenario) (decode snapshot) /\ snapshot.inferred = true /\
       snapshot.output = expected mode scenario := by
     apply of_decide_eq_true
     simpa [accepted, active] using checked
-  refine ⟨congrArg binding fields.1, fields.2.1, fields.2.2.1, ?_⟩
+  refine And.intro (congrArg binding fields.1)
+    (And.intro fields.2.1 (And.intro fields.2.2.1 ?_))
   intro candidate
-  change candidate ∈ snapshot.output ↔ (search mode scenario).truth candidate
+  change Membership.mem snapshot.output candidate <-> (search mode scenario).truth candidate
   rw [fields.2.2.2]
   exact expected_exact mode scenario candidate
 
-def initial : Snapshot := ⟨.read, 0, 0, true, false, true, false, false, []⟩
+def initial : Snapshot := Snapshot.mk .read 0 0 true false true false false []
 
 /-- Finite successors are constructed independently in Lean; TLC later checks
 that every reachable Quint state belongs to this exact replay set. -/
@@ -87,7 +89,7 @@ def successors (mode : Mode) (scenario : String) (snapshot : Snapshot) : List Sn
     result := result ++ [{snapshot with phase := .published}]
   return result
 
-def closure (mode : Mode) (scenario : String) : Nat → List Snapshot → List Snapshot
+def closure (mode : Mode) (scenario : String) : Nat -> List Snapshot -> List Snapshot
   | 0, states => states
   | fuel + 1, states =>
     let expanded := states.foldl (fun seen state =>
@@ -95,13 +97,13 @@ def closure (mode : Mode) (scenario : String) : Nat → List Snapshot → List S
         if seen.contains next then seen else seen ++ [next]) seen) states
     if expanded == states then states else closure mode scenario fuel expanded
 
-def phaseName : Phase → String
+def phaseName : Phase -> String
   | .read => "read"
   | .merge => "merge"
   | .ready => "ready"
   | .published => "published"
 
-def modeName : Mode → String
+def modeName : Mode -> String
   | .single => "single"
   | .rankJoin => "rankJoin"
   | .intersect => "intersect"

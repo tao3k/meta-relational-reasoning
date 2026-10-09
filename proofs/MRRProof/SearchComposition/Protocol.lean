@@ -9,30 +9,30 @@ inductive Mode where
 /-- Provider sets are abstract predicates; these laws do not assume a finite corpus. -/
 structure Search (Candidate : Type) where
   mode : Mode
-  primary : Candidate → Prop
-  secondary : Candidate → Prop
+  primary : Candidate -> Prop
+  secondary : Candidate -> Prop
 
-def Search.truth {Candidate : Type} (search : Search Candidate) : Candidate → Prop :=
+def Search.truth {Candidate : Type} (search : Search Candidate) : Candidate -> Prop :=
   match search.mode with
   | .single | .rankJoin => search.primary
   | .intersect => intersection search.primary search.secondary
 
-theorem intersection_sound {Candidate : Type} (left right : Candidate → Prop)
+theorem intersection_sound {Candidate : Type} (left right : Candidate -> Prop)
     (candidate : Candidate) (hit : intersection left right candidate) :
-    left candidate ∧ right candidate := hit
+    left candidate /\ right candidate := hit
 
-theorem intersection_commutes {Candidate : Type} (left right : Candidate → Prop) :
+theorem intersection_commutes {Candidate : Type} (left right : Candidate -> Prop) :
     intersection left right = intersection right left := by
   funext candidate
   exact propext (and_comm)
 
-theorem intersection_associates {Candidate : Type} (a b c : Candidate → Prop) :
+theorem intersection_associates {Candidate : Type} (a b c : Candidate -> Prop) :
     intersection (intersection a b) c = intersection a (intersection b c) := by
   funext candidate
   exact propext (and_assoc)
 
 theorem rank_join_ignores_partial_ranking {Candidate : Type}
-    (primary rankingA rankingB : Candidate → Prop) :
+    (primary rankingA rankingB : Candidate -> Prop) :
     (Search.mk .rankJoin primary rankingA).truth =
       (Search.mk .rankJoin primary rankingB).truth := rfl
 
@@ -51,14 +51,14 @@ structure State (Candidate : Type) where
   secondaryComplete : Bool
   secondaryTruncated : Bool
   inferred : Bool
-  output : Candidate → Prop
+  output : Candidate -> Prop
 
 def truthReady {Candidate : Type} (search : Search Candidate) (state : State Candidate) : Prop :=
   match search.mode with
   | .single => True
-  | .rankJoin => state.complete = true ∧ state.truncated = false
-  | .intersect => state.complete = true ∧ state.truncated = false ∧
-      state.secondaryComplete = true ∧ state.secondaryTruncated = false
+  | .rankJoin => state.complete = true /\ state.truncated = false
+  | .intersect => state.complete = true /\ state.truncated = false /\
+      state.secondaryComplete = true /\ state.secondaryTruncated = false
 
 instance {Candidate : Type} (search : Search Candidate) (state : State Candidate) :
     Decidable (truthReady search state) := by
@@ -66,12 +66,12 @@ instance {Candidate : Type} (search : Search Candidate) (state : State Candidate
   cases search.mode <;> infer_instance
 
 def valid {Candidate : Type} (search : Search Candidate) (state : State Candidate) : Prop :=
-  (state.phase = .ready ∨ state.phase = .published) →
-    state.observed = state.current ∧ truthReady search state ∧
-      state.inferred = true ∧ ∀ candidate, state.output candidate ↔ search.truth candidate
+  (state.phase = .ready \/ state.phase = .published) ->
+    state.observed = state.current /\ truthReady search state /\
+      state.inferred = true /\ forall candidate, state.output candidate <-> search.truth candidate
 
 def initial {Candidate : Type} (binding : Binding) : State Candidate :=
-  ⟨.read, binding, binding, true, false, true, false, false, fun _ => False⟩
+  State.mk .read binding binding true false true false false (fun _ => False)
 
 def readStep {Candidate : Type} (state : State Candidate)
     (complete truncated secondaryComplete secondaryTruncated : Bool) : State Candidate :=
@@ -97,7 +97,7 @@ def publishStep {Candidate : Type} (state : State Candidate) : State Candidate :
 /-- This relation has the same read/merge/revise/restart/publish/stay actions as
 the Quint model. Inference is an admitted evidence bit, not an Ascent refinement proof. -/
 inductive Step {Candidate : Type} (search : Search Candidate) :
-    State Candidate → State Candidate → Prop where
+    State Candidate -> State Candidate -> Prop where
   | read (state : State Candidate) (complete truncated secondaryComplete secondaryTruncated : Bool)
       (phase : state.phase = .read) :
       Step search state (readStep state complete truncated secondaryComplete secondaryTruncated)
@@ -107,7 +107,7 @@ inductive Step {Candidate : Type} (search : Search Candidate) :
   | revise (state : State Candidate) (binding : Binding) :
       Step search state (reviseStep state binding)
   | restart (state : State Candidate) (phase : state.phase = .merge)
-      (stale : state.observed ≠ state.current) : Step search state (restartStep state)
+      (stale : Not (state.observed = state.current)) : Step search state (restartStep state)
   | publish (state : State Candidate) (phase : state.phase = .ready)
       (inferred : state.inferred = true) : Step search state (publishStep state)
   | stay (state : State Candidate) : Step search state state
@@ -124,7 +124,7 @@ theorem step_preserves_valid {Candidate : Type} {search : Search Candidate}
     simp [valid, readStep]
   | merge phase binding complete =>
     intro _
-    exact ⟨binding, complete, rfl, fun _ => Iff.rfl⟩
+    exact And.intro binding (And.intro complete (And.intro rfl (fun _ => Iff.rfl)))
   | revise binding => simp [valid, reviseStep]
   | restart phase stale => simp [valid, restartStep]
   | publish phase inferred =>
@@ -133,7 +133,7 @@ theorem step_preserves_valid {Candidate : Type} {search : Search Candidate}
   | stay => exact previous
 
 inductive Reachable {Candidate : Type} (search : Search Candidate) (binding : Binding) :
-    State Candidate → Prop where
+    State Candidate -> Prop where
   | initial : Reachable search binding (MRR.SearchComposition.initial binding)
   | next {before after : State Candidate} (beforeReachable : Reachable search binding before)
       (step : Step search before after) : Reachable search binding after
@@ -147,7 +147,7 @@ theorem reachable_valid {Candidate : Type} {search : Search Candidate} {binding 
 theorem published_exact {Candidate : Type} {search : Search Candidate} {binding : Binding}
     {state : State Candidate} (reachable : Reachable search binding state)
     (published : state.phase = .published) (candidate : Candidate) :
-    state.output candidate ↔ search.truth candidate :=
+    state.output candidate <-> search.truth candidate :=
   (reachable_valid reachable (Or.inr published)).2.2.2 candidate
 
 theorem published_binding {Candidate : Type} {search : Search Candidate} {binding : Binding}
@@ -157,15 +157,15 @@ theorem published_binding {Candidate : Type} {search : Search Candidate} {bindin
 
 theorem stale_cannot_publish {Candidate : Type} {search : Search Candidate} {binding : Binding}
     {state : State Candidate} (reachable : Reachable search binding state)
-    (stale : state.observed.generation ≠ state.current.generation) :
-    state.phase ≠ .published := by
+    (stale : Not (state.observed.generation = state.current.generation)) :
+    Not (state.phase = .published) := by
   intro published
   exact stale (congrArg Binding.generation (published_binding reachable published))
 
 theorem foreign_binding_cannot_publish {Candidate : Type} {search : Search Candidate}
     {binding : Binding} {state : State Candidate}
-    (reachable : Reachable search binding state) (foreign : state.observed ≠ state.current) :
-    state.phase ≠ .published := by
+    (reachable : Reachable search binding state) (foreign : Not (state.observed = state.current)) :
+    Not (state.phase = .published) := by
   intro published
   exact foreign (published_binding reachable published)
 
@@ -173,15 +173,15 @@ theorem published_intersection_complete {Candidate : Type} {search : Search Cand
     {binding : Binding} {state : State Candidate}
     (reachable : Reachable search binding state) (published : state.phase = .published)
     (mode : search.mode = .intersect) :
-    state.complete = true ∧ state.truncated = false ∧
-      state.secondaryComplete = true ∧ state.secondaryTruncated = false := by
+    state.complete = true /\ state.truncated = false /\
+      state.secondaryComplete = true /\ state.secondaryTruncated = false := by
   simpa [truthReady, mode] using (reachable_valid reachable (Or.inr published)).2.1
 
 theorem empty_intersection_certifies_absence {Candidate : Type}
     {search : Search Candidate} {binding : Binding} {state : State Candidate}
     (reachable : Reachable search binding state) (published : state.phase = .published)
-    (mode : search.mode = .intersect) (empty : ∀ candidate, ¬ state.output candidate) :
-    ∀ candidate, ¬ (search.primary candidate ∧ search.secondary candidate) := by
+    (mode : search.mode = .intersect) (empty : forall candidate, Not (state.output candidate)) :
+    forall candidate, Not (search.primary candidate /\ search.secondary candidate) := by
   intro candidate matchBoth
   apply empty candidate
   apply (published_exact reachable published candidate).mpr

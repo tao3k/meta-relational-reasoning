@@ -2,10 +2,10 @@ import Reflection
 
 open MRR.SearchComposition MRR.SearchComposition.Reflection
 
-private def binding : Binding := ⟨"workspace", "source", "resident", "abi", "generation"⟩
+private def binding : Binding := Binding.mk "workspace" "source" "resident" "abi" "generation"
 private def snapshot : State Nat :=
-  ⟨.published, binding, binding, true, false, true, false, true, fun _ => False⟩
-private def evidence : Evidence Nat := ⟨snapshot, true, "query"⟩
+  State.mk .published binding binding true false true false true (fun _ => False)
+private def evidence : Evidence Nat := Evidence.mk snapshot true "query"
 
 private def partialEvidence : Evidence Nat := {evidence with completeCoverage := false}
 

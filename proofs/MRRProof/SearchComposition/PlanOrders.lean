@@ -14,21 +14,21 @@ structure BoundOrders (roles : LeanPoo.Prototype.C3.Graph) (roots : List String)
 def BoundOrders.matches {roles roots graph root}
     (certificate : BoundOrders roles roots graph root)
     (expected : Binding) (composition dag : String) : Prop :=
-  certificate.binding = expected ∧ certificate.compositionIdentity = composition ∧
+  certificate.binding = expected /\ certificate.compositionIdentity = composition /\
     certificate.dagDigest = dag
 
 theorem bound_orders_stale_rejected {roles roots graph root}
     (certificate : BoundOrders roles roots graph root) (expected : Binding)
     (composition dag : String)
-    (stale : certificate.binding.generation ≠ expected.generation) :
-    ¬ certificate.matches expected composition dag := by
+    (stale : Not (certificate.binding.generation = expected.generation)) :
+    Not (certificate.matches expected composition dag) := by
   intro matched
   exact stale (congrArg Binding.generation matched.1)
 
 theorem bound_orders_foreign_plan_rejected {roles roots graph root}
     (certificate : BoundOrders roles roots graph root) (expected : Binding)
-    (composition dag : String) (foreign : certificate.dagDigest ≠ dag) :
-    ¬ certificate.matches expected composition dag := by
+    (composition dag : String) (foreign : Not (certificate.dagDigest = dag)) :
+    Not (certificate.matches expected composition dag) := by
   intro matched
   exact foreign matched.2.2
 

@@ -9,12 +9,12 @@ structure State where
   deriving DecidableEq, Repr
 
 def Bounded (cap : Nat) (s : State) : Prop :=
-  s.input ≤ cap ∧ s.output + s.active ≤ cap
+  s.input <= cap /\ s.output + s.active <= cap
 
 -- Names match the Rust lease operations; each active lease reserves one output.
-inductive Step (cap : Nat) : State → State → Prop where
+inductive Step (cap : Nat) : State -> State -> Prop where
   | reserve (s : State) (live : s.retired = false)
-      (inputRoom : s.input + 1 ≤ cap) (outputRoom : s.output + s.active + 1 ≤ cap) :
+      (inputRoom : s.input + 1 <= cap) (outputRoom : s.output + s.active + 1 <= cap) :
       Step cap s { s with active := s.active + 1, input := s.input + 1 }
   | admit (s : State) (live : s.retired = false) (running : 0 < s.active) :
       Step cap s { s with active := s.active - 1, output := s.output + 1 }

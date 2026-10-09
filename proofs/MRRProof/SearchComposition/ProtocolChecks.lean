@@ -3,13 +3,13 @@ import Graph
 open MRR.SearchComposition
 
 def search (mode : Mode) : Search Nat :=
-  ⟨mode, fun candidate => candidate = 0 ∨ candidate = 1, fun candidate => candidate = 1⟩
+  Search.mk mode (fun candidate => candidate = 0 \/ candidate = 1) (fun candidate => candidate = 1)
 
 instance (mode : Mode) (candidate : Nat) : Decidable ((search mode).truth candidate) := by
   unfold search Search.truth
   cases mode <;> dsimp [intersection] <;> infer_instance
 
-def binding : Binding := ⟨"workspace", "source", "resident", "abi", "generation"⟩
+def binding : Binding := Binding.mk "workspace" "source" "resident" "abi" "generation"
 
 def main : IO Unit := do
   if !(decide ((search .single).truth 0)) then

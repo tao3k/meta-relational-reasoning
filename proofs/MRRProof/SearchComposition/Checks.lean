@@ -3,7 +3,7 @@ import Graph
 open MRR.SearchComposition
 
 def main : IO Unit := do
-  let base : Binding := ⟨"workspace", "source", "resident", "abi", "generation"⟩
+  let base : Binding := Binding.mk "workspace" "source" "resident" "abi" "generation"
   let changed := {base with generation := "stale"}
   if changed == base then throw (IO.userError "stale generation admitted")
   IO.println "SEARCH-COMPOSITION-OK: MRR binding and consumer proof contracts"

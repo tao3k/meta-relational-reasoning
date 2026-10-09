@@ -9,7 +9,7 @@ import Lean.Elab.Command
 open Lean Elab Command
 
 run_cmd do
-  let environment ← getEnv
+  let environment <- getEnv
   let allowed := #[`propext, `Classical.choice, `Quot.sound]
   let mut count : Nat := 0
   let mut c3Count : Nat := 0
@@ -20,7 +20,7 @@ run_cmd do
       count := count + 1
       if (`LeanPoo.Prototype.C3).isPrefixOf name then c3Count := c3Count + 1
       if (`LeanPoo.C4).isPrefixOf name then c4Count := c4Count + 1
-      for axiomName in (← collectAxioms name) do
+      for axiomName in (<- collectAxioms name) do
         unless allowed.contains axiomName do
           throwError "{name} depends on disallowed axiom {axiomName}"
   if c3Count == 0 || c4Count == 0 then throwError "C3/C4 algorithms were not loaded"
