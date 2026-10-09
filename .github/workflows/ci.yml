@@ -117,6 +117,16 @@ jobs:
         with:
           release-root: ${{ env.GERBIL_PREFIX }}
 
+      - name: Verify the measured-progress gate rejects an idle child
+        run: |
+          if python3 -m mrr_proof_validation.process_runner --idle 2 --total 10 --label IDLE-CONTROL -- python3 -c 'import time; time.sleep(8)'; then
+            echo 'idle child was admitted' >&2
+            exit 1
+          else
+            status=$?
+            test "$status" -eq 124
+          fi
+
       - name: Install Linux dependencies
         if: runner.os == 'Linux'
         run: |
@@ -142,7 +152,7 @@ jobs:
         run: gerbil deps --install
 
       - name: Build declared Gerbil package
-        run: gerbil build
+        run: python3 -m mrr_proof_validation.process_runner --total 900 --label GERBIL-BUILD -- gerbil build
 
       - name: Prepare source-bound native gxtest executable
         run: gerbil env python3 -m mrr_proof_validation.native_prepare
@@ -158,7 +168,7 @@ jobs:
       - name: Compile Rust workspace tests in the Gerbil package environment
         env:
           MRR_NATIVE_PROGRESS: "1"
-        run: gerbil env cargo test --workspace --locked --no-run
+        run: python3 -m mrr_proof_validation.process_runner --total 1800 --label RUST-COMPILE -- gerbil env cargo test --workspace --locked --no-run
 
       - name: Verify pinned kernel discovery in the Gerbil package environment
         run: gerbil env sh -c 'command -v elan && ELAN_TOOLCHAIN=leanprover/lean4:v4.31.0 elan which lean && elan run leanprover/lean4:v4.31.0 lean --version'
@@ -166,7 +176,7 @@ jobs:
       - name: Test Rust workspace in the Gerbil package environment
         env:
           MRR_NATIVE_PROGRESS: "1"
-        run: gerbil env cargo test --workspace --locked
+        run: python3 -m mrr_proof_validation.process_runner --total 1800 --label RUST-TEST -- gerbil env cargo test --workspace --locked
 
       - name: Test optional Context feature boundaries
         run: |
@@ -175,7 +185,7 @@ jobs:
 
       - name: Qualify complete Query Context workflow and scale
         run: |
-          gerbil env cargo build -p meta-relational-reasoning --examples --features agentic-ai-context-tokens --locked
+          python3 -m mrr_proof_validation.process_runner --total 900 --label CONTEXT-BUILD -- gerbil env cargo build -p meta-relational-reasoning --examples --features agentic-ai-context-tokens --locked
           gerbil env python3 -m mrr_proof_validation.context_qualify workflow
           gerbil env python3 -m mrr_proof_validation.context_scale --output .ci/context-scale
 
@@ -188,7 +198,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Lint optional Context features
-        run: gerbil env cargo clippy -p mrr-agentic-ai-context -p meta-relational-reasoning --all-targets --all-features --locked -- -D warnings
+        run: python3 -m mrr_proof_validation.process_runner --total 1800 --label CONTEXT-LINT -- gerbil env cargo clippy -p mrr-agentic-ai-context -p meta-relational-reasoning --all-targets --all-features --locked -- -D warnings
 
       - name: Verify transition parity with Quint
         env:
@@ -201,19 +211,19 @@ jobs:
           test "$(proofs/quint/node_modules/.bin/quint --version)" = 0.33.0
           mkdir -p "$QUINT_HOME" "$OUT_DIR"
           proofs/quint/node_modules/.bin/quint typecheck crates/mrr-transition/quint/MrrTransitionOracle.qnt
-          gerbil env cargo test -p mrr-transition --locked ten_transition_fixtures_match_quint_status_and_counterexample_length -- --nocapture
+          python3 -m mrr_proof_validation.process_runner --total 900 --label TRANSITION-TEST -- gerbil env cargo test -p mrr-transition --locked ten_transition_fixtures_match_quint_status_and_counterexample_length -- --nocapture
 
       - name: Test source-bound property query integration
         run: |
-          gerbil env cargo build -p mrr-gerbil --bin mrr-native-worker --locked
-          gerbil env cargo test -p mrr-property-source --features native-inference --locked
+          python3 -m mrr_proof_validation.process_runner --total 900 --label PROPERTY-BUILD -- gerbil env cargo build -p mrr-gerbil --bin mrr-native-worker --locked
+          python3 -m mrr_proof_validation.process_runner --total 900 --label PROPERTY-TEST -- gerbil env cargo test -p mrr-property-source --features native-inference --locked
 
       - name: Compile MRR-owned POO Library runtime and verify producer graph
         run: |
           gerbil env python3 runtime/tools/check_mrr_dependency_graph.py
           gerbil env python3 -m unittest discover -s runtime/tools/tests -v
-          gerbil env cargo test --manifest-path runtime/Cargo.toml --features mrr-context,orgize-source --locked --no-run
-          gerbil env cargo clippy --manifest-path runtime/Cargo.toml --features mrr-context,data-publication,orgize-source --tests --locked -- -D warnings
+          python3 -m mrr_proof_validation.process_runner --total 900 --label RUNTIME-COMPILE -- gerbil env cargo test --manifest-path runtime/Cargo.toml --features mrr-context,orgize-source --locked --no-run
+          python3 -m mrr_proof_validation.process_runner --total 900 --label RUNTIME-LINT -- gerbil env cargo clippy --manifest-path runtime/Cargo.toml --features mrr-context,data-publication,orgize-source --tests --locked -- -D warnings
           if [ "$RUNNER_OS" = macOS ]; then
             deadline_command=gtimeout
           else
@@ -221,9 +231,13 @@ jobs:
           fi
           gerbil env "$deadline_command" --foreground --signal=TERM --kill-after=1s 5s cargo test --manifest-path runtime/Cargo.toml --features mrr-context,orgize-source --test org_source --locked -- --nocapture
 
+      - name: Prepare MRR runtime against its declared POO Library and Data Backend
+        if: runner.os == 'Linux'
+        run: python3 -m mrr_proof_validation.process_runner --total 3600 --label LIBRARY-PREPARE -- gerbil env bash runtime/tools/qualify-library.sh .gerbil/pkg/github.com/tao3k/poo-flow .ci/library prepare-only
+
       - name: Qualify MRR runtime against its declared POO Library and Data Backend
         if: runner.os == 'Linux'
-        run: gerbil env bash runtime/tools/qualify-library.sh .gerbil/pkg/github.com/tao3k/poo-flow .ci/library
+        run: python3 -m mrr_proof_validation.process_runner --total 900 --label LIBRARY-QUALIFY -- gerbil env bash runtime/tools/qualify-library.sh .gerbil/pkg/github.com/tao3k/poo-flow .ci/library --prepared
 
       - name: Preserve MRR Library Scheme evidence
         if: always() && runner.os == 'Linux'
@@ -235,10 +249,10 @@ jobs:
           retention-days: 7
 
       - name: Lint Rust workspace
-        run: gerbil env cargo clippy --all-targets --locked -- -D warnings
+        run: python3 -m mrr_proof_validation.process_runner --total 1800 --label RUST-LINT -- gerbil env cargo clippy --all-targets --locked -- -D warnings
 
       - name: Lint source-bound property query integration
-        run: gerbil env cargo clippy -p mrr-property-source --all-targets --locked -- -D warnings
+        run: python3 -m mrr_proof_validation.process_runner --total 900 --label PROPERTY-LINT -- gerbil env cargo clippy -p mrr-property-source --all-targets --locked -- -D warnings
 
       - name: Test Python evidence projects
         run: |

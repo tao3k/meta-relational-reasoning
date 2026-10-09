@@ -1,11 +1,13 @@
-"""Run the pinned Quint CLI with real output and measured-process progress."""
+"""Run an owned process with real output or measured CPU progress."""
 
+import argparse
 from dataclasses import dataclass
 import os
 from pathlib import Path
 import selectors
 import signal
 import subprocess
+import sys
 import time
 
 from . import native_tests
@@ -15,7 +17,7 @@ from . import native_tests
 class Result:
     status: int
     output: bytes
-    log: Path
+    log: Path | None
 
 
 def _cpu_seconds(value: str) -> float:
@@ -69,10 +71,12 @@ def _finish_owned_group(child: subprocess.Popen[bytes]) -> None:
             raise
 
 
-def run(command: list[str], *, cwd: Path, log: Path,
-        idle_limit: float = 5, total_limit: float = 45) -> Result:
-    log.parent.mkdir(parents=True, exist_ok=True)
-    log.unlink(missing_ok=True)
+def run(command: list[str], *, cwd: Path, log: Path | None = None,
+        idle_limit: float = 5, total_limit: float = 45,
+        label: str = "QUINT", capture_output: bool = True) -> Result:
+    if log is not None:
+        log.parent.mkdir(parents=True, exist_ok=True)
+        log.unlink(missing_ok=True)
     child = subprocess.Popen(
         command,
         cwd=cwd,
@@ -100,11 +104,19 @@ def run(command: list[str], *, cwd: Path, log: Path,
                         selector.unregister(child.stdout)
                         continue
                     now = time.monotonic()
-                    if not native_tests.forward_output(chunk, started + total_limit):
+                    if not native_tests.forward_output(
+                        chunk, min(started + total_limit, now + idle_limit)
+                    ):
+                        native_tests.forward_output(
+                            f"{label}-FAIL: output backpressure exceeded {idle_limit}s\n".encode(),
+                            time.monotonic() + 1,
+                        )
                         return Result(124, bytes(data), log)
-                    data.extend(chunk)
-                    with log.open("ab") as stream:
-                        stream.write(chunk)
+                    if capture_output:
+                        data.extend(chunk)
+                    if log is not None:
+                        with log.open("ab") as stream:
+                            stream.write(chunk)
                     last_progress = now
                 now = time.monotonic()
                 if now - last_progress >= 2:
@@ -112,18 +124,26 @@ def run(command: list[str], *, cwd: Path, log: Path,
                         cpu = _owned_cpu(child.pid)
                     except (OSError, ValueError, subprocess.SubprocessError):
                         cpu = {}
-                    if any(seconds > last_cpu.get(pid, 0) + 0.01
-                           for pid, seconds in cpu.items()):
-                        message = (f"QUINT-WORK: measured checker CPU "
-                                   f"{sum(cpu.values()):.2f}s\n").encode()
-                        if not native_tests.forward_output(message, started + total_limit):
+                    cpu_delta = sum(max(0.0, seconds - last_cpu.get(pid, 0.0))
+                                    for pid, seconds in cpu.items())
+                    if cpu_delta > 0.01:
+                        message = (f"{label}-WORK: measured child CPU "
+                                   f"+{cpu_delta:.2f}s processes={len(cpu)}\n").encode()
+                        if not native_tests.forward_output(
+                            message, min(started + total_limit,
+                                         time.monotonic() + idle_limit)
+                        ):
+                            native_tests.forward_output(
+                                f"{label}-FAIL: output backpressure exceeded {idle_limit}s\n".encode(),
+                                time.monotonic() + 1,
+                            )
                             return Result(124, bytes(data), log)
                         last_progress = time.monotonic()
                     last_cpu = cpu
                 if now - last_progress > idle_limit or now - started > total_limit:
-                    reason = (f"QUINT-FAIL: no output or measured CPU for {idle_limit}s"
+                    reason = (f"{label}-FAIL: no output or measured CPU for {idle_limit}s"
                               if now - last_progress > idle_limit else
-                              f"QUINT-FAIL: {total_limit}s total limit")
+                              f"{label}-FAIL: {total_limit}s total limit")
                     print(reason, flush=True)
                     native_tests.report_owned_processes(child)
                     native_tests.signal_owned_group(child, signal.SIGTERM)
@@ -139,3 +159,22 @@ def run(command: list[str], *, cwd: Path, log: Path,
                 child.wait()
         _finish_owned_group(child)
         child.stdout.close()
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--idle", type=float, default=5)
+    parser.add_argument("--total", type=float, required=True)
+    parser.add_argument("--label", default="BUILD")
+    parser.add_argument("command", nargs=argparse.REMAINDER)
+    args = parser.parse_args()
+    command = args.command[1:] if args.command[:1] == ["--"] else args.command
+    if not command or args.idle <= 0 or args.total <= 0:
+        parser.error("provide a command and positive idle and total limits")
+    return run(command, cwd=Path.cwd(), idle_limit=args.idle,
+               total_limit=args.total, label=args.label,
+               capture_output=False).status
+
+
+if __name__ == "__main__":
+    sys.exit(main())

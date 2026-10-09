@@ -2,13 +2,17 @@
 # SPDX-FileCopyrightText: 2026 tao3k team and Contributors
 # SPDX-License-Identifier: Apache-2.0 AND LGPL-2.1-or-later
 # Run from MRR's Gerbil environment. The package manager supplies POO and its SDK.
+# CI runs prepare-only and --prepared as separate, named steps for diagnosis.
 set -euo pipefail
 root="$(cd "$(dirname "$0")/../.." && pwd)"
 poo="$(cd "${1:?POO package path required}" && pwd)"
 mkdir -p "${2:?output directory required}"
 out="$(cd "$2" && pwd)"
 mode="${3:-prepare}"
-case "$mode" in prepare|--prepared) ;; *) echo 'expected prepare or --prepared' >&2; exit 2;; esac
+case "$mode" in
+    prepare|prepare-only|--prepared) ;;
+    *) echo 'expected prepare, prepare-only or --prepared' >&2; exit 2 ;;
+esac
 cd "$root"
 python3 - "$root" "$poo" <<'PY'
 import re, subprocess, sys
@@ -23,9 +27,10 @@ PY
 ext=so
 if [ "$(uname -s)" = Darwin ]; then ext=dylib; fi
 export POO_FLOW_SEMANTIC_LIBRARY="${POO_FLOW_SEMANTIC_LIBRARY:-$out/libpoo_flow_semantic.$ext}"
-if [ "$mode" = prepare ]; then
-    export GERBIL_PATH="${GERBIL_PATH:-$root/.gerbil}"
-    export GERBIL_LOADPATH="$poo/core:$GERBIL_PATH/lib${GERBIL_LOADPATH:+:$GERBIL_LOADPATH}"
+export POO_FLOW_RUNTIME_V0_LIBRARY="$out/libpoo_flow_runtime_v0.$ext"
+export GERBIL_PATH="${GERBIL_PATH:-$root/.gerbil}"
+export GERBIL_LOADPATH="$poo/core:$GERBIL_PATH/lib${GERBIL_LOADPATH:+:$GERBIL_LOADPATH}"
+if [ "$mode" != --prepared ]; then
     (cd "$poo/core" && gerbil build)
     (cd "$poo" && gerbil build)
     python3 "$poo/bindings/runtime-c/tools/build-semantic.py" --output "$POO_FLOW_SEMANTIC_LIBRARY"
@@ -36,12 +41,17 @@ if [ "$mode" = prepare ]; then
     cargo build --locked --manifest-path runtime/qualification/physical-roundtrip/Cargo.toml
     cargo clippy --locked --manifest-path runtime/qualification/physical-roundtrip/Cargo.toml -- -D warnings
     (cd "$poo" && bazelisk build //bindings/runtime-c:runtime_c_shared)
-    export POO_FLOW_RUNTIME_V0_LIBRARY="$out/libpoo_flow_runtime_v0.$ext"
     install -m 0644 "$poo/bazel-bin/bindings/runtime-c/libruntime_c_shared.$ext" "$POO_FLOW_RUNTIME_V0_LIBRARY"
     uv sync --locked --project "$poo/packages/python-runtime" --group dev
     uv build --python "$poo/packages/python-runtime/.venv/bin/python" --project "$poo/packages/python-runtime" --wheel --out-dir "$out/wheels"
     uv pip install --python "$poo/packages/python-runtime/.venv/bin/python" --no-deps --reinstall "$out"/wheels/*.whl
 fi
+if [ "$mode" = prepare-only ]; then
+    echo 'MRR-LIBRARY-PREPARED-OK'
+    exit 0
+fi
+test -s "$POO_FLOW_SEMANTIC_LIBRARY"
+test -s "$POO_FLOW_RUNTIME_V0_LIBRARY"
 export POO_FLOW_SEMANTIC_SHA256
 POO_FLOW_SEMANTIC_SHA256="$(python3 - "$poo" "$POO_FLOW_SEMANTIC_LIBRARY" <<'PY'
 import hashlib, sys

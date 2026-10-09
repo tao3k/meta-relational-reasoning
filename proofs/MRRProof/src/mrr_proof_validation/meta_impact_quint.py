@@ -8,7 +8,7 @@ from pathlib import Path
 import subprocess
 import tempfile
 
-from . import quint_cases, quint_runner
+from . import process_runner, quint_cases
 
 
 def main() -> int:
@@ -45,7 +45,7 @@ def main() -> int:
             ]
             if invariant is None:
                 command += ["--temporal", "eventuallyPublished"]
-            checked = quint_runner.run(command, cwd=work, log=log)
+            checked = process_runner.run(command, cwd=work, log=log)
             output = checked.output.decode(errors="replace")
             try:
                 generated, distinct, remaining = quint_cases.checker_counts(output)
