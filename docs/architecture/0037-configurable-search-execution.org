@@ -43,10 +43,11 @@ Turso and physical binding contracts. ASP already inherits the Data Turso
 facade, but still directly executes resident regex and Tantivy retrieval before
 submitting the resulting sets to Data composition.
 
-Consequently the current qualified chain is plan compilation plus candidate
-aggregation/inference. It is not yet a generic MRR physical dispatcher. Public
-ASP queries passing does not qualify task scheduling, cancellation, multimodal
-retrieval, or backend substitution. The actual Rust inference bridge and Data
+The qualified chain includes plan compilation, candidate aggregation/inference
+and bounded acquisition-root dispatch through one restored Data Query adapter.
+ASP resident retrieval still executes through its own existing lifecycle. Public
+ASP queries passing does not qualify dependent-stage scheduling, whole-runtime
+cancellation or backend substitution. The actual Rust inference bridge and Data
 query port are reusable foundations; a second operator registry is unnecessary.
 
 This source review is restricted to the active Search path. It does not assert
@@ -135,31 +136,24 @@ Do not pretend it binds these new parameters until an owner canonicalizes and
 admits the actual configuration. Cache keys must also include query, source,
 generation, candidate space, adapter and representation/index identities.
 
-* Candidate spaces and multimodal results
+* Candidate identity and result guarantees
+
+This phase focuses on the general configurable search engine. Multimodal search,
+representation models, cross-modal lifting and score fusion are out of scope.
+They are not prerequisites for qualifying the current execution bridge.
 
 A candidate space specifies identity namespace, source scope, revision and
-comparison unit. Units may include entity, document, occurrence, image region,
-page, audio interval or video interval. Keep such identifiers extensible;
-physical payloads and codec schemas belong to their adapters.
+comparison unit. Data owner strings are opaque and already accept non-file
+values; generic identity must not require a code path. Equal strings alone do
+not establish compatible spaces. The current implementation retains original
+scope, source, resident, ABI and generation bindings; an independently admitted
+candidate-space contract remains a separate gate.
 
-An image region and its source document are different candidates. Even identical
-strings cannot be intersected across incompatible spaces. Combining text and
-image evidence at an asset/entity level requires an explicit, source-bound lift
-stage that retains original region/segment lineage and its many-to-one mapping.
-An embedding is a representation of a candidate, not the candidate's identity.
-
-The existing Data owner strings are opaque and already accept non-file values.
-They currently lack an independently admitted candidate-space contract. Thus
-opaque string support does not qualify multimodal composition. A new domain
-admission gate is required before reusing set operations across modalities.
-
-Exact predicate truth, ranked subsets and approximate neighbor evidence are
-separate guarantees. Completing an ANN/top-k request does not make it complete
-for the corpus predicate. An empty ranked result is not an absence certificate.
-Intersect requires the same comparison space and independently admitted exact
-complete, untruncated truth. RankJoin retains primary truth; cross-modal score
-fusion requires an explicit policy/model/calibration identity. Raw backend scores
-must not be silently compared or used to discard primary candidates.
+Exact predicate truth and ranked subsets are separate guarantees. Completing a
+ranked request does not certify complete predicate truth, and an empty ranked
+result does not certify absence. Intersect requires compatible comparison spaces
+and complete, untruncated truth. RankJoin preserves primary truth and admits
+secondary ranking evidence without silently discarding primary candidates.
 
 * Rust physical dispatch contract
 
@@ -188,26 +182,30 @@ State Home authority into MRR.
 
 * Implementation sequence and acceptance
 
-The first split now qualifies generic POO composition mathematics in its own
-repository while keeping MRR consumer gates runnable. Actual Scheme producer
-correspondence and its own Quint transition model still need qualification. Next define the projected capability/configuration
-and candidate-space contracts before adding a dispatcher. Then connect one real
-Data exact-query capability through the existing port and one existing ASP
-retrieval adapter, preserving the public playbook and Version 1 output.
+The reusable composition mathematics live in LeanPoo and POO Flow. MRR retains
+consumer evidence checks and its own dispatch admission model. Actual Scheme
+producer correspondence and its standalone corruption controls remain producer
+qualification gates; consumer tests cannot close them.
 
-The first dispatcher qualification must exercise independent completion order,
-resource exhaustion, cancellation, generation retirement and late-result
-rejection. Its proof model and Rust tests must refer to the same operation IDs
-and states. Retain negative and unsupported capability controls.
+The first bounded acquisition-root dispatcher and restored Data exact-query
+adapter are implemented. The current work completes general search readiness:
 
-Only then qualify another scenario using a non-code candidate space. A
-multimodal adapter must bind its actual model/index/profile and original segment
-lineage. A synthetic adapter or URI-shaped candidate cannot count as actual
-multimodal retrieval. Compare request counts and resource receipts before making
-performance claims; FFI or Rust alone establishes no speedup.
+1. Admit explicit capability and semantic configuration identities before backend
+   acquisition, retaining original source and candidate-space bindings.
+2. Qualify independent completion order, resource exhaustion, dropped execution,
+   retirement and late-result rejection against the dispatch state model.
+3. Add dependent continuation only through Scheme-owned readiness decisions and
+   existing Data execution ports; retain unsupported-prerequisite rejection until
+   that path is qualified.
+4. Define cancellation and partial-result guarantees at each execution boundary.
+   Lease release alone does not prove that an underlying backend has stopped.
+5. Qualify ASP's actual scenario adapter and public Version 1 projection with
+   original execution receipts, negative controls and exact-head consumer CI.
 
-This document records the architecture decision and the qualification scope below.
-Multimodal backends and dependent-stage scheduling remain future work.
+The dispatcher model and Rust tests must name the same operations and states.
+Retain negative and unsupported capability controls. Compare actual request and
+resource receipts before making performance claims; FFI or Rust alone establishes
+no speedup. No additional modality adapter is required in this phase.
 
 * First physical dispatch qualification
 
@@ -229,5 +227,5 @@ Rust controls cover independent reverse completion, capacity exhaustion, every
 resource dimension, foreign requests, unsupported prerequisites, dropped leases,
 retirement and late results. A finite transition model qualifies the lease
 lifecycle separately from the retained publication model. This is the first
-bounded root-dispatch mechanism; dependent continuation, multimodal capability
+bounded root-dispatch mechanism; dependent continuation, configurable capability
 admission and whole-runtime cancellation remain separate gates.
