@@ -399,3 +399,17 @@ phase ordering, weak-fair termination, complete invalidation before
 publication, and real fault counterexamples in finite models. Lean proves
 publication and reuse laws within its own definitions. Neither gate substitutes
 for the production-source obligations above.
+
+* Shared source-proof build ownership
+
+The Rust and Value proof sources use one Lake build graph for CI and
+=context-source-proof=. The Rust workspace declares the Value libraries from
+=../AgenticAIContextValue=, allowing Lake to schedule independent proof modules
+concurrently while building the same pinned Aeneas dependencies once. Both
+axiom audit files still run against the completed graph. Value's standalone
+workspace remains available for focused development.
+
+CI caches only =.lake/packages=, keyed by the platform, Lean toolchain and Lake
+dependency configuration. Cache publication occurs after the proof steps, rather
+than inside a setup action that has not built the dependencies. Production
+extraction, root proof modules and both axiom audits remain checked on every run.

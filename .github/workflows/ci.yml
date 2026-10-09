@@ -280,6 +280,12 @@ jobs:
           test: false
           lint: false
           use-mathlib-cache: false
+          use-github-cache: false
+      - name: Reuse immutable Lean dependency artifacts
+        uses: actions/cache@v4
+        with:
+          path: proofs/MRRProof/AgenticAIContextRust/.lake/packages
+          key: mrr-source-lean-deps-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('proofs/MRRProof/AgenticAIContextRust/lean-toolchain', 'proofs/MRRProof/AgenticAIContextRust/lakefile.toml') }}
       - name: Download pinned official extractor
         run: |
           mkdir -p .ci/aeneas
@@ -300,17 +306,12 @@ jobs:
           lake update
           modules=$(rg --no-filename '^(public )?(meta )?import (Mathlib|Batteries)' .lake/packages/aeneas/backends/lean/Aeneas .lake/packages/aeneas/backends/lean/AeneasMeta NativeFacts.lean -g '*.lean' | sed -E 's/^(public )?(meta )?import ([A-Za-z0-9_.]+).*/\3/' | sort -u)
           lake exe cache get $modules
-          cd ../AgenticAIContextValue
-          lake update
-          lake exe cache get $modules
       - name: Prove generated production functions and audit axioms
         working-directory: proofs/MRRProof/AgenticAIContextRust
         run: |
-          lake build Evidence Driver NativeFacts Stack Expansion Forward Reverse ReverseIndex ImpactWrapper Coverage Rejection ForwardWrapper GeneralForward GeneralWrapper DeclaredForward RevisionProjection BindingEquality TransformationTable
+          lake build
           lake env lean Axioms.lean
-          cd ../AgenticAIContextValue
-          lake build ValueEquality ValueLoops ValueRecursive FactEquality
-          lake env lean Axioms.lean
+          lake env lean ../AgenticAIContextValue/Axioms.lean
       - name: Save current source extraction receipt
         if: always()
         uses: actions/upload-artifact@v4

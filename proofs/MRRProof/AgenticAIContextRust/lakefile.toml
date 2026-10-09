@@ -1,6 +1,6 @@
 name = "MRRContextRustProofs"
 version = "0.1.0"
-defaultTargets = ["Evidence", "Driver", "NativeFacts", "Stack", "Expansion", "Forward", "Reverse", "ReverseIndex", "ImpactWrapper", "Coverage", "Rejection", "ForwardWrapper", "GeneralForward", "GeneralWrapper", "DeclaredForward", "RevisionProjection", "BindingEquality", "TransformationTable"]
+defaultTargets = ["Evidence", "Driver", "NativeFacts", "Stack", "Expansion", "Forward", "Reverse", "ReverseIndex", "ImpactWrapper", "Coverage", "Rejection", "ForwardWrapper", "GeneralForward", "GeneralWrapper", "DeclaredForward", "RevisionProjection", "BindingEquality", "TransformationTable", "ValueEquality", "ValueLoops", "ValueRecursive", "FactEquality"]
 moreLeanArgs = ["-DautoImplicit=false", "-DwarningAsError=true"]
 
 [[require]]
@@ -73,3 +73,23 @@ name = "TransformGenerated"
 
 [[lean_lib]]
 name = "TransformationTable"
+
+[[lean_lib]]
+name = "ValueGenerated"
+srcDir = "../AgenticAIContextValue"
+
+[[lean_lib]]
+name = "ValueEquality"
+srcDir = "../AgenticAIContextValue"
+
+[[lean_lib]]
+name = "ValueLoops"
+srcDir = "../AgenticAIContextValue"
+
+[[lean_lib]]
+name = "ValueRecursive"
+srcDir = "../AgenticAIContextValue"
+
+[[lean_lib]]
+name = "FactEquality"
+srcDir = "../AgenticAIContextValue"

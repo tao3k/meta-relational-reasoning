@@ -61,8 +61,7 @@ context-refinement:
 context-source-proof toolchain_dir:
     {{profile}} {{proof_python}} mrr_proof_validation.context_source_proof --toolchain-dir {{toolchain_dir}}
     {{profile}} {{proof_python}} mrr_proof_validation.context_source_proof --value-equality --toolchain-dir {{toolchain_dir}} --receipt .ci/value-source-proof.json
-    {{profile}} bash -c 'cd proofs/MRRProof/AgenticAIContextRust && lake build Evidence Driver NativeFacts Stack Expansion Forward Reverse ReverseIndex ImpactWrapper Coverage Rejection ForwardWrapper GeneralForward GeneralWrapper DeclaredForward RevisionProjection BindingEquality && lake env lean Axioms.lean'
-    {{profile}} bash -c 'cd proofs/MRRProof/AgenticAIContextValue && lake build ValueEquality ValueLoops ValueRecursive FactEquality && lake env lean Axioms.lean'
+    {{profile}} bash -c 'cd proofs/MRRProof/AgenticAIContextRust && lake build Evidence Driver NativeFacts Stack Expansion Forward Reverse ReverseIndex ImpactWrapper Coverage Rejection ForwardWrapper GeneralForward GeneralWrapper DeclaredForward RevisionProjection BindingEquality ValueEquality ValueLoops ValueRecursive FactEquality && lake env lean Axioms.lean && lake env lean ../AgenticAIContextValue/Axioms.lean'
 
 # Check finite revision interleavings, fairness and required negative controls.
 context-quint receipt:
