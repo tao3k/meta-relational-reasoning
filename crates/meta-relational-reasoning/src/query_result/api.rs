@@ -331,6 +331,11 @@ impl CandidateQueryResult {
 
 impl QueryResultLimits {
     #[must_use]
+    pub const fn max_rows(&self) -> NonZeroUsize {
+        self.max_rows
+    }
+
+    #[must_use]
     pub const fn new(max_rows: NonZeroUsize, max_cells: NonZeroUsize) -> Self {
         Self {
             max_rows,

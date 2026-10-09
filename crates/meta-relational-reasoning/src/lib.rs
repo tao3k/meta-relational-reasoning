@@ -221,3 +221,8 @@ pub use transformation_native::{
     NativeTransformationExecution, NativeTransformationExecutionRequest,
     execute_native_transformation_plan, execute_native_transformation_plan_async,
 };
+
+pub use mrr_search::{
+    SearchDispatch, SearchDispatchError, SearchDispatchLease, SearchDispatchReceipt,
+    SearchDispatchResources, SearchDispatchSnapshot,
+};

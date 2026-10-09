@@ -440,6 +440,7 @@ jobs:
           npm ci --prefix proofs/quint
           mkdir -p "$QUINT_HOME"
           python3 -m mrr_proof_validation.search_composition_quint --receipt .ci/search-quint/receipt.json
+          python3 -m mrr_proof_validation.search_dispatch_quint --receipt .ci/search-quint/dispatch-receipt.v1.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:

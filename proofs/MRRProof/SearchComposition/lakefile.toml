@@ -1,6 +1,6 @@
 name = "MRRSearchCompositionProofs"
 version = "0.1.0"
-defaultTargets = ["SearchComposition", "Protocol", "Graph", "Replay", "ExecutionModel", "Reflection", "PlanOrders"]
+defaultTargets = ["SearchComposition", "Protocol", "Graph", "Replay", "ExecutionModel", "Reflection", "PlanOrders", "Dispatch"]
 moreLeanArgs = ["-DautoImplicit=false", "-DwarningAsError=true"]
 
 [[require]]
@@ -33,3 +33,6 @@ name = "Reflection"
 
 [[lean_lib]]
 name = "PlanOrders"
+
+[[lean_lib]]
+name = "Dispatch"

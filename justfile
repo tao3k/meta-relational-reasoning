@@ -130,3 +130,7 @@ clean:
 context-use receipt:
     {{profile}} npm ci --prefix proofs/quint
     {{profile}} {{proof_python}} mrr_proof_validation.context_use_quint --receipt {{receipt}}
+
+search-dispatch-model:
+    {{profile}} npm ci --prefix proofs/quint
+    {{profile}} env MRR_QUINT_BIN=proofs/quint/node_modules/.bin/quint {{proof_python}} mrr_proof_validation.search_dispatch_quint --receipt .ci/search-model/dispatch/receipt.v1.json

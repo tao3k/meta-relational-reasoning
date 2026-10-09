@@ -2,6 +2,7 @@ import Replay
 import ExecutionModel
 import Reflection
 import PlanOrders
+import Dispatch
 import Lean.Util.CollectAxioms
 import Lean.Elab.Command
 
@@ -14,7 +15,7 @@ run_cmd do
   let mut c3Count : Nat := 0
   let mut c4Count : Nat := 0
   for (name, _) in environment.constants.toList do
-    if (`MRR.SearchComposition).isPrefixOf name || (`POO.Flow.Composition).isPrefixOf name ||
+    if (`MRR.SearchComposition).isPrefixOf name || (`MRR.SearchDispatch).isPrefixOf name || (`POO.Flow.Composition).isPrefixOf name ||
         (`LeanPoo.Prototype.C3).isPrefixOf name || (`LeanPoo.C4).isPrefixOf name then
       count := count + 1
       if (`LeanPoo.Prototype.C3).isPrefixOf name then c3Count := c3Count + 1

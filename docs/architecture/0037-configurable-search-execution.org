@@ -206,5 +206,28 @@ lineage. A synthetic adapter or URI-shaped candidate cannot count as actual
 multimodal retrieval. Compare request counts and resource receipts before making
 performance claims; FFI or Rust alone establishes no speedup.
 
-This document is the architecture decision and acceptance plan. It adds no new
-engine, dispatcher, multimodal backend or proof of those unimplemented behaviors.
+This document records the architecture decision and the qualification scope below.
+Multimodal backends and dependent-stage scheduling remain future work.
+
+* First physical dispatch qualification
+
+=SearchDispatch= now admits only acquisition roots from the original immutable
+POO projection. It does not schedule dependent stages or infer a new logical
+order. Each lease binds its original factor and generation. A shared monotonic
+retirement state rejects new leases and late result admission; a separate
+instance cannot reactivate old leases even with the same generation identity.
+
+The gate reserves concurrent memory/output/results and charges cumulative input
+at reservation. Completed output bytes and result counts are measured at
+admission. Dropping a failed/cancelled execution releases its reservation while
+retaining the input charge. Memory is caller-declared reserved capacity, not a
+measurement or enforcement of backend RSS. Physical engines retain their own
+resource and source admission contracts. Data's restored Query adapter supplies
+an existing execution port and retains its original result transport.
+
+Rust controls cover independent reverse completion, capacity exhaustion, every
+resource dimension, foreign requests, unsupported prerequisites, dropped leases,
+retirement and late results. A finite transition model qualifies the lease
+lifecycle separately from the retained publication model. This is the first
+bounded root-dispatch mechanism; dependent continuation, multimodal capability
+admission and whole-runtime cancellation remain separate gates.

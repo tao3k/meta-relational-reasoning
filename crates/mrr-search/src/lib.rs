@@ -1,6 +1,11 @@
 //! Backend-neutral Search factor reasoning and causal Impact projection.
 #![forbid(unsafe_code)]
 
+mod dispatch;
+pub use dispatch::{
+    SearchDispatch, SearchDispatchError, SearchDispatchLease, SearchDispatchReceipt,
+    SearchDispatchResources, SearchDispatchSnapshot,
+};
 mod poo;
 mod reasoning;
 pub use poo::PooSearchProjection;
