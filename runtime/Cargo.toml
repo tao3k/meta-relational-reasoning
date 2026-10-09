@@ -19,7 +19,7 @@ mrr-context = ["mrr-transport", "meta-relational-reasoning/agentic-ai-context"]
 orgize-source = ["dep:orgize"]
 [dependencies.meta-relational-reasoning]
 git = "https://github.com/tao3k/meta-relational-reasoning.git"
-rev = "ffde2798a5246a61f4d6f0e66d7f05156e55e38f"
+rev = "68ffa47d65f6dc92a653377992d28df0376c5ea8"
 optional = true
 default-features = false
 [dependencies.orgize]
@@ -29,12 +29,12 @@ optional = true
 default-features = false
 [dependencies.mrr-data-backend]
 git = "https://github.com/tao3k/mrr-data.git"
-rev = "513d67812c45875bfa991b5b0032f37cffcb5998"
+rev = "db26a0f592b492ff3dbc9970b26182ce73b8b89d"
 optional = true
 default-features = false
 [dependencies.mrr-data-content]
 git = "https://github.com/tao3k/mrr-data.git"
-rev = "513d67812c45875bfa991b5b0032f37cffcb5998"
+rev = "db26a0f592b492ff3dbc9970b26182ce73b8b89d"
 optional = true
 default-features = false
 [dependencies.cid]

@@ -109,7 +109,8 @@ bounded uv run --no-sync --project "$poo/packages/python-runtime" pytest -vv -s 
   "$poo/packages/python-runtime/tests/unit/test_temporal_policy.py" \
   "$poo/packages/python-runtime/tests/unit/test_temporal_proof.py" \
   "$poo/packages/python-runtime/tests/unit/test_temporal_proof_host.py" \
-  "$poo/packages/python-runtime/tests/unit/test_context_restriction.py"
+  "$poo/packages/python-runtime/tests/unit/test_context_restriction.py" \
+  "$poo/packages/python-runtime/tests/unit/test_context_use.py"
 export POO_FLOW_PHYSICAL_RECEIPT="$out/physical-receipt.ss"
 export POO_FLOW_PHYSICAL_ORACLE="$out/physical-oracle.ss"
 bounded "$root/runtime/qualification/physical-roundtrip/target/debug/mrr-temporal-physical-roundtrip" \

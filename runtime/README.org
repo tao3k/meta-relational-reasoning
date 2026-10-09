@@ -215,6 +215,10 @@ bundle/snapshot, rebinds its query, re-admits the retained original MRR candidat
 and compares the entire receipt. It requires the exact receipt fact in both the
 contract and required closure, verifies its payload and policy mapping, then
 asks the native Scheme owner whether the original admission's Source is current.
+It then calls the original MRR =check_current_use= with a retained
+=MrrContextUseGrant= and explicit Display/Action purpose. The POO Host observation
+supplies the current full contract, registered manifest, revocation state and
+existing policy clock. No caller-provided allow/expiry flag reaches the check.
 Foreign bundle/query/generation, substituted payload, missing reference, policy
 mismatch and stale native Source reject before returning a check receipt.
 
@@ -222,7 +226,12 @@ mismatch and stale native Source reject before returning a check receipt.
 of the UTF-8 domain =poo-flow.mrr-context-policy.v1= followed by NUL, the policy
 byte length as a big-endian u64, then the native policy token's UTF-8 bytes. This
 binds a host policy identity; it neither interprets nor authenticates that policy.
-Actor/task declarations and provider authenticity remain upstream responsibilities.
+=register_context_use= enrolls the original MRR contract and manifest through a
+dedicated native Host control, after the same original source/receipt checks.
+The native policy registration must name the admission's policy identity.
+Same-generation replacement, rollback and grant resurrection reject. Ordinary
+model queries cannot enter either the Context or policy control lane.
+Provider authenticity remains an explicit Host responsibility.
 
 This is a point-in-time observation, not a reusable lease or atomic disclosure
 transaction. A subsequent Source update invalidates applicability; consumers

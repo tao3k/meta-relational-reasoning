@@ -313,10 +313,37 @@ fn original_mrr_values_project_to_real_native_poo() {
     );
     println!("MRR original evidence admitted against the host-registered current source");
     #[cfg(feature = "mrr-context")]
-    let context_source = {
+    let (context_source, context_grant) = {
         let original = temporal_context(&historical, "generation-one", None, true, None);
+        let at = |n| datum!({"identity":format!("context-at-{n}"),"domain":"context-clock","coordinate":n,"provenance":"host","modality":"observed"});
+        let policy = runtime
+            .refresh_policy(
+                &datum!({"schema":"poo-flow.temporal-policy-refresh-request.v1",
+            "policy":datum!({"identity":"policy-1","revision":"r1","start":at(1),"end":at(4)}),
+            "generation":1,"effectiveAt":at(1)}),
+            )
+            .unwrap();
+        let grant = historical
+            .register_context_use(
+                &runtime,
+                &original.2,
+                &original.0,
+                &original.1,
+                "context-display",
+                1,
+                &policy,
+                &[m::AgenticAiContextUsePurpose::Display],
+            )
+            .unwrap();
         let checked = historical
-            .check_context(&runtime, &original.2, &original.0, &original.1)
+            .check_context(
+                &runtime,
+                &original.2,
+                &original.0,
+                &original.1,
+                &grant,
+                m::AgenticAiContextUsePurpose::Display,
+            )
             .unwrap();
         for flag in [
             "sourceAuthenticated",
@@ -340,7 +367,14 @@ fn original_mrr_values_project_to_real_native_poo() {
         ] {
             assert!(
                 historical
-                    .check_context(&runtime, &wrong.2, &wrong.0, &wrong.1)
+                    .check_context(
+                        &runtime,
+                        &wrong.2,
+                        &wrong.0,
+                        &wrong.1,
+                        &grant,
+                        m::AgenticAiContextUsePurpose::Display
+                    )
                     .is_err()
             );
         }
@@ -353,13 +387,138 @@ fn original_mrr_values_project_to_real_native_poo() {
         );
         assert!(
             historical
-                .check_context(&runtime, &original.2, &foreign.0, &foreign.1)
+                .check_context(
+                    &runtime,
+                    &original.2,
+                    &foreign.0,
+                    &foreign.1,
+                    &grant,
+                    m::AgenticAiContextUsePurpose::Display
+                )
                 .is_err()
         );
         println!(
             "MRR Context checked original receipt, policy, temporal fact and current Source; forged/missing/foreign bindings rejected"
         );
-        original
+        assert!(matches!(
+            historical.check_context(
+                &runtime,
+                &original.2,
+                &original.0,
+                &original.1,
+                &grant,
+                m::AgenticAiContextUsePurpose::Action
+            ),
+            Err(mrr_runtime::mrr::MrrBridgeError::ContextUse(
+                m::AgenticAiContextUseError::Denied
+            ))
+        ));
+        assert!(
+            runtime
+                .call("$host.context.use.refresh", &datum!({}))
+                .is_err()
+        );
+        let request = datum!({"schema":"poo-flow.context-use-observe-request.v1",
+            "identity":"context-display","expectedGeneration":1,"purpose":"display",
+            "admissionDigest":&historical.result()["admissionDigest"]});
+        let observed = runtime.call("context.use.observe", &request).unwrap();
+        let mut forged = request.clone();
+        forged["effectiveAt"] = at(1);
+        assert!(runtime.call("context.use.observe", &forged).is_err());
+        let mut changed = datum!({"schema":"poo-flow.context-use-refresh-request.v1",
+            "identity":"context-display","generation":2,"manifestDigest":&observed["manifestDigest"],
+            "admissionDigest":&historical.result()["admissionDigest"],"contract":&observed["contract"],
+            "policyIdentity":"policy-1","policyDigest":&policy["policyDigest"],
+            "purposes":vec![mrr_runtime::wire::Value::from("display")],"enabled":true});
+        changed["contract"]["task"] = m::StateId::from_canonical_bytes("other-task")
+            .unwrap()
+            .to_string()
+            .into();
+        runtime.refresh_context_use(&changed).unwrap();
+        assert!(matches!(
+            historical.check_context(
+                &runtime,
+                &original.2,
+                &original.0,
+                &original.1,
+                &grant,
+                m::AgenticAiContextUsePurpose::Display
+            ),
+            Err(mrr_runtime::mrr::MrrBridgeError::ContextUse(
+                m::AgenticAiContextUseError::ContractMismatch
+            ))
+        ));
+        changed["generation"] = 3.into();
+        changed["contract"] = observed["contract"].clone();
+        runtime.refresh_context_use(&changed).unwrap();
+        assert!(matches!(
+            historical.check_context(
+                &runtime,
+                &original.2,
+                &original.0,
+                &original.1,
+                &grant,
+                m::AgenticAiContextUsePurpose::Display
+            ),
+            Err(mrr_runtime::mrr::MrrBridgeError::ContextUse(
+                m::AgenticAiContextUseError::Denied
+            ))
+        ));
+        let grant = historical
+            .register_context_use(
+                &runtime,
+                &original.2,
+                &original.0,
+                &original.1,
+                "context-display",
+                3,
+                &policy,
+                &[m::AgenticAiContextUsePurpose::Display],
+            )
+            .unwrap();
+        runtime
+            .refresh_policy(
+                &datum!({"schema":"poo-flow.temporal-policy-refresh-request.v1",
+            "policy":datum!({"identity":"policy-1","revision":"r1","start":at(1),"end":at(4)}),
+            "generation":2,"effectiveAt":at(4)}),
+            )
+            .unwrap();
+        assert!(matches!(
+            historical.check_context(
+                &runtime,
+                &original.2,
+                &original.0,
+                &original.1,
+                &grant,
+                m::AgenticAiContextUsePurpose::Display
+            ),
+            Err(mrr_runtime::mrr::MrrBridgeError::ContextUse(
+                m::AgenticAiContextUseError::Expired
+            ))
+        ));
+        changed["generation"] = 4.into();
+        changed["enabled"] = false.into();
+        runtime.refresh_context_use(&changed).unwrap();
+        assert!(matches!(
+            historical.check_context(
+                &runtime,
+                &original.2,
+                &original.0,
+                &original.1,
+                &grant,
+                m::AgenticAiContextUsePurpose::Display
+            ),
+            Err(mrr_runtime::mrr::MrrBridgeError::ContextUse(
+                m::AgenticAiContextUseError::Revoked
+            ))
+        ));
+        changed["generation"] = 5.into();
+        changed["enabled"] = true.into();
+        assert!(runtime.refresh_context_use(&changed).is_err());
+        println!(
+            "MRR-CONTEXT-NATIVE-USE-OK: scope, purpose, epoch, expiry, revocation, resurrection and clock injection checked"
+        );
+        (original, grant)
     };
 
     let corrected_query = bound("generation-two");
@@ -395,7 +554,9 @@ fn original_mrr_values_project_to_real_native_poo() {
             &runtime,
             &context_source.2,
             &context_source.0,
-            &context_source.1
+            &context_source.1,
+            &context_grant,
+            m::AgenticAiContextUsePurpose::Display
         ),
         Err(mrr_runtime::mrr::MrrBridgeError::StaleContextEvidence)
     ));

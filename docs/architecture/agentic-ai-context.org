@@ -1035,8 +1035,12 @@ The runtime must coordinate a change between observation and disclosure or
 an effect commit. This API is a point-in-time contract check, not an atomic
 runtime transaction or an implementation of a live authorization service.
 Existing immutable accessors remain available; consumers must call the use
-gate before external disclosure/use. No claim of enforced runtime routing is
-made until the owning integration calls this API.
+gate before external disclosure/use. The =runtime/= MRR consumer now calls this gate in its public
+=MrrFamilyAdmission::check_context= path. The internal source binding check is
+used only during trusted enrollment. POO's native =context.use.observe= returns
+the Host-retained contract and policy clock, rechecking the actual native
+Source in the same call. This routing covers the native Family Context adapter;
+it does not globally wrap every immutable Context accessor.
 
 =proofs/quint/ContextUse.qnt= models changes after projection and before use
 across six predicates: source bundle, Query binding, effective contract,

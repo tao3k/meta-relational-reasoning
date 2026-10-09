@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0 AND LGPL-2.1-or-later
 //! Bounded Rust transport to the POO-owned native semantic engine.
 //! All unsafe calls stay on one OS thread. No classification is implemented here.
+#[cfg(feature = "mrr-context")]
+pub mod mrr_context;
 #[cfg(feature = "mrr-transport")]
 pub mod mrr_derivation;
 #[cfg(feature = "data-publication")]
@@ -52,6 +54,7 @@ enum Command {
     Call(CString, Vec<u8>, Reply),
     Register(Vec<u8>, Reply),
     PolicyRefresh(Vec<u8>, Reply),
+    ContextUseRefresh(Vec<u8>, Reply),
     ProofStateRefresh(Vec<u8>, Reply),
     ProofRegister(Vec<u8>, Reply),
     DerivationAdmit(Vec<u8>, Reply),
@@ -181,6 +184,9 @@ impl SemanticRuntime {
                                     trace("derivation-admission-returned");
                                     let _ = reply.send(result);
                                 }
+                                Command::ContextUseRefresh(data, reply) => {
+                                    let _ = reply.send(native.refresh_context_use(&data));
+                                }
                                 Command::PolicyRefresh(data, reply) => {
                                     let result = native.refresh_policy(&data);
                                     let _ = reply.send(result);
@@ -255,6 +261,7 @@ impl SemanticRuntime {
                 | "temporal.fact.content"
                 | "temporal.support.guard"
                 | "temporal.proof.current"
+                | "context.use.observe"
         ) {
             return Err(Error::InvalidInput);
         }
@@ -335,6 +342,26 @@ impl SemanticRuntime {
             .as_ref()
             .ok_or(Error::Closed)?
             .try_send(Command::DerivationAdmit(data, tx))
+            .map_err(|e| match e {
+                mpsc::TrySendError::Full(_) => Error::QueueFull,
+                mpsc::TrySendError::Disconnected(_) => Error::Closed,
+            })?;
+        rx.recv().map_err(|_| Error::Closed)?
+    }
+    /// Trusted Host Context contract control; ordinary calls cannot register grants.
+    pub fn refresh_context_use(&self, payload: &Value) -> Result<Value, Error> {
+        let data = wire::to_vec(payload).map_err(|_| Error::InvalidInput)?;
+        if data.len() > 1_048_576 {
+            return Err(Error::InvalidInput);
+        }
+        let (tx, rx) = mpsc::channel();
+        self.state
+            .lock()
+            .map_err(|_| Error::Closed)?
+            .sender
+            .as_ref()
+            .ok_or(Error::Closed)?
+            .try_send(Command::ContextUseRefresh(data, tx))
             .map_err(|e| match e {
                 mpsc::TrySendError::Full(_) => Error::QueueFull,
                 mpsc::TrySendError::Disconnected(_) => Error::Closed,
@@ -436,6 +463,7 @@ struct Native {
     call: Call,
     register: Register,
     policy_refresh: Register,
+    context_use_refresh: Register,
     proof_state_refresh: Register,
     proof_register: Register,
     derivation_admit: Register,
@@ -481,6 +509,11 @@ impl Native {
                 .get::<Register>(b"poo_flow_semantic_v1_derivation_admit\0")
                 .map_err(symbol_error)?
         };
+        let context_use_refresh = unsafe {
+            *library
+                .get::<Register>(b"poo_flow_semantic_v1_context_use_refresh\0")
+                .map_err(symbol_error)?
+        };
         let policy_refresh = unsafe {
             *library
                 .get::<Register>(b"poo_flow_semantic_v1_policy_refresh\0")
@@ -499,6 +532,7 @@ impl Native {
             call,
             register,
             policy_refresh,
+            context_use_refresh,
             proof_state_refresh,
             proof_register,
             derivation_admit,
@@ -523,6 +557,11 @@ impl Native {
     fn admit_derivation(&self, input: &[u8]) -> Result<Value, Error> {
         self.response(|result| unsafe {
             (self.derivation_admit)(input.as_ptr(), input.len(), result)
+        })
+    }
+    fn refresh_context_use(&self, input: &[u8]) -> Result<Value, Error> {
+        self.response(|result| unsafe {
+            (self.context_use_refresh)(input.as_ptr(), input.len(), result)
         })
     }
     fn refresh_policy(&self, input: &[u8]) -> Result<Value, Error> {

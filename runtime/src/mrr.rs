@@ -41,6 +41,8 @@ pub enum MrrBridgeError {
     #[cfg(feature = "mrr-context")]
     ContextBindingMismatch,
     #[cfg(feature = "mrr-context")]
+    ContextUse(mrr::AgenticAiContextUseError<Error>),
+    #[cfg(feature = "mrr-context")]
     StaleContextEvidence,
 }
 impl std::fmt::Display for MrrBridgeError {
@@ -560,7 +562,7 @@ impl MrrFamilyAdmission {
     }
     /// Recheck the original MRR result and native current Source at disclosure time.
     /// The returned receipt is a point-in-time check, never a reusable authority token.
-    pub fn check_context(
+    pub(super) fn check_context_binding(
         &self,
         runtime: &SemanticRuntime,
         context: &mrr::AdmittedAgenticAiContext,

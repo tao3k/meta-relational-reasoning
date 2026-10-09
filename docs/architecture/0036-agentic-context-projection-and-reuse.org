@@ -288,7 +288,10 @@ external current-use observation bound to manifest, purpose and the full
 effective contract. Revocation, expiry, changed scope/policy and foreign
 observations reject with typed errors. The finite Quint model and shared Rust
 input replay are described in [[file:agentic-ai-context.org][the implementation contract]].
-The current authorization/time observation and atomic runtime disclosure or
-commit remain upstream premises. This slice does not implement the working
+The native Family consumer in =runtime/= now routes =check_context= through
+this gate using POO Host-registered contract/purpose state, native Source
+applicability and the existing temporal policy clock. Original MRR typed
+identities remain owned by the facade. Host authenticity and atomic runtime
+disclosure or commit remain explicit premises. This slice does not implement the working
 hypothesis overlay, a hard-obligation compiler, Session publication or a live
 serving cache.
