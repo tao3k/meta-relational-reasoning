@@ -2,7 +2,7 @@
 
 use core::num::NonZeroUsize;
 
-#[cfg(feature = "native-inference")]
+#[cfg(any(feature = "native-inference", feature = "worker-inference"))]
 use mrr_deduction::evaluate_transitive_closure;
 use mrr_deduction::{ClosureConfig, ClosureLimits};
 
@@ -151,7 +151,7 @@ impl MrrEngine {
         crate::admit_query_result_candidate(query, candidate, limits)
     }
 
-    #[cfg(feature = "native-inference")]
+    #[cfg(any(feature = "native-inference", feature = "worker-inference"))]
     pub fn derive(
         &self,
         plan: DeductionPlan,

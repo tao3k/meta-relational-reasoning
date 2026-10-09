@@ -14,10 +14,12 @@ mod projection;
 mod worker_errors;
 mod worker_profile;
 mod worker_projection;
+#[cfg(feature = "embedded-runtime")]
 mod worker_server;
 mod worker_wire;
 
 pub use native_worker::{NativeWorker, NativeWorkerError};
+#[cfg(feature = "embedded-runtime")]
 pub use worker_server::run_native_worker;
 
 pub use driver_cli::run_driver_cli;
@@ -39,7 +41,7 @@ pub use projection::{
     GrammarProjectionError, stamp_projection, validate_projection, workspace_input_fingerprint,
 };
 
-#[cfg(test)]
+#[cfg(all(test, feature = "embedded-runtime"))]
 #[path = "../tests/unit/mod.rs"]
 mod tests;
 

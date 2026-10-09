@@ -1,8 +1,8 @@
 //! POO Flow owns the composition; MRR retains its identities and inference graph.
-#[cfg(feature = "native-inference")]
+#[cfg(any(feature = "native-inference", feature = "worker-inference"))]
 use crate::SearchFactorRole;
 use crate::{SearchFactor, SearchFactorEdge};
-#[cfg(feature = "native-inference")]
+#[cfg(any(feature = "native-inference", feature = "worker-inference"))]
 pub use mrr_gerbil::{PooSearchPlan, PooSearchRole};
 use mrr_identity::{GenerationId, QueryOperatorId};
 use std::collections::BTreeMap;
@@ -10,7 +10,7 @@ use std::collections::BTreeMap;
 #[derive(Clone, Debug)]
 pub struct PooSearchProjection {
     generation: GenerationId,
-    #[cfg(feature = "native-inference")]
+    #[cfg(any(feature = "native-inference", feature = "worker-inference"))]
     role_evidence: Option<mrr_gerbil::PooRoleEvidence>,
     factors: Vec<SearchFactor>,
     edges: Vec<SearchFactorEdge>,
@@ -37,7 +37,7 @@ impl PooSearchProjection {
         self.names.get(name).copied()
     }
     #[must_use]
-    #[cfg(feature = "native-inference")]
+    #[cfg(any(feature = "native-inference", feature = "worker-inference"))]
     pub fn role_evidence(&self) -> Option<&mrr_gerbil::PooRoleEvidence> {
         self.role_evidence.as_ref()
     }
@@ -61,7 +61,7 @@ impl PooSearchProjection {
 /// # Errors
 /// Returns the POO admission or transport error, including invalid domains,
 /// duplicate stage names, or graph identities outside the returned inventory.
-#[cfg(feature = "native-inference")]
+#[cfg(any(feature = "native-inference", feature = "worker-inference"))]
 pub fn compile_poo_search_plan(
     name: &str,
     generation: GenerationId,

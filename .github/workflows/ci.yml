@@ -178,6 +178,9 @@ jobs:
           MRR_NATIVE_PROGRESS: "1"
         run: python3 -m mrr_proof_validation.process_runner --total 1800 --label RUST-TEST -- gerbil env cargo test --workspace --locked
 
+      - name: Qualify transport-only POO and Scheme execution
+        run: python3 -m mrr_proof_validation.process_runner --total 1800 --label WORKER-CLIENT -- gerbil env cargo test --locked -p mrr-gerbil --no-default-features --test worker_client -- --nocapture
+
       - name: Test optional Context feature boundaries
         run: |
           gerbil env python3 -m mrr_proof_validation.context_features

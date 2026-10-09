@@ -170,7 +170,7 @@ pub enum SearchFrameworkStatus {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum SearchFrameworkError {
-    #[cfg(feature = "native-inference")]
+    #[cfg(any(feature = "native-inference", feature = "worker-inference"))]
     NativeInference(mrr_gerbil::FiniteInferenceError),
     EmptyFactors,
     DuplicateFactor(QueryOperatorId),

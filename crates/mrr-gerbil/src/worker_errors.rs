@@ -1,10 +1,12 @@
 //! Typed native error projection; codes and diagnostics remain inert.
+#[cfg(feature = "embedded-runtime")]
+use crate::native::datum::Value;
 use crate::{
     FiniteInferenceError, NativeRuntimeStatus, NativeWorkerError, ParseArtifactLoadError,
-    native::datum::Value,
     worker_projection::{decode, list, text},
 };
 // Preserve native error tags and codes; diagnostics stay inert strings.
+#[cfg(feature = "embedded-runtime")]
 pub(crate) fn parser_error(error: &ParseArtifactLoadError) -> String {
     let fields: Vec<String> = match error {
         ParseArtifactLoadError::InteriorNul => vec!["nul".into()],
@@ -73,6 +75,7 @@ pub(crate) fn decode_parser_error(
         _ => return Err(NativeWorkerError::Protocol),
     })
 }
+#[cfg(feature = "embedded-runtime")]
 pub(crate) fn finite_error(error: FiniteInferenceError) -> String {
     let (tag, code) = match error {
         FiniteInferenceError::CoordinateOverflow => (0, 0),

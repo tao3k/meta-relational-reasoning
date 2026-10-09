@@ -99,6 +99,7 @@ where
 {
     with_native_runtime(operation).map_err(|error| match error {
         NativeRuntimeError::Unavailable => DriverError::NativeRuntimePoisoned,
+        #[cfg(feature = "embedded-runtime")]
         NativeRuntimeError::Status(status) => DriverError::NativeRuntimeInitialization(status),
     })
 }

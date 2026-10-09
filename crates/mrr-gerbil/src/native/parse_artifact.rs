@@ -444,6 +444,7 @@ fn load_native_kind_catalog(
 fn parse_runtime_error(error: NativeRuntimeError) -> ParseArtifactLoadError {
     match error {
         NativeRuntimeError::Unavailable => ParseArtifactLoadError::RuntimeUnavailable,
+        #[cfg(feature = "embedded-runtime")]
         NativeRuntimeError::Status(status) => ParseArtifactLoadError::RuntimeStatus(status),
     }
 }

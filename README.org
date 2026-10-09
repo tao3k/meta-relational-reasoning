@@ -348,3 +348,16 @@ ordered native route, and retains both the original closure receipt and the
 independently checked execution result. Search absence remains Unknown.
 Physical provider dispatch, solver correctness and current source authority
 remain explicit runtime/verifier responsibilities.
+
+
+* Scheme execution profiles
+
+Transport hosts select =worker-inference= with default features disabled. This
+retains the Scheme-owned POO projection and finite inference APIs, but requires
+explicit =configure_native_worker= with a trusted absolute executable. The host
+does not build or link the MRR Scheme program. The existing =mrr-native-worker=
+producer selects =mrr-gerbil/embedded-runtime= and owns the program lifecycle.
+An unconfigured transport host fails closed. Closing an owner retains its
+selected profile without embedded fallback or automatic restart. Separate
+process ownership permits built-in parsers with independent Scheme closures to
+remain in the host without interposing their generated module symbols.

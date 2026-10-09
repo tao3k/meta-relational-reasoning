@@ -1,13 +1,18 @@
 //! Single-owner execution boundary for the embedded Gambit runtime.
 
-use std::sync::{OnceLock, mpsc};
+use std::sync::OnceLock;
+#[cfg(feature = "embedded-runtime")]
+use std::sync::mpsc;
+#[cfg(feature = "embedded-runtime")]
 use std::thread;
 
 use gerbil_scheme_sys::GerbilStatus;
 
+#[cfg(feature = "embedded-runtime")]
 use super::ffi;
 
 /// Opt-in diagnostics at completed/native execution boundaries; no timer output.
+#[cfg(feature = "embedded-runtime")]
 fn progress(stage: &str) {
     static ENABLED: OnceLock<bool> = OnceLock::new();
     if *ENABLED.get_or_init(|| std::env::var_os("MRR_NATIVE_PROGRESS").is_some()) {
@@ -15,6 +20,7 @@ fn progress(stage: &str) {
     }
 }
 
+#[cfg(feature = "embedded-runtime")]
 type NativeJob = Box<dyn FnOnce() + Send + 'static>;
 
 // A worker Host must never install Gambit's process-wide child reaper.
@@ -30,12 +36,14 @@ pub fn reserve_native_worker_host() -> bool {
     claim_worker_host()
 }
 
+#[cfg(feature = "embedded-runtime")]
 static NATIVE_RUNTIME: OnceLock<Result<mpsc::Sender<NativeJob>, NativeRuntimeError>> =
     OnceLock::new();
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) enum NativeRuntimeError {
     Unavailable,
+    #[cfg(feature = "embedded-runtime")]
     Status(NativeRuntimeStatus),
 }
 
@@ -79,6 +87,7 @@ impl std::fmt::Display for NativeRuntimeStatus {
 ///
 /// A mutex is insufficient: Rust callers can acquire it from different OS
 /// threads, while Gambit's allocation state is thread-affine.
+#[cfg(feature = "embedded-runtime")]
 pub(super) fn with_native_runtime<T, F>(operation: F) -> Result<T, NativeRuntimeError>
 where
     T: Send + 'static,
@@ -128,4 +137,15 @@ where
     result_receiver
         .recv()
         .map_err(|_| NativeRuntimeError::Unavailable)?
+}
+
+/// A transport-only consumer must explicitly configure the isolated owner.
+/// It never initializes or links the Scheme program in the host process.
+#[cfg(not(feature = "embedded-runtime"))]
+pub(super) fn with_native_runtime<T, F>(_operation: F) -> Result<T, NativeRuntimeError>
+where
+    T: Send + 'static,
+    F: FnOnce() -> T + Send + 'static,
+{
+    Err(NativeRuntimeError::Unavailable)
 }

@@ -16,7 +16,7 @@ pub use transformation_identity_proof::{
     TransformationByteIdentityProof, transformation_byte_identity_proof,
 };
 mod transformation_publication;
-#[cfg(feature = "native-inference")]
+#[cfg(any(feature = "native-inference", feature = "worker-inference"))]
 mod transformation_route;
 mod transformation_table;
 pub use transformation_table::transport_bytes as transport_transformation_bytes;
@@ -152,7 +152,7 @@ pub use transformation_execution::{
     TransformationExecutionReceipt, TransformationRuntime, execute_transformation_plan,
     transformation_value_digest,
 };
-#[cfg(feature = "native-inference")]
+#[cfg(any(feature = "native-inference", feature = "worker-inference"))]
 pub use transformation_route::{TransformationRouteSearch, search_transformation_routes};
 
 pub use transformation_publication::{PublishedTransformationResult, TransformationResultSlot};
@@ -162,14 +162,14 @@ pub use transformation_publication::{PublishedTransformationResult, Transformati
 mod tests;
 
 pub use mrr_search::PooSearchProjection;
-#[cfg(feature = "native-inference")]
+#[cfg(any(feature = "native-inference", feature = "worker-inference"))]
 pub use mrr_search::{PooSearchPlan, PooSearchRole, compile_poo_search_plan};
-#[cfg(feature = "native-inference")]
+#[cfg(any(feature = "native-inference", feature = "worker-inference"))]
 pub use mrr_search::{evaluate_poo_search_factors, evaluate_search_factors};
 
 /// Advanced native Host projection of the POO Library's inert Scheme v1 ABI.
 /// These process-local proof operations do not authorize external effects.
-#[cfg(feature = "native-inference")]
+#[cfg(any(feature = "native-inference", feature = "worker-inference"))]
 pub use mrr_deduction::{
     NativeWorker, NativeWorkerError, TemporalHost, TemporalRuntimeError, configure_native_worker,
     shutdown_native_worker,
@@ -214,9 +214,9 @@ pub use transformation_profiles::{
     KernelCheckedOptimizationReduction, KernelCheckedPartialTransformation,
 };
 
-#[cfg(feature = "native-inference")]
+#[cfg(any(feature = "native-inference", feature = "worker-inference"))]
 mod transformation_native;
-#[cfg(feature = "native-inference")]
+#[cfg(any(feature = "native-inference", feature = "worker-inference"))]
 pub use transformation_native::{
     NativeTransformationExecution, NativeTransformationExecutionRequest,
     execute_native_transformation_plan, execute_native_transformation_plan_async,

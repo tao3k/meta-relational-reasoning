@@ -71,7 +71,7 @@ pub enum ClosureStatus {
 /// Fail-closed rejection reasons for unsupported or unbounded inputs.
 pub enum ClosureError {
     /// The Scheme solver rejected or could not execute the native request.
-    #[cfg(feature = "native-inference")]
+    #[cfg(any(feature = "native-inference", feature = "worker-inference"))]
     NativeInference(mrr_gerbil::FiniteInferenceError),
     /// The canonical MRR bundle validator rejected the input.
     BundleRejected { reason: String },

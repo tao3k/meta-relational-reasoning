@@ -77,7 +77,7 @@ impl KernelCheckedFiniteCatalog {
         additional_source: &str,
         additional_obligations: &[&str],
     ) -> Result<Self, TransformationError> {
-        #[cfg(feature = "native-inference")]
+        #[cfg(any(feature = "native-inference", feature = "worker-inference"))]
         if !mrr_search::reserve_native_worker_host() {
             return Err(TransformationError::KernelUnavailable {
                 diagnostics: "kernel checking requires a Rust process Host; embedded Gambit owns the child reaper. Configure an isolated native worker before embedding".to_owned(),

@@ -9,7 +9,7 @@ pub use dispatch::{
 mod poo;
 mod reasoning;
 pub use poo::PooSearchProjection;
-#[cfg(feature = "native-inference")]
+#[cfg(any(feature = "native-inference", feature = "worker-inference"))]
 pub use poo::{PooSearchPlan, PooSearchRole, compile_poo_search_plan};
 
 pub use reasoning::{
@@ -22,8 +22,8 @@ pub use reasoning::{
 #[path = "../tests/unit/mod.rs"]
 mod tests;
 
-#[cfg(feature = "native-inference")]
+#[cfg(any(feature = "native-inference", feature = "worker-inference"))]
 pub use reasoning::{evaluate_poo_search_factors, evaluate_search_factors};
 
-#[cfg(feature = "native-inference")]
+#[cfg(any(feature = "native-inference", feature = "worker-inference"))]
 pub use mrr_gerbil::reserve_native_worker_host;

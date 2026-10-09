@@ -10,6 +10,7 @@ repository.workspace = true
 [features]
 default = ["native-inference"]
 native-inference = ["mrr-deduction/native-inference", "mrr-search/native-inference"]
+worker-inference = ["mrr-deduction/worker-inference", "mrr-search/worker-inference"]
 agentic-ai-context = ["dep:mrr-agentic-ai-context"]
 agentic-ai-context-tokens = ["agentic-ai-context", "mrr-agentic-ai-context/token-layout"]
 

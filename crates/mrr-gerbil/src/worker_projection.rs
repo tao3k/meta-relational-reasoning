@@ -149,6 +149,7 @@ impl NativeWorker {
         result
     }
 }
+#[cfg(feature = "embedded-runtime")]
 pub(crate) fn parser_request(operation: i32, source: &[u8]) -> Result<Vec<u8>, NativeWorkerError> {
     let source = std::str::from_utf8(source).map_err(|_| NativeWorkerError::InvalidInput)?;
     let (payload, catalog) = parse_artifact::request_parse_artifact(
@@ -170,6 +171,7 @@ pub(crate) fn parser_request(operation: i32, source: &[u8]) -> Result<Vec<u8>, N
             .into_bytes(),
     )
 }
+#[cfg(feature = "embedded-runtime")]
 pub(crate) fn finite_request(bytes: &[u8]) -> Result<Vec<u8>, NativeWorkerError> {
     let value = decode(bytes)?;
     let fields = list(&value)?;

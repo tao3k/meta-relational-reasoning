@@ -77,6 +77,7 @@ pub fn load_reasoning_bundle() -> Result<ReasoningBundle, ReasoningBundleLoadErr
         NativeRuntimeError::Unavailable => ReasoningBundleLoadError::NativeGrammar(
             "native Gerbil runtime owner is unavailable".to_owned(),
         ),
+        #[cfg(feature = "embedded-runtime")]
         NativeRuntimeError::Status(status) => ReasoningBundleLoadError::NativeGrammar(format!(
             "native Gerbil runtime initialization failed with {status}"
         )),

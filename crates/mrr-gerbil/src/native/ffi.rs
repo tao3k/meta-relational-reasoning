@@ -29,6 +29,7 @@ unsafe extern "C" {
     fn mrr_finite_reset() -> i32;
     fn mrr_finite_count(table: i32) -> i64;
     fn mrr_finite_cell(table: i32, row: i64, column: i64) -> i64;
+    #[cfg(feature = "embedded-runtime")]
     #[link_name = "___LNK_mrr__grammar__linker"]
     fn mrr_grammar_linker(
         state: *mut gerbil_scheme_sys::GerbilGlobalState,
@@ -124,6 +125,7 @@ pub(super) fn finite_cell(table: i32, row: i64, column: i64) -> i64 {
     unsafe { mrr_finite_cell(table, row, column) }
 }
 
+#[cfg(feature = "embedded-runtime")]
 pub(super) fn runtime_init() -> i32 {
     unsafe { gerbil_scheme_sys::gerbil_scheme_rust_runtime_init_program(Some(mrr_grammar_linker)) }
 }

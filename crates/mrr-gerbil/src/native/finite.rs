@@ -100,6 +100,7 @@ pub fn evaluate_finite_relations(
     })
     .map_err(|error| match error {
         NativeRuntimeError::Unavailable => FiniteInferenceError::RuntimeUnavailable,
+        #[cfg(feature = "embedded-runtime")]
         NativeRuntimeError::Status(status) => FiniteInferenceError::RuntimeInitialization(status),
     })?
 }

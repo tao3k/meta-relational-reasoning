@@ -28,7 +28,7 @@ pub struct BundleBoundClosure {
 }
 
 impl BundleBoundClosure {
-    #[cfg(feature = "native-inference")]
+    #[cfg(any(feature = "native-inference", feature = "worker-inference"))]
     pub(crate) const fn bind(
         source_bundle: ReasoningBundleId,
         snapshot_digest: [u8; 32],

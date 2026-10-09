@@ -1,6 +1,6 @@
 //! Exposes typed admission contracts and optional native execution.
 
-#[cfg(feature = "native-inference")]
+#[cfg(any(feature = "native-inference", feature = "worker-inference"))]
 mod execution;
 mod model;
 
@@ -9,5 +9,5 @@ pub use model::{
     DerivationReceiptDigest,
 };
 
-#[cfg(feature = "native-inference")]
+#[cfg(any(feature = "native-inference", feature = "worker-inference"))]
 pub use execution::evaluate_transitive_closure;

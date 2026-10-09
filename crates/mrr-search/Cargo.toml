@@ -9,7 +9,8 @@ description = "Backend-neutral POO Search factor reasoning over Ascent and MRR l
 
 [features]
 default = ["native-inference"]
-native-inference = ["dep:mrr-gerbil"]
+native-inference = ["dep:mrr-gerbil", "mrr-gerbil/embedded-runtime"]
+worker-inference = ["dep:mrr-gerbil"]
 
 [dependencies]
 mrr-gerbil = { workspace = true, optional = true }

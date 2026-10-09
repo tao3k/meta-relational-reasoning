@@ -52,6 +52,7 @@ impl TemporalHost {
         with_native_runtime(move || ffi::temporal(operation, &payload))
             .map_err(|e| match e {
                 NativeRuntimeError::Unavailable => TemporalRuntimeError::RuntimeUnavailable,
+                #[cfg(feature = "embedded-runtime")]
                 NativeRuntimeError::Status(s) => TemporalRuntimeError::RuntimeInitialization(s),
             })?
             .map_err(TemporalRuntimeError::NativeRejected)
