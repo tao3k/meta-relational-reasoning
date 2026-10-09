@@ -1,0 +1,210 @@
+#+title: Configurable Search: Scheme Semantics and Rust Execution Bridge
+#+language: en
+
+* Decision
+
+MRR provides a configurable search execution bridge between Scheme/POO Flow and
+MRR Data. Scheme owns algorithmic decisions and declarative composition. Rust
+MRR admits typed requests and results across FFI and dispatches physical work to
+Data. ASP configures concrete scenarios, including code search, and presents
+admitted results. Code search is one consumer profile, not the generic model.
+
+The intended call cycle is:
+
+#+begin_example
+ASP scenario configuration and query
+  -> MRR typed admission
+  -> Scheme/POO Flow plan and semantic decisions
+  -> MRR Rust bounded physical dispatch
+  -> mrr-data execution and result binding
+  -> MRR result admission -> Scheme continuation/inference
+  -> ASP projection and reflection
+#+end_example
+
+The Rust dispatch bridge executes the physical work allowed by the Scheme plan.
+It does not introduce a second composition language, logical planner or rule
+engine. Existing Version 1 contracts remain intact. New independent contracts
+must also start at Version 1; no required fields are added to published V1
+receipts merely to accommodate this design.
+
+* Verified current implementation and gaps
+
+The reviewed Search path has no Rust Ascent dependency in =mrr-search=.
+=reasoning/execution.rs::run_native= calls
+=mrr_gerbil::evaluate_finite_relations=. For a POO projection, the same Rust
+module consumes retained Scheme-inferred paths, projects influences, validates
+lineage and applies resource bounds. Its independent shortest-path check is a
+boundary consistency check, not a second search algorithm authority.
+
+=compile_poo_search_plan= already invokes the actual Scheme POO constructors.
+Data's restored property stage already calls the existing MRR query
+=execute_with= port over its DataFusion backend. Data owns Arrow, DataFusion,
+Turso and physical binding contracts. ASP already inherits the Data Turso
+facade, but still directly executes resident regex and Tantivy retrieval before
+submitting the resulting sets to Data composition.
+
+Consequently the current qualified chain is plan compilation plus candidate
+aggregation/inference. It is not yet a generic MRR physical dispatcher. Public
+ASP queries passing does not qualify task scheduling, cancellation, multimodal
+retrieval, or backend substitution. The actual Rust inference bridge and Data
+query port are reusable foundations; a second operator registry is unnecessary.
+
+This source review is restricted to the active Search path. It does not assert
+that every unrelated MRR subsystem has removed historical Rust Ascent code.
+
+* Ownership
+
+| Owner | Responsibility | Boundary |
+|-------+----------------+----------|
+| LeanPoo | C3/C4 mathematics and reusable certificates | No retrieval, source authentication or physical scheduling |
+| POO Flow / Scheme | POO extension, typed composition, DAG and logical continuation decisions | No Rust backend dependency registry |
+| MRR Rust | FFI lifetime/type/identity admission; physical dispatch, bounds, result collection and replay identity | No reimplementation of Scheme rule or composition semantics |
+| MRR Data | Backend capabilities, physical reads/index access, engine dependency lifecycle and execution receipts | No ASP language selectors or product policy |
+| ASP | Scenario profiles, code-language providers, source/resident authority, ranking policy, public packets and reflection | No requirement that generic candidates be file paths |
+
+A provider may remain ASP-owned when its semantics are specific to code or its
+resident lifecycle. Generic physical adapters should be reusable through Data.
+Moving a dependency does not move source authority, provider completeness or
+connection lifecycle without an explicit contract.
+
+* Formal verification belongs to its semantic owner
+
+POO Flow must own producer qualification of composition semantics, compiled DAG
+correspondence, role graph extraction and Scheme C4 output. It consumes LeanPoo
+certificates rather than duplicating C3/C4 implementations. Its Quint model
+checks the relevant producer transition system; Lean supplies the mathematics
+and certificate checks. The currently unresolved standalone Scheme corruption
+controls remain an open producer qualification gate.
+
+MRR keeps consumer checks for FFI projection, exact identity/generation binding,
+resource admission and correspondence between retained producer evidence and
+received results. Data keeps canonical candidate identity, physical source
+binding, complete-set composition and adapter tests. ASP keeps actual public
+scenario and reflection projection qualification.
+
+The MRR =SearchComposition= proof package now imports the reusable POO
+composition library. Preserve the following split:
+
+- C3/C4 mathematics remain in LeanPoo; generic POO composition and producer
+  DAG/order checks belong in POO Flow.
+- MRR =OrderChecks= remains a consumer check matching actual received evidence
+  to the exact execution receipt; it must not become the upstream algorithm owner.
+- Candidate composition mathematics remain parameterized; Data owns their
+  physical correspondence, and MRR/ASP retain their own result admission checks.
+- Existing MRR publication Quint/Lean models qualify their declared consumer
+  protocol. They are not evidence that POO Flow's implementation is verified.
+- A Rust dispatch state machine requires its own admission/cancellation model
+  when implemented. Existing publication models must not be relabeled as a
+  scheduler proof.
+
+Language does not determine ownership: an MRR-specific Scheme projection still
+belongs to MRR; reusable POO composition semantics belong to POO Flow. Preserve
+producer and consumer qualification as separate executable gates. Move source
+models only with their runner, dependency pins, receipts and consumer references.
+The generic certificate and typed-composition definitions plus their execution
+checks have moved to POO Flow =proofs/Composition=. MRR consumes the package
+through an immutable Git dependency and runs both producer and consumer gates.
+The MRR publication Quint model remains here because it models consumer state.
+The proof dependency is published at =060198f2fec89a683cf539a900f0e1b0e623fb6a=
+([[https://github.com/tao3k/poo-flow/pull/34][POO PR 34]]). Empty-cache materialization and producer/consumer proof gates pass.
+Delivery to the existing open PR and downstream exact-head CI remain separate qualification gates.
+
+* Configurable contract
+
+A configuration comprises a POO plan, capability requirements, candidate-space
+identity, query/representation profile, result policy and physical execution
+budget. It is a POO object composition at the public extension boundary; a Rust
+struct or serialized packet is an admitted projection of it, not a replacement
+user DSL. Reuse the existing Query execution port for exact queries.
+
+Capability requirements describe input/output contracts and evidence guarantees,
+not names such as =RustSearch= or a fixed list of modalities. Data adapters
+advertise capabilities and immutable implementation/profile identities. MRR
+rejects unavailable or incompatible capabilities before physical work. ASP
+selects a supported scenario profile; it cannot bypass these checks.
+
+Configuration identity must bind the original plan and semantic parameters,
+including representation/model/preprocessing, metric and index revision where
+relevant. Runtime concurrency and deadlines belong to an execution policy with
+its own receipt. Execution policy must not silently change truth, ranking or
+configuration identity. Changes that alter observable semantics belong to the
+semantic configuration, even when described as optimization options.
+
+The existing composition ABI string is not yet a verified configuration digest.
+Do not pretend it binds these new parameters until an owner canonicalizes and
+admits the actual configuration. Cache keys must also include query, source,
+generation, candidate space, adapter and representation/index identities.
+
+* Candidate spaces and multimodal results
+
+A candidate space specifies identity namespace, source scope, revision and
+comparison unit. Units may include entity, document, occurrence, image region,
+page, audio interval or video interval. Keep such identifiers extensible;
+physical payloads and codec schemas belong to their adapters.
+
+An image region and its source document are different candidates. Even identical
+strings cannot be intersected across incompatible spaces. Combining text and
+image evidence at an asset/entity level requires an explicit, source-bound lift
+stage that retains original region/segment lineage and its many-to-one mapping.
+An embedding is a representation of a candidate, not the candidate's identity.
+
+The existing Data owner strings are opaque and already accept non-file values.
+They currently lack an independently admitted candidate-space contract. Thus
+opaque string support does not qualify multimodal composition. A new domain
+admission gate is required before reusing set operations across modalities.
+
+Exact predicate truth, ranked subsets and approximate neighbor evidence are
+separate guarantees. Completing an ANN/top-k request does not make it complete
+for the corpus predicate. An empty ranked result is not an absence certificate.
+Intersect requires the same comparison space and independently admitted exact
+complete, untruncated truth. RankJoin retains primary truth; cross-modal score
+fusion requires an explicit policy/model/calibration identity. Raw backend scores
+must not be silently compared or used to discard primary candidates.
+
+* Rust physical dispatch contract
+
+Rust's value is concrete execution control and access to Data's ecosystem, not a
+second Ascent implementation. Dispatch accepts only the original admitted plan,
+its ready physical requests and current source/configuration identities.
+
+1. Validate capability, generation and budget before acquiring backend resources.
+2. Dispatch only ready independent requests under an aggregate concurrency,
+   memory, input/output byte and result bound. Respect the current serialized
+   Scheme worker boundary; do not create an FFI worker per retrieval branch.
+3. Collect immutable Data receipts with original request, factor, configuration,
+   candidate-space and source bindings. Reordering completion cannot change the
+   logical graph or merge policy.
+4. On cancellation or generation retirement, stop dispatching new work and
+   reject late results. Already running non-cancellable FFI work is quarantined
+   until it finishes; forcibly terminating a Rust thread is not cancellation.
+5. Return admitted observations to the Scheme continuation, then publish only
+   through the existing consumer boundary. Partial or timed-out work remains
+   explicit and cannot acquire complete-truth authority.
+
+Reuse existing ownership-aware backend leases and asynchronous Query execution
+ports. Introduce additional dispatch primitives only where these ports lack a
+required contract. Do not create a parallel ASP runtime lifecycle or move its
+State Home authority into MRR.
+
+* Implementation sequence and acceptance
+
+The first split now qualifies generic POO composition mathematics in its own
+repository while keeping MRR consumer gates runnable. Actual Scheme producer
+correspondence and its own Quint transition model still need qualification. Next define the projected capability/configuration
+and candidate-space contracts before adding a dispatcher. Then connect one real
+Data exact-query capability through the existing port and one existing ASP
+retrieval adapter, preserving the public playbook and Version 1 output.
+
+The first dispatcher qualification must exercise independent completion order,
+resource exhaustion, cancellation, generation retirement and late-result
+rejection. Its proof model and Rust tests must refer to the same operation IDs
+and states. Retain negative and unsupported capability controls.
+
+Only then qualify another scenario using a non-code candidate space. A
+multimodal adapter must bind its actual model/index/profile and original segment
+lineage. A synthetic adapter or URI-shaped candidate cannot count as actual
+multimodal retrieval. Compare request counts and resource receipts before making
+performance claims; FFI or Rust alone establishes no speedup.
+
+This document is the architecture decision and acceptance plan. It adds no new
+engine, dispatcher, multimodal backend or proof of those unimplemented behaviors.

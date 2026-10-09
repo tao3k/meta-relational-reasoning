@@ -4,6 +4,10 @@
 //! finite inference; semantic callers retain identity and generation admission.
 
 mod driver_cli;
+mod search;
+pub use search::{
+    PooRoleEvidence, PooSearchGraph, PooSearchPlan, PooSearchRole, project_poo_search_strategy,
+};
 mod native;
 mod native_worker;
 mod projection;

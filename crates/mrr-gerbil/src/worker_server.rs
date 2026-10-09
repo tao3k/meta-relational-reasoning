@@ -34,6 +34,9 @@ pub fn run_native_worker() -> io::Result<()> {
                 .map_err(NativeWorkerError::Native),
             5 | 6 => crate::worker_projection::parser_request(op, &payload),
             7 => crate::worker_projection::finite_request(&payload),
+            8 => host
+                .compile_search_projection(&payload)
+                .map_err(NativeWorkerError::Native),
             _ => {
                 return Err(io::Error::new(
                     io::ErrorKind::InvalidData,

@@ -1,0 +1,35 @@
+name = "MRRSearchCompositionProofs"
+version = "0.1.0"
+defaultTargets = ["SearchComposition", "Protocol", "Graph", "Replay", "ExecutionModel", "Reflection", "PlanOrders"]
+moreLeanArgs = ["-DautoImplicit=false", "-DwarningAsError=true"]
+
+[[require]]
+name = "POOFlowCompositionProofs"
+git = "https://github.com/tao3k/poo-flow.git"
+rev = "060198f2fec89a683cf539a900f0e1b0e623fb6a"
+subDir = "proofs/Composition"
+
+[[lean_lib]]
+name = "SearchComposition"
+
+[[lean_exe]]
+name = "search-composition-check"
+root = "Checks"
+
+[[lean_lib]]
+name = "Protocol"
+
+[[lean_lib]]
+name = "Graph"
+
+[[lean_lib]]
+name = "Replay"
+
+[[lean_lib]]
+name = "ExecutionModel"
+
+[[lean_lib]]
+name = "Reflection"
+
+[[lean_lib]]
+name = "PlanOrders"

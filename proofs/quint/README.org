@@ -47,3 +47,16 @@ a five-second idle and 45-second total limit for each Quint command. They
 qualify bounded model behavior, not Rust source refinement, universal fairness,
 or deployed serving behavior. Lean independently proves publication and reuse
 laws; Rust source evidence has its own gate under =proofs/MRRProof=.
+
+* Search composition gate
+
+=SearchComposition.qnt= models source/generation binding, complete candidate
+aggregation, native reasoning admission and publication. Two positive cases
+(intersection and primary-truth-preserving rank join) must exhaust the finite
+state queue. Five mutations must produce actual invariant counterexamples.
+C3 role and C4 precedence algorithm certificates are checked separately by
+=proofs/MRRProof/SearchComposition=; this model does not reimplement either.
+
+#+begin_src sh
+./.devenv/devenv-profile-exec just search-composition-quint .ci/search-quint/receipt.json
+#+end_src

@@ -161,8 +161,11 @@ pub use transformation_publication::{PublishedTransformationResult, Transformati
 #[path = "../tests/unit/mod.rs"]
 mod tests;
 
+pub use mrr_search::PooSearchProjection;
 #[cfg(feature = "native-inference")]
-pub use mrr_search::evaluate_search_factors;
+pub use mrr_search::{PooSearchPlan, PooSearchRole, compile_poo_search_plan};
+#[cfg(feature = "native-inference")]
+pub use mrr_search::{evaluate_poo_search_factors, evaluate_search_factors};
 
 /// Advanced native Host projection of the POO Library's inert Scheme v1 ABI.
 /// These process-local proof operations do not authorize external effects.

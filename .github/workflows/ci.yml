@@ -398,6 +398,55 @@ jobs:
         working-directory: proofs/MRRProof/AgenticAIContext
         run: lake env lean Checks/Axioms.lean
 
+  search-composition-proof:
+    name: POO producer and MRR consumer Search proofs
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PYTHONPATH: proofs/MRRProof/src
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: leanprover/lean-action@v1
+        with:
+          lake-package-directory: proofs/MRRProof/SearchComposition
+          auto-config: false
+          build: false
+          test: false
+          lint: false
+          use-mathlib-cache: false
+      - name: Verify immutable producer and run producer/consumer proofs
+        run: |
+          python3 -m mrr_proof_validation.lean_dependency_pin proofs/MRRProof/SearchComposition
+          python3 -m mrr_proof_validation.composition_producer --project proofs/MRRProof/SearchComposition --log .ci/search-quint/poo-producer.log
+          cd proofs/MRRProof/SearchComposition
+          lake update POOFlowCompositionProofs
+          lake build
+          lake env lean --run Checks.lean
+          lake env lean --run ProtocolChecks.lean
+          lake env lean --run ReflectionChecks.lean
+          lake env lean Axioms.lean
+      - name: Exhaust publication states and require ten counterexamples
+        env:
+          MRR_QUINT_BIN: ${{ github.workspace }}/proofs/quint/node_modules/.bin/quint
+          QUINT_HOME: ${{ runner.temp }}/mrr-search-quint-backend
+        run: |
+          npm ci --prefix proofs/quint
+          mkdir -p "$QUINT_HOME"
+          python3 -m mrr_proof_validation.search_composition_quint --receipt .ci/search-quint/receipt.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: search-composition-${{ github.event_name }}
+          path: .ci/search-quint/*
+          if-no-files-found: error
+
   deepseek-live:
     if: github.event_name == 'workflow_dispatch' && inputs.run_deepseek_live
     runs-on: ubuntu-latest

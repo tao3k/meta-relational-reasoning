@@ -29,8 +29,16 @@ impl std::error::Error for TemporalRuntimeError {}
 pub struct TemporalHost;
 impl TemporalHost {
     fn invoke(self, operation: i32, payload: &[u8]) -> Result<Vec<u8>, TemporalRuntimeError> {
+        self.invoke_routed(operation, operation, payload)
+    }
+    fn invoke_routed(
+        self,
+        operation: i32,
+        worker_operation: i32,
+        payload: &[u8],
+    ) -> Result<Vec<u8>, TemporalRuntimeError> {
         if let Some(result) =
-            crate::worker_profile::with_worker(|worker| worker.invoke(operation, payload))
+            crate::worker_profile::with_worker(|worker| worker.invoke(worker_operation, payload))
         {
             return result.map_err(|error| match error {
                 crate::NativeWorkerError::Native(error) => error,
@@ -47,6 +55,12 @@ impl TemporalHost {
                 NativeRuntimeError::Status(s) => TemporalRuntimeError::RuntimeInitialization(s),
             })?
             .map_err(TemporalRuntimeError::NativeRejected)
+    }
+    pub(crate) fn compile_search_projection(
+        self,
+        payload: &[u8],
+    ) -> Result<Vec<u8>, TemporalRuntimeError> {
+        self.invoke_routed(5, 8, payload)
     }
     /// Refresh the process-local policy generation through its Scheme owner.
     pub fn refresh_policy(self, payload: &[u8]) -> Result<Vec<u8>, TemporalRuntimeError> {

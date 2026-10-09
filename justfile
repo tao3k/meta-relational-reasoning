@@ -38,6 +38,10 @@ test-search:
     {{profile}} mrr-cargo test -p mrr-search --locked
     {{profile}} mrr-cargo test -p mrr-asp-rust-build-support --locked
 
+# Direct POO object-to-MRR Scheme contract; no Python supervisor or new runtime.
+test-poo-search gerbil_path loadpath:
+    {{profile}} bash -c 'cd "{{justfile_directory()}}"; exec env GERBIL_PATH="{{gerbil_path}}" GERBIL_LOADPATH="{{loadpath}}" timeout --foreground --signal=TERM --kill-after=1s 5s gxi -:max-heap=1G,debug=q :gerbil/tools/gxtest -v 5 t/search-framework-test.ss'
+
 # Check explicit Context selection, source admission, shared C4 replay, and proofs.
 test-agentic-ai-context:
     {{profile}} {{proof_python}} mrr_proof_validation.context_features
@@ -70,10 +74,39 @@ meta-impact receipt:
     {{profile}} npm ci --prefix proofs/quint
     {{profile}} {{proof_python}} mrr_proof_validation.meta_impact_quint --receipt {{receipt}}
 
+# Check actual C3/C4 compilation and finite search publication safety.
+search-composition-proof:
+    {{profile}} {{proof_python}} mrr_proof_validation.lean_dependency_pin proofs/MRRProof/SearchComposition
+    {{profile}} env PYTHONPATH=proofs/MRRProof/src python3 -m mrr_proof_validation.composition_producer --project proofs/MRRProof/SearchComposition --log .ci/search-model/poo-producer.log
+    {{profile}} bash -c 'cd proofs/MRRProof/SearchComposition && lake build && lake env lean --run Checks.lean && lake env lean --run ProtocolChecks.lean && lake env lean --run ReflectionChecks.lean && lake env lean Axioms.lean'
+
+search-composition-quint receipt: search-composition-proof
+    {{profile}} npm ci --prefix proofs/quint
+    {{profile}} env MRR_QUINT_BIN=proofs/quint/node_modules/.bin/quint {{proof_python}} mrr_proof_validation.search_composition_quint --receipt {{receipt}}
+
+search-model: (search-composition-quint ".ci/search-model/quint-receipt.json")
+
 # Record time, peak RSS, bounded rejection and actual declared reuse eligibility.
 context-scale:
     {{profile}} mrr-cargo build -p meta-relational-reasoning --example context_scale --locked --features agentic-ai-context-tokens
     {{profile}} {{proof_python}} mrr_proof_validation.context_scale
+
+# Independently check actual ASP Version 1 execution witnesses in Lean.
+search-execution-proof witnesses: search-composition-proof
+    {{profile}} bash -c 'cd proofs/MRRProof/SearchComposition && lake env lean --run ExecutionChecks.lean "$1"' -- {{absolute_path(witnesses)}}
+
+
+# Validate the independent V1 schema and require Lean mutation rejections.
+search-execution witnesses schema output=".ci/search-model/execution": search-composition-proof
+    {{profile}} env PYTHONPATH=proofs/MRRProof/src python3 -m mrr_proof_validation.search_execution --witnesses {{witnesses}} --schema {{schema}} --output {{output}}
+
+# Bind actual POO role graphs and runtime orders to the same execution receipt.
+search-orders executions orders schema output=".ci/search-model/orders": search-composition-proof
+    {{profile}} env PYTHONPATH=proofs/MRRProof/src python3 -m mrr_proof_validation.search_orders --executions {{executions}} --orders {{orders}} --schema {{schema}} --output {{output}}
+
+# Match Data-admitted owner identities to the independently checked execution.
+search-candidates executions candidates schema output=".ci/search-model/candidates/lean": search-composition-proof
+    {{profile}} env PYTHONPATH=proofs/MRRProof/src python3 -m mrr_proof_validation.search_candidates --executions {{executions}} --candidates {{candidates}} --schema {{schema}} --output {{output}}
 
 # Enforce Rust lints after refreshing the Gerbil native inputs.
 lint:

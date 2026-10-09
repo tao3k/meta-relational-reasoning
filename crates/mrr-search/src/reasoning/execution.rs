@@ -22,6 +22,33 @@ pub fn evaluate_search_factors(
     observations: &[SearchObservation],
     limits: SearchFrameworkLimits,
 ) -> Result<SearchFrameworkReceipt, SearchFrameworkError> {
+    evaluate_search_graph(generation, factors, edges, observations, limits, None)
+}
+
+/// Project observations over the paths already inferred from the original POO graph.
+pub fn evaluate_poo_search_factors(
+    projection: &crate::PooSearchProjection,
+    observations: &[SearchObservation],
+    limits: SearchFrameworkLimits,
+) -> Result<SearchFrameworkReceipt, SearchFrameworkError> {
+    evaluate_search_graph(
+        projection.generation(),
+        projection.factors(),
+        projection.edges(),
+        observations,
+        limits,
+        Some(projection.paths()),
+    )
+}
+
+fn evaluate_search_graph(
+    generation: GenerationId,
+    factors: &[SearchFactor],
+    edges: &[SearchFactorEdge],
+    observations: &[SearchObservation],
+    limits: SearchFrameworkLimits,
+    compiled_paths: Option<&[(QueryOperatorId, QueryOperatorId, usize)]>,
+) -> Result<SearchFrameworkReceipt, SearchFrameworkError> {
     validate_budget("factors", factors.len(), limits.max_factors.get())?;
     validate_budget("edges", edges.len(), limits.max_edges.get())?;
     validate_budget(
@@ -47,7 +74,30 @@ pub fn evaluate_search_factors(
     let potential = observations.len().saturating_mul(factors.len());
     validate_budget("influences", potential, limits.max_influences.get())?;
 
-    let raw = run_native(factors, edges, observations)?;
+    let raw = if let Some(paths) = compiled_paths {
+        observations
+            .iter()
+            .flat_map(|observation| {
+                std::iter::once((
+                    observation.candidate,
+                    observation.factor,
+                    observation.factor,
+                    observation.id,
+                    0,
+                ))
+                .chain(
+                    paths
+                        .iter()
+                        .filter(move |(from, to, _)| *from == observation.factor && *to != *from)
+                        .map(move |(from, to, distance)| {
+                            (observation.candidate, *from, *to, observation.id, *distance)
+                        }),
+                )
+            })
+            .collect()
+    } else {
+        run_native(factors, edges, observations)?
+    };
     let adjacency = adjacency(edges);
     let mut influences = Vec::with_capacity(raw.len());
     for (candidate, source, target, support_event, distance) in raw {

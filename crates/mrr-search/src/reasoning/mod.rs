@@ -11,4 +11,4 @@ pub use model::{
 };
 
 #[cfg(feature = "native-inference")]
-pub use execution::evaluate_search_factors;
+pub use execution::{evaluate_poo_search_factors, evaluate_search_factors};

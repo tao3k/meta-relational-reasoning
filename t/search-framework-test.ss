@@ -46,6 +46,31 @@
 
 (def search-framework-test
   (test-suite "MRR projection of POO Flow Search"
+    (test-case "DAG receipt and stage graph disagreement are rejected"
+      (let (forged-receipt
+            (poo-core-role-object
+             (slots ((dag-receipt '((kind . forged)))))
+             (supers source-rank-strategy)))
+        (check (raises? (lambda () (mrr-search-project forged-receipt "generation"))) => #t))
+      ;; Keep the tree intact but compile only its source Flow. The strategy
+      ;; owns a genuine receipt for that Flow, so this exercises inventory
+      ;; correspondence rather than only the receipt equality check.
+      (let* ((root (.ref source-rank-strategy 'root))
+             (missing-rank
+              (poo-core-role-object
+               (slots ((flow (poo-flow-search-node-flow source-stage))))
+               (supers root)))
+             (strategy (poo-flow-search-strategy 'missing-rank missing-rank '())))
+        (check (raises? (lambda () (mrr-search-project strategy "generation"))) => #t)))
+    (test-case "actual POO strategy directly drives MRR inference"
+      (let (answer (mrr-search-evaluate source-rank-projection "runtime-generation-one" (list source-stage)))
+        (check-equal? (.ref answer 'projection) source-rank-projection)
+        (check (member '(0 "mrr.search.factor.v1:fixture-search:source"
+                           "mrr.search.factor.v1:fixture-search:rank" 1)
+                       (.ref answer 'influences)) ? pair?))
+      (check (raises? (lambda () (mrr-search-evaluate source-rank-projection "stale" (list source-stage)))) => #t)
+      (let (foreign (poo-flow-search-stage 'foreign 'foreign '() 'workspace 'candidate-set acquisition-role))
+        (check (raises? (lambda () (mrr-search-evaluate source-rank-projection "runtime-generation-one" (list foreign)))) => #t)))
     (test-case "POO Flow owns typed composition; MRR projects native identities"
       (check-equal? (.ref source-stage 'search/stage-role) 'acquisition)
       (check-equal? (.ref source-rank-projection 'strategy) source-rank-strategy)

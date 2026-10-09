@@ -1,52 +1,44 @@
 #!/usr/bin/env python3
 # SPDX-FileCopyrightText: 2026 tao3k team and Contributors
 # SPDX-License-Identifier: Apache-2.0
-"""Fetch the exact LeanPoo dependency even after its topic branch is deleted."""
-
+"""Resolve the POO proof owner and use its immutable LeanPoo dependency gate."""
 import argparse
-import re
+from pathlib import Path
+import sys
+import shutil
 import subprocess
 import tomllib
-from pathlib import Path
+from .producer_dependency import resolve
+from .process_runner import run
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("project", type=Path)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('project', type=Path)
     project = parser.parse_args().project.resolve()
-    config = tomllib.loads((project / "lakefile.toml").read_text())
-    dependencies = [item for item in config["require"] if item["name"] == "LeanPoo"]
+    owner = resolve(project)
+    result = run([sys.executable, str(owner / 'pin_dependency.py'), str(owner)], cwd=owner,
+                 log=project / '.lake/leanpoo-pin.log', label='LEANPOO-PIN')
+    if result.status != 0:
+        raise SystemExit(f'producer LeanPoo pin failed: exit={result.status}')
+    # Lake flattens transitive packages into the consumer's packages directory.
+    producer_config = tomllib.loads((owner / 'lakefile.toml').read_text())
+    dependencies = [item for item in producer_config['require'] if item['name'] == 'LeanPoo']
     if len(dependencies) != 1:
-        raise SystemExit("expected exactly one pinned LeanPoo dependency")
+        raise SystemExit('producer must declare exactly one LeanPoo source')
     dependency = dependencies[0]
-    revision = dependency["rev"]
-    if not re.fullmatch(r"[0-9a-f]{40}", revision):
-        raise SystemExit("LeanPoo requires a full immutable commit SHA")
-    repository = project / ".lake/packages/LeanPoo"
-    repository.mkdir(parents=True, exist_ok=True)
-
+    target = project / '.lake/packages/LeanPoo'
+    verified = owner / '.lake/packages/LeanPoo'
+    if not target.exists():
+        shutil.copytree(verified, target, symlinks=True)
     def git(*args: str) -> str:
-        return subprocess.check_output(
-            ["git", "-C", str(repository), *args], text=True
-        ).strip()
-
-    if not (repository / ".git").exists():
-        if any(repository.iterdir()):
-            raise SystemExit("refusing to initialize a nonempty dependency directory")
-        git("init", "--quiet")
-        git("remote", "add", "origin", dependency["git"])
-    if git("remote", "get-url", "origin") != dependency["git"]:
-        raise SystemExit("LeanPoo origin differs from the declared dependency")
-    if git("status", "--porcelain", "--untracked-files=no"):
-        raise SystemExit("refusing to replace modified LeanPoo dependency sources")
-    git("fetch", "--depth=1", "origin", revision)
-    if git("rev-parse", "FETCH_HEAD") != revision:
-        raise SystemExit("fetched dependency does not match the declared SHA")
-    git("checkout", "--detach", revision)
-    if git("rev-parse", "HEAD") != revision:
-        raise SystemExit("checked-out dependency does not match the declared SHA")
-    print(f"LeanPoo exact dependency fetched: {revision}", flush=True)
+        return subprocess.check_output(['git', '-C', str(target), *args], text=True, timeout=5).strip()
+    if (git('rev-parse', 'HEAD') != dependency['rev']
+            or git('remote', 'get-url', 'origin') != dependency['git']
+            or git('status', '--porcelain', '--untracked-files=no')):
+        raise SystemExit('consumer inherited LeanPoo cache does not match verified producer source')
+    print(f"MRR inherited LeanPoo cache verified: {dependency['rev']}", flush=True)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

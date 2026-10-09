@@ -2,7 +2,8 @@
 ;;; SPDX-FileCopyrightText: 2026 tao3k team and Contributors
 ;;; SPDX-License-Identifier: Apache-2.0
 ;;; Embedded owner projection; uses MRR's existing Gambit initializer and thread.
-(import (only-in :poo-flow/src/ffi/scheme-wire scheme-wire-read scheme-wire-write)
+(import (only-in ../search/projection mrr-search-compile)
+        (only-in :poo-flow/src/ffi/scheme-wire scheme-wire-read scheme-wire-write)
         (only-in :poo-flow/src/ffi/temporal-proof temporal-derivation-admit)
         (only-in :poo-flow/src/ffi/temporal-policy temporal-policy-refresh)
         (only-in :poo-flow/src/ffi/temporal-proof-host
@@ -16,6 +17,7 @@
       (unless (<= (u8vector-length (string->utf8 payload)) 1048576) (error "Temporal input bound"))
       (let* ((request (scheme-wire-read payload))
              (value (case operation
+                      ((5) (mrr-search-compile payload))
                       ((0) (temporal-policy-refresh request))
                       ((1) (temporal-proof-state-refresh request))
                       ((2) (temporal-proof-register request))

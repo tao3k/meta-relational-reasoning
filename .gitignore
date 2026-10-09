@@ -18,6 +18,7 @@ manifest.ss
 /proofs/MRRProof/AgenticAIContext/.lake/
 /proofs/MRRProof/AgenticAIContextRust/.lake/
 /proofs/MRRProof/AgenticAIContextValue/.lake/
+/proofs/MRRProof/SearchComposition/.lake/
 /proofs/quint/node_modules/
 /.cache/
 
