@@ -159,7 +159,7 @@ jobs:
 
       - name: Verify native qualification rejects false success
         run: |
-          uv --project proofs/MRRProof run pytest -q proofs/MRRProof/tests/test_native_tests.py proofs/MRRProof/tests/test_native_prepare.py
+          uv --project proofs/MRRProof run pytest -q proofs/MRRProof/tests/test_native_tests.py proofs/MRRProof/tests/test_native_prepare.py proofs/MRRProof/tests/test_process_runner.py
           gerbil env python3 -m mrr_proof_validation.native_tests self-test
 
       - name: Test Gerbil package

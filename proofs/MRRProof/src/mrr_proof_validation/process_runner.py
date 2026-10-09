@@ -35,6 +35,15 @@ def _cpu_seconds(value: str) -> float:
     return days * 86400 + hours * 3600 + minutes * 60 + seconds
 
 
+def _linux_cpu_seconds(pid: int) -> float:
+    # Include CPU of reaped children: short gsc processes can finish between
+    # samples without ever reaching one second in ps TIME.
+    fields = (Path(f"/proc/{pid}/stat").read_text()
+              .rsplit(") ", 1)[1].split())
+    ticks = sum(int(fields[index]) for index in (11, 12, 13, 14))
+    return ticks / os.sysconf("SC_CLK_TCK")
+
+
 def _owned_cpu(group: int) -> dict[int, float]:
     output = subprocess.check_output(
         ["ps", "-Ao", "pid=,ppid=,pgid=,time="], text=True, timeout=1
@@ -52,7 +61,17 @@ def _owned_cpu(group: int) -> dict[int, float]:
                      if parent in owned or pgid == group)
         if len(owned) == previous:
             break
-    return {pid: seconds for pid, _, _, seconds in rows if pid in owned}
+    cpu = {}
+    for pid, _, _, seconds in rows:
+        if pid not in owned:
+            continue
+        if sys.platform.startswith("linux"):
+            try:
+                seconds = _linux_cpu_seconds(pid)
+            except (OSError, ValueError, IndexError):
+                pass  # The process exited between ps and /proc; keep ps TIME.
+        cpu[pid] = seconds
+    return cpu
 
 
 def _finish_owned_group(child: subprocess.Popen[bytes]) -> None:
