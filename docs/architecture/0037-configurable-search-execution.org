@@ -454,9 +454,17 @@ and scale qualification. The six formal CI jobs also pass; later runtime and
 lint stages remain separate evidence.
 
 The Scheme and Lean producer pins now agree on POO
-=e5275f2c08832d0c8e28802986ef39e04425651f=. Consumer Lean compilation completes
+=e5275f2c08832d0c8e28802986ef39e04425651f= at the earlier qualification. Consumer Lean compilation completes
 63 jobs, and the 1,726-declaration axiom audit passes. The producer's original
 69 Context/Temporal assertions and six module receipts pass locally after role
 imports are narrowed. Full producer process qualification still returns 124
 during Darwin SDK cleanup under the unchanged five-second silence / 45-second
 batch limits. Assertion completion does not admit that failed process gate.
+
+The current Scheme and Lean pins are =3a6330f9135b7e5d7a96f9c2de7b5fb90e9ad399=.
+This revision separates the existing Quint case catalog from proof execution;
+model sources, negative controls, and the five-second silence / 45-second case
+limits are unchanged. All 47 existing Python testing unit cases and the module
+ownership gate pass. POO CI at =e5275f2c= passes both platform unit jobs; the
+macOS package dependency build timed out after a cold-cache restore miss.
+Latest-head full CI remains required separately from these receipts.
