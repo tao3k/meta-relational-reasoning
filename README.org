@@ -11,6 +11,24 @@ semantic state transition. It is the reasoning layer composed by
 [[https://github.com/tao3k/poo-flow][POO Flow]]; it is not an Agent runtime or a
 graph database.
 
+** Rust dispatch and ecosystem scheduling hub
+
+For configurable search, MRR provides the Rust dispatch interface and the
+scheduling hub that connects POO Flow decisions to MRR Data and other Rust
+ecosystem adapters. MRR owns FFI session lifetime, typed request admission,
+bounded physical dispatch, resource leases, result collection and execution
+handoff. MRR Data owns physical query, index and storage execution; ASP composes
+scenario-specific search and presents admitted results.
+
+The generic search engine is maintained in POO Flow's
+=modules/search/engine.ss=, with temporal attempt admission in
+=modules/search/attempt.ss=. Its Lean and Quint semantic proofs are producer-owned.
+MRR's retained Scheme controller transports the engine's decisions to Rust.
+Logical readiness and continuation remain in POO Flow; Rust schedules the
+admitted physical work through explicit execution ports. See
+[[file:docs/architecture/0037-configurable-search-execution.org][Configurable Search architecture]]
+for the execution cycle, ownership and qualification boundaries.
+
 ** Why the name MRR
 
 The name is the architecture in three words.

@@ -5,8 +5,13 @@
 
 POO Flow maintains the generic =search-engine=, with =temporal-causality= as its
 core composition module for dependency readiness, evidence validity,
-invalidation and logical continuation. MRR provides the execution mediation
-bridge between that engine and the Rust ecosystem through MRR Data.
+invalidation and logical continuation. The generic implementation is maintained
+in POO Flow =modules/search/engine.ss= and =modules/search/attempt.ss=, exported
+through =modules/search/interface.ss=.
+
+MRR provides the Rust dispatch interface and Rust ecosystem scheduling hub.
+It connects engine decisions to MRR Data and other Rust ecosystem adapters,
+coordinating physical execution, resource ownership and result admission.
 Scheme owns algorithmic decisions and declarative composition. Rust
 MRR admits typed requests and results across FFI and dispatches physical work to
 Data. ASP configures concrete scenarios, including code search, and presents
@@ -40,6 +45,26 @@ It does not introduce a second composition language, logical planner or rule
 engine. Existing Version 1 contracts remain intact. New independent contracts
 must also start at Version 1; no required fields are added to published V1
 receipts merely to accommodate this design.
+
+* Rust scheduling contract
+
+MRR is the integration hub between the Scheme search controller and Rust
+execution adapters. Its dispatch interface carries configuration identity,
+generation, source cut and attempt identity into an execution port. Rust applies
+resource limits, retains execution leases, collects completions and binds each
+returned result to the admitted request before returning an observation to
+POO Flow. Cancellation must release physical resources and preserve the
+controller's authority over whether an attempt remains logically applicable.
+
+The scheduling boundary is explicit: POO Flow determines which logical stages
+are ready and how observations affect continuation; MRR coordinates execution
+of those stages in the Rust ecosystem; MRR Data and other adapters implement
+their physical query, index and storage operations. ASP supplies scenario
+configuration, concrete search policy and public result projection.
+
+This role defines the integration direction. Each adapter still requires its
+own execution and cancellation qualification; the hub designation does not
+claim that every backend already participates in the retained-controller path.
 
 * Verified current implementation and gaps
 
@@ -75,7 +100,7 @@ that every unrelated MRR subsystem has removed historical Rust Ascent code.
 |-------+----------------+----------|
 | LeanPoo | C3/C4 mathematics and reusable certificates | No retrieval, source authentication or physical scheduling |
 | POO Flow / Scheme | Generic Search Engine, POO extension, typed composition, Temporal validity/invalidation and logical continuation | No Rust backend dependency registry |
-| MRR Rust | FFI lifetime/type/identity admission; physical dispatch, bounds, result collection and replay identity | No reimplementation of Scheme rule or composition semantics |
+| MRR Rust | Rust dispatch interface and ecosystem scheduling hub; FFI lifetime/type/identity admission, physical dispatch, leases, bounds, result collection and handoff to Data and other adapters | POO Flow owns logical search semantics; adapters own physical execution |
 | MRR Data | Backend capabilities, physical reads/index access, engine dependency lifecycle and execution receipts | No ASP language selectors or product policy |
 | ASP | Scenario profiles, code-language providers, source/resident authority, ranking policy, public packets and reflection | No requirement that generic candidates be file paths |
 
