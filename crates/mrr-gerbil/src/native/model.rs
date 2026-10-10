@@ -186,6 +186,7 @@ impl NativeGrammar {
     pub(crate) fn load() -> Result<Self, NativeGrammarError> {
         with_native_runtime(Self::load_on_owner).map_err(|error| match error {
             NativeRuntimeError::Unavailable => NativeGrammarError::RuntimeLockPoisoned,
+            #[cfg(feature = "embedded-runtime")]
             NativeRuntimeError::Status(status) => NativeGrammarError::RuntimeStatus(status),
         })?
     }
@@ -305,6 +306,7 @@ enum Table {
 #[derive(Debug, Eq, PartialEq)]
 pub(crate) enum NativeGrammarError {
     RuntimeLockPoisoned,
+    #[cfg(feature = "embedded-runtime")]
     RuntimeStatus(super::NativeRuntimeStatus),
     AbiMismatch {
         expected: u32,

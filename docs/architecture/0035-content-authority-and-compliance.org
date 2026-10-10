@@ -1,0 +1,278 @@
+#+title: RFC 0035: Content Authority, Typed Obligations, and Compliance Receipts
+#+status: proposed
+#+options: toc:2
+#+property: header-args :eval never-export :exports code
+
+* Decision and scope
+
+MRR shall own the *semantic* Content Graph contract: source-bound assertions,
+normative contracts, typed evidence, derivation support, revision impact, and
+admission of compliance conclusions.  A Content Graph is a canonical *record of
+what a named authority asserted or what a bounded verifier observed*.  It is
+not a declaration that every recorded proposition is universally true.  Two
+sources may disagree without either being silently overwritten.
+
+This RFC specifies a *next* semantic contract on top of this revision's
+implemented Context slice.  It already has =mrr-agentic-ai-context=, facade admission,
+source-bound selection and manifest restore, declared dependency closure,
+revision/semantic reuse, byte materialization, token-prefix eligibility, and
+Lean models and source-refinement slices.  Its =AgenticAiContextContract=
+currently binds actor, task, opaque =policy_digest=, required fact IDs,
+temporal receipt IDs, and a completeness flag.  Its =evidence.rs= checks fact
+validity and completeness.  Neither is yet a typed obligation/evidence
+verifier, =ContentGraph= authority model, or =ComplianceReceipt=.  The exact
+implemented boundary remains documented in
+[[file:agentic-ai-context.org][Agentic AI Context System]].  RFC 0025 owns
+the system-level POO Flow boundary; RFC 0036 specifies the extension of
+Context projection that consumes this RFC.  RFC 0023 remains the authority
+for public truth and incompleteness states.
+
+The name =Content Graph= denotes semantic authority and provenance, not a
+required physical graph database or a new storage format.  =mrr-data= may
+persist its encoded artifacts, but CID, storage availability, and conditional
+head commit do not confer MRR admission.  MRR has no reverse dependency on
+=mrr-data= (RFC 0026).
+
+* Authority is typed and scoped
+
+An admitted record has a stable typed identity, source owner, exact source
+revision or semantic generation, assertion kind, scope, provenance, and
+admission receipt.  Admission establishes *eligible use within that scope*;
+it does not expand a test run into software correctness, a checked theorem
+into deployed safety, or an author's policy into a universal rule.
+
+| Kind | What may be admitted | What admission does not establish |
+|-
+| Source assertion | exact bytes and source-owner claim at a revision | independent factual truth |
+| Execution observation | command, subject, environment, exit, and output evidence | correctness outside the exercised oracle and scope |
+| Formal observation | exact theorem, definitions, assumptions, toolchain, and checker result | properties absent from the theorem statement |
+| Reference observation | a source location and digest resolved by an owning parser/provider | that referenced code was executed or reviewed |
+| Normative contract | an authorized rule for a subject, action, and time scope | empirical occurrence or automatic enforceability |
+| Derived conclusion | bounded support and MRR lineage/admission at one generation | a stronger proposition than its supports justify |
+
+An execution or proof receipt is an observation by a specified producer.  Its
+trust level depends on the producer identity, verifier profile, artifact
+integrity, and subject binding.  A model's account of an action, a tool's
+unverified stdout, a search hit, or a physical query row is only a proposal
+until the appropriate owner verifies it.  The admission result records
+provenance and conflicts rather than erasing them.
+
+The initial semantic node roles are =Source=, =Evidence=, =Contract=,
+=Derivation=, and =Receipt=.  This is an API vocabulary, not a request to add
+five new physical node tables.  Existing =Fact= and =RelationContext= remain
+the typed relational substrate; role-specific validation prevents one generic
+=Fact= from impersonating an evidence or policy receipt.  Edges such as
+=defines=, =supports=, =refutes=, =requires=, =verifies=, =supersedes=, and
+=depends_on= must name typed endpoints and carry a generation-bound MRR
+lineage receipt where they assert a derivation.  Unknown roles or unsupported
+cross-role edges fail admission.
+
+* Contract and obligation model
+
+A =Contract= binds the authoring source, authorized issuer, source revision,
+subject selector, action selector, validity interval or external cut, rule
+kind, and canonical obligation set.  The four rule kinds have distinct
+semantics:
+
+| Kind | Composition | Transition consequence |
+|-
+| Mandatory | inherited union; no silent deletion | specified action requires a valid witness for each applicable obligation |
+| Prohibition | inherited union; deny dominates | action requires a positive, scoped guard decision; absence of a violation report is insufficient |
+| Overrideable | most specific applicable authorized rule in a supplied linearization | may change only the declared override slot |
+| Advisory | deterministic ordered accumulation | informs Context; never manufactures a blocking verdict |
+
+=Obligation= names the exact predicate to establish, subject and action scope,
+acceptable evidence classes, verifier profile, coverage requirement, freshness
+rule, blocking behavior, and the contract revision that introduced it.
+Predicates are typed; a prose instruction without a registered lowering and
+verifier remains =judgment-required= or advisory, never silently becomes a
+machine-checkable gate.  An unknown verifier, missing subject binding, or
+ambiguous source authority is an admission error.
+
+POO Flow owns policy selection, composition, authorization, and lifecycle.
+=lean-poo= owns pure C4 mathematics; the current Context crate validates
+externally supplied composition evidence and does not certify C4.  MRR may
+validate that supplied ordered composition receipt and compute the
+effective *semantic* obligation set; it does not implement a second C4
+algorithm or decide which principal is allowed to waive a rule.  For the same
+subject, action, temporal cut, and authorized source revisions, adding a child
+scope preserves inherited Mandatory and Prohibition obligations.  Removing or
+relaxing one requires an explicit, source-owned, authorized revision or waiver
+with its own identity and scope.  A waiver is not a model-generated yes/no.
+Conflicting hard rules or an unsatisfiable obligation set produce =CONFLICT=;
+the system must not choose a winner by ordering alone.
+
+#+begin_src text
+effective_hard(parent, child)
+  = inherited_hard(parent) union local_hard(child)
+    minus explicitly_authorized_and_applicable_revisions
+#+end_src
+
+The inclusion claim is conditional on a fixed source cut and valid authority
+receipts.  A source revision or authorization change creates a new evaluation;
+it is not a counterexample to monotonic composition within the old cut.
+
+* Authoring sources and admission
+
+=AGENTS.md=, Org documents, repository policy, and a direct user declaration
+are possible *authoring sources*.  Their presence in a prompt, file, search
+result, or Context projection does not grant normative authority.  An adapter
+must bind exact source bytes/revision, parser or structural receipt, issuer,
+scope, and the requested typed obligation.  The authority owner decides
+whether that issuer may define or revise that rule for the subject/action;
+MRR admits the resulting semantic record.  A retrieved document cannot
+silently declare a higher-priority policy for its reader.
+
+Orgize may establish the structure of an Org source; the existing bounded
+=mrr-intent= projection in RFC 0017 is a different vocabulary and cannot be
+reused as a generic contract compiler without a new grammar and negative
+tests.  Free-form =AGENTS.md= prose requires an explicit reviewed mapping to
+typed obligations.  Model extraction can propose such a mapping, but only an
+authorized owner or registered deterministic compiler may admit it.  The
+same source may contain advisory prose and blocking rules; a parser must not
+promote one class into the other because of formatting alone.
+
+Changing the source revision, parser profile, issuer authority, or lowering
+version invalidates the dependent effective-contract receipt.  Policy
+precedence between direct user, repository, and organizational sources is
+supplied by the control-plane authority model; MRR does not invent a global
+priority order from document names.
+
+* Evidence, claims, and verdicts
+
+A model may submit a =ComplianceClaim= containing contract, obligation,
+subject/action, and evidence references.  The claim is a request for checking.
+Its natural-language answer or confidence is never evidence of satisfaction.
+Questions may help an Agent plan but have no verification authority.
+
+An =EvidenceReceipt= identifies its producer and verifier boundary, evidence
+class, exact input and output identities or digests, source/semantic revision,
+coverage, validity window, and provenance.  Profiles specialize this common
+envelope:
+
+- =ExecutionEvidence=: structured command identity and arguments, workspace
+  snapshot (including relevant dirty state), toolchain and environment
+  fingerprint, bounded start/end, exit status, stdout/stderr artifact digests,
+  and declared tested scope.  Exit 0 alone never proves a broader requirement.
+- =ProofEvidence=: statement and dependency digests, theorem/axiom inventory,
+  checker and version, checked artifact digest, and the exact proposition
+  validated.  A Lean process exit is not by itself a kernel soundness claim.
+- =ReferenceEvidence=: provider, source revision, symbol or syntax identity,
+  span, and content digest.  A valid reference proves location and identity;
+  it does not prove execution or semantic review.
+- =HumanJudgmentEvidence=: authenticated reviewer, authority scope, exact
+  subject, decision, and reason.  It is explicitly human-attested, never
+  labelled machine-verified, and is allowed only by the obligation's profile.
+
+The initial verdict domain is =satisfied=, =refuted=, =unknown=,
+=incomplete=, =stale=, =conflict=, and =judgment-required=.  This is a
+compliance-specific refinement of RFC 0023's public states, not a replacement
+for them.  At the public facade, =satisfied/refuted/unknown/incomplete/stale/
+conflict= project respectively to =TRUE/FALSE/UNKNOWN/INCOMPLETE/STALE/
+CONFLICT=; =judgment-required= projects to =UNKNOWN= with its reason retained.
+=refuted= requires complete counterevidence for the exact
+predicate; missing evidence is =unknown=.  Budget exhaustion is =incomplete=.
+Old subject, contract, verifier, authority, or source revisions are =stale=.
+Disagreeing admitted authorities are =conflict=.  Free-text criteria without
+an accepted verifier are =judgment-required=.  Only =satisfied= can close a
+blocking positive obligation, and only a positive =allow= from the applicable
+guard can pass a prohibition gate.
+
+A =ComplianceReceipt= is immutable and binds the contract and effective-set
+digests, obligation ID/revision, subject and action IDs/revisions, semantic
+generation, evidence IDs/digests, verifier ID/version/profile, coverage,
+verdict, support lineage, and receipt digest.  A new source or evidence
+revision creates a new receipt; it never edits an old one.  Receipt identity
+must use canonical field ordering and domain-separated hashing.  This RFC
+does not prescribe a byte encoding before the identity profile is reviewed.
+
+* Transition enforcement and race boundary
+
+MRR computes an eligibility receipt for a *proposed* transition at an exact
+snapshot.  The POO Flow policy/authorization owner supplies its decision; the
+MRR production runtime or another explicitly designated effect owner must
+enforce the combined decision at the actual completion, publication, or effect
+boundary.  A prompt instruction or MRR
+receipt alone cannot intercept =git commit=, a remote API, or a subprocess.
+The enforcing owner must compare the subject, contract set, authorization,
+semantic generation, and relevant evidence dependencies immediately before
+publication.  Drift denies the transition and requests reevaluation.  A
+storage conditional head is an additional physical guard, not a substitute
+for this semantic comparison.
+
+Where a commit changes the subject revision, a pre-commit test receipt applies
+to the tested tree digest, not automatically to the new commit identity.  The
+policy must state whether the immutable tree is the subject, whether a
+post-commit receipt is required, or whether a checked equivalence binds the
+commit to that tree.  Reusing a receipt across changed source bytes is
+forbidden.  Prohibitions that concern external effects need an owner-controlled
+preflight or execution guard; a finite history with no observed violation
+cannot establish that a future effect is safe.
+
+#+begin_src mermaid
+flowchart LR
+  S[Authorized source revisions] --> C[MRR contract admission]
+  C --> O[Effective typed obligations]
+  E[Producer observations] --> V[Owner verifier]
+  V --> R[MRR compliance receipt]
+  O --> R
+  R --> G[Designated runtime transition guard]
+  G -->|compare current cut and allow| A[Action]
+  G -->|stale, missing, conflict, deny| X[No transition]
+#+end_src
+
+* Invalidation and reuse
+
+Every receipt records the *complete dependency set needed by its verifier*:
+subject bytes, applicable contract set, authority and capability, verifier
+profile, evidence artifacts, and relevant external revisions.  Reverse impact
+through existing MRR lineage/revision contracts identifies candidates for
+invalidation.  A receipt may be reused only after all recorded dependencies
+and its scope still match; impact analysis alone does not certify reuse.
+Revocation is an explicit dependency, even if the content bytes are identical.
+When coverage is incomplete, the conservative result is =unknown= or =stale=.
+[[file:0037-meta-relational-impact.org][RFC 0037]] proposes a typed meta-relational
+frontier and post-change reevaluation receipt for this boundary.  Its
+alternative-support and certified-absence rules prevent a reverse path from
+being misread as automatic refutation, or a zero-row query as a permission.
+The compliance verifier and effect owner still decide applicability and
+enforce the current action cut.
+
+* Proof and implementation gates
+
+Formalization belongs under the existing =proofs/MRRProof/AgenticAIContext=
+project, reusing its pinned =lean-poo= basis (RFC 0001 and the Agentic AI
+Context System document).  The present closure/revision/restore theorems do
+not imply any of the following new authority or compliance theorems.
+The model must define authority and scope predicates before attempting:
+
+1. Content admission non-escalation: a Context proposal cannot derive an
+   authoritative Content record without a source-owned admission step.
+2. Hard-rule preservation: for a fixed cut and no authorized revocation,
+   child composition cannot remove a parent's applicable hard obligation.
+3. Compliance soundness *relative to verifier assumptions*: a satisfied
+   blocking obligation has an applicable, fresh, complete witness checked by
+   its declared verifier.  This is not a theorem that the external world is
+   safe.
+4. Invalidation closure: changing any declared dependency makes the old
+   receipt ineligible; unaffected dependencies may permit a new reuse receipt.
+5. Transition preservation: an enforced action cannot pass with missing,
+   stale, incomplete, conflicting, or merely model-asserted blocking evidence.
+
+Counterexamples must include a child attempting to delete a parent rule, two
+conflicting source owners, a green test on a different tree, a proof with an
+unstated axiom, an unauthenticated human waiver, a revoked capability, and a
+subject revision changing between check and commit.  A Lean proof over a model
+is a design check; integration with actual guards and producers needs separate
+runtime evidence.
+
+The implementation sequence is contract/identity design, evidence profiles,
+verifier admission, compliance receipts, revision impact, then transition
+integration.  No new crate name is fixed here: start within existing semantic
+owners and split a crate only when dependency and public API pressure justify
+it.  Acceptance requires typed negative tests and an end-to-end denied
+transition through the real enforcing owner.  Until then this RFC remains
+proposed and no completion enforcement is claimed.
+
+The adversarial cases and measurement plan are recorded in
+[[file:../../research/content-context-compliance-agenda.org][Content, Context, and Compliance: Research Agenda]].

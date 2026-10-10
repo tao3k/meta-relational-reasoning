@@ -1,0 +1,62 @@
+#+title: Finite Quint proof models
+#+options: toc:nil
+
+This directory owns the MRR finite transition models. =RevisionLifecycle.qnt=
+models four semantic identities, changed classification, dependency impact,
+sealing and publication. =MetaImpact.qnt= models finite support alternatives,
+frontier changes, certified absence and Temporal claim preservation. The
+scenario inputs and named broken variants live in =cases.json=. The Node
+package lock pins Quint 0.33.0. The transition parity oracle is separately
+owned by =crates/mrr-transition/quint/MrrTransitionOracle.qnt=.
+
+* Revision lifecycle gate
+
+From the repository root:
+
+#+begin_src sh
+./.devenv/devenv-profile-exec just context-quint .ci/quint/receipt.json
+#+end_src
+The gate checks safety and weak-fair eventual publication on eight finite
+scenarios using Quint's TLC backend. Two named broken variants must yield real
+checker invariant counterexamples: ignoring newly added dependency edges and
+sealing before impact propagation completes.
+
+The checker exhausts each finite scenario and records generated and distinct
+state counts. The receipt binds the model, scenario inputs, generated instance
+and checker log hashes. Quint owns the lifecycle transition properties here;
+its states are not translated into Lean obligations.
+
+* Meta Impact gate
+
+From the repository root:
+
+#+begin_src sh
+./.devenv/devenv-profile-exec just meta-impact .ci/quint/meta-impact-receipt.json
+#+end_src
+
+Eight finite scenarios must satisfy safety and eventual publication. Eight
+named mutations must produce actual checker counterexamples: dropping an
+alternative support, retracting without a complete support inventory, ignoring
+newly added or removed support edges, missing a new negative match in the
+reevaluation frontier, using stale observations or uncertified absence, and
+upgrading an unverified Temporal claim. The receipt
+records model, generated instance and checker log hashes and state counts.
+
+Both gates use real checker output or measured process CPU as progress, with
+a five-second idle and 45-second total limit for each Quint command. They
+qualify bounded model behavior, not Rust source refinement, universal fairness,
+or deployed serving behavior. Lean independently proves publication and reuse
+laws; Rust source evidence has its own gate under =proofs/MRRProof=.
+
+* Search composition gate
+
+=SearchComposition.qnt= models source/generation binding, complete candidate
+aggregation, native reasoning admission and publication. Two positive cases
+(intersection and primary-truth-preserving rank join) must exhaust the finite
+state queue. Five mutations must produce actual invariant counterexamples.
+C3 role and C4 precedence algorithm certificates are checked separately by
+=proofs/MRRProof/SearchComposition=; this model does not reimplement either.
+
+#+begin_src sh
+./.devenv/devenv-profile-exec just search-composition-quint .ci/search-quint/receipt.json
+#+end_src

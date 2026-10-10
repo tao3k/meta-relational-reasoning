@@ -1,0 +1,1070 @@
+#+title: Agentic AI Context System
+#+options: toc:2
+#+property: header-args :eval never-export :exports code
+
+* Authority and scope
+
+MRR owns Agentic AI Context semantics, selection, revision, materialization,
+and source admission. The first executable slice is
+=crates/mrr-agentic-ai-context=, exposed through the
+=meta-relational-reasoning= facade. Context Management names lifecycle
+operations within this system. The domain namespace is
+=MRR.AgenticAIContext=.
+
+The implemented boundary in this document remains the source-admitted,
+fact-based Context system.  [[file:0035-content-authority-and-compliance.org][RFC 0035]]
+proposes typed Content authority, obligations and compliance receipts;
+[[file:0036-agentic-context-projection-and-reuse.org][RFC 0036]] proposes their
+integration with Context, including a disjoint working-hypothesis overlay.
+[[file:0038-context-session-lifecycle.org][RFC 0038]] proposes a Context
+Session identity and transition contract that binds turns and query uses to
+these source-admitted views.  It is not implemented by the current Context
+crate or facade.
+Those proposals do not upgrade the existing =policy_digest= or fact-validity
+checks into enforcement, and they do not change the proof claims below.
+
+* Optional features and package isolation
+
+Context is an optional capability of the Meta-Relational Reasoning facade.
+Default features are empty in both the facade and the Context crate.
+
+| Facade configuration | Enabled capability | Normal Context dependency |
+|----------------------+--------------------+---------------------------|
+| Default | Existing MRR facade | None |
+| =agentic-ai-context= | Source admission, selection, revision and byte materialization | Context core without token layout |
+| =agentic-ai-context-tokens= | Context plus external tokenizer binding and prefix eligibility | Context core with =token-layout= |
+
+Direct consumers of =mrr-agentic-ai-context= may enable =token-layout= explicitly.
+The token feature implies the Context feature in the facade. Ordinary MRR
+consumers do not receive Context APIs or a normal Context dependency unless
+they enable the feature. Workspace-wide commands still build the Context crate
+as an independent workspace member. Cargo features are additive within one
+resolved graph; these switches isolate dependencies and API availability, not
+process authority or tenant authorization.
+
+| Owner | Responsibility | Allowed direction |
+|-------+----------------+-------------------|
+| MRR Context crate | Semantic state, declared closure/impact, layouts and computational contracts | Depends on MRR identity, relation and revision |
+| Meta-Relational Reasoning facade | Exact source/query admission and stage construction | Optionally consumes the Context crate |
+| MRR Data | Generic persistence and storage adapters | Downstream consumption of existing MRR contracts |
+| Tokenizer/serving adapter | Vocabulary, model assets, tokenization and cache execution | Implements optional MRR interfaces externally |
+
+No feature introduces an MRR-to-MRR-Data dependency. Backend selection belongs
+to downstream storage adapters. The Context and facade token features do not
+pull in tokenizer libraries, model weights, serving runtimes or network clients.
+A production tokenizer adapter can use those dependencies in its own package;
+the semantic packages do not load its assets or select a model implicitly.
+
+=mrr_proof_validation.context_features= inspects the actual normal consumer dependency
+graph under all three configurations. It rejects accidental Context activation,
+token-feature activation and storage/model/network dependency leakage. CI also
+compiles and tests each configuration independently, including the baseline.
+
+* Current selection profile
+
+Context supports explicit fact roots and result-driven selection for a catalog-bound
+query. Result-driven selection calls existing MRR query/result admission, then
+selects existing source facts from one named relation-valued column. Candidate
+admission checks binding and types; it does not prove engine execution correctness.
+
+* Ownership and dependency direction
+
+The Context crate consumes =mrr-identity=, =mrr-relation=, and =mrr-revision=.
+The facade rechecks the complete catalog binding against the supplied bundle
+and semantic snapshot before admitting the selection. A transported view must
+be checked again against its current source before disclosure.
+
+=mrr-data= owns generic persistence and storage adapters. It may persist these
+contracts through its existing dependency on MRR. The Context core has no
+dependency on =mrr-data=; a future storage adapter must preserve that direction.
+=lean-poo= supplies pure ordering/composition mathematics. It owns neither
+Context semantics nor storage. Org is a possible external projection; no Org
+parser or temporal ontology is introduced here. Temporal receipts are existing
+typed fact references supplied by their upstream owner.
+
+#+name: agentic-ai-context-authority
+#+begin_src mermaid
+flowchart TD
+    identity[mrr-identity] --> context[mrr-agentic-ai-context]
+    relation[mrr-relation] --> context
+    revision[mrr-revision] --> context
+    context --> facade[MRR facade source admission]
+    bundle[Admitted bundle and catalog binding] --> facade
+    facade --> consumers[Context consumers and storage adapters]
+    poo[lean-poo pure C4] --> proof[MRR.AgenticAIContext proofs]
+    fixture[Shared materialization fixture] --> proof
+    fixture --> context
+#+end_src
+
+* Selection and revision
+
+A validated state binds a snapshot, query identity and explicit roots, actor,
+task, policy digest, required facts, temporal references, and resource limits.
+Selection includes the transitive closure of all roots and contract references.
+Visited-node tracking terminates cycles. Missing dependencies, duplicate facts,
+stale generations, invalidated selected evidence, insufficient completeness,
+and exceeded element/edge limits fail before publishing a validated state.
+
+Dependencies are consumer declarations. This checks closure over that declared
+graph; it does not prove that every real semantic dependency was declared.
+Evidence completeness retains the existing MRR meaning and upstream premises.
+
+Revision compares facts and declared dependencies. Reverse dependency impact
+uses both old and new graphs. Snapshot, query, catalog binding, or contract drift conservatively
+invalidates all evidence. An unchanged selected node outside the impact set can
+receive a semantic reuse certificate. That certificate asserts equality of
+evidence under these premises, not equality of rendered bytes or cached state.
+
+* Composition, materialization, and computational reuse
+
+The raw materialization path accepts a unique, most-specific-first precedence
+containing exactly the required closure. The composition workflow additionally
+checks that its root is first, each child precedes its declared parents, and each
+local parent order is preserved. Neither path computes or certifies C4.
+Parent-first rendering reverses that precedence. A leaf extension requires the
+new order to be precisely a fresh child followed by the old order; structural
+recomposition can reorder existing parents and break the rendered prefix.
+
+Materialization checks externally rendered, versioned segments in exact order,
+records their spans and renderer identity, and enforces a byte budget. Byte
+append requires unchanged old segments, order, query, snapshot, and contract.
+Renderer determinism and correctness remain renderer-owner obligations.
+
+Token layout uses actual externally supplied token IDs. Computational identity
+binds model weights, tokenizer, renderer, template, positions, attention,
+cache format, adapters, multimodal inputs, sharing scope, and positive block
+size. Eligibility requires matching identities, query, and contract, then takes
+the longest common token prefix rounded down to whole blocks. A byte prefix
+alone does not establish token prefix: cross-boundary token merges can change
+the final old token. An unchanged suffix after an edit does not establish causal
+KV reuse. No serving cache, cache hit receipt, or live authorization is provided.
+
+* Proof boundary
+
+The independent Lake project is [[file:../../proofs/MRRProof/AgenticAIContext/lakefile.toml][AgenticAIContext]].
+It pins =lean-poo= to =2abf644bb4a10871345b1e6c38f5a75f607d43b5= and uses
+Lean 4.34.0 without migrating the existing MRR admission proof project.
+
+| Established kernel theorem | Required premise or remaining boundary |
+|----------------------------+----------------------------------------|
+| Injective identity mapping preserves graph-verified C4 order, uniqueness, reachable local precedence and flagged ancestor suffixes | Caller-established identity and selected-domain binding to lean-poo's VerifiedOrder |
+| Mapped element rendering agrees with upstream order rendering | Same renderer after the identity mapping |
+| Checked leaf extension yields the actual C4 order relation | Both C4 computations succeed and the checker accepts |
+| Parent-first leaf materialization appends bytes | Fixed renderer; equal old payloads and declared dependencies |
+| Token prefix follows materialization append | Explicit tokenizer append-composition at that boundary |
+| Longest common token prefix is maximal | Actual token sequences are supplied faithfully |
+| Whole-block eligibility lies inside the common prefix | Positive block size and equal computational configuration |
+
+Counterexamples cover structural reordering, a token merge, a changing global
+header, and changed causal history despite an unchanged suffix. Actual pinned
+C4 computations use =LeanPoo.C4.linearizeChecked=, and the composition proof
+consumes =LeanPoo.C4.linearizeVerified= and its graph derivation. Each reachable node consumes
+lean-poo's merge, suffix and complete-node certificates. Their established laws
+are reused directly; MRR does not reimplement or reprove C4. The general MRR
+identity-mapping and materialization bridges are conditional kernel proofs. No =sorry= or =native_decide= is admitted. The axiom
+audit scans every declaration in =MRR.AgenticAIContext= and imported =LeanPoo.C4=
+and permits only
+=propext=, =Classical.choice=, and =Quot.sound=.
+
+The pinned upstream revision also provides =VerifiedOrder.rename= for injective
+String-to-String graph relabeling under a global declaration-uniqueness premise.
+MRR's =CompositionBinding= maps String names to arbitrary semantic element
+identities and keeps its own injectivity and selected-domain premises explicit.
+
+Rust and Lean replay [[file:../../fixtures/agentic-ai-context/materialization.json][one shared fixture]].
+This establishes bounded replay parity, not general Rust/Lean refinement.
+Hidden dependency completeness, generic query orchestration, automatic Rust
+C4 composition, production tokenizer integration, storage, and serving-cache
+execution remain outside this slice.
+
+* Lifecycle and stage admission
+
+The facade exposes a concrete stage chain. Stage constructors have private
+fields: storage and consumers cannot promote a raw layout into a source-admitted
+presentation by attaching a label.
+
+These are lifecycle stages of *one Context view*, not a Session lifecycle.
+The proposed RFC 0038 extends the POO Flow-owned Session head over turns and
+query uses; MRR re-enters the existing Context stage admissions at each source
+cut.  A stored stage or historical manifest does not become a current
+authorization decision.
+
+#+name: agentic-ai-context-stage-chain
+#+begin_src mermaid
+flowchart LR
+    bundle[Bundle and current snapshot] --> select[AdmittedAgenticAiContext]
+    selection[Roots contract and declared dependencies] --> select
+    select --> render[AdmittedAgenticAiContextMaterialization]
+    composer[External precedence and rendered segments] --> render
+    render --> tokens[SourceBoundAgenticAiContextTokens]
+    tokenizer[Actual token IDs and computational identity] --> tokens
+    tokens --> eligibility[Whole-block prefix eligibility]
+    previous[Historical token layout] --> eligibility
+    eligibility --> serving[External serving owner]
+#+end_src
+
+=AdmittedAgenticAiContext.materialize= rechecks the current source, validates
+exact selected closure membership, segment order, renderer identity and byte
+budget, then returns a source-admitted presentation. It does not execute an
+external renderer. =bind_tokens= consumes that presentation and binds an
+external token declaration after another source check. The token object retains
+the exact presentation, including bytes and spans. Binding tokens does not
+prove that the tokenizer actually encoded those bytes; the tokenizer owner
+must supply that evidence.
+
+The token feature also provides =AgenticAiContextTokenizer= and
+=AdmittedAgenticAiContextMaterialization.tokenize=. This path checks the source,
+computational declarations and adapter identity before invoking the adapter
+once on the exact complete presentation bytes. Adapter errors retain their
+original typed cause. No implicit per-segment encoding, asset download or model
+selection occurs. A byte-tokenizer fixture checks invocation and correspondence;
+it is not a production model tokenizer. Tokenizer correctness and authenticated
+configuration remain external owner obligations.
+
+Every stage retains the canonical source bundle identity and the exact
+catalog/snapshot query-binding digest. =check_source= rejects replaced bundles
+even when fact IDs and catalog shape match, and rejects stale snapshots even
+when the generation ID matches. Read-only accessors expose immutable values;
+they do not perform a live source check. Consumers must check source again
+when using a stored stage.
+
+=reuse_eligibility_from= checks the new view against its supplied current
+source before comparing token layouts. The old layout is a historical
+computational basis: its facts need not remain current for an identical token
+prefix to be reusable. Fresh evidence for the new view and compatible
+computational declarations are separate gates. Neither gate is a policy
+authorization observation, and eligibility is not a serving-cache receipt.
+
+* Adapter contracts and graph separation
+
+Selection dependency graph =D= and composition graph =G= have distinct
+meanings. =D= can contain cycles and drives required closure and reverse
+semantic impact. =G= contains explicit inheritance precedence and is supplied
+to the composition owner; successful C4 compilation requires its own graph
+conditions. A fact dependency does not automatically become an inheritance
+edge. The optional Rust API now accepts a bounded, single-root =G= over exactly
+that selected domain. It preserves ordered parent declarations and suffix flags,
+checks known references, root reachability and acyclicity, and canonicalizes node
+storage order. Empty selection requires no root. Multi-root selections need an
+explicit reachable composition root; MRR does not invent a virtual node.
+
+| Boundary | Inputs | Owner obligation | MRR check |
+|----------+--------+------------------+-----------|
+| Selection | Admitted bundle, bound query, contract and D | Declare all required semantic dependencies | Existing source/query binding, finite closure, validity and completeness |
+| Composition | Selected identities and G | Compute precedence with identified algorithm/version; retain its graph and result evidence | Exact closure, root/ancestry/local order checks, sealed graph/producer/manifest receipt |
+| Rendering | Ordered selected elements, contract, renderer version | Encode all prompt headers, separators and final-self inputs deterministically | Exact segment order, declared renderer identity and byte limit |
+| Tokenization | Exact full presentation, tokenizer/template version | Return actual full-prompt token IDs and establish byte-to-token correspondence | Retain that presentation; match renderer and computational declarations |
+| Serving | Current source-bound tokens and historical cache basis | Authenticate configuration/scope, check positions and attention, report actual hits/evictions | Common-prefix and whole-block eligibility only |
+| Persistence | Stage records and source references | Preserve canonical content and restore through facade admission | No public constructors for admitted stages; explicit source recheck |
+
+Composition evidence is an adapter contract, not a C4 proof attached to the
+Rust order. Renderer/tokenizer declarations are also explicit trust boundaries.
+Adding adapters must supply executable correspondence tests at each boundary;
+an algorithm name or matching version string alone does not satisfy them.
+Admitted stages have no =Deserialize= implementation. The selection manifest
+record below is an untrusted transport candidate; byte and token layouts still
+require their own stage constructors after selection restore.
+
+* Semantic manifest and storage re-entry
+
+=AgenticAiContextManifest= identifies one source-admitted semantic view under
+=mrr.agentic-ai-context.manifest.v1=. Its SHA-256 digest covers a deterministic
+CBOR encoding of the complete record, in the declared struct-field order.
+This is the versioned MRR manifest encoding, not a claim of DAG-CBOR encoding
+or an MRR Data CID. Changing the encoding or interpretation requires a new
+schema version.
+
+The record contains the canonical source bundle identity, generation, snapshot
+digest, query identity/binding digest, canonical roots and contract, the complete
+declared dependency graph, selected closure and completeness, and resource
+limits. The graph includes unselected source facts and records empty dependency
+lists explicitly. Source bundle identity binds fact payloads and schemas;
+selection declarations do not redefine those facts. Duplicate root/contract/
+edge declarations normalize during admission. A changed graph can change the
+manifest even when the selected closure remains the same.
+
+The manifest is shared immutably by the admitted Context and its materializations;
+the token stage retains it through its presentation. Renderer bytes, ordering
+adapter output, tokenizer IDs and cache state are separate identities. Equal
+semantic manifests do not establish equal bytes, token IDs or cache contents.
+Resource limits are included, so changing the resource envelope also changes
+manifest identity.
+
+#+name: agentic-ai-context-storage-reentry
+#+begin_src mermaid
+flowchart LR
+    admitted[Source-admitted Context] --> manifest[Immutable semantic manifest]
+    manifest --> record[Serializable candidate record]
+    record --> store[Downstream generic persistence]
+    store --> candidate[Decoded untrusted record]
+    reference[Trusted expected digest and resource ceiling] --> restore[MRR restore admission]
+    candidate --> restore
+    source[Current bundle and snapshot] --> restore
+    restore --> view[Reconstructed admitted Context]
+#+end_src
+
+=AgenticAiContextManifestRecord= can be encoded as JSON or CBOR by a generic
+storage adapter. Decoding it grants no admission. =restore_agentic_ai_context=
+requires current source objects, an independently held expected manifest digest,
+and a caller-owned resource ceiling. The expected digest must come from the
+consumer's admitted reference rather than the same untrusted storage record.
+A digest is a content reference, not a signature or authorization grant.
+
+Restore rejects unknown schema versions, enlarged limits, oversized metadata,
+replaced bundles and snapshot/query drift before rebuilding the selection. It
+then runs existing facade admission, compares every canonical record field,
+and compares the rebuilt digest to the expected reference. Stored closure,
+completeness and dependency declarations cannot silently become trusted.
+Noncanonical candidate metadata is rejected rather than silently rewritten.
+Limits are preserved; a smaller restore ceiling rejects a record that would
+require a larger envelope.
+
+The storage owner must bound transport bytes and decoder allocations before
+passing a decoded candidate to MRR. MRR bounds metadata before cloning it for
+reconstruction. This interface owns no database, storage client, model assets or
+physical persistence policy. MRR Data remains a downstream consumer, and actual
+backend integration is a separate adapter. Restoring byte/token layouts is
+outside this record profile. Rust validates the concrete manifest/transport
+implementation. The Context system Lean model now proves checked source-bound
+re-entry under caller ceilings; concrete CBOR and digest refinement remain open.
+
+* Executable entrypoint
+
+Run =just test-agentic-ai-context= through the captured repository environment.
+It checks Rust contracts and facade admission, builds the proof library, replays
+the shared fixture with the Lean interpreter, and audits transitive axioms.
+The independent CI job uses the same Lean project and commands.
+
+* Composition and revision receipts inside MRR
+
+=AdmittedAgenticAiContext::compose= rechecks the supplied bundle and snapshot,
+validates the expected producer labels, checks them against the external
+=AgenticAiContextComposer=, then validates =G= before invoking that producer once.
+The returned order must satisfy the bounded checks above. Adapter failure keeps
+its typed source; admission rejection and producer failure are distinct.
+
+=AgenticAiContextCompositionReceipt= has private fields and no =Deserialize=.
+Its SHA-256 digest binds the deterministic CBOR tuple with domain
+=mrr.agentic-ai-context.composition.v1=: manifest digest, canonical graph input,
+producer owner/algorithm/implementation version, and actual precedence. Ordered
+parent lists and suffix metadata remain significant. Matching labels are not
+code authentication; ancestry and local orders do not prove inherited C4 merges
+or suffix compatibility. Those algorithm obligations remain with the producer.
+
+=materialize_composed= requires the receipt's exact manifest digest, including
+source facts, dependencies, query binding, contract and limits. Equal selected
+IDs alone cannot authorize a foreign receipt. The resulting immutable
+presentation retains the receipt, and token binding retains that presentation.
+The direct =materialize= path remains available with no composition receipt;
+its evidence is limited to membership and physical layout checks.
+
+=compare_agentic_ai_context_revision= checks both endpoints against their own
+supplied bundle/snapshot before comparing states. The old source may be a
+historical source; it is not reinterpreted as the new source. The sealed revision
+receipt binds old/new manifest digests, query-binding drift, changed IDs,
+reverse dependency impact and reusable IDs under the domain
+=mrr.agentic-ai-context.revision.v1=. =check_contexts= rejects a different pair.
+It checks endpoint identity; live source use still requires =check_source=.
+
+Actual query/catalog binding drift invalidates all evidence even when the query
+ID, snapshot and fact selection are unchanged. A source payload change alone
+uses dependency impact across both graphs; an unchanged independent fact can
+remain semantically reusable. Resource limits are endpoint identity but a limit
+change alone does not change fact semantics. None of these semantic receipts
+establish rendered-byte equality, token-prefix equality, disclosure authority
+or a physical cache hit.
+
+These interfaces and gates are MRR-owned and remain behind the existing
+=agentic-ai-context= feature. No backend adapter or storage dependency is added.
+Rust regression tests exercise receipt binding and failure ordering. Existing
+Lean proofs keep their explicit mathematical premises; these new CBOR digests
+and source-binding implementations are not claimed as Lean refinements.
+
+* Reusing the upstream mathematical basis
+
+Fare's [[https://fare.tunes.org/files/cs/poof.pdf][POOF paper]] supplies prototype composition, open recursion and
+instantiation semantics; that PDF illustrates C3 linearization. The separate
+[[https://github.com/fare/c4-mixins][C4-Mixins]] source adds suffix specifications. lean-poo owns their C4
+translation and the existing certified merge/suffix/node laws. MRR pins that
+implementation and adds the consumer binding, selection and rendering layers.
+
+=CompositionBinding= now consumes graph-derived =LeanPoo.C4.VerifiedOrder=
+with an explicit injective node-to-element mapping and exact selected-order
+equality. Its laws transfer upstream precedence queries, reachable local
+orders, no duplicates and flagged ancestor suffixes into the consumer element
+representation, then relate that representation's parent-first rendering to
+=materializeOrder=. These premises do not establish
+Rust FactId encoding, source admission or a Manifest digest automatically.
+
+The upstream graph-traversal and cached-metadata proof boundary remains stated
+in lean-poo. MRR's checked execution invokes those upstream checks rather than
+adding a second algorithm. The Rust composer interface remains an external
+invocation seam; shared fixture replay is not a production Rust-to-Lean bridge.
+
+
+* Query-driven selection
+
+=select_agentic_ai_context_from_query= takes the exact bundle, current snapshot,
+catalog-bound query, result candidate, and a named selection request. It rebinds
+the query, calls =admit_query_result_candidate= with row/cell limits, and requires
+a relation-valued selection column. Every selected FactId must exist in the source
+bundle with the returned relation type. Null, scalar, node and list values are
+rejected in this column. Duplicate rows retain their result identity while roots
+are canonicalized. Empty rows produce an empty root set; mandatory contract facts
+and declared dependencies still use the existing bounded closure admission.
+
+=AdmittedAgenticAiContextQuerySelection= privately binds the admitted Context,
+complete ordered result receipt and selected column into a versioned digest.
+The nested Context retains source bundle, query/catalog, snapshot and generation
+binding. =check_source= rechecks the current bundle and snapshot. Persisted
+selection provenance must be reconstructed by this entrypoint with the result
+candidate; restoring only a Context manifest does not restore result provenance.
+
+Semantic revision uses the existing Context revision API. Different result rows
+with equal canonical roots may retain semantic reuse while their selection
+provenance digests differ. Actual query/catalog/snapshot drift invalidates reuse.
+Neither selection nor semantic reuse certifies renderer, token, policy or cache
+behavior. Physical execution and backend work remain with their existing owners.
+
+* Native test progress
+
+=MRR_NATIVE_PROGRESS= enables actual Rust native owner-thread initialization and
+operation start/return diagnostics on stderr. There is no periodic output.
+Five seconds without real output still fails qualification. Build preparation is
+performed separately before bounded test execution so compilation is not mistaken
+for a test result.
+
+* Complete Query Context qualification
+
+The five-stage consumer qualification is executable through the facade. Native
+qualification rejects assertion failure (42), missing imports (42), an
+undiscovered suite with zero cases (65), and a silent child (124). Success
+requires every expected module, at least one successful case per module, and
+upstream final =OK=. The upstream gxtest harness still owns discovery/execution;
+these are additional receipt conditions. =self-test= executes actual Gerbil
+positive and negative fixtures rather than matching a simulated transcript.
+
+** Result provenance restore
+
+=AdmittedAgenticAiContextQuerySelection.export_record= re-admits the supplied
+candidate and checks it is the exact selected result. The versioned
+=AgenticAiContextQuerySelectionRecord= contains a Context manifest, its digest,
+the selected column and existing Query V1 transport bytes. It adds no storage
+implementation or second result-row format.
+
+=restore_agentic_ai_context_query_selection= accepts a caller-trusted expected
+selection digest, Context ceilings, row/cell ceilings and transport byte limit.
+It refuses oversized result bytes before decoding, restores the source-bound
+Context through existing admission, verifies and re-admits transported results,
+reconstructs selection/closure, then checks exact Context and selection identity.
+A self-consistent replacement record cannot replace the trusted expected digest.
+The caller bounds outer storage decoding; this API operates on decoded records.
+The API is available with =agentic-ai-context= alone; token support is optional.
+
+** Shared complete example
+
+=fixtures/agentic-ai-context/selection.json= is shared by Rust integration checks,
+the runnable =context_workflow= example and Lean runtime checks. Ten vectors
+cover exact roots, duplicate rows, empty results, unknown facts, relation types,
+query/generation/catalog/snapshot drift and row/source limits. The complete
+workflow uses a three-fact dependency chain, a producer returning the fixture's
+precedence checked against pinned Lean POO C4, deterministic segment rendering,
+a full-prompt byte tokenizer, stored provenance restore and paired revision.
+
+The old prompt is =[65,66]= and the extended prompt is =[65,66,67]=. Changed roots
+cancel semantic reuse under the current Context basis contract. The actual byte
+tokenizer still yields a two-token common prefix and two eligible full-block
+tokens. These are deliberately separate receipts. The adapters are deterministic
+consumer fixtures, not production tokenizer assets or an authenticated composer.
+
+The Lean Selection model proves exact projected root membership, deduplication
+preserving that set, matching source FactId/relation membership, accepted binding,
+row/source bounds, binding-drift refusal, and root/binding drift canceling reuse.
+Runtime checks replay the same JSON cases and workflow orders through upstream
+checked C4. Labels abstract the exact Rust identities. This is a conditional
+model with shared examples, not a refinement proof of Rust, CBOR or SHA-256.
+
+** Scale receipt and evidence boundary
+
+=just context-scale= runs four separate processes with a five-second silence
+cutoff and 45-second per-case cap. Each repeats selection, exact result export,
+restore, revision, rendering and full-prompt token eligibility three times.
+A separate worker records each binary's own peak RSS, not a cumulative maximum
+across earlier scenarios. It rejects overflow at row, source-element,
+dependency-edge, result-transport-byte and rendered-byte ceilings.
+
+The committed =fixtures/agentic-ai-context/scale-baseline.json= records observed
+single-host dev-profile measurements on 2026-10-04. Phase timings are three-run
+means; source admission is one cold construction. RSS covers the whole binary.
+It is an observational baseline, not a cross-platform performance guarantee.
+
+| Scenario | Facts | Rows | Fanout | Selected | Select ms | Restore ms | Peak RSS MiB | Eligible tokens |
+|----------+-------+------+--------+----------+-----------+------------+--------------+-----------------|
+| small | 256 | 1024 | 4 | 16 | 3.28 | 6.42 | 5.61 | 16 |
+| large results | 4096 | 32768 | 64 | 256 | 109.32 | 210.29 | 154.94 | 256 |
+| high fanout | 4096 | 8192 | 2048 | 2049 | 30.23 | 64.92 | 29.97 | 2048 |
+| duplicate heavy | 4096 | 32768 | 32 | 33 | 83.69 | 237.37 | 154.39 | 32 |
+
+Identical restored semantics retain all selected facts. The declared byte
+encoding retains the full token prefix; eligible tokens are rounded down to
+16-token blocks. The receipt measures qualification cost and reusable scope.
+It does not measure an actual serving-cache hit, model inference acceleration,
+or backend query performance. Duplicate-heavy results still bind and transport
+all ordered rows, explaining why their cost does not shrink with root count.
+
+** Reproduction and CI
+
+After =just deps=:
+
+#+begin_src sh
+just test-native
+just test-agentic-ai-context
+just context-scale
+#+end_src
+
+CI runs positive/negative native qualification, the complete feature-gated
+integration test, the runnable workflow, scale scenarios, shared Lean replay
+and the axiom audit. Each platform uploads scale JSON receipts for inspection.
+
+* Context system proof: closure, restoration and revision
+
+The earlier Selection, Composition, Materialization and Tokenization modules
+proved individual laws. They did not establish dependency closure, storage
+re-entry or the reverse dependency revision algorithm. The new modules address
+these system-level obligations explicitly.
+
+** Least required closure
+
+=MRR/AgenticAIContext/Closure.lean= defines finite rooted reachability and an
+executable certificate checker. Query roots, mandatory contract facts and
+temporal receipts jointly seed the required closure. Acceptance checks source
+membership, rooted witnesses, all roots, every declared dependency, duplicate
+freedom and the caller's selected-fact ceiling.
+
+=checked_closure_exact= proves that the accepted list contains every and only
+reachable fact. =checked_closure_unique= proves set equality of independently
+accepted certificates, regardless of list order or expansion fuel. Cycles are
+allowed. Insufficient witness fuel fails admission; an accepted certificate is
+never merely a truncated traversal prefix. Source validity/completeness and the
+completeness of dependency declarations remain upstream admission premises.
+
+** Context admission and restored authority
+
+=MRR/AgenticAIContext/System.lean= composes selection and closure admission.
+=context_system_sound= proves exact Query binding, projected roots, least
+required closure and row/source/selection ceilings. The abstract record retains
+ordered result provenance, source identities, dependencies, mandatory facts,
+temporal receipts and renderer/tokenizer identities.
+
+=context_restore_sound= proves both exact equality with the caller-trusted
+expected record and fresh admission under current source/dependencies/ceilings.
+=context_restore_identity_refused= rejects any changed record. Neither stored
+closure metadata nor stored limits grant authority. Labels model exact admitted
+identities; these theorems do not assume SHA-256 injectivity or prove CBOR parsing.
+
+** Revision and the rendering consequence
+
+=MRR/AgenticAIContext/Revision.lean= uses the union of old and new dependencies
+for reverse impact. Changes include exact semantic element inequality and global
+query/snapshot/contract drift. A checked impact certificate contains the complete
+least reverse closure of changed elements. Reuse is computed from the selected
+intersection minus that impact, rather than supplied as an arbitrary list.
+
+=revision_reuse_dependency_safe= proves exact semantic equality for every
+reusable fact and all of its transitive dependencies. This requires complete
+source declarations with no unknown dependency targets.
+=revision_global_change_no_reuse= proves that global drift empties semantic reuse.
+
+=context_system_revision_render_tokens= combines both admitted endpoints,
+the upstream C4 composition certificate, its exact mapping to the selected
+closure and a computationally checked full rendering frame. It derives element
+equality from safe revision membership, then proves identical parent-first bytes
+under one deterministic element encoder and identical whole-prompt tokens under
+any fixed tokenizer. The encoder and tokenizer identity mappings remain explicit
+provider premises. Partial reuse does not establish whole-context byte equality.
+The existing leaf-append theorem separately requires its tokenizer boundary.
+
+** Executable and proof gates
+
+=Checks/Main.lean= reuses =selection.json= for source, provenance and dependency
+input, and adds 26 system checks: missing/extra/duplicate closure facts,
+insufficient witness fuel, cyclic closure, mandatory and temporal roots, current
+restore ceilings, provenance/source/generation drift, incomplete reverse impact,
+changed dependencies, unrelated changes, global drift and renderer drift.
+
+=Checks/Axioms.lean= requires the system theorem names to be loaded and audits all
+transitive MRR and upstream C4 declarations. No =sorry= or custom axiom is allowed;
+only standard Lean axioms are accepted. This is a checked executable mathematical
+model. Refining the concrete Rust worklist, CBOR transport and hashes into this
+model remains separate work; a physical cache hit or model inference acceleration
+is not a theorem of this system.
+
+* Implementation refinement and exact restoration
+
+** Production-shaped worklist with total correctness
+
+=Worklist.lean= models the actual Rust =Vec= pending stack and =BTreeSet=
+visited membership. Its pending list is the reverse of the Rust stack; each pop
+either skips an already visited identity or inserts it and pushes its declared
+dependencies. Step and run invariants preserve rooted reachability, root coverage,
+dependency coverage and duplicate freedom.
+
+=worklist_refines_certificate= connects a finished run to the independently
+checked least-closure certificate. =Termination.lean= proves termination for a
+finite, complete source, including cycles. The decreasing measure is pending
+stack length plus the number of dependency edges of all unvisited source facts.
+A sufficient fuel bound is initial stack length plus all declared edges plus one.
+=finite_worklist_total_correctness= combines termination and exact reachability.
+
+The same model applies to revision's reverse graph using the union of old and
+new dependencies. Source validity and evidence completeness checks still belong
+to native source admission, before these successful graph computations.
+
+** Exact trusted references avoid hash-only restoration
+
+The optional =AdmittedExactAgenticAiContextQuerySelection= is sealed and cannot
+be deserialized from storage. =select_agentic_ai_context_from_query_exact=
+retains the full admitted source bundle, catalog-bound Query and ordered typed
+result alongside the admitted Context. These contents are cloned once at initial
+construction and shared by subsequent reference clones. The compact selection
+API does not acquire this additional retained-memory cost.
+
+=restore_agentic_ai_context_query_selection_exact= first checks current source
+and snapshot contents, then reuses the existing bounded decoding and source
+admission path. It finally compares the reconstructed full Context, actual
+rebound Query and complete ordered result with the retained trusted reference.
+The complete runnable workflow now uses this profile.
+
+=ExactIdentity.lean= proves that accepted output equals the trusted identity and
+was actually rebuilt. The theorem is valid for any digest function, even a
+constant function; collision freedom is not a premise of this exact comparison.
+The compact digest-reference API still assumes cryptographic collision
+resistance. Neither profile turns a decoded storage record into authority.
+
+** Actual byte and algorithm conformance
+
+=context_refinement= executes the production Rust facade and emits fresh receipts:
+68 chain/cycle/diamond/mandatory/temporal/finite-graph closures, old/new revision
+impact and reuse, actual manifest and selection identity CBOR bytes, their native
+SHA-256 digests, and hash vectors across padding and block boundaries.
+
+=Checks/Refinement.lean= independently recomputes the graph closures, reverse
+impact and reuse. =Cbor.lean= independently decodes the exact Rust identity bytes
+and compares their entire logical contents. It covers the emitted definite-length
+unsigned-integer/text/array/string-keyed-map/bool/null profile, refuses duplicate
+keys and nonminimal forms, bounds byte length and nesting, and requires complete
+input consumption. Query result transport now uses the Scheme V2 result contract. This replay checks
+Context manifest/selection CBOR and identity preimages; it does not prove the
+Scheme V2 transport decoder.
+
+=Sha256.lean= is an independent executable 32-bit SHA-256 specification, including
+message schedule, compression, padding and digest extraction. The replay checks
+both real identity preimages, eight native boundary vectors and NIST's published
+one-block and two-block known answers. The algorithm source is FIPS 180-4:
+https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf
+The known answers are:
+https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA256.pdf
+
+=mrr_proof_validation.context_refinement= runs the actual Rust producer followed by the
+Lean replay, each under the existing five-second silence and 45-second runtime
+boundaries. Compilation is a separate preparation phase. CI generates receipts
+from the current checkout and uploads them; it never substitutes a frozen golden
+file for current implementation output.
+
+** Precise remaining formal boundary
+
+The loop model has total correctness and the exact restore gate has hash-agnostic
+identity safety. The 99 implementation replay checks establish bounded agreement
+with production Rust and identity bytes. They are not a universal extraction proof
+for the Rust source, standard-library containers, compiler, =ciborium=, =serde_json=
+or =sha2=. CBOR/SHA-256 executable conformance is distinct from a universal library
+refinement theorem or a proof of cryptographic collision resistance. The trusted
+native reference must still be retained independently of untrusted storage.
+
+** Production evidence source extraction
+
+The production closure now calls two pure evidence-policy functions in
+=crates/mrr-agentic-ai-context/src/evidence.rs=. Pinned Charon/Aeneas extract the
+actual compiler IR into =AgenticAIContextRust/Generated=. Seven universal Lean
+laws apply directly to these generated functions: the exact admission condition,
+invalidity precedence, complete-only rejection, worst-evidence rank, and the
+commutative/associative/identity laws of completeness aggregation. The proof
+project uses Lean 4.31 separately from the existing Lean 4.34 system project.
+
+=mrr_proof_validation.context_source_proof= regenerates current source and rejects stale generated
+output before the theorem and axiom gates. The two functions have no external
+function obligations. This closes source-level evidence-policy refinement under
+the trusted Charon/Aeneas translation pipeline, rather than proving only a
+handwritten policy model.
+
+** Extracted shared traversal driver
+
+Forward closure and reverse dependency impact now use the same generic Rust
+=worklist::run=. Their native one-pop adapters retain the existing BTreeMap,
+BTreeSet and Vec operations, source/evidence validation, dependency order and
+error propagation. The generic loop is extracted from actual source, with no
+undefined external-function stubs in the proved generated modules.
+
+Five additional universal laws connect that extracted driver to total correctness
+and the same graph model used by the system project. =AdvanceContract= requires
+one-step invariant preservation, a strictly decreasing natural rank on continue,
+and a stopping postcondition. Under those explicit premises the actual extracted
+loop terminates and preserves the invariant. A completed graph invariant implies
+the exact least closure. A stronger one-pop simulation and a concrete model
+instantiation also prove exact least closure for finite closed graphs with cycles,
+without a fuel bound. The invariant form permits forward pop-time suppression
+and reverse enqueue-time suppression to use different queue schedules.
+
+These graph proof sources are shared between Lean 4.31 and 4.34, without a model
+copy. Closure now depends only on Std; the system explicitly imports its selection
+contracts. Twelve source theorems pass the standard-axiom audit.
+
+Equivalent explicit stack initialization removed the earlier Iterator::copied
+translation error. Separating adapters from the generic loop then allowed the
+larger native wrapper call graph to generate Lean diagnostic code. That code still
+contains external library/type obligations. =--probe-worklists= retains its actual
+LLBC and generated diagnostics, returns failure and never emits a success receipt.
+
+The native =ClosureTraversal::advance= and =ImpactTraversal::advance= have not yet
+discharged the adapter contracts. Maps/sets, processed versus
+scheduled identities, propagation of rejected evidence and reverse-edge construction remain
+formal obligations. The model instance does not prove those native laws. Source
+extraction tools/compiler and serialization libraries remain separate trusted or
+unverified boundaries. The new result closes source loop control under explicit
+step laws, not end-to-end native Context refinement.
+
+** Native fact admission and identity projection
+
+The production closure calls =admit_fact_evidence= on the actual source Fact.
+Extraction now includes reachable MRR identity/relation/revision definitions,
+including private fields, native validity comparison and field accessors. The
+fact-level acceptance theorem requires Valid evidence and the exact completeness
+policy. Every invalidation cause is rejected independently of its identity bytes.
+These are source-derived functions, not assumed Boolean inputs.
+
+=NativeFacts.lean= proves that the extracted FactId has exactly 32 bytes and has
+an injective proof-only numbering into Nat. It transports least dependency
+closure in both directions between actual FactIds and the existing graph model.
+No canonical-input hash injectivity is assumed. Derived FactId equality refines
+this projection using Aeneas's explicit byte-array comparison model. That library
+model remains a trusted semantic interface; Rust stdlib implementation refinement
+and byte-array ordering are not established. Tuple-newtype extraction aliases
+identity domains to byte arrays, so these FactId laws do not prove separation of
+all identity domains within Lean.
+
+The fact/identity follow-up wrapper probe exposed 10 external types and 22 external functions.
+Their absence from the smaller proved surface must not be confused with proof of
+native BTree containers or the complete adapter contract. Scheduled-versus-processed
+invariants and reverse-index construction are still explicit obligations.
+
+CI's repository ASCII policy caught Unicode in the prior driver/generated files.
+Handwritten proofs now use ASCII syntax. The extraction script reproducibly
+normalizes arrows and uses a local ASCII spelling of Prod, rejecting all other
+Unicode. Lean checks the normalized code; fresh extraction compares its exact
+bytes. The policy remains enabled and has a dedicated local regression check.
+
+** Source-derived pending-stack operations
+
+Both native adapters now call =worklist::pop_identity=. Its checked subtraction,
+indexing and shrinking resize are extracted from actual Rust. Shrinking a Copy
+FactId vector neither allocates nor clones the fill value. =Stack.lean= proves
+empty/nonempty behavior and exact last-in-first-out semantics universally, then
+transports the result to the Nat graph model's reversed pending list.
+
+Forward traversal calls =append_identities= instead of generic Extend. Its
+source-derived law preserves all dependency identities, order and duplicates,
+and proves that graph pending receives the reverse dependency list before its
+old tail. Extension requires the explicit machine-size bound in Aeneas's Vec
+model. These are universal laws under the existing Vec/Slice modeling interface,
+not source verification of the allocator or stdlib storage implementation.
+
+Old and new reverse indexes are scanned through the same helper, called once
+for each index, avoiding generic array iteration. Dependency iteration uses the
+existing slice iterator model. The blanket Borrow implementation is included
+from core source. The complete wrapper probe now exposes 9 external types and
+16 external functions, down from 10/22. BTreeMap/BTreeSet entry and iterator
+semantics, byte-array ordering, reverse-index construction and the native
+adapter invariants are still open. A successful stack theorem is not the
+complete =AdvanceContract= for either native adapter.
+
+** Source-derived expansion and rejection
+
+The forward adapter calls =state::expand_identity= after its map lookup and
+selected-set insertion. =Expansion.lean= proves the actual source function's
+four paths: missing, invalid and required incomplete facts stop with the exact
+typed error and preserve the remaining stack/coverage; accepted facts append
+exact dependencies and merge coverage by maximum weakness rank, preserving the
+error slot. Accepted expansion retains the explicit machine-size premise.
+
+The extracted driver returns the exact mutated terminal state on immediate
+stop, without requiring an invariant over that rejected state. The source
+axiom audit now requires 40 declarations with only standard Lean axioms.
+BTree lookup/selected-set binding and the full native adapter contract remain
+open; these helper laws do not discharge them or serialization-library refinement.
+
+** Enqueue-time reverse-impact invariant
+
+=Scheduled.lean= distinguishes processed identities from the scheduled native
+=invalidated= set. Scheduled membership is exactly processed-or-pending coverage;
+pending is duplicate-free and disjoint from processed. Neighbor and root list
+projections must be duplicate-free, as expected from the native BTreeSets.
+The model's actual step preserves these invariants and strictly decreases the
+finite worklist capacity, including cyclic dependency graphs. When pending is
+empty, the scheduled set equals the least required closure.
+
+The same source is compiled under Lean 4.31 and 4.34. The extracted generic Rust
+driver is instantiated with this model and proved to terminate with that exact
+closure without a fuel bound. The source proof gate now requires 46 declarations.
+This discharges the scheduling-model invariant, not the actual native BTree
+binding or reverse-index union construction; those native obligations remain.
+
+** Direct BTree source extraction and CI qualification
+
+The source probe can now include actual =alloc::collections::btree= bodies,
+including unsafe node operations. Pinned Charon/Aeneas fail on node operations,
+nested mutable entry borrows and a NonNull-to-raw-pointer transmute. The bounded
+probe retains the LLBC, raw logs, exact commands and hashes; its diagnostic is
+always unproved and cannot replace the generated proved modules. This identifies
+a toolchain capability boundary for complete standard-library source refinement.
+A hand-written container model would retain a library-model trust assumption.
+
+The 709284d source-proof and model/replay CI jobs passed. Its macOS native job
+failed earlier in qualification self-test because stdout inherited nonblocking
+mode and buffered flush raised BlockingIOError. Qualification now forwards exact
+bytes with short-write/backpressure handling and an existing deadline; it does
+not change descriptor flags or generate heartbeat output. Regression checks
+exercise exact bytes, expired budget and a real nonblocking pipe carrying a
+failing child's output. Original 5-second silence and 45-second batch gates remain.
+
+** Source-derived initial traversal stack
+
+The production forward wrapper now calls =worklist::initial_pending=. Its actual
+source appends query roots, mandatory dependencies and temporal receipts in that
+order. Three Lean laws prove exact order/duplicate preservation, the reversed
+Nat-model pending projection for the complete combined root list, and the
+initial graph invariant. The total length has an explicit machine-size ceiling
+under the same Vec/Slice model as stack operations. The source audit requires
+49 declarations. This closes initialization, not the native BTree adapter law.
+
+** Actual forward traversal under explicit library models
+
+=Forward.lean= proves actual extracted =state::advance_closure= and its production
+trait instance. =native_forward_advance_contract= derives the step, stop and rank
+laws; =native_forward_run_exact= proves termination without fuel, no error, and
+exact selected identity membership in the least required closure. The source must
+be finite and closed, facts must satisfy the actual validity/completeness policy
+and agree with declared dependencies, and the initial invariant/capacity bound
+must hold. No assumed adapter-refinement contract is supplied.
+
+The forward extraction allowlists exactly two BTree types and three functions.
+Computable handwritten library models supply lookup/membership/insertion and
+array ordering; fresh extraction records their hashes. The 59-declaration audit
+rejects custom axioms, including transitive dependencies of the actual run proof.
+This is relative source refinement under trusted value models. It does not prove
+unsafe BTree implementation, physical allocation, sorted iteration, the reverse
+adapter, wrapper initialization/projection, aggregate coverage, rejection-path
+integration or serialization. Earlier descriptions of the forward contract as
+open are superseded by this slice; the reverse and unsafe-library gaps remain.
+
+** Scheme V2 scale qualification repair
+
+The concurrent Scheme V2 migration at =9ee5ace= is preserved. Its fixed 262144
+node ceiling rejected the existing large-result workload before the caller's
+byte ceiling. The encoder now bounds nodes by its byte budget and the decoder
+by consumed-input capacity; depth 64 and typed row/cell/byte checks remain.
+Every serialized datum consumes at least one byte. A 65536-row round trip checks
+exact-size acceptance and one-byte-too-small export/import refusal. The Unicode
+fixture uses Rust escapes, preserving its runtime value under repository ASCII
+policy.
+
+Current local gates pass: 59 audited source declarations, byte-identical fresh
+extraction with explicit model hashes, 99 Rust/Lean replay checks, six feature
+matrix targets (35/13/15/55/62/4), and all four scale cases with five refusal
+classes. The duplicate-heavy case first failed the unchanged five-second output
+watchdog during concurrent Cargo compilation; its isolated rerun passed. The
+large Scheme V2 cases emit 7373746-byte transports and measured roughly 156-169
+MB peak RSS on this host. These are dev-profile measurements, not performance
+threshold guarantees. Remote checks must qualify the new exact head separately.
+
+** Actual reverse traversal under explicit library enumeration
+
+=Reverse.lean= checks the actual =advance_impact= iterator loop, its production
+trait instance and =run_impact=. The actual step preserves a reachable frontier,
+selected-set uniqueness and pending coverage; fresh insertion conserves the
+selected/pending length difference. A finite source-capacity rank strictly drops
+on every outer step. =native_impact_run_exact= proves termination without fuel
+and exact invalidated membership in the least reverse dependency closure. It
+does not assume an adapter refinement or stopping law.
+
+The current source audit requires 71 declarations. Fresh extraction allowlists
+three library types and five functions and records handwritten model hashes.
+The iterator model promises complete extensional enumeration; sorted iteration
+and unsafe library implementation remain outside this proof. The source graph
+must match the supplied reverse map, neighbor lists must be duplicate-free, and
+twice the finite source length must fit Usize. Initial frontier invariants are
+explicit. Construction of the old/new reverse index and wrapper initialization
+are not supplied by this traversal theorem. These boundaries supersede earlier
+native-reverse-open statements only within the named value models.
+
+Current local reverse-slice gates pass: all 71 audited source declarations,
+fresh byte-identical extraction with the three-type/five-function allowlist,
+six Rust feature targets (35/13/15/55/62/4), freshly rebuilt 99 replay checks,
+strict Context Clippy, formatting/Ruff, diff and exact repository ASCII policy.
+The actual reverse algorithm and iteration order are unchanged; private entry
+functions expose its production trait body to extraction. The previous a973d8b
+head has passing Ubuntu, source-proof and shared-model CI; macOS was still
+pending at the observed snapshot. Remote CI for this new slice is separate.
+
+** Actual old/new reverse-index construction and connection
+
+=ReverseIndex.lean= proves actual =build_reverse_index= and its nested map and
+dependency loops, entry/default mutation and mutable-borrow restoration. Exact
+neighbor membership is the union of old/new declared dependency edges; neighbor
+uniqueness is derived from the constructor. The linked actual =run_impact= proof
+derives graph correspondence and the initial frontier invariant. It requires
+duplicate-free changed identities, matching seed-vector contents and a twice
+finite-source Usize bound. It supplies no assumed adapter step/stop law.
+
+The source audit now covers 88 declarations. Fresh extraction checks exactly six
+library types and eleven functions, including explicit map enumeration and entry
+restoration models. These are trusted extensional models, not proofs of unsafe
+BTree storage, sorted enumeration or allocation success. Earlier index-construction
+obligations are superseded only within this boundary. Actual wrapper seed and
+projection, aggregate coverage/error integration and serialization/cryptographic
+implementation remain distinct gaps.
+
+Local index-slice qualification passes: 88 audited declarations, fresh
+byte-identical extraction, six Rust targets (35/13/15/55/62/4), rebuilt 99 replay
+checks, strict Context Clippy, formatting/Ruff and exact repository ASCII policy.
+Remote CI must qualify the new committed head independently.
+
+** Actual seed wrapper, coverage aggregate and rejection driver
+
+=ImpactWrapper.lean= closes construction, actual changed-set-to-Vec initialization,
+element clone, run and returned invalidated membership in the production helper.
+The pending-content premise is removed; changed-set duplicate freedom and the
+finite Usize bound remain. Revision comparison/change selection and State field
+projection are not proved here. Six trusted types and thirteen functions now
+include actual element clone calls and checked machine lengths.
+
+=Coverage.lean= proves final actual forward coverage is the maximum weakness rank
+of selected evidence, together with exact least-closure membership and no error
+for an admitted finite source. It handles duplicate pops and derives the empty
+Complete initial coverage invariant. Existing source/graph/initial/budget
+premises remain explicit. =Rejection.lean= derives actual driver stopping at a
+fresh missing, invalidated or required-incomplete frontier identity. It preserves
+the exact typed error and previous coverage and performs no further advance.
+It does not characterize an arbitrary accepted prefix or the outer Result.
+
+The audit requires 100 declarations. Remaining implementation obligations are
+forward outer wrapper/collection/Result, revision change/reuse construction,
+global rejection characterization, serialization/hash and unsafe stdlib. The
+trusted value/enumeration/entry/clone models do not prove physical storage,
+sorted iteration, allocator behavior or compilation correctness.
+
+Local seed/aggregate/rejection gates pass: 100 audited declarations, byte-identical
+fresh extraction (six types/thirteen functions), six Rust feature targets
+(35/13/15/55/62/4), rebuilt 99 replay checks, strict Context Clippy, fmt/Ruff and
+exact repository ASCII policy. At the observed =94b2e2a= remote snapshot both
+source-proof and shared-model jobs passed; native jobs were still running/queued.
+Those results do not qualify the new seed/aggregate/rejection commit.
+
+** Actual forward outer Result, collection and general rejection
+
+The source suite now checks the actual =compute_required_closure= wrapper.
+=ForwardWrapper.lean= derives root/required/temporal initialization, owned set
+enumeration and Vec collection, with exact admitted closure membership and
+coverage aggregation. =GeneralForward.lean= permits rejected evidence and proves
+actual termination after arbitrary accepted/duplicate prefixes without a source
+admission premise. Errors carry a concrete original-input missing/invalid/
+required-incomplete witness; successful stopping has exact closure membership.
+=GeneralWrapper.lean= carries these cases through the actual typed outer Result.
+=DeclaredForward.lean= derives the source graph and finite closure from actual
+input identities and dependency values; its outer totality theorem needs only
+explicit worklist and output Usize bounds. It is not an execution-trace theorem
+naming the first rejected identity or a publication/admission pipeline proof.
+
+The axiom audit requires 116 declarations. Fresh extraction admits exactly seven
+library types and sixteen functions. =-filter-trait-methods= uses the pinned
+extractor's documented target-model alignment; =collect.default= remains present
+and its complete value effect is proved. Explicit value models still do not
+prove unsafe storage, sorted physical iteration, allocators or compilation.
+Earlier forward wrapper and arbitrary-prefix rejection obligations are superseded
+only inside these declared model/resource boundaries.
+
+Revision comparison is now exposed through an unchanged private production body
+=compare_revisions=. This avoids Charon's unsupported direct inherent-impl start
+pattern without changing public API, algorithm or iteration order. A retained
+=--probe-revision= diagnostic cannot update proved modules or emit a success
+receipt. Actual revision extraction reaches Aeneas but triggers an internal error
+in Iterator method signature conversion at =SymbolicToPureTypes.ml:1000-1001=
+and Rust core Iterator =42:0-42:24=. Actual change/reuse construction remains
+unproved, along with serialization/hash and unsafe stdlib/compilation correctness.
+
+Local wrapper/general-result gates pass: 116 audited declarations; fresh
+byte-identical extraction with seven-type/sixteen-function allowlist and explicit
+trait-model filtering; six Rust feature targets (35/13/15/55/62/4); freshly rebuilt
+99 replay checks; strict Context Clippy, fmt/Ruff and exact repository ASCII
+policy. The retained revision probe has stage exits 0/2, verified log hashes and
+=proven: false=, with no success receipt. Its first assertion is a nonempty method
+binder =trait_type_constraints= in =translate_fun_sigs=, not a missing Lean lemma.
+The observed parent =34fa063= has successful source/replay/Ubuntu CI; macOS remains
+pending in that snapshot. A new commit requires independent exact-head CI.
+
+A separate retained `--monomorphize-mut=all` revision diagnostic also has stage
+exits 0/2 at the same Iterator signature assertion; it is not a successful
+translation or implementation proof.
+
+* Current-use and invalidation boundary
+
+=check_current_use= is available on the admitted selection, materialization
+and source-bound token stages. It first re-enters the existing exact source
+bundle and catalog/snapshot Query checks. It then invokes an
+=AgenticAiContextUseAuthority= adapter once for that manifest and either
+=Display= or =Action=. The observation must name the exact manifest and use
+purpose, and its current effective contract must equal the admitted contract
+including actor, task, policy, required facts, temporal receipts and
+completeness. =Denied=, =Revoked=, =Expired=, changed contracts, foreign
+observations and adapter errors return distinct typed refusals.
+
+Every use needs a fresh observation. Restore, byte equality and token-prefix
+eligibility do not bypass this gate. A successful check returns unit; it
+creates no persistable permit or Session identity. POO Flow/the designated
+runtime authenticates the observation and supplies the current source cut.
+The runtime must coordinate a change between observation and disclosure or
+an effect commit. This API is a point-in-time contract check, not an atomic
+runtime transaction or an implementation of a live authorization service.
+Existing immutable accessors remain available; consumers must call the use
+gate before external disclosure/use. The =runtime/= MRR consumer now calls this gate in its public
+=MrrFamilyAdmission::check_context= path. The internal source binding check is
+used only during trusted enrollment. POO's native =context.use.observe= returns
+the Host-retained contract and policy clock, rechecking the actual native
+Source in the same call. This routing covers the native Family Context adapter;
+it does not globally wrap every immutable Context accessor.
+
+=proofs/quint/ContextUse.qnt= models changes after projection and before use
+across six predicates: source bundle, Query binding, effective contract,
+observation binding, permission, and expiry. Its finite state space has 64
+pending predicate assignments and 64 used states. The shared
+=fixtures/agentic-ai-context/use.json= is replayed through the actual Rust
+facade, with replaced source payloads under the same fact IDs, a changed
+snapshot under the same generation, changed policy, foreign manifest,
+revocation and expiry. Further Rust cases cover all contract fields, distinct
+use purposes, authority errors and byte-identical stored materializations.
+
+The =context-use= gate checks exhaustive Quint safety and replay coverage,
+requires counterexamples for all six disabled predicates, and independently
+requires a counterexample when one replayed input is omitted. It writes no
+success receipt until the Rust tests and all eight model checks finish.
+The receipt binds model, fixture, Rust gate/test and runner source hashes and
+checker logs. This is finite input parity, not a proof of the Rust source or
+of external observation authenticity. Existing Lean/Aeneas source proofs
+retain their separately stated scope.
+
+#+begin_src sh
+./.devenv/devenv-profile-exec just context-use .ci/context-use/receipt.json
+#+end_src
+
+The CI Quint job includes this Rust replay and its seven negative controls.
+RFC 0038's POO Flow Session protocol and physical conditional publication
+remain separate integration work.

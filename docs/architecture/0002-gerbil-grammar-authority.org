@@ -16,9 +16,10 @@ language descriptors through =parser-authority.ss=. Its
 not a second complete grammar. Each POO projection carries the exact parser V1
 schema, language, version, contract, grammar IR, and parser IR that authorize it.
 
-=gerbil.pkg= declares only the linked Gerbil Parser edge. POO Flow and
-=asp-gerbil-scheme= are inherited through Gerbil Parser rather than independently
-pinned by MRR. Root =build.ss= declares the library package through the ASP POO
+=gerbil.pkg= directly pins only the POO Flow library revision. POO Flow owns
+the Gerbil Parser and =asp-gerbil-scheme= package edges. The POO Flow pin
+exposes its common Scheme =modules/query= contract to MRR consumers. Root =build.ss=
+declares the library package through the ASP POO
 extension and hands execution to Gerbil's first-party =defbuild-script= and
 =std/make=. It produces the normal project-local =.gerbil= package artifacts;
 MRR does not implement a parallel Scheme package builder.
@@ -62,8 +63,8 @@ memory-safe Rowan event sink and never duplicates the grammar dispatch table.
 #+name: rfc-0002-authority-flow
 #+begin_src mermaid
 flowchart LR
-    pkg[gerbil.pkg] --> parser[gerbil-parser GQL and Cypher grammars]
-    parser --> flow[transitive POO Flow and ASP build API]
+    pkg[gerbil.pkg] --> flow[POO Flow common Query and ASP build API]
+    flow --> parser[gerbil-parser GQL and Cypher grammars]
     parser --> adapter[parser-authority.ss]
     declaration[gql-declaration.ss MRR projection] --> object[parser-bound POO projection]
     adapter --> object
@@ -219,7 +220,7 @@ projection.
 
 * Reference pins and executable evidence
 
-=THIRD_PARTY_NOTICES.md= pins openCypher and SeleneDB by full commit digest as
+[[file:../../THIRD_PARTY_NOTICES.org][THIRD_PARTY_NOTICES.org]] pins openCypher and SeleneDB by full commit digest as
 reference material only. Neither repository participates in dependency
 resolution, generation, linking, or execution.
 
@@ -232,3 +233,259 @@ kind catalog, and Rowan projection. =mrr-frontends= then validates the admitted
 semantic slice, typed fail-closed gaps, exact source coverage, and lowering into
 =MetaQueryIr=. These are ownership-bound contracts, not duplicated sample
 counts.
+
+* Native build progress propagation (2026-10-04)
+
+Cargo's package preparation and archive compilation are separate stages.
+Verbose package preparation now preserves inherited SDK directory mappings in
+=GAMBOPT= and appends =1n,2n,d5qQ=. This affects only the spawned build tools;
+GXI and its GSC children report actual collector work without changing heap
+limits or inserting timed output. Quiet builds retain the inherited settings.
+Compiler diagnostic termination policy is not an embedded-host runtime policy.
+The current adapter calls the pinned =gerbil-scheme-rust= helper for this
+runtime-option composition; its compiler isolation and CI release setup are
+also supplied by that SDK.
+
+A direct owned GSC experiment showed that placing =-:= and =-verbose= after
+Gerbil's =-target C= causes both to be warned as improperly placed and ignored.
+The options must not be appended to PackageSpec's per-module GSC argument list.
+An equivalent call with diagnostics in =GAMBOPT= produced actual GC reports
+and exited successfully. The archive helper's direct GSC commands separately
+place runtime diagnostics before compiler arguments.
+
+The exact GSC revision =b20d209bc63fd6bfec00f5b69e5738971986daf1= preserves
+=-O2= and SDK ABI settings while excluding GCC load motion for generated
+module objects. The actual =clan/poo/trie= fixture passed idle30 in 51.43s;
+full downstream construction and target-specific release performance remain
+separate evidence. No compiler speedup or query speedup follows from progress.
+
+The production helper's current source passed direct strict Clippy-driver
+checking against dependency inputs from its successful earlier full-chain
+compilation. Full local Cargo test and production Cargo check still failed
+idle30 in Rust dependency compilation/checking; direct qualification does not
+replace those gates. A warm package run succeeded, but a fresh package run
+still failed idle30 and exposed =unable to execute tool 'ld'= on this host.
+These failures remain open, rather than being changed into successful builds.
+
+* Shared SDK command isolation (2026-10-05)
+
+GSC =9175ae2c8ba2ac80abf9120030ee7ab13ba742de= exports the canonical
+=gerbil_command= boundary. MRR PackageSpec preparation and program staging use
+that same command builder, removing the duplicated local cleanup list and
+filtering unrelated Nix PATH entries. In particular =DEVELOPER_DIR= is removed
+alongside =SDKROOT=: an owned fresh-prefix process tree showed nested Nix
+=xcrun ld= invocations even though the selected C compiler was Homebrew GCC.
+
+Eight GSC default regressions passed (0.48s), including actual Darwin system
+linker resolution under an inherited Nix developer directory; four native
+fixtures remained explicitly ignored. The Cargo test build succeeded (44.82s)
+and the current source passed direct strict lint against qualified inputs.
+
+Removing the inherited developer-directory override allowed a second
+fresh-prefix PackageSpec run to exit zero under idle30/wall1200. A preceding
+clean fresh-prefix run still failed idle30. The successful run's quiet-phase
+sample contained only GXI and localized =___cleanup_dyn_module= / =dlclose= /
+dyld unload notifications. This explains a distinct process-exit risk; it does
+not establish the cause of every earlier idle5 batch refusal. Compilation,
+cleanup, exit and full downstream construction retain separate gates.
+
+=build.ss= retains first-party =defbuild-script= in a lexical delegate and
+wraps its invocation with two events when =GERBIL_BUILD_VERBOSE= is positive:
+=MRR-PACKAGE build-script entered= and =MRR-PACKAGE build-script returned=.
+They are actual function boundaries and are explicitly flushed. The returned
+event is emitted only after successful delegate return. The installed Gerbil
+v0.19 =std/make= waits for pending compiler jobs before returning; subsequent
+interpreter dynamic-module cleanup is still outside this boundary. A successful
+process exit remains required, with the original idle30 limit retained.
+
+The delegated =spec= invocation and a reused-prefix actual package build both
+exited zero under idle30. This qualifies the wrapper's real build invocation,
+not a fresh-prefix guarantee or the full Data construction gate. A fresh-prefix
+run is recorded separately, including its failures. The source-level Gambit
+and Apple dyld cleanup audit is in GSC's AoT/FFI performance RFC.
+
+The first new fresh-prefix run refused idle30 after 169.87s, without a returned
+event. Its optional sampler was denied =ps= by the local sandbox, so it did not
+qualify an owned call graph. The rejected =compile --unknown= invocation exited
+nonzero and emitted no returned event. These negative results are retained.
+
+A second owned fresh-prefix run refused idle30 after 148.75s, before the
+returned event. Its snapshots at 15.45s and 28.17s quiet showed GXI waiting with
+GSC, the configured GCC 16.2 compiler and the official Xcode assembler still
+alive. The actual =cc1= sample traversed DSE, DCE, CCP and dominator passes in
+=native~1.c=; GXI sampled in =select=, rather than dynamic unload. The C and
+Scheme files remained and no =native~1.o1= was admitted. This run localizes a
+package C-compilation quiet interval independently of earlier exit cleanup.
+It does not justify disabling those optimization passes or relaxing idle30.
+
+The next implementation seam is PackageSpec's first-party per-module C
+options: expose real configured-compiler diagnostics during this dynamic
+module build, as the archive stage already does. Keep Gambit's ABI/options
+and default parallelism. Compiler identity must come from the selected SDK;
+neither ambient =CC= nor a blanket GCC flag on other compilers is sufficient.
+
+At MRR =659aab5=, Ubuntu CI built and tested the Scheme package successfully,
+but its Rust workspace build rejected the GQL grammar native object. The job
+did not provide a complete typed final compiler cause, so the object failure
+is not classified as a proven timeout. Source-bound integration and Rust lint
+steps were skipped; the current native chain remains unqualified.
+
+* Package macro diagnostics and interrupted-output lifecycle (2026-10-05)
+
+MRR pins GSC =2d20e4818170c8ed97bbb98f66d95faad8a72723= and uses its
+=prepare_gsc_progress_launcher= for PackageSpec preparation. The selected
+SDK GSC receives its original arguments and GCC diagnostic options, including
+macro modules for which Gerbil v0.19 drops PackageSpec C options. Quiet and
+non-GCC builds retain the original compiler; the ABI settings, optimization
+level and default parallelism remain in place. GSC owns this compiler policy.
+
+A new isolated package prefix exited zero under idle30/wall1200 in 80.51s
+and produced =native~1.o1=. This is one actual compiler qualification, not a
+speedup, complete archive or downstream semantic claim. The earlier resumed
+incomplete prefix exited zero without GCC diagnostics: =std/make= trusted its
+current-looking SSI even though the macro object was missing. That resumed
+attempt did not qualify the launcher. Previous idle refusals remain retained.
+
+Cargo's package directory now has a completion marker published only after
+successful child exit. A qualified warm directory is retained, but its marker
+is invalidated before rebuilding. Failure leaves the marker absent; the next
+attempt discards only the Cargo-owned package directory before invoking make.
+This prevents partial SSI/SCM outputs from bypassing the next compiler call.
+The marker binds canonical GSC/GXI paths and binary SHA-256 digests, compiler
+configuration bytes, selected SDK/runtime options and package library paths.
+A changed SDK identity invalidates even a previously successful directory.
+The marker qualifies package-process completion, not archive or semantic
+admission; those later gates remain independent.
+
+The final helper Cargo test build succeeded (35.85s); five default regressions
+passed (0.03s), with the six-second streaming fixture explicitly ignored. The
+new lifecycle regression verifies warm reuse, failed rebuild and invalidation
+before retry and changed-SDK invalidation. Current production helper source also passed direct strict
+Clippy with qualified dependency inputs, which does not replace full Cargo
+lint. GSC's thirteen default regressions passed and its monitor now retains
+panic causes and typed diagnostic I/O errors. The original Ubuntu monitor
+panic cause remains unproven until current CI reports it.
+
+Data dependency pins remain frozen while its parallel current-composition
+source/resource-matrix qualification runs. This upstream revision is queued
+for coordination; no Data semantic result is inferred from the package run.
+
+The first full MRR archive attempt passed PackageSpec preparation (63.18s)
+but refused idle30 with 57/59 module objects complete. The remaining objects
+were =clan/poo/trie= and the GQL grammar; the last output was GQL optimization
+analysis. No test binary was admitted. This preserves a distinct archive
+optimization gate after the package macro diagnostics qualified successfully.
+
+The current MRR production helper passed strict direct Clippy/type checking
+against production-library metadata for the current GSC API and previously
+qualified remaining dependency inputs. The initial attempt incorrectly used
+test-binary metadata and was rejected (E0463); it was not counted as a pass.
+This checks the shared command call but does not replace full Cargo lint or
+the downstream native build gate.
+
+Exact GSC =b20d209= Ubuntu and macOS CI completed successfully. Exact MRR
+=f256c13= had two successful Ubuntu native jobs; one macOS native job failed
+idle5 after final =HARNESS-OK= and =OK= output. Its signal cleanup then hit a
+Darwin zombie-group permission race. Supervision now reaps before group signals
+and retries an exited-child race while retaining live permission refusals.
+This repair does not turn that idle failure into a pass or relax its budget.
+
+The qualification loop now polls/reaps the direct child independently of pipe
+readiness. Timeout diagnostics distinguish a live direct child from an exited
+parent whose descendants retain stdout. Cleanup always sends SIGKILL to the
+owned group, including after the parent has exited: SIGTERM alone is not a
+complete lifecycle boundary for descendants that ignore it.
+
+A real fork regression prints complete module/case/final-OK receipts, exits its
+parent with status zero, and leaves a SIGTERM-ignoring descendant holding the
+pipe. The prior implementation failed the cleanup assertion (6.146s); the
+repair retained refusal 124 at the unchanged idle5 boundary and terminated the
+descendant. Six process regressions passed in 5.575s. This is process ownership
+evidence, not successful qualification of the earlier macOS Scheme batch.
+
+The previously failing generated Scheme module also compiled dynamically in
+isolation with the configured GCC/SDK, so the earlier linker error is not yet
+attributed to a missing linker. An observed retry of the existing PackageSpec
+prefix exited zero while reporting real GC work; an owned GXI sample showed
+hash-table, expander and collector activity. That retry reused the prefix and
+does not replace the failed fresh-prefix receipt or qualify a full cold build.
+
+GSC =3f1ba7aaf5957c774c4269dd9deb2a92b2ed637d= changes only the cache
+test fixture and its documentation from =9175ae2=. The Ubuntu aggregate had
+rejected a newly written executable with ETXTBSY; native Gerbil itself passed.
+The fixed fixture is a checked-in executable, preserving the cache assertions
+and default test parallelism. Its Cargo test build passed (1m11s), and eight
+default regressions passed (0.61s; four native fixtures ignored). MRR now pins
+that repair; production helper source is unchanged, and new-head CI remains
+a separate gate.
+
+The subsequent full local archive build completed in 5m43s under the unchanged
+idle30/wall1200 gate: package preparation took 63.23s and all 59 object jobs
+completed with the default twelve workers. Thirty-one native ABI/parser tests
+passed in 1.84s under idle5/wall120. The preceding failed attempt used four
+workers; these runs do not establish a performance comparison. This successful
+receipt used GSC =fc114cc=, before the immutable launcher publication fix.
+
+Exact-head Ubuntu GSC =fc114cc= failed parallel publication with =ETXTBSY=.
+The new pin uses no-replacement publication; its local thirteen regressions
+passed. Current-composition MRR build/tests and exact-head Ubuntu CI remain
+separate gates. Data pins remain frozen pending its owner's qualification.
+
+The first local run of the new pin omitted =GERBIL_BUILD_VERBOSE=1= and was
+refused by idle30 after the Rust helper compilation, before native admission.
+This is a retained invocation failure, not evidence against the launcher
+regression fix and not a successful build. The repository native CI already
+sets this diagnostic mode. Local supervised native builds must also set it
+explicitly; it enables real compiler/phase reports without timer heartbeats,
+job caps, optimization changes or heap tuning.
+
+The corrected current-pin build completed in 5m05s under idle30/wall1200:
+PackageSpec completed in 49.46s, module C generation in 35.00s and the full
+59-job object batch (default twelve workers) in 97.01s. Cargo exited
+successfully and admitted the exact native test binary. All thirty-one native
+ABI/parser tests then passed in 2.61s under idle5/wall120. This receipt includes
+GSC =2d20e4818170c8ed97bbb98f66d95faad8a72723= and the current SDK-bound
+package completion lifecycle. Warm cache differences prevent a speedup claim.
+Current-pin production helper metadata also passed strict direct Clippy;
+full Cargo lint and exact-head platform CI remain distinct qualification.
+
+The latest-pin helper test build passed in 2m29s. All five default helper
+regressions passed; the six-second streaming fixture remained explicitly
+ignored by the default test selection. The lifecycle test verifies retained
+warm outputs, failed-attempt marker invalidation, partial-output removal before
+retry, and SDK-change invalidation. This is separate from native ABI admission.
+
+* Child stdio flags and diagnostic backpressure (2026-10-05)
+
+Data's current-composition archive build exposed EAGAIN on a Rust artifact
+progress write, before Source admission, rather than an idle refusal. SDK GXI
+was independently observed changing the inherited parent's shared stderr
+open-file-description to nonblocking. MRR now pins the GSC stdio ownership
+repair and delegates package/program-stage execution to =run_native_process=.
+Native children use private pipes, preserving parent console flags while owned
+readers forward real bytes. Artifact/forwarded writes retain partial offsets
+and retry Interrupted/WouldBlock, including flush; genuine I/O and child-exit
+failures remain refusals. No timer log or budget/resource tuning is introduced.
+
+GSC =3635dfa08329f42765e8828b95bf3baf256d582f= passed sixteen local default
+regressions and strict direct Clippy. Its real six-second artifact growth
+fixture passed explicitly under idle5/wall120. The new MRR composition must
+qualify independently; the previous 31-test pass does not qualify this pin.
+Data pin changes remain owned by the current Data work.
+
+The complete latest-pin local native build passed under idle30/wall1200 in
+6m43s. PackageSpec completed in 45.35s, all 205 module C inputs in 38.53s,
+and all 59 object jobs with default twelve workers in 105.23s. The previously
+failing Cypher grammar object completed in 58.24s without EAGAIN. The final
+linked test artifact was admitted only after successful Cargo exit. All
+thirty-one native ABI/parser tests passed in 1.94s under idle5/wall120; strict
+direct production helper Clippy passed. These are local current-composition
+receipts, not Source/Data semantic admission, full Cargo lint, exact-head CI
+closure or a controlled performance comparison.
+
+The latest helper test build passed in 1m43s and all five default regressions
+passed (0.01s), with the streaming fixture explicitly ignored by default. That
+fixture was then run explicitly: actual start/intermediate/complete child
+events arrived during its six-second execution and the test passed (6.03s)
+under idle5/wall120. This qualifies continuous forwarding through MRR's shared
+executor and retains nonzero/quiet child failure regressions.

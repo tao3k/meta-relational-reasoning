@@ -1,0 +1,140 @@
+#+title: Content, Context, and Compliance: Research Agenda
+#+startup: overview
+
+* Research question
+
+Can a source-bound semantic graph support useful Agent Context while keeping
+model proposals, normative rules, and observed evidence in different authority
+classes?  Can changes to those classes invalidate only the affected semantic
+and computational regions without allowing stale evidence or unauthorized
+reuse?  RFC 0035 and RFC 0036 state the proposed contracts.  This note records
+falsifiable hypotheses and the boundaries that must be tested before a paper
+or production claim.
+
+The present PR branch already has source-bound fact selection, a semantic
+manifest and restore admission, declared-dependency revision impact, byte
+materialization, token-prefix eligibility, and extensive Lean/finite-model
+work.  Those results are the baseline.  They do not establish typed Content
+authority, machine-checked compliance, model-independent enforcement, or
+observed serving-cache savings.
+
+* Model to evaluate
+
+| Layer | Proposed meaning | Authority owner | Existing baseline |
+|-
+| Content record | scoped source assertion, contract, evidence, or derivation | source owner plus MRR admission | typed =Fact=, =RelationContext=, bundle and lineage |
+| Context authority view | selected, generation-bound Content references and supports | MRR projection admission under POO Flow policy | =mrr-agentic-ai-context= fact closure and manifest |
+| Working overlay | speculative notes or hypotheses for one actor/task | Agent/runtime; explicitly no Content authority | not a typed baseline class |
+| Compliance | checked satisfaction of an exact obligation for an action | verifier plus MRR receipt; runtime enforces | opaque =policy_digest= and required fact IDs only |
+| Physical artifact | bytes, snapshot, CID, conditional head | =mrr-data= | existing downstream data-plane contract |
+| Computational artifact | rendered bytes, tokens, cache state | renderer/tokenizer/serving owner | byte layout and token-prefix eligibility, no live hit receipt |
+
+An admitted Content record means that the stated source or verifier produced
+the stated assertion under its scope.  It does not make an arbitrary assertion
+true.  A rule's normative force and an observation's empirical coverage must
+remain distinguishable even if both are represented by relations.
+
+* Falsifiable hypotheses
+
+1. *Authority separation.* A model-generated yes, summary, or working
+   hypothesis cannot close a blocking obligation without an admitted source or
+   verifier witness.  Test with malicious or accidentally persuasive text in
+   tool output and retrieved documents.
+2. *Hard-rule preservation.* For a fixed authorized source cut, adding a child
+   policy scope cannot remove inherited Mandatory or Prohibition obligations.
+   Test multiple inheritance, explicit waiver, conflicting rules, and a
+   changed authority source.
+3. *Exact-scope compliance.* A green test or proof receipt for source revision
+   =r1= cannot justify completion of changed revision =r2= unless an admitted
+   equivalence profile proves that the required subject is unchanged.  Test
+   dirty trees, commit/tree identity, verifier upgrades, and partial coverage.
+4. *Invalidation soundness.* If a declared dependency changes or capability is
+   revoked, affected compliance and Context receipts become ineligible.  The
+   stronger claim that unaffected receipts are reusable requires a complete
+   dependency declaration; measure counterexamples to that premise.
+5. *Reuse separation.* Semantic reuse, byte append, token prefix, and observed
+   KV cache hits are four different claims.  Test boundary token merges,
+   renderer changes, model/tokenizer changes, position shifts, and revocation
+   with byte-identical content.
+6. *Operational closure.* An Agent can still reason freely when Context
+   contains hypotheses, while the runtime refuses a publication with unknown,
+   stale, conflicting, or judgment-required blocking obligations.  Verify at
+   the actual effect boundary, including a concurrent revision after the
+   initial check.
+
+These are design hypotheses, not current performance or safety results.  A
+proof of a finite model establishes only the model's stated assumptions.  A
+successful local test establishes only its exercised code and environment.
+
+* Adversarial cases that shape the contract
+
+- A source file contains text that looks like an instruction to waive tests.
+  It is source content, not a normative rule issued by the policy owner.
+- A model answers "yes" to a question about tests while the only command
+  receipt was for an older tree.  The claim remains stale.
+- A command exits zero after running a filtered or empty test set.  Its
+  coverage cannot satisfy a broader test obligation.
+- A Lean file compiles under extra axioms.  A kernel check establishes only the
+  theorem under those recorded assumptions.
+- A human reviewer approves a subjective rule.  The result is human-attested
+  under an authorized scope, never relabelled machine-verified.
+- A policy is relaxed by a more specific child without an authorized revision.
+  Composition rejects the relaxation regardless of prompt order.
+- A source correction arrives between Context construction and external
+  publication.  The action guard compares current source and policy cuts.
+- A cache prefix has equal bytes after capability revocation.  Authorization
+  denies its reuse or disclosure even if token comparison succeeds.
+
+* Design alternatives and current choice
+
+| Alternative | Advantage | Failure mode or cost | Current direction |
+|-
+| Put all roles into generic =Fact= flags | small API change | permits evidence, policy and hypothesis to be confused; complex invalid combinations | typed role profiles over the existing relation substrate |
+| Put Agent semantics in =mrr-data= | convenient persistence | CID and storage success could be mistaken for authority; reverse dependency | MRR semantic owner, downstream storage adapter |
+| Treat the model's answer as compliance | easy interaction | self-report cannot verify an action | model submits a checkable claim; verifier decides |
+| Put every rule's prose in every prompt | improves recall | budget pressure and forgetting still affect enforcement | effective obligations remain out-of-band at the action guard |
+| Rebuild all Context and caches on every change | simple soundness story | unnecessary cost | start conservatively, then prove typed invalidation and measure reuse |
+| Add a new crate immediately | clean namespace | premature dependency split before interfaces stabilize | extend existing owners first; split only if the public graph demands it |
+
+* Evaluation protocol
+
+Use the same task corpus, source revisions, policy, model, tokenizer, hardware,
+runtime settings, and budget for baseline and proposed systems.  Include
+software, knowledge, and workflow fixtures; force conflict, missing evidence,
+budget stop, revision change, and authorization revocation.  Measure semantic
+soundness first: false compliance, stale publication, required-closure loss,
+cross-actor disclosure, and unsupported authority promotion.  A single
+unexplained false pass blocks a safety claim.
+
+Then measure cost separately: selected elements, serialized bytes, prompt
+tokens, token-prefix eligibility, *actual* cache hits, CPU, wall time,
+end-to-end latency, and recomputation after revision.  Report warm and cold
+runs separately.  Control or record host contention; a lower wall time under
+different contention is not an A/B speedup.  Keep producer, verifier, MRR
+admission, renderer, tokenizer, and serving timings distinct so a fast prefix
+check is not presented as a faster full task.
+
+* Evidence milestones
+
+1. Stable typed contract/evidence profiles and negative admission corpus.
+2. Lean authority, composition, compliance and invalidation models with
+   explicit assumptions and counterexamples; preserve existing proof project.
+3. Runtime verifier integration that produces receipts bound to exact subjects.
+4. Enforced completion/effect denial under missing and stale evidence, plus
+   concurrent source/policy change at the commit boundary.
+5. Authority-aware Context projection and restore, with separate working
+   overlay and capability checks.
+6. Controlled A/B semantic and computational evaluation; only then consider a
+   paper claim about selective invalidation or KV savings.
+
+MRR owns semantic contracts and receipts; POO Flow owns policy/Temporal
+semantics and authorization decisions; the MRR production runtime or an
+explicit effect owner enforces them.  Orgize or another source adapter owns
+syntax; =mrr-data= owns physical persistence; the tokenizer and serving
+runtime own actual cache behavior.  Each milestone must preserve these
+independent evidence boundaries.
+
+The separate [[file:meta-relational-impact-agenda.org][Meta-Relational Impact agenda]]
+tests whether typed two-generation reevaluation can improve this invalidation
+chain while preserving alternative support, bounded absence, and POO Flow's
+Temporal claim levels.

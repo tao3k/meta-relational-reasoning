@@ -3,35 +3,68 @@
 
 * Decision
 
-MRR owns a backend-neutral POO Search framework.  It does not own the ASP
-Search Playbook language.
+POO Flow owns the generic =search-engine=; =modules/search= supplies its
+backend-neutral POO stage roles, typed composition, strategies and DAG
+declarations. =temporal-causality= is the core semantic composition module for
+readiness, evidence validity, invalidation and logical continuation. The engine
+transition contract is specified upstream in
+=docs/10-19-design/search-engine-temporal-design.org=; it remains an implementation
+target beyond the currently qualified static composition. MRR owns the
+=generation= and factor-identity projection in =scheme/search/projection.ss=,
+Scheme inference binding, lineage, semantic admission and Rust physical
+execution mediation. ASP owns its Playbook syntax, concrete operators, resident
+execution, scoring policy, and public result projection.
 
-The framework provides C3-composable factor roles, typed stage boundaries,
-sequential and parallel composition, explicit merge composition, strategy
-objects, POO Flow temporal-causality observations and trajectories, bounded
-Ascent factor-influence derivation, MRR lineage, and Impact projection.  It
-deliberately has no knowledge of
-=rg=, Tantivy, Topology, workspace scope, provider registries, Scheme source
-syntax, Runtime generations, indexes, or result projection packets.
-
-ASP owns all of those concrete concerns.  Its V1 Playbook parser lowers an
-already validated ASP program into MRR Search objects.  This direction is
-one-way:
+The source dependency direction is POO Flow -> MRR -> ASP.  A POO Flow
+strategy is inert until a consumer executes it.  MRR projects its factor
+identities and binds observations to one consumer-supplied generation; this
+projection is reasoning input, not proof of runtime execution.
 
 #+begin_src mermaid
 flowchart LR
-  P[ASP Search Playbook V1] -->|validated lowering| O[MRR POO Search objects]
-  O --> F[POO Flow factor graph and DAG receipt]
-  F --> R[ASP Runtime factor observations]
+  P[ASP Search Playbook V1] -->|validated lowering| O[POO Flow Search objects]
+  O --> D[POO Flow typed DAG declaration]
+  D --> R[ASP resident factor observations]
   R --> T[POO Flow temporal causal trace]
-  T --> A[MRR Ascent factor influence]
-  A --> L[MRR lineage and Impact]
+  R --> G[MRR GQL MetaQueryIR]
+  G --> A[MRR bounded Ascent]
+  T --> A
+  A --> L[MRR lineage and semantic Impact]
   L --> E[ASP bounded projection]
 #+end_src
 
-MRR must never reconstruct the Playbook from strings or publish a second
-operator registry.  ASP must never replace the generic POO object model with a
-private positional plan representation.
+MRR does not reconstruct the Playbook or publish a second operator registry.
+The strategy, factor projection, and native generation must be bound to the
+same admitted source identity before downstream use.
+
+* Module and package boundary
+
+POO Flow Core supplies the POO object model, Flow composition, and graph/DAG
+receipts.  POO Flow =modules/query= supplies a common Scheme Query declaration,
+admission, selection, and Provider-binding entry point.  Its
+=modules/temporal-causality= supplies inert structural Impact, causal event
+graphs, temporal classification, and trajectory assessment.  Its
+=modules/reverse-inference= is a separate, bounded candidate engine: it uses
+GQL selection and Scheme Ascent to compare source-labelled hypotheses, but
+does not authenticate sources or authorize actions.
+
+MRR Scheme packages MRR-specific grammar projections, ReasoningBundle
+declarations, bounded resource sequencing, and a Search factor projection.  It
+specializes POO Flow contracts without copying Core, Query, causal algorithms,
+or the ASP Playbook.  MRR native crates own typed relations/rules, bounded
+Ascent candidate evaluation, identity, lineage, Impact, and fail-closed semantic
+admission.  A =lambda-*= library supplies domain Query/Case modules; Cargo
+features may select optional domain and physical libraries at build time.
+An application backend such as Marlin performs runtime work and returns
+candidates.  Package dependency is one-way: MRR's =gerbil.pkg= directly pins
+POO Flow; POO Flow owns the transitive parser edge and tracks Core as a
+subtree.
+
+The public bridge must carry exact source/query identity, semantic generation,
+bounded result contract, provenance, and execution candidate/receipt.  The
+Scheme declaration is inert until the owning backend executes it; MRR then
+checks semantic admission.  Neither a compile-time feature nor an Ascent or
+causal candidate grants runtime authority.
 
 * POO object model
 
@@ -46,7 +79,7 @@ The framework has four orthogonal stage roles:
 
 A stage binds a stable name, an opaque consumer operation, arguments, an input
 domain, and an output domain.  A concrete consumer role can inherit one of the
-abstract roles and add backend-specific slots.  The MRR framework never
+abstract roles and add backend-specific slots.  The POO Flow framework never
 switches on those backend slots.
 
 Each stage is also a Search factor.  A consumer runtime emits immutable factor
@@ -54,6 +87,11 @@ observations with a candidate identity, logical position, provenance identity,
 and causal parents.  MRR delegates causal event-graph construction, trajectory
 assessment, temporal cuts, and structural Impact to POO Flow's existing
 =temporal-causality= module; it does not duplicate those algorithms.
+For competing explanations, a consumer may separately call POO Flow's
+=reverse-inference= Case with source-labelled claims and explicit opposing
+branches.  Its =supported= status is hypothetical fit, not a semantic admission
+receipt or evidence authentication.  MRR may attach its output as a candidate
+with lineage only after the relevant source and generation checks.
 
 A composition is either sequential, parallel, or an explicit merge of a
 parallel composition.  Sequential edges are admitted only when the preceding
@@ -62,18 +100,43 @@ one input domain.  A merge is an ordinary typed stage; therefore conjunction,
 ranking joins, union, or any other aggregation semantics remain explicit and
 consumer-owned.
 
-A strategy binds one root composition to policy metadata.  It is declarative:
-the execution owner remains the consumer runtime.
+A POO Flow strategy binds one root composition and policy metadata.  It is
+declarative: the execution owner remains the consumer runtime.  MRR projects
+the strategy with a nonempty consumer-supplied generation canonical input.
+The projection requires distinct stable ASCII stage names (lowercase letters,
+digits, and hyphens) and emits rows of =(factor canonical input, role name)=
+and directed edges between factor canonical inputs.  Sequential and explicit merge composition produce edges;
+parallel branches do not acquire edges merely by sharing an input.
+
+The factor canonical input is the UTF-8 byte sequence
+=mrr.search.factor.v1:<strategy-name>:<stage-name>=.  A Rust consumer derives
+each =QueryOperatorId= from those exact bytes with
+=SearchFactor::from_canonical_input=, maps the projected role name to its
+=SearchFactorRole=, and derives the =GenerationId= from the strategy's
+projection's generation canonical input with
+=GenerationId::from_canonical_bytes=.  It
+resolves projected edge endpoints through the resulting factor IDs.  The
+generation input is supplied by the execution owner; MRR does not invent a
+runtime generation.  The MRR Scheme observation constructor requires both a
+member stage of the POO Flow strategy and the same generation input.  Native
+=SearchObservation= stores a typed generation and =evaluate_search_factors=
+rejects any observation from another generation before Ascent inference.
+The cross-language projection remains an explicit consumer binding contract.
+Actual Scheme plan compilation and MRR/Data candidate inference are qualified
+separately from the proposed engine continuation. See
+[[file:0037-configurable-search-execution.org][the execution bridge design]] for
+the implemented root-dispatch boundary and remaining dependent execution gates.
 
 * Ascent and lineage integration
 
 =mrr-search= is the native, backend-neutral reasoning adapter.  Downstream
 systems register factor identities and roles, directed factor edges, and
-generation-bound observations.  The adapter first rejects duplicate or unknown
+generation-bound observations.  The adapter first rejects generation mismatch,
+duplicate or unknown
 factors, cyclic factor graphs, missing causal parents, temporal inversions,
 causal-parent edges that disagree with the factor graph, and budget overflow.
 
-Only after admission does a small Ascent program derive the transitive factor
+Only after admission does a small native Scheme ASCENT program derive the transitive factor
 influence relation for each observed candidate.  A deterministic breadth-first
 reconstruction must reproduce Ascent's shortest distance; disagreement is an
 internal error, not a partial result.  The resulting factor trajectory is
@@ -130,6 +193,21 @@ The executable counterpart is
 equalities as proof fields, so a successful receipt cannot represent a
 mismatched sequential, parallel, or merge edge.
 
+* Migration gate
+
+The former =scheme/search/core.ss= and its duplicate typed-composition test
+are removed.  POO Flow owns the composition implementation and its focused
+executable test; Search PR #33 is now incorporated into POO Flow PR #34.  MRR's =scheme/search/projection.ss= retains the
+MRR-specific canonical factor identity, generation binding, and edge relation;
+its test consumes POO Flow objects directly.  MRR pins the exact POO Flow
+revision containing =modules/search= before its package build can use this
+migration.
+
+The Rust =mrr-search= adapter still accepts caller-supplied factor identities
+and observations.  No live ASP Scheme-to-Rust bridge currently proves they
+were projected from the same POO Flow declaration.  The DAG receipt remains
+plan evidence, not an execution receipt.
+
 * Acceptance
 
 - MRR exports no =compile-search-playbook= or =defsearch-playbook= API.
@@ -140,4 +218,6 @@ mismatched sequential, parallel, or merge edge.
 - every published influence has reusable MRR lineage and Impact;
 - mismatched sequential domains and parallel branch domains fail closed;
 - a merge cannot run unless its input equals the parallel product domain;
+- factor identity inputs and edges are stable, and cross-generation
+  observations fail before native factor inference;
 - generated DAG receipts remain declarations and do not claim runtime work.

@@ -1,0 +1,260 @@
+#+title: MRR Search Mathematics: Lean + Quint (Version 1)
+#+startup: overview
+
+* Model entry points
+
+This directory contains the search model in the main MRR workspace:
+=/Users/guangtao/ghq/github.com/tao3k/meta-relational-reasoning/proofs/MRRProof/SearchComposition=.
+
+- [[file:SearchComposition.lean][SearchComposition.lean]]: consumer source/generation binding and Data candidate truth; imports the POO Flow composition library.
+- [[file:Protocol.lean][Protocol.lean]]: candidate-set semantics for three search modes, completeness admission, the publication state machine, and safety proofs for arbitrary legal traces.
+- [[file:Graph.lean][Graph.lean]]: causal edges, paths with distances, observation bindings, depth budgets, and parallel branch isolation.
+- [[file:Replay.lean][Replay.lean]]: an independent finite state enumerator, executable invariant checks with a soundness theorem, and state export for exhaustive Quint coverage.
+- [[file:../../quint/SearchComposition.qnt][SearchComposition.qnt]]: finite instances of the publication protocol, exhaustive interleaving checks, and required counterexamples.
+- [[file:Checks.lean][Checks.lean]], [[file:ProtocolChecks.lean][ProtocolChecks.lean]], and [[file:Axioms.lean][Axioms.lean]]: algorithm execution, positive and negative controls, and axiom auditing.
+
+* Mathematical semantics
+
+Let A be the primary candidate set and B the auxiliary candidate set. Sets are
+predicates over an arbitrary Candidate type.
+
+| Mode | Returned set | Completeness requirements |
+|------+--------------+---------------------------|
+| Single | A | Partial results are allowed; complete/truncated status is retained. |
+| RankJoin | A | The primary branch must be complete. Auxiliary ranking may be partial and cannot remove members of A. |
+| Intersect | A intersection B | Every branch must be complete and untruncated. Only then can an empty result certify the absence of common hits. |
+
+Sequential composition is g composed with f, with associativity proved.
+Parallel composition maps x to (f(x), g(x)). C3 role linearization and C4
+precedence are separate inputs. C4 order does not create retrieval or causal
+edges.
+
+MRR directly consumes LeanPoo's C3 =ParentDerivations= and
+=GraphCertificate.derivations=, together with C4 ancestry coverage, output length
+bounds, preservation of ancestor-local constraints, and precedence monotonicity
+in descendants. Executable checks also exercise a C3 graph with a shared ancestor
+and queries over a verified C4 ancestry index.
+
+The actual POO projection supplies edges E. Influence requires an E-path of
+length d with d <= maxDepth. Parallel branches without connecting edges cannot
+produce cross-branch influence.
+
+* State machine and safety theorems
+
+A state contains its phase, current binding, observed binding, completeness of
+both branches, inferred status, and candidate output. A binding consists of
+(workspace scope, source, resident view, composition ABI, generation).
+
+The main transition sequence is =read -> merge -> ready -> published=, with
+additional revise, restart, and stay actions. A revision retires old results
+before or after publication, clears inferred status, and requires fresh
+observations before publication can resume.
+
+=step_preserves_valid= proves that each legal action preserves the invariant.
+=reachable_valid= extends this result by induction over legal traces. Every
+reachable published state therefore satisfies:
+
+1. Its observed binding equals its current binding; stale generations and foreign sources cannot publish.
+2. Both Intersect branches are complete and untruncated.
+3. Inference evidence has been admitted, and the returned set exactly matches the selected mode's semantics.
+4. A published empty complete intersection implies that no candidate belongs to both branches.
+
+* Lean, Quint, and execution correspondence
+
+| Model concept | Lean | Quint | Execution owner |
+|---------------+------+-------+-----------------|
+| Three candidate-set semantics | Search.truth | truth | Data search_candidates.rs |
+| Completeness admission | truthReady | truthValid | Data validate_branches |
+| Exact snapshot binding | Binding, observed = current | current, observed, bindingValid | DataSearchSourceBinding |
+| Read, merge, revision, and publication | Step, Reachable | read/merge/revise/restart/publish/stay | ASP generation admission and search composition |
+| Influence paths and distances | Path, influence | Outside this finite publication model | MRR POO projection and factor evaluator |
+| C3/C4 | GraphCertificate, VerifiedOrder | Algorithms are not reimplemented | LeanPoo / POO Flow |
+
+Positive Quint cases cover Single, RankJoin, Intersect, partial Single, and a
+non-overlapping complete intersection. Required counterexamples cover generation
+reuse, scope/source/resident/ABI substitution, incomplete primary or secondary
+truth branches, skipped inference, a false empty intersection, and RankJoin
+filtering the primary set. Positive exhaustive checks require an empty work
+queue. Negative controls require TLC to report an actual invariant violation
+and counterexample.
+
+* Exhaustive Lean replay coverage
+
+Lean independently enumerates the successor closure of each positive finite
+fixture. Every exported state passes an executable admission check;
+=Replay.acceptance_sound= proves that acceptance implies the original
+=Protocol.valid= invariant. The exporter also checks that its state set is
+closed under every finite successor action.
+
+TLC then exhaustively checks =allStatesReplayed=: every reachable Quint state
+must belong to the exact Lean replay set and satisfy the original safety
+invariant. The gate requires equal distinct-state counts, no duplicate replay
+states, and an exhausted TLC queue. An omitted published state must produce an
+actual invariant counterexample. This establishes finite state coverage rather
+than relying on sample traces or inferred checker counts.
+
+The five positive fixtures currently contain nine states each, for 45 state
+replays across fixtures. The replay specification fixes the four non-generation
+binding fields to zero and checks the declared generation interleavings; this
+does not expand the finite scope to arbitrary provider state.
+
+* Running the gates and reviewing evidence
+
+Run from the MRR repository root:
+
+#+begin_src sh
+./.devenv/devenv-profile-exec just search-model
+#+end_src
+
+The gates can also run separately as =just search-composition-proof= and
+=just search-composition-quint .ci/search-model/quint-receipt.json=.
+
+LeanPoo is pinned to =0a111f6c5de43b261de5bba9287b48540d9f7c2e=.
+The tool versions are Lean =4.34.0=, Quint =0.33.0=, and Apalache =0.62.1=.
+TLC uses one worker and a 1 GiB heap. The axiom audit permits only standard Lean
+axioms; =sorryAx= and custom search assumptions are rejected.
+
+Local evidence is recorded in =.ci/search-model/lean.log=, =quint.log=, and
+=quint-receipt.json=. The combined gate writes =combined.log=, while
+=lean-replay.v1.json= records the exported states and coverage logs record the
+second exhaustive checks and omission control. The Quint receipt binds these
+artifacts and the Lean model sources by SHA-256.
+The exact checked coverage instances and omission control are retained under
+=.ci/search-model/replay-cases/=; their hashes match the checker receipt.
+
+Lean protocol safety applies to arbitrary legal traces;
+Quint's exhaustive conclusions apply only to the declared finite instances.
+These gates do not yet establish machine-checked refinement of Rust/Scheme
+source into the mathematical semantics, provider authenticity, digest collision
+resistance, or liveness of infinite executions.
+
+* Actual ASP execution witnesses
+
+ASP emits a separate =agent.semantic-protocols.search-execution-witness=
+Version 1 diagnostic. Its =compositionReceipt= embeds the existing Version 1
+receipt without changing that receipt's contract. Bounded diagnostics set
+=complete=false= and omit the witness when their inventory cannot be retained.
+Lean rejects incomplete witnesses.
+
+=ExecutionModel.lean= proves that owner composition has the original =Search.truth=
+membership semantics. =ExecutionChecks.lean= independently checks actual leaf
+owner sets, common source/generation bindings, Data aggregation, POO fan-in and
+shortest paths, causal observations, and the complete MRR influence inventory.
+The current qualification supports Single with one leaf and Intersect/RankJoin
+with two leaves. It checks set membership rather than ranking order.
+
+Run from the repository root with absolute paths to the actual ASP output and
+its independent schema:
+
+#+begin_src sh
+./.devenv/devenv-profile-exec just search-execution WITNESSES SCHEMA
+#+end_src
+
+The captured environment needs =jsonschema= for format validation; the Python
+proof project declares it through the =execution= extra. Python orchestrates
+schema validation and CLI exits; Lean owns semantic checking. The gate retains
+six rejected mutations: stale generation, a foreign merged owner, a missing
+POO path, missing influences, an incomplete witness, and a foreign causal parent.
+A direct Lean-only entry is =just search-execution-proof WITNESSES=.
+
+Local evidence is under =.ci/search-model/execution/=. The qualification receipt
+binds the actual witness, schema, checker, and owner-membership model by SHA-256.
+This is differential checking of emitted evidence. It does not authenticate
+candidate IDs against owner bytes, establish Rust/Scheme source refinement, or
+extend the finite Quint coverage claim.
+
+* Architecture reflection
+
+[[file:../../../docs/architecture/0036-search-reflection-boundaries.org][Search chain architecture review]] distinguishes role linearization, precedence,
+causal edges, physical candidate composition and Agent-facing decisions. It
+records remaining gates for POO DAG correspondence, actual-plan C3/C4 evidence,
+candidate/source identity, reflection retention and published dependency pins.
+
+=Reflection.lean= proves boundary constraints for source/query-bound published
+evidence and budgeted proposals. =ReflectionChecks.lean= runs positive and
+negative controls through the same admission predicates. Complete query
+coverage remains a consumer-owned premise; the model does not authenticate it
+or implement an automatic feedback loop. It is included in the Lean gate and
+axiom audit. The existing Quint coverage remains unchanged.
+
+The MRR projection owner now compares its tree-derived factors/edges with an
+independently expanded compiled POO plan. Branch-arm and nested Flow nodes are
+expanded; administrative joins are contracted. Embedded chain, parallel/merge
+and nested three-arm checks pass. The standalone Scheme corruption controls
+remain unqualified within the five-second watchdog. This runtime gate is
+separate from Lean/Quint compiler-refinement claims.
+
+* Actual POO role graph certificates
+
+A separate =search-order-witness= Version 1 diagnostic retains actual
+=object-supers= parent graphs and =compute-precedence-list!= outputs from the
+same POO stage objects that produce the admitted factor inventory. Current POO
+objects use Gerbil C4 at runtime. The evidence identifies that algorithm
+explicitly; it does not describe the runtime as C3.
+
+=OrderChecks.lean= matches the entire embedded composition receipt against the
+execution witness, including source/generation/composition/DAG identities. It
+then certifies the actual graph using LeanPoo C3 and C4 and compares both orders
+with each retained runtime order. A C3/C4 disagreement fails qualification;
+these checks do not change POO's runtime algorithm or schedule provider work.
+The graph aliases are packet-local and acquire meaning only within this binding.
+
+=PlanOrders.lean= retains dependent graph certificates with binding, composition
+and DAG identities, and proves stale-generation and foreign-DAG rejection.
+These are graph certificates plus executable identity correspondence. Source
+admission, digest authenticity and full compiler refinement remain separate.
+The existing execution/composition Version 1 schemas remain unchanged.
+
+#+begin_src sh
+./.devenv/devenv-profile-exec just search-orders EXECUTIONS ORDERS SCHEMA
+#+end_src
+
+Python only validates the independent schema and orchestrates CLI controls.
+Lean owns certification and comparison. The original Quint publication model
+and its finite replay scope remain unchanged; no scheduling/liveness conclusion
+is added by these order checks.
+
+
+* Actual candidate correspondence
+
+=CandidateChecks.lean= matches a separate Version 1 Data candidate witness to
+the complete actual execution receipt. It checks the exact physical owner union,
+unique owner/candidate inventory and all branch/merged observations. The
+=search-candidates= recipe validates the schema, runs Lean and requires seven
+corrupted controls to fail. Python performs schema/process orchestration only.
+
+Data Rust owns canonical UTF-8 byte encoding and identity derivation. ASP calls
+Data admission before inference. Lean does not authenticate physical bytes,
+prove hash collision resistance or trust a coherent substitution of both logs.
+Actual public receipts and focused Rust evidence are under
+=.ci/search-model/candidates/=. Existing C3/C4 and execution gates also pass over
+the regenerated public evidence. This is local qualification with unpublished
+bindings; durable reflection projection and published source convergence remain
+separate gates.
+
+
+* Semantic owner and consumer qualification
+
+The reusable C3/C4 certificate composition, typed stages and sequential/parallel
+algebra now live in POO Flow =proofs/Composition/PooFlowComposition.lean=.
+MRR's Lake dependency imports that library directly, without duplicate generic
+definitions. =just search-composition-proof= first verifies its transitive
+LeanPoo pin and executes POO's =check-composition-proof= gate, then executes
+MRR's own consumer checks and axiom audit.
+
+MRR retains =SearchComposition= binding/truth contracts, =Protocol= and its Quint
+publication model, =Graph= source-bound influence, =Replay= state correspondence,
+=Reflection= premise admission, =PlanOrders= received-certificate binding and
+actual execution/order/candidate witness checks. These constrain the Rust FFI
+bridge and consumer publication boundary. They are not a POO scheduler proof.
+
+The consumer dependency uses published POO revision =060198f2fec89a683cf539a900f0e1b0e623fb6a=
+with =subDir = proofs/Composition=. There is no machine-specific path in the
+manifest. The resolver verifies the declared source, full SHA and toolchain,
+then delegates LeanPoo bootstrap to the producer and checks the inherited cache.
+An empty-cache consumer qualification passes. The producer draft is
+[[https://github.com/tao3k/poo-flow/pull/34][POO PR 34]]; producer CI and downstream consumer CI remain separate receipts.
+Delivery to the existing open PR and MRR consumer CI at the exact submitted head are still required.
+The original publication Quint model is unchanged and remains MRR-owned;
+producer-specific Quint and Scheme implementation refinement are separate gates.
+See [[file:../../../docs/architecture/0037-configurable-search-execution.org][Configurable Search execution decision]].

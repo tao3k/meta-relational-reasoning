@@ -1,0 +1,20 @@
+#+title: MRR Proof Validation
+#+options: toc:nil
+
+The Python package =src/mrr_proof_validation= owns native Gerbil test
+qualification, Context checks, source proof evidence, and Quint receipts.
+Tests and fixtures live in =tests/= and =fixtures/=. The repository
+=justfile= and CI call package modules directly.
+
+Run the focused Python checks from the repository root through the captured
+development environment:
+
+#+begin_src sh
+./.devenv/devenv-profile-exec env PYTHONPATH=proofs/MRRProof/src python3 -m pytest -q proofs/MRRProof/tests
+#+end_src
+
+The package exposes CLI entry points in =pyproject.toml=. The =context-quint=
+and =meta-impact= just recipes check their finite Quint models and required
+counterexamples. Lean proofs run independently. These are bounded model checks,
+not source refinement or deployed behavior evidence.
+The neighboring proof projects state each gate's assumptions and receipts.

@@ -2,6 +2,7 @@ name: CI
 
 on:
   push:
+    branches: [main]
   pull_request:
   workflow_dispatch:
     inputs:
@@ -18,9 +19,59 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.event_name }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
+env:
+  PYTHONPATH: proofs/MRRProof/src
+
 jobs:
+  certified-transformations:
+    name: Certified finite transformations
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: leanprover/lean-action@v1
+        with:
+          lake-package-directory: proofs/MRRProof/AgenticAIContextRust
+          auto-config: false
+          build: false
+          test: false
+          lint: false
+          use-mathlib-cache: false
+      - name: Qualify finite native tables, actual kernel, corpus and publication
+        run: cargo test -p meta-relational-reasoning -p mrr-identity --tests --no-default-features --locked
+      - name: Lint finite facade and executable publication example
+        run: cargo clippy -p meta-relational-reasoning -p mrr-identity --all-targets --no-default-features --locked -- -D warnings
+      - name: Execute durable finite workflow
+        run: cargo run -p meta-relational-reasoning --no-default-features --locked --example finite_transformation -- "$RUNNER_TEMP/finite-result.cbor"
+
+  macos-finite-kernel:
+    name: Pinned finite kernel (macos-latest)
+    runs-on: macos-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: leanprover/lean-action@v1
+        with:
+          lake-package-directory: proofs/MRRProof/AgenticAIContextRust
+          auto-config: false
+          build: false
+          test: false
+          lint: false
+          use-mathlib-cache: false
+      - name: Install macOS linker
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: 1
+          HOMEBREW_NO_INSTALL_CLEANUP: 1
+        run: |
+          brew install lld
+          echo "CARGO_TARGET_AARCH64_APPLE_DARWIN_RUSTFLAGS=-C link-arg=-fuse-ld=$(brew --prefix lld)/bin/ld64.lld" >> "$GITHUB_ENV"
+      - name: Qualify actual finite kernel on a fresh macOS Host
+        run: cargo test -p meta-relational-reasoning --test finite-transformations --no-default-features --locked -- --nocapture
+
   test:
-    name: Native Gerbil and Rust (${{ matrix.os }})
+    name: Scheme and Rust (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 120
     strategy:
@@ -35,22 +86,51 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.95.0
+          components: clippy
+      - uses: leanprover/lean-action@v1
+        with:
+          lake-package-directory: proofs/MRRProof/AgenticAIContextRust
+          auto-config: false
+          build: false
+          test: false
+          lint: false
+          use-mathlib-cache: false
       - uses: astral-sh/setup-uv@v6
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
       - uses: typst-community/setup-typst@v4
 
       - name: Install documentation proof dependencies
         env:
           PUPPETEER_SKIP_DOWNLOAD: "true"
-        run: npm install --global @mermaid-js/mermaid-cli@11.12.0
+        run: npm install --global @mermaid-js/mermaid-cli@11.12.0 @bazel/bazelisk@1.28.1
+
+      - name: Set up immutable Gerbil release
+        uses: tao3k/gerbil-scheme-rust/.github/actions/setup-gerbil@f61643b3a787d005612dc5021b4941612f3e1f68
+        with:
+          release-root: ${{ env.GERBIL_PREFIX }}
+
+      - name: Verify the measured-progress gate rejects an idle child
+        run: |
+          if python3 -m mrr_proof_validation.process_runner --idle 2 --total 10 --label IDLE-CONTROL -- python3 -c 'import time; time.sleep(8)'; then
+            echo 'idle child was admitted' >&2
+            exit 1
+          else
+            status=$?
+            test "$status" -eq 124
+          fi
 
       - name: Install Linux dependencies
         if: runner.os == 'Linux'
         run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential libsqlite3-dev libssl-dev pkg-config zlib1g-dev
+          sudo apt-get install -y libsqlite3-dev libssl-dev pkg-config zlib1g-dev
 
       - name: Install macOS dependencies
         if: runner.os == 'macOS'
@@ -58,57 +138,323 @@ jobs:
           HOMEBREW_NO_AUTO_UPDATE: 1
           HOMEBREW_NO_INSTALL_CLEANUP: 1
         run: |
-          brew install gcc jq openssl pkg-config sqlite zlib
+          brew install coreutils lld openssl pkg-config sqlite zlib
           openssl_prefix="$(brew --prefix openssl@3 2>/dev/null || brew --prefix openssl)"
           macos_major="$(sw_vers -productVersion | cut -d. -f1)"
           echo "PKG_CONFIG_PATH=$openssl_prefix/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}" >> "$GITHUB_ENV"
           echo "MACOSX_DEPLOYMENT_TARGET=$macos_major.0" >> "$GITHUB_ENV"
+          echo "CARGO_TARGET_AARCH64_APPLE_DARWIN_RUSTFLAGS=-C link-arg=-fuse-ld=$(brew --prefix lld)/bin/ld64.lld" >> "$GITHUB_ENV"
 
-      - name: Install immutable Gerbil release
-        shell: bash
-        run: tools/ci/install-gerbil-release.sh "$GERBIL_PREFIX"
-
-      - name: Activate Gerbil build controls
-        shell: bash
-        run: |
-          test -x "$GERBIL_PREFIX/bin/gsc"
-          echo "GERBIL_GSC=$GERBIL_PREFIX/bin/gsc" >> "$GITHUB_ENV"
-          cores="$(getconf _NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.ncpu)"
-          echo "GERBIL_BUILD_CORES=$cores" >> "$GITHUB_ENV"
-          gerbil --version
-          "$GERBIL_PREFIX/bin/gsc" -v
-
-      - name: Restore Gerbil package graph
-        uses: actions/cache@v4
-        with:
-          path: .gerbil
-          key: gxpkg-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('gerbil.pkg', 'tools/ci/install-gerbil-release.sh') }}
+      - name: Prefetch declared native commit objects
+        run: python3 -m mrr_proof_validation.prepare_gerbil_dependencies
 
       - name: Install declared Gerbil dependencies
         run: gerbil deps --install
 
       - name: Build declared Gerbil package
-        run: gerbil build
+        run: python3 -m mrr_proof_validation.process_runner --total 900 --label GERBIL-BUILD -- gerbil build
+
+      - name: Verify test qualification rejects false success
+        run: |
+          uv --project proofs/MRRProof run pytest -q proofs/MRRProof/tests/test_qualification.py proofs/MRRProof/tests/test_process_runner.py
+          gerbil env python3 -m mrr_proof_validation.qualification self-test
 
       - name: Test Gerbil package
-        run: gerbil test
+        run: gerbil env python3 -m mrr_proof_validation.qualification scheme
+
+      - name: Compile Rust workspace tests in the Gerbil package environment
+        env:
+          MRR_NATIVE_PROGRESS: "1"
+        run: python3 -m mrr_proof_validation.process_runner --total 1800 --label RUST-COMPILE -- gerbil env cargo test --workspace --locked --no-run
+
+      - name: Verify pinned kernel discovery in the Gerbil package environment
+        run: gerbil env sh -c 'command -v elan && ELAN_TOOLCHAIN=leanprover/lean4:v4.31.0 elan which lean && elan run leanprover/lean4:v4.31.0 lean --version'
 
       - name: Test Rust workspace in the Gerbil package environment
-        run: gerbil env cargo test --workspace --locked
+        env:
+          MRR_NATIVE_PROGRESS: "1"
+        run: python3 -m mrr_proof_validation.process_runner --total 1800 --label RUST-TEST -- gerbil env cargo test --workspace --locked
+
+      - name: Qualify transport-only POO and Scheme execution
+        run: python3 -m mrr_proof_validation.process_runner --total 1800 --label WORKER-CLIENT -- gerbil env cargo test --locked -p mrr-gerbil --no-default-features --test worker_client -- --nocapture
+
+      - name: Test optional Context feature boundaries
+        run: |
+          gerbil env python3 -m mrr_proof_validation.context_features
+          gerbil env python3 -m mrr_proof_validation.context_qualify matrix
+
+      - name: Qualify complete Query Context workflow and scale
+        run: |
+          python3 -m mrr_proof_validation.process_runner --total 900 --label CONTEXT-BUILD -- gerbil env cargo build -p meta-relational-reasoning --examples --features agentic-ai-context-tokens --locked
+          gerbil env python3 -m mrr_proof_validation.context_qualify workflow
+          gerbil env python3 -m mrr_proof_validation.context_scale --output .ci/context-scale
+
+      - name: Save Context scale receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: context-scale-${{ matrix.os }}-${{ github.event_name }}
+          path: .ci/context-scale/*.json
+          if-no-files-found: ignore
+
+      - name: Lint optional Context features
+        run: python3 -m mrr_proof_validation.process_runner --total 1800 --label CONTEXT-LINT -- gerbil env cargo clippy -p mrr-agentic-ai-context -p meta-relational-reasoning --all-targets --all-features --locked -- -D warnings
+
+      - name: Verify transition parity with Quint
+        env:
+          MRR_QUINT_ORACLE_VERIFY: "1"
+          MRR_QUINT_BIN: ${{ github.workspace }}/proofs/quint/node_modules/.bin/quint
+          QUINT_HOME: ${{ runner.temp }}/mrr-quint-backend
+          OUT_DIR: ${{ runner.temp }}/mrr-quint-output
+        run: |
+          npm ci --prefix proofs/quint
+          test "$(proofs/quint/node_modules/.bin/quint --version)" = 0.33.0
+          mkdir -p "$QUINT_HOME" "$OUT_DIR"
+          proofs/quint/node_modules/.bin/quint typecheck crates/mrr-transition/quint/MrrTransitionOracle.qnt
+          python3 -m mrr_proof_validation.process_runner --total 900 --label TRANSITION-TEST -- gerbil env cargo test -p mrr-transition --locked ten_transition_fixtures_match_quint_status_and_counterexample_length -- --nocapture
 
       - name: Test source-bound property query integration
-        run: gerbil env cargo test -p mrr-property-source --locked
+        run: |
+          python3 -m mrr_proof_validation.process_runner --total 900 --label PROPERTY-BUILD -- gerbil env cargo build -p mrr-gerbil --bin mrr-native-worker --locked
+          python3 -m mrr_proof_validation.process_runner --total 900 --label PROPERTY-TEST -- gerbil env cargo test -p mrr-property-source --features native-inference --locked
+
+      - name: Compile MRR-owned POO Library runtime and verify producer graph
+        run: |
+          gerbil env python3 runtime/tools/check_mrr_dependency_graph.py
+          gerbil env python3 -m unittest discover -s runtime/tools/tests -v
+          python3 -m mrr_proof_validation.process_runner --total 900 --label RUNTIME-COMPILE -- gerbil env cargo test --manifest-path runtime/Cargo.toml --features mrr-context,orgize-source --locked --no-run
+          python3 -m mrr_proof_validation.process_runner --total 900 --label RUNTIME-LINT -- gerbil env cargo clippy --manifest-path runtime/Cargo.toml --features mrr-context,data-publication,orgize-source --tests --locked -- -D warnings
+          if [ "$RUNNER_OS" = macOS ]; then
+            deadline_command=gtimeout
+          else
+            deadline_command=timeout
+          fi
+          gerbil env "$deadline_command" --foreground --signal=TERM --kill-after=1s 5s cargo test --manifest-path runtime/Cargo.toml --features mrr-context,orgize-source --test org_source --locked -- --nocapture
+
+      - name: Prepare MRR runtime against its declared POO Library and Data Backend
+        if: runner.os == 'Linux'
+        run: python3 -m mrr_proof_validation.process_runner --total 3600 --label LIBRARY-PREPARE -- gerbil env bash runtime/tools/qualify-library.sh .gerbil/pkg/github.com/tao3k/poo-flow .ci/library prepare-only
+
+      - name: Qualify MRR runtime against its declared POO Library and Data Backend
+        if: runner.os == 'Linux'
+        run: python3 -m mrr_proof_validation.process_runner --total 900 --label LIBRARY-QUALIFY -- gerbil env bash runtime/tools/qualify-library.sh .gerbil/pkg/github.com/tao3k/poo-flow .ci/library --prepared
+
+      - name: Preserve MRR Library Scheme evidence
+        if: always() && runner.os == 'Linux'
+        uses: actions/upload-artifact@v7
+        with:
+          name: mrr-library-scheme-evidence
+          path: .ci/library/*.ss
+          if-no-files-found: warn
+          retention-days: 7
 
       - name: Lint Rust workspace
-        run: gerbil env cargo clippy --all-targets --locked -- -D warnings
+        run: python3 -m mrr_proof_validation.process_runner --total 1800 --label RUST-LINT -- gerbil env cargo clippy --all-targets --locked -- -D warnings
 
       - name: Lint source-bound property query integration
-        run: gerbil env cargo clippy -p mrr-property-source --all-targets --locked -- -D warnings
+        run: python3 -m mrr_proof_validation.process_runner --total 900 --label PROPERTY-LINT -- gerbil env cargo clippy -p mrr-property-source --all-targets --locked -- -D warnings
 
       - name: Test Python evidence projects
         run: |
           uv --project proofs/MRRProof run pytest -q proofs/MRRProof/tests
           uv --project experiments/mrr-live run pytest -q experiments/mrr-live/tests
+
+  agentic-ai-context-source-proof:
+    name: Agentic AI Context Rust source proofs
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@nightly
+        with:
+          toolchain: nightly-2026-09-17
+          components: rustc-dev,rust-src
+      - uses: leanprover/lean-action@v1
+        with:
+          lake-package-directory: proofs/MRRProof/AgenticAIContextRust
+          auto-config: false
+          build: false
+          test: false
+          lint: false
+          use-mathlib-cache: false
+          use-github-cache: false
+      - name: Reuse immutable Lean dependency artifacts
+        uses: actions/cache@v4
+        with:
+          path: proofs/MRRProof/AgenticAIContextRust/.lake/packages
+          key: mrr-source-lean-deps-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('proofs/MRRProof/AgenticAIContextRust/lean-toolchain', 'proofs/MRRProof/AgenticAIContextRust/lakefile.toml') }}
+      - name: Download pinned official extractor
+        run: |
+          mkdir -p .ci/aeneas
+          curl --fail --location --retry 3 https://github.com/AeneasVerif/aeneas/releases/download/nightly-2026.10.03-557eff8/aeneas-linux-x86_64.tar.gz -o .ci/aeneas.tar.gz
+          echo 'e2ee0933cba4aa51f811ec7a0d1e99d2b345412875b1973dea16399c90c5f01f  .ci/aeneas.tar.gz' | sha256sum --check
+          tar -xzf .ci/aeneas.tar.gz -C .ci/aeneas
+      - name: Regenerate current Rust evidence, identities and driver
+        run: |
+          cargo fetch --locked
+          python3 -m mrr_proof_validation.context_source_proof --toolchain-dir .ci/aeneas --receipt .ci/context-source-proof.json
+          python3 -m mrr_proof_validation.context_source_proof --value-equality --toolchain-dir .ci/aeneas --receipt .ci/value-source-proof.json
+          python3 -m mrr_proof_validation.transformation_source_proof --toolchain-dir .ci/aeneas --receipt .ci/transformation-source-proof.json
+      - name: Reuse source-traced Lean proof artifacts
+        uses: actions/cache@v4
+        with:
+          path: proofs/MRRProof/AgenticAIContextRust/.lake/build
+          key: mrr-source-lean-proofs-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('proofs/MRRProof/AgenticAIContextRust/lean-toolchain', 'proofs/MRRProof/AgenticAIContextRust/lakefile.toml') }}-${{ hashFiles('proofs/MRRProof/AgenticAIContextRust/**/*.lean', 'proofs/MRRProof/AgenticAIContextValue/**/*.lean', 'proofs/MRRProof/AgenticAIContext/**/*.lean', '!proofs/**/.lake/**') }}
+          restore-keys: |
+            mrr-source-lean-proofs-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('proofs/MRRProof/AgenticAIContextRust/lean-toolchain', 'proofs/MRRProof/AgenticAIContextRust/lakefile.toml') }}-
+      - name: Prepare pinned Lean source proof dependencies
+        working-directory: proofs/MRRProof/AgenticAIContextRust
+        env:
+          MATHLIB_NO_CACHE_ON_UPDATE: "1"
+        run: |
+          lake update
+          modules=$(rg --no-filename '^(public )?(meta )?import (Mathlib|Batteries)' .lake/packages/aeneas/backends/lean/Aeneas .lake/packages/aeneas/backends/lean/AeneasMeta NativeFacts.lean -g '*.lean' | sed -E 's/^(public )?(meta )?import ([A-Za-z0-9_.]+).*/\3/' | sort -u)
+          lake exe cache get $modules
+      - name: Prove generated production functions and audit axioms
+        working-directory: proofs/MRRProof/AgenticAIContextRust
+        run: |
+          lake --rehash build
+          lake env lean Axioms.lean
+          lake env lean ../AgenticAIContextValue/Axioms.lean
+      - name: Save current source extraction receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: context-source-proof-${{ github.event_name }}
+          path: |
+            .ci/context-source-proof.json
+            .ci/value-source-proof.json
+            .ci/transformation-source-proof.json
+          if-no-files-found: error
+
+  agentic-ai-context-quint:
+    name: Agentic AI Context Quint models
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install pinned Quint and typecheck models
+        run: |
+          npm ci --prefix proofs/quint
+          test "$(proofs/quint/node_modules/.bin/quint --version)" = 0.33.0
+          proofs/quint/node_modules/.bin/quint typecheck proofs/quint/RevisionLifecycle.qnt
+          proofs/quint/node_modules/.bin/quint typecheck proofs/quint/MetaImpact.qnt
+          proofs/quint/node_modules/.bin/quint typecheck proofs/quint/ContextUse.qnt
+      - name: Check finite safety, liveness and required counterexamples
+        env:
+          MRR_QUINT_BIN: ${{ github.workspace }}/proofs/quint/node_modules/.bin/quint
+          QUINT_HOME: ${{ runner.temp }}/mrr-quint-backend
+          OUT_DIR: ${{ runner.temp }}/mrr-quint-output
+        run: |
+          mkdir -p "$QUINT_HOME" "$OUT_DIR"
+          python3 -m mrr_proof_validation.context_quint --receipt .ci/quint/receipt.json
+          python3 -m mrr_proof_validation.meta_impact_quint --receipt .ci/quint/meta-impact-receipt.json
+          python3 -m mrr_proof_validation.context_use_quint --receipt .ci/quint/context-use-receipt.json
+      - name: Save Quint receipts and checker logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: context-quint-${{ github.event_name }}
+          path: |
+            .ci/quint/*.json
+            .ci/quint/*.log
+          if-no-files-found: error
+
+  agentic-ai-context-proof:
+    name: Agentic AI Context proofs and shared C4 replay
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: leanprover/lean-action@v1
+        with:
+          lake-package-directory: proofs/MRRProof/AgenticAIContext
+          auto-config: false
+          build: false
+          test: false
+          lint: false
+          use-mathlib-cache: false
+      - name: Build kernel proofs
+        working-directory: proofs/MRRProof/AgenticAIContext
+        run: |
+          python3 ../src/mrr_proof_validation/lean_dependency_pin.py .
+          lake build MRR agentic-ai-context-refinement
+      - name: Replay actual C4 and shared Rust fixture
+        working-directory: proofs/MRRProof/AgenticAIContext
+        run: lake env lean --run Checks/Main.lean
+      - name: Build actual Rust Context refinement producer
+        run: cargo build -p meta-relational-reasoning --example context_refinement --no-default-features --features agentic-ai-context-tokens --locked
+      - name: Compare actual Rust algorithms and CBOR hashes with Lean
+        run: python3 -m mrr_proof_validation.context_refinement --receipt .ci/context-refinement.json
+      - name: Save actual Rust refinement receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: context-refinement-${{ github.event_name }}
+          path: .ci/context-refinement.json
+          if-no-files-found: error
+      - name: Audit all Context declarations for axioms
+        working-directory: proofs/MRRProof/AgenticAIContext
+        run: lake env lean Checks/Axioms.lean
+
+  search-composition-proof:
+    name: POO producer and MRR consumer Search proofs
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PYTHONPATH: proofs/MRRProof/src
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: leanprover/lean-action@v1
+        with:
+          lake-package-directory: proofs/MRRProof/SearchComposition
+          auto-config: false
+          build: false
+          test: false
+          lint: false
+          use-mathlib-cache: false
+      - name: Verify immutable producer and run producer/consumer proofs
+        run: |
+          python3 -m mrr_proof_validation.poo_dependency_pin proofs/MRRProof/SearchComposition
+          python3 -m mrr_proof_validation.composition_producer --project proofs/MRRProof/SearchComposition --log .ci/search-quint/poo-producer.log
+          cd proofs/MRRProof/SearchComposition
+          lake update POOFlowCompositionProofs
+          lake build
+          lake env lean --run Checks.lean
+          lake env lean --run ProtocolChecks.lean
+          lake env lean --run ReflectionChecks.lean
+          lake env lean Axioms.lean
+      - name: Exhaust publication states and require ten counterexamples
+        env:
+          MRR_QUINT_BIN: ${{ github.workspace }}/proofs/quint/node_modules/.bin/quint
+          QUINT_HOME: ${{ runner.temp }}/mrr-search-quint-backend
+        run: |
+          npm ci --prefix proofs/quint
+          mkdir -p "$QUINT_HOME"
+          python3 -m mrr_proof_validation.search_composition_quint --receipt .ci/search-quint/receipt.json
+          python3 -m mrr_proof_validation.search_dispatch_quint --receipt .ci/search-quint/dispatch-receipt.v1.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: search-composition-${{ github.event_name }}
+          path: .ci/search-quint/*
+          if-no-files-found: error
 
   deepseek-live:
     if: github.event_name == 'workflow_dispatch' && inputs.run_deepseek_live

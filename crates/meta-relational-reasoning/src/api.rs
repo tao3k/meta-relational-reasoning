@@ -2,16 +2,26 @@
 
 use core::num::NonZeroUsize;
 
-use mrr_ascent::{ClosureConfig, ClosureLimits, evaluate_transitive_closure};
+#[cfg(any(feature = "native-inference", feature = "worker-inference"))]
+use mrr_deduction::evaluate_transitive_closure;
+use mrr_deduction::{ClosureConfig, ClosureLimits};
 
 use crate::{
-    CandidateIdentities, ClosureAdmissionError, MaterializedClosure, admit_closure_candidates,
+    BundleBoundClosure, CandidateIdentities, ClosureAdmissionError,
+    ClosureCandidateComparisonError, ClosureCandidateRow, ClosurePairComparisonError,
+    MaterializedClosure, admit_closure_candidates, compare_closure_candidates,
+    compare_closure_pairs,
 };
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct DeductionPlan(ClosureConfig);
 
 impl DeductionPlan {
+    #[must_use]
+    pub const fn closure_config(self) -> ClosureConfig {
+        self.0
+    }
+
     #[must_use]
     pub const fn transitive_closure(
         source_relation: mrr_identity::RelationId,
@@ -34,6 +44,11 @@ impl DeductionPlan {
 pub struct DeductionLimits(ClosureLimits);
 
 impl DeductionLimits {
+    #[must_use]
+    pub const fn closure_limits(self) -> ClosureLimits {
+        self.0
+    }
+
     #[must_use]
     pub const fn new(
         max_input_facts: NonZeroUsize,
@@ -136,23 +151,56 @@ impl MrrEngine {
         crate::admit_query_result_candidate(query, candidate, limits)
     }
 
+    #[cfg(any(feature = "native-inference", feature = "worker-inference"))]
     pub fn derive(
         &self,
         plan: DeductionPlan,
-        generation: mrr_identity::GenerationId,
+        snapshot: &mrr_revision::SemanticSnapshot,
         limits: DeductionLimits,
-    ) -> Result<mrr_ascent::ClosureReceipt, mrr_ascent::ClosureError> {
-        evaluate_transitive_closure(&self.bundle, plan.0, generation, limits.0)
+    ) -> Result<BundleBoundClosure, mrr_deduction::ClosureError> {
+        for fact in self.bundle.facts() {
+            let actual = fact.context().generation();
+            if actual != snapshot.generation() {
+                return Err(mrr_deduction::ClosureError::BundleGenerationMismatch {
+                    fact: fact.id(),
+                    expected: snapshot.generation(),
+                    actual,
+                });
+            }
+        }
+        evaluate_transitive_closure(&self.bundle, plan.0, snapshot.generation(), limits.0)
+            .map(|receipt| BundleBoundClosure::bind(self.bundle.id(), *snapshot.digest(), receipt))
     }
 
     pub fn materialize(
         &self,
-        receipt: &mrr_ascent::ClosureReceipt,
+        receipt: &BundleBoundClosure,
         from: mrr_identity::GenerationId,
-        to: mrr_identity::GenerationId,
+        snapshot: &mrr_revision::SemanticSnapshot,
         identities: &[CandidateIdentities],
     ) -> Result<MaterializedClosure, ClosureAdmissionError> {
-        admit_closure_candidates(receipt, from, to, identities)
+        admit_closure_candidates(&self.bundle, receipt, from, snapshot, identities)
+    }
+
+    /// Compares physical closure pairs with this engine's complete Ascent
+    /// result before any identity allocation or semantic admission.
+    pub fn compare_closure_pairs(
+        &self,
+        evaluation: &BundleBoundClosure,
+        snapshot: &mrr_revision::SemanticSnapshot,
+        pairs: &[(String, String)],
+    ) -> Result<(), ClosurePairComparisonError> {
+        compare_closure_pairs(&self.bundle, evaluation, snapshot, pairs)
+    }
+
+    /// Compares a physical candidate set with the exact bounded Ascent evidence.
+    pub fn compare_closure_candidates(
+        &self,
+        evaluation: &BundleBoundClosure,
+        snapshot: &mrr_revision::SemanticSnapshot,
+        candidates: &[ClosureCandidateRow],
+    ) -> Result<(), ClosureCandidateComparisonError> {
+        compare_closure_candidates(&self.bundle, evaluation, snapshot, candidates)
     }
 
     pub fn why(

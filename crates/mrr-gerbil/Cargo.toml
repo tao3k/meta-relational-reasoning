@@ -7,6 +7,10 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 
+[features]
+default = ["embedded-runtime"]
+embedded-runtime = []
+
 [dependencies]
 blake3.workspace = true
 gerbil-scheme-sys.workspace = true
@@ -17,7 +21,6 @@ mrr-query.workspace = true
 mrr-relation.workspace = true
 rowan.workspace = true
 sha2.workspace = true
-serde_json.workspace = true
 
 [build-dependencies]
 mrr-gerbil-native-build.workspace = true
@@ -27,9 +30,29 @@ mrr-asp-rust-build-support.workspace = true
 criterion.workspace = true
 
 
+[[bin]]
+name = "mrr-native-worker"
+path = "src/bin/mrr-native-worker.rs"
+required-features = ["embedded-runtime"]
+
 [[bench]]
 name = "grammar_projection_perf"
 harness = false
+required-features = ["embedded-runtime"]
 
 [lints.rust]
 unsafe_code = "deny"
+
+[[test]]
+name = "temporal_runtime"
+path = "tests/integration/temporal_runtime.rs"
+required-features = ["embedded-runtime"]
+
+[[test]]
+name = "native_worker"
+path = "tests/integration/native_worker.rs"
+required-features = ["embedded-runtime"]
+
+[[test]]
+name = "worker_client"
+path = "tests/integration/worker_client.rs"

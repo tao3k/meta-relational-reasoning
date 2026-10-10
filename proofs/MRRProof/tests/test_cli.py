@@ -176,13 +176,13 @@ $ A => B $
 
     def test_current_workspace_and_proof_contract_are_locally_admitted(self) -> None:
         graph = cli.dependency_graph()
-        lean_source = (cli.ROOT / "proofs/MRRProof/BundleAdmission.lean").read_text()
+        lean_source = cli.proof_source()
         obligations = cli.validate_proof_obligations(set(cli.CORE_CRATES), lean_source)
         babel = org_babel.validate_org_babel_contract(cli.ROOT)
         self.assertIn("mrr-bundle", graph)
         ascent_blocks = org_babel.extract_org_babel_blocks(
-            cli.ROOT / "docs/architecture/0003-mrr-ascent-evaluation.org",
-            (cli.ROOT / "docs/architecture/0003-mrr-ascent-evaluation.org").read_text(),
+            cli.ROOT / "docs/architecture/0003-mrr-deduction-evaluation.org",
+            (cli.ROOT / "docs/architecture/0003-mrr-deduction-evaluation.org").read_text(),
         )
         self.assertEqual(
             [block.language for block in ascent_blocks],
@@ -197,10 +197,20 @@ $ A => B $
                 "admitted_fact_ids_are_unique",
                 "admitted_rule_uses_only_admitted_relations",
                 "admitted_search_cause_cannot_follow_its_effect",
+                "affine_compose_apply",
+                "affine_monotone",
+                "authorized_trace_append",
                 "closure_admission_rejects_any_failed_owner",
+                "compose_assoc",
+                "compose_extract_assoc",
+                "compose_forward_assoc",
+                "compose_sound",
+                "decision_compose_equivalent",
+                "effectful_composition_sound",
                 "explicit_search_merge_requires_product_boundary",
                 "filter_for_admission_is_typed",
                 "filter_for_rejection_emits_no_ir",
+                "finiteCheck_sound",
                 "frontend_common_surface_normalizes_across_languages",
                 "frontend_receipt_retains_selected_language",
                 "graph_element_predicate_admission_is_typed",
@@ -208,14 +218,24 @@ $ A => B $
                 "graph_match_path_prefix_admission_is_typed",
                 "graph_match_path_prefix_rejection_emits_no_ir",
                 "identity_domain_separation",
+                "identity_extract",
+                "identity_left",
+                "identity_right",
                 "inserted_fact_has_admitted_schema",
+                "measured_composition_bound",
+                "optimization_compose_optimal",
                 "order_page_admission_is_typed",
                 "order_page_rejection_emits_no_ir",
                 "parallel_search_admission_preserves_product",
+                "partial_compose_none",
+                "partial_compose_some",
+                "partial_transport_sound",
                 "primitive_result_admission_is_typed",
                 "primitive_result_rejection_emits_no_ir",
                 "query_result_candidate_admission_is_exact",
                 "query_result_candidate_rejection_emits_no_receipt",
+                "resource_compose_assoc",
+                "resource_compose_cost",
                 "returned_counterexample_is_valid",
                 "search_factor_influence_extends_only_through_declared_edge",
                 "sequential_search_admission_preserves_endpoints",

@@ -1,0 +1,17 @@
+{
+  "schema": "mrr.agentic-ai-context.materialization-fixture.v1",
+  "old_precedence": ["a", "root"],
+  "leaf_precedence": ["child", "a", "root"],
+  "recomposed_precedence": ["child", "a", "b", "root"],
+  "segments": {"root": [1], "a": [2], "b": [3], "child": [4]},
+  "old_bytes": [1, 2],
+  "leaf_bytes": [1, 2, 4],
+  "recomposed_bytes": [1, 3, 2, 4],
+  "token_revision": {
+    "old": [1, 2, 3, 4],
+    "new": [1, 2, 3, 9],
+    "stable_prefix": [1, 2, 3],
+    "block_tokens": 2,
+    "eligible_full_block_tokens": 2
+  }
+}

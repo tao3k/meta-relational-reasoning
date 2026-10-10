@@ -7,6 +7,12 @@
 
 Accepted foundation.
 
+The production runtime composition is refined by
+[[file:0034-poo-temporal-production-runtime.org][POO Flow Temporal in the MRR Production Runtime]].
+Its Scheme Temporal/ASCENT ownership supersedes this document's earlier
+projection-only Gerbil and Rust ASCENT runtime boundary. The older crate
+graph below describes the existing foundation, not completed migration.
+
 * Decision
 
 This repository is a language-neutral Meta-Relational Reasoning workspace.
@@ -29,6 +35,10 @@ flowchart TD
     relation --> transition
     identity --> bundle[mrr-bundle]
     relation --> bundle
+    identity --> context[mrr-agentic-ai-context]
+    relation --> context
+    revision[mrr-revision] --> context
+    context --> facade
     logic --> bundle
     transition --> bundle
     bundle --> facade[meta-relational-reasoning]
@@ -40,7 +50,7 @@ flowchart TD
     transition --> facade
     facade --> gql[gql-* adapters]
     facade --> cypher[cypher-* adapters]
-    facade --> ascent[mrr-ascent adapter]
+    facade --> ascent[mrr-deduction adapter]
     facade --> gerbil[mrr-gerbil adapter]
 #+end_src
 
@@ -52,6 +62,13 @@ terms, atoms, and conjunctive query shape. =mrr-logic= owns safe rules.
 The =meta-relational-reasoning= crate is the public facade and owns no
 duplicate semantics.
 
+=mrr-agentic-ai-context= owns the Agentic AI Context domain; its facade
+admission consumes existing bundle/catalog authority. The
+[[file:agentic-ai-context.org][Agentic AI Context System authority]] defines selection,
+revision, materialization, and computational reuse premises. =mrr-data= remains
+the downstream generic persistence owner. =lean-poo= supplies pure C4
+mathematics to the independent =MRR.AgenticAIContext= proof project.
+
 * Language adapters
 
 The existing =gql-*= crates remain the GQL concrete-syntax and semantic
@@ -61,7 +78,7 @@ syntax-to-MRR contracts, not aliases, provider shims, or empty placeholders.
 
 * Runtime adapters
 
-=mrr-ascent= and =mrr-gerbil= are downstream adapters. They may execute or
+=mrr-deduction= and =mrr-gerbil= are downstream adapters. They may execute or
 transport validated MRR bundles, but they cannot redefine identity, relation,
 rule, transition, or lineage meaning. Gerbil compilation uses the reviewed
 =gerbil-scheme-rust= integration boundary; Scheme is not evaluated on Rust

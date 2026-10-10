@@ -7,8 +7,13 @@ license.workspace = true
 repository.workspace = true
 description = "Backend-neutral POO Search factor reasoning over Ascent and MRR lineage"
 
+[features]
+default = ["native-inference"]
+native-inference = ["dep:mrr-gerbil", "mrr-gerbil/embedded-runtime"]
+worker-inference = ["dep:mrr-gerbil"]
+
 [dependencies]
-ascent.workspace = true
+mrr-gerbil = { workspace = true, optional = true }
 mrr-identity.workspace = true
 mrr-lineage.workspace = true
 sha2.workspace = true

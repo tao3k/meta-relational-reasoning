@@ -1,0 +1,95 @@
+name = "MRRContextRustProofs"
+version = "0.1.0"
+defaultTargets = ["Evidence", "Driver", "NativeFacts", "Stack", "Expansion", "Forward", "Reverse", "ReverseIndex", "ImpactWrapper", "Coverage", "Rejection", "ForwardWrapper", "GeneralForward", "GeneralWrapper", "DeclaredForward", "RevisionProjection", "BindingEquality", "TransformationTable", "ValueEquality", "ValueLoops", "ValueRecursive", "FactEquality"]
+moreLeanArgs = ["-DautoImplicit=false", "-DwarningAsError=true"]
+
+[[require]]
+name = "aeneas"
+git = "https://github.com/AeneasVerif/aeneas.git"
+subDir = "backends/lean"
+rev = "557eff83ecef5083b98a52a94ca7fae63d6c1dab"
+
+[[lean_lib]]
+name = "Generated"
+
+[[lean_lib]]
+name = "Evidence"
+
+[[lean_lib]]
+name = "MRR"
+srcDir = "../AgenticAIContext"
+roots = ["MRR.AgenticAIContext.Closure", "MRR.AgenticAIContext.Worklist", "MRR.AgenticAIContext.Termination", "MRR.AgenticAIContext.Scheduled"]
+
+[[lean_lib]]
+name = "Driver"
+
+[[lean_lib]]
+name = "NativeFacts"
+
+[[lean_lib]]
+name = "Stack"
+
+[[lean_lib]]
+name = "Expansion"
+
+[[lean_lib]]
+name = "Forward"
+
+[[lean_lib]]
+name = "Reverse"
+
+[[lean_lib]]
+name = "ReverseIndex"
+
+[[lean_lib]]
+name = "ImpactWrapper"
+
+[[lean_lib]]
+name = "Coverage"
+
+[[lean_lib]]
+name = "Rejection"
+
+[[lean_lib]]
+name = "ForwardWrapper"
+
+[[lean_lib]]
+name = "GeneralForward"
+
+[[lean_lib]]
+name = "GeneralWrapper"
+
+[[lean_lib]]
+name = "DeclaredForward"
+
+[[lean_lib]]
+name = "RevisionProjection"
+
+[[lean_lib]]
+name = "BindingEquality"
+
+[[lean_lib]]
+name = "TransformGenerated"
+
+[[lean_lib]]
+name = "TransformationTable"
+
+[[lean_lib]]
+name = "ValueGenerated"
+srcDir = "../AgenticAIContextValue"
+
+[[lean_lib]]
+name = "ValueEquality"
+srcDir = "../AgenticAIContextValue"
+
+[[lean_lib]]
+name = "ValueLoops"
+srcDir = "../AgenticAIContextValue"
+
+[[lean_lib]]
+name = "ValueRecursive"
+srcDir = "../AgenticAIContextValue"
+
+[[lean_lib]]
+name = "FactEquality"
+srcDir = "../AgenticAIContextValue"

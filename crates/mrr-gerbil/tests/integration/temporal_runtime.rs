@@ -1,0 +1,107 @@
+//! Real embedded POO calls interleaved with MRR finite inference on one owner.
+use mrr_gerbil::{
+    NativeWorker, NativeWorkerError, PARSE_ARTIFACT_SCHEMA_V1, TemporalHost,
+    evaluate_finite_relations, parse_gql_artifact,
+};
+fn text(bytes: Vec<u8>) -> String {
+    String::from_utf8(bytes).unwrap()
+}
+// Digests have no escape syntax; this is a test assertion for these fixed fields.
+fn digest_field(value: &str, name: &str) -> String {
+    let marker = format!("(\"{name}\" \"");
+    let value = value
+        .split_once(&marker)
+        .unwrap()
+        .1
+        .split('"')
+        .next()
+        .unwrap();
+    assert!(value.starts_with("sha256:"));
+    assert!(value[7..].bytes().all(|b| b.is_ascii_hexdigit()));
+    value.to_owned()
+}
+fn policy(generation: i32, now: i32) -> String {
+    let instant = |n| {
+        format!(
+            "(object (\"identity\" \"{n}\") (\"domain\" \"txn\") (\"coordinate\" {n}) (\"provenance\" \"host-clock\") (\"modality\" \"observed\"))"
+        )
+    };
+    format!(
+        "(object (\"schema\" \"poo-flow.temporal-policy-refresh-request.v1\") (\"policy\" (object (\"identity\" \"mrr-production-policy\") (\"revision\" \"v1\") (\"start\" {}) (\"end\" {}))) (\"generation\" {generation}) (\"effectiveAt\" {}))",
+        instant(1),
+        instant(4),
+        instant(now)
+    )
+}
+fn current(registration: &str, state: i32, policy: i32, digest: &str) -> String {
+    format!(
+        "(object (\"schema\" \"poo-flow.temporal-proof-current-request.v1\") (\"registration\" \"{registration}\") (\"expectedStateGeneration\" {state}) (\"expectedPolicyGeneration\" {policy}) (\"expectedPolicyDigest\" \"{digest}\") (\"budget\" 128))"
+    )
+}
+#[test]
+fn temporal_and_existing_inference_share_the_production_runtime() {
+    let host = TemporalHost;
+    let source = "MATCH (n) RETURN n\n";
+    let parsed = parse_gql_artifact(source).unwrap();
+    assert_eq!(parsed.schema, PARSE_ARTIFACT_SCHEMA_V1);
+    println!("CASE original GQL parser completed in the production runtime");
+    assert!(matches!(
+        NativeWorker::start(std::path::Path::new(env!(
+            "CARGO_BIN_EXE_mrr-native-worker"
+        ))),
+        Err(NativeWorkerError::ModeConflict)
+    ));
+    println!("CASE embedded mode rejects worker Host mixing before launch");
+    let finite = evaluate_finite_relations(3, vec![(0, 1), (1, 2)], vec![0]).unwrap();
+    assert!(finite.paths.iter().any(|&(a, b, _)| a == 0 && b == 2));
+    println!("CASE existing Scheme finite inference completed");
+    let p = text(host.refresh_policy(policy(1, 1).as_bytes()).unwrap());
+    let pd = digest_field(&p, "policyDigest");
+    let state = include_bytes!("../fixtures/temporal-state-v1.ss");
+    let s = text(host.refresh_proof_state(state).unwrap());
+    let sd = digest_field(&s, "stateDigest");
+    let task =
+        std::str::from_utf8(include_bytes!("../fixtures/temporal-derivation-v1.ss")).unwrap();
+    let request = format!(
+        "(object (\"schema\" \"poo-flow.temporal-proof-register-request.v1\") (\"stateIdentity\" \"mrr-production-source\") (\"expectedStateDigest\" \"{sd}\") (\"policyIdentity\" \"mrr-production-policy\") (\"task\" {task}))"
+    );
+    let registered = text(host.register_proof(request.as_bytes()).unwrap());
+    let registration = digest_field(&registered, "registration");
+    let query = current(&registration, 1, 1, &pd);
+    let checked = text(host.current_proof(query.as_bytes()).unwrap());
+    assert!(checked.contains("(\"status\" \"current\")"));
+    assert!(checked.contains("(\"current\" #t)"));
+    for flag in [
+        "sourceAuthenticated",
+        "selectionAdmitted",
+        "actionAuthorized",
+        "durable",
+    ] {
+        assert!(checked.contains(&format!("(\"{flag}\" #f)")));
+    }
+    println!("CASE original MRR derivation registered and current POO proof checked");
+    assert!(
+        host.current_proof(b"(object (\"schema\" \"forged\"))")
+            .is_err()
+    );
+    assert_eq!(text(host.current_proof(query.as_bytes()).unwrap()), checked);
+    host.refresh_proof_state(include_bytes!("../fixtures/temporal-corrected-state-v1.ss"))
+        .unwrap();
+    host.refresh_policy(policy(2, 2).as_bytes()).unwrap();
+    assert!(host.current_proof(query.as_bytes()).is_err());
+    let corrected = text(
+        host.current_proof(current(&registration, 2, 2, &pd).as_bytes())
+            .unwrap(),
+    );
+    assert!(corrected.contains("(\"status\" \"unsupported\")"));
+    assert!(corrected.contains("(\"current\" #f)"));
+    assert!(host.refresh_proof_state(state).is_err());
+    assert!(host.register_proof(request.as_bytes()).is_err());
+    println!("CASE late correction and stale generations reject on the same owner");
+    assert_eq!(
+        evaluate_finite_relations(3, vec![(0, 1), (1, 2)], vec![0]).unwrap(),
+        finite
+    );
+    assert_eq!(parse_gql_artifact(source).unwrap().schema, parsed.schema);
+    println!("CASE existing parser and inference remain healthy after Temporal rejections");
+}

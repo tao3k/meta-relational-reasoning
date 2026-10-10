@@ -1,0 +1,447 @@
+#+title: POO Flow Temporal in the MRR Production Runtime
+#+startup: overview
+
+* Decision and implementation boundary
+
+MRR is the Rust production runtime for the POO Flow contracts it implements.
+POO Flow owns the public POO objects and functional Temporal semantics. MRR
+executes those semantics through an embedded, ahead-of-time compiled Scheme
+library and supplies typed admission, concurrency and durable runtime effects.
+The Scheme ASCENT library owns finite relational evaluation. Rust ASCENT is
+removed from the target runtime, including Search factor inference.
+
+The inference adapter now composes ASCENT's maintained native POO table
+expression in =scheme/reasoning/finite.ss=. =mrr-deduction= and =mrr-search=
+retain typed admission and independent witness checks; both execute the native
+Scheme candidate on the =mrr-gerbil= owner thread. Rust ASCENT execution and
+the former =mrr-ascent= package are removed. Full Temporal generation, correction,
+recovery and effect publication remain separate production obligations.
+The bounded read-only physical roundtrip qualifies only its exercised path.
+
+This decision supersedes the runtime restrictions in RFC 0001 and RFC 0020
+that confine Gerbil to projection and permit Rust ASCENT as the evaluator.
+The restrictions on frontend parsing and language-neutral core dependencies
+remain applicable. Embedding compiled Scheme evaluation does not permit
+evaluating source text supplied by a caller or model.
+
+* Production composition
+
+#+begin_src mermaid
+flowchart TB
+  application[Library consumer] --> runtime[MRR Rust production runtime]
+  runtime --> contracts[Typed identity generation query lineage admission]
+  runtime --> native[Native Scheme execution boundary]
+  native --> temporal[POO Flow Temporal semantics]
+  temporal --> finite[Scheme ASCENT finite solver]
+  runtime --> data[MRR Data physical query and durable storage]
+  runtime --> effects[Explicit IFC authorization and effect handoff]
+#+end_src
+
+| Concern | Semantic owner | Production execution responsibility |
+|---------+----------------+-------------------------------------|
+| Events, clocks, cuts, uncertainty, trajectories, corrections | POO Flow Temporal | MRR admits and executes the exact Scheme projection |
+| Finite relation closure and bounded temporal solving | Scheme ASCENT | MRR invokes its AOT entry and checks the returned candidate |
+| Fact, relation, generation, query and derivation identities | MRR typed contracts | MRR validates projections and allocates admitted identities |
+| Provenance and derivation support | MRR lineage contracts | MRR admits complete support against the bound generation |
+| Physical data roots, rows and query execution | MRR Data | MRR consumes original physical and query admission receipts |
+| Policy meaning and authorization decisions | POO Flow IFC and authorization owners | MRR enforces the checked decision at the effect boundary |
+| Admission, scheduling and effect coordination | MRR production runtime | Select original typed inputs, run Scheme and enforce authorization |
+| Atomic head/operation commit, durable ACK and recovery | MRR Data Backend/Protocols | Execute the protected conditional transaction and retain original operation identity |
+
+Rust preserves identities and checks receipts; Scheme remains the executable
+owner of the POO algorithms. Reimplementing Temporal or finite inference in
+Rust creates a second semantic engine and does not satisfy this composition.
+MRR Data remains a physical adapter: it does not decide Temporal authority.
+
+* MRR to MRR Data execution boundary
+
+MRR dispatches an admitted, snapshot-bound operation to MRR Data. MRR Data
+owns the physical Backend and storage/transfer Protocol implementations;
+backend choice, credentials, retry and transfer behavior stay behind that
+boundary. MRR requests capabilities and retains semantic authority. It does
+not embed DataFusion, GraphAr or S3 implementations in its Scheme adaptation.
+
+The =meta_relational_reasoning::PropertyQueryBackend= contract dispatches
+through =CatalogBoundQuery::execute_with=. MRR retains backend-owned physical
+evidence alongside its own result admission. The higher MRR
+=BoundPropertySourceQuery= delegates to this port while retaining the original
+parser receipt. MRR Data depends only on the facade's contracts with default
+features disabled; its ordinary Backend build needs neither a parser nor a
+Scheme SDK. The MRR production facade enables =native-inference= by default,
+which composes the Scheme evaluator without a Rust fallback.
+
+MRR Data binds the original query to its immutable root and engine profile,
+verifies restored content and executes through the selected Backend. Its
+physical output is projected through =project_data_query_output= and checked
+by MRR-owned result admission. The existing Scheme result handoff preserves
+those identities for the Temporal consumer. Each implementation remains in
+its owning repository.
+
+Unavailable transport, permission denial, cancellation, corruption and
+confirmed absence retain their distinct protocol meanings. Backend execution
+success alone cannot authorize facts, establish source coverage or commit a
+Temporal effect. New production dispatch must compose these existing contracts
+and propagate their failures rather than create another physical query model.
+
+* One bound operation
+
+A production Temporal request binds the original source identity, admitted
+semantic generation, physical root, relation catalog, query binding, event
+mapping, valid-time and knowledge-time domain identities, selected cut,
+coverage declaration, operation limits, and requested analysis scope.
+These are conceptual contract fields, not a newly implemented public API.
+Public authoring remains POO-native; transport is bounded inert Scheme data.
+
+The runtime resolves a single immutable source snapshot. It verifies fact
+identities and the bijective event mapping before calling Temporal. Logical
+positions, observed knowledge positions and valid-time bounds retain their
+separate domains; acquisition time cannot substitute for any of them.
+
+Physical query results retain their original MRR receipt and row identities.
+Native Temporal and ASCENT receive the admitted snapshot projection. The
+returned finite candidate binds the same source, generation, axes, cut,
+scope, coverage and input identities. MRR independently checks its structure,
+support and binding before attaching admitted facts and lineage. A content
+digest cannot authenticate a source or establish complete coverage.
+
+Historical and hypothetical requests remain labelled with their actual
+snapshot scope. Missing coverage, unknown coordinates, partial execution or
+budget exhaustion cannot become definitive absence or effect authorization.
+
+* Corrections, currentness and publication
+
+An assertion, correction or retraction produces a new admitted generation.
+Its immutable history and explicit supersession/retraction links are retained.
+The runtime invalidates dependent queries, candidates, lineage projections and
+pending publications. Re-query and re-evaluation bind the new generation;
+relabeling an old receipt is invalid even if the output rows happen to match.
+
+Read-only analysis can return an explicitly historical result. A publication
+must compare the expected generation, cut and relevant policy version with
+the current owner state at the commit boundary. That check and the durable
+admission/publication intent must occur in one atomic transition. Checking
+currentness before computation and committing later without a fence is
+insufficient. A concurrent correction or policy revocation blocks the commit.
+
+IFC labels, permitted flow and the exact authorization decision apply to the
+data and effect being published. Finite causal evidence cannot supply them.
+An external effect requires a durable delivery identity and a recoverable
+handoff. A durable outbox can atomically record state and delivery intent;
+exactly-once external delivery additionally requires the destination's
+deduplication/transaction contract. Recovery cannot infer successful delivery
+from a locally committed intent alone.
+
+Recovery verifies stored source roots, generations, bindings and receipts,
+reconstructs admitted state, and distinguishes uncommitted, committed and
+delivered operations. Retries preserve their operation identity. Replays use
+the declared snapshot and clock domains; host wall-clock time is not a replay
+input unless the source contract explicitly admits it.
+
+* Native execution and dependency direction
+
+The existing =mrr-gerbil= runtime uses one Gambit owner thread. Production
+native calls must preserve that affinity and buffer lifetime discipline.
+One process must have one deliberately composed native program closure;
+loading the POO ABI and grammar archive independently is not evidence that
+two Gambit program initializers can safely coexist.
+
+Language-neutral identity, relation, revision, query and lineage crates remain
+independent of Gerbil and ASCENT. A production execution adapter composes
+those contracts with the native library. It must not introduce a cycle by
+making the native bridge depend on the facade that invokes it. Static rule
+declarations are compiled from the Scheme owner; requests contain values,
+not dynamically evaluated programs or subprocess commands.
+
+The Rust replacement removes both =ascent!= execution sites and the Cargo
+=ascent= dependency. Existing =mrr-ascent= receipt/admission contracts must be
+moved to an appropriately named owner or replaced by the admitted native
+contract, with all facade consumers migrated. Keeping that crate as a Legacy
+alias, replacing inference with a Rust BFS evaluator, or deleting its negative
+admission tests does not establish removal. Rust witness reconstruction may
+remain an independent receipt check; it cannot become the production solver.
+
+The native archive and architecture dependency allowlists must name the
+actual Temporal/ASCENT runtime imports. Build tooling and observability build
+modules remain outside the execution closure. Missing native initialization,
+unsupported ABI, malformed values, rejected bindings and unavailable runtime
+are typed failures; none triggers fallback to the deleted evaluator.
+
+* Executable acceptance obligations
+
+Acceptance requires real native calls for closure, Search factor influence
+and Temporal operations, with original typed receipts admitted by MRR. It
+also requires rejection of stale generation/cut, substituted source/root,
+clock-domain mismatch, incomplete coverage, unsupported inference and
+truncated evidence. Rust witness checks preserve deterministic support and
+the existing shortest-distance contract without silently changing semantics.
+
+Production currentness requires an exercised correction between computation
+and commit, a policy revocation at that boundary, and deterministic conflict
+rejection. Recovery requires crash injection before/after durable commit and
+delivery acknowledgement, followed by identity-preserving replay and retry.
+These obligations are separate from a successful read-only query roundtrip.
+
+Benchmarks and qualification receipts belong to ASP's native Scheme owners.
+Cold startup, queueing and steady-state native calls are measured separately.
+Five seconds without genuine progress remains failure; queue wait and native
+initialization are included where the corresponding operation promises that
+deadline. A host timeout alone cannot interrupt or safely reuse an in-flight
+Gambit call: bounded native computation or an explicitly isolated worker
+lifecycle must establish cancellation and subsequent runtime health.
+
+* Native finite inference and dispatch acceptance slice - 2026-10-04
+
+Removed the Rust =ascent= workspace dependency, =mrr-ascent= package and its
+Criterion solver benchmark. =mrr-deduction= retains the original typed closure
+contracts and deterministic MRR witness reconstruction; native Scheme supplies
+the original finite closure and shortest distances. =mrr-search= delegates its
+finite relation/influence evaluation through the same fixed-width ABI.
+The maintained ASCENT POO table expression owns closure and shortest-path
+semantics. Original observation coordinates and request-local node mappings
+remain distinct from MRR fact identities and generations.
+
+The Scheme request eagerly owns input rows before constructing lazy POO slots.
+Native start/stage/solve/read/reset execute as one Gambit owner-thread operation.
+ABI, coordinate, relation-size, duplicate and distance checks fail closed.
+The candidate does not allocate authority or admit lineage. No Rust evaluator
+fallback or JSON semantic request is available.
+
+| Final local check | Result | Evidence boundary |
+|-------------------+--------+-------------------|
+| Scheme finite request tests | 4 passed | Owned inputs, bounded closure/distance, observation order and foreign coordinates |
+| Native Gerbil tests | 31 passed, 1.54s | Includes 3 finite ABI/state/concurrent-request controls |
+| Deduction tests | 14 passed, 0.82s | Existing closure/witness/budget/negative controls on Scheme execution |
+| Search tests | 7 passed, 0.98s | Original factor/observation/lineage contracts |
+| Semantic facade tests | 35 passed, 1.27s | Original admission/identity/query controls |
+| Source query tests | 4 passed, 1.09s | Original parser-owned compile/bind controls |
+| ASP workspace governance | 16 passed, 6.38s | Native ownership and file-backed module contracts |
+| Proof impact/CLI tests | 17 passed, 7.98s | Renamed owner and executable proof selection |
+| Clippy all features | Passed with =-D warnings= | Production inference graph |
+| Clippy facade without default features | Passed with =-D warnings= | Backend contract-only graph, no Scheme dependency |
+
+Every executed test batch retained five-second genuine-output and 45-second
+batch limits. The earlier parallel cold-process attempts and runs competing
+with native compilation failed the unchanged progress gate and remain failed.
+Initial governance checks also rejected inline/glob modules; final owned leaf
+modules pass without suppressions. Final serial success does not close cold
+p95, queue admission, interruptible cancellation or production startup under
+contention. This slice does not establish a new model score, Temporal current
+cut, correction/retraction, IFC publication or durable recovery.
+
+** macOS linker qualification
+
+Exact-head remote CI at =8f389fd0= failed Apple clang/ld with =Bus error: 10=
+while linking the native deduction test, despite serial Cargo build jobs.
+The macOS job now selects the Mach-O LLD shipped with its installed Rust
+toolchain and fails if that executable is absent. It preserves serial jobs,
+the existing tests and all output/batch deadlines; there is no linker retry or
+test fallback. Local Rust/LLD 22.1.2 linked the same native deduction suite,
+and its complete 14 tests passed in 4.94s under the five-second progress and
+45-second total limits in the authorized host environment.
+
+Earlier sandbox invocations of both the original Apple-linked control and the
+LLD-linked executable failed during native initialization. A diagnostic LLD
+run returned =RuntimeUnavailable(4)=; the same Apple-linked control then
+passed on the host in 2.23s. Those environment-specific failed invocations
+remain failures. This comparison does not identify the denied syscall or
+qualify execution inside that sandbox. Local LLD runtime qualification is
+separate from remote exact-head CI, production recovery and latency gates.
+
+At =80c5420=, remote macOS setup failed before tests because the shared-linked
+Rust LLD could not load =@rpath/libLLVM.dylib=. The toolchain installation now
+includes =llvm-tools=, which supplies LLVM's library at the tool-relative
+location. The explicit linker version probe remains mandatory. The locally
+tested LLD had no LLVM dylib dependency, so that result did not qualify the
+remote distribution's packaging. Remote setup and test success remain required.
+
+* Completed native startup boundaries
+
+Remote native Gerbil/Rust jobs now pass on both Linux and macOS at
+=1a9c9b798fbb37c931de5cc8b66cea3248241ca3=, including the required LLD probe.
+That closes the observed remote linker packaging failure, not Temporal G0--G5.
+
+The private native grammar and finite ABI modules now emit opt-in completion
+diagnostics after their bindings and initial owner state have been installed.
+The existing =MRR_NATIVE_PROGRESS= switch controls them. These are actual
+module completion events, never timer output, request results or authority
+claims. Public Scheme grammar and finite APIs retain their functional behavior.
+The owner thread still waits for complete native setup before accepting work.
+
+The local =mrr-gerbil= library regression passes all 31 cases with these modules
+under the unchanged five-second real-output and 45-second batch deadlines.
+This verifies the Scheme solver/parser projections and their existing negative
+controls. It is not a cold-start benchmark, a downstream physical correction
+receipt or a new model score. The original downstream initialization failures
+remain failures until a coherent pinned MRR/Data/POO graph is requalified.
+
+At =17798b21=, Context proof CI could not check out the locked LeanPoo commit
+=cb4623980056fb761f34601181bb7d8485af1dda= after its topic branch was removed.
+Direct Git fetching of that exact SHA succeeds. The two affected CI jobs now
+bootstrap the declared full SHA and check its identity before invoking Lake.
+The original proof pin and source remain unchanged; no proof is skipped and
+the published default branch, whose C4 source differs, is not substituted.
+Local bootstrap qualification verifies the fetched and checked-out commit.
+Remote proof execution on the new CI commit remains a separate required gate.
+
+* Temporal Host production entry
+
+The canonical =scheme/grammar/native-program.ss= now imports
+=scheme/temporal/native.ss=. Its advanced Host projection calls the pinned POO
+Library proof/policy owners using bounded inert Scheme datum v1. =TemporalHost=
+in =mrr-gerbil= uses the existing initializer and owner queue; it does not load
+the standalone POO dynamic-library runtime or initialize another Gambit program.
+The native archive contract requires both the MRR entry and original POO proof
+Host module. The POO dependency is fixed at =4d113752=; Gerbil remains v0.19.
+
+This entry owns no Backend, transport credentials, storage head or Data retry
+loop. MRR Data's =ConditionalContentCommitPort= owns the protected head and
+operation-ledger transaction. MRR supplies its current Temporal/IFC validation;
+that authority must remain valid through persistence by synchronization or
+atomic version comparison. A sampled current proof is not a commit permit.
+
+The public =meta-relational-reasoning= facade exports =TemporalHost= only with
+=native-inference=. Disabling default features preserves the portable contract
+graph used by MRR Data without activating the native SDK dependency.
+
+The real integration gate interleaves original parsing and Scheme finite inference with
+proof registration, current verification, a late correction and rejected stale
+calls on the same owner. Source-provider binding, IFC authorization, protected
+Data publication, crash recovery and lifecycle resource limits remain separate
+gates. Raw logs remain local or CI artifacts.
+
+Local qualification passes the 31 existing library cases and the real Temporal
+integration case under the unchanged five-second output/45-second batch gates.
+Both native and no-default-feature facade checks pass. These are local runtime
+and build receipts; remote exact-head CI remains an independent gate.
+
+* Original source execution retention
+
+=BoundPropertySourceQuery::execute_with= returns
+=AdmittedPropertySourceExecution<E>=. Its private construction retains the
+original parser compilation receipt, bound query, admitted result, result limits
+and backend-owned physical evidence. Dropping the request cannot detach its
+source receipt. Scheme v1 export uses the retained query and limits, rather than
+accepting a replacement query supplied after execution. The lower catalog-only
+dispatch remains the provider-neutral MRR port; physical root interpretation
+continues to belong to Data.
+
+This value is the input evidence for subsequent Temporal source correspondence.
+It grants no source authentication, coverage, clock correspondence, currentness
+or publication authorization. The source Library gate re-admits exported rows,
+rejects substituted query bindings and enforces the byte budget.
+
+For production publication the Host must enroll separately identified source,
+Temporal policy and IFC/action authority versions in the Data profile's protected
+transaction. Fresh validation consumes the retained original source evidence and
+the native current proof; the adapter keeps those authorities synchronized until
+head and operation receipt persistence. Exact replay is a historical lookup and
+does not grant permission to release data under a revoked IFC policy. Unknown
+outcomes recover the original operation identity. MRR must not introduce a
+second storage CAS or treat process-local native registration as a durable ledger.
+
+* Installed package owner closure
+
+The original native CI failed on both platforms because the installed POO
+package omitted =src/ffi/scheme-wire= from its declared public entry closure.
+Source-checkout load paths had masked that packaging defect locally. POO
+=c3367536= declares the four embedded wire/policy/proof/proof-Host owner roots.
+The installed-only import control passes with the POO source path removed.
+MRR now pins that published package fix. The private SDK now has the declared
+Orgize revision and the maintained parser graph API; focused Query dependency
+compilation is exercised separately. A full local POO package build remains
+unqualified; clean platform package CI remains the final packaging gate. No semantic ABI
+version or native initializer is changed by this packaging fix.
+
+* Persistent isolated native owner
+
+=NativeWorker= launches an explicitly selected absolute =mrr-native-worker=
+executable. The Host process irrevocably chooses worker or embedded mode before
+native initialization; worker mode refuses embedded calls, and an already embedded process refuses
+worker Host mode. =configure_native_worker= routes the maintained Source
+compiler, Scheme finite inference/Search and =TemporalHost= through one
+serialized process profile. Concurrent calls fail with =Busy=; terminal shutdown
+retains the selected profile and subsequent calls cannot fall back to embedded
+execution. Direct grammar metadata inspection remains an embedded-only advanced
+API and is outside this configured consumer path. The child contains
+the canonical compiled Scheme program and one native owner thread. A private
+bounded channel serializes calls; inert =mrr.native-worker.request.v1= and
+=response.v1= frames retain request identity and native error codes. Payloads
+are limited to 1 MiB and frames to 2 MiB plus 256 bytes. No evaluator, restart,
+model dispatcher or JSON transport participates.
+
+The parent includes enqueue, startup, write and read in a five-second genuine
+native progress/45-second total operation deadline. Only named native execution
+boundaries reset the idle clock. Transport failure, malformed or mismatched
+response, initialization failure and timeout close and reap the child. Native
+semantic rejection retains the session. Explicit cancellation is terminal;
+graceful EOF requires successful child exit. A new worker has a new registry
+and cannot reuse prior proof registrations. Gambit's standard descriptor
+nonblocking changes are handled inside the child without modifying Host flags.
+
+Local gates exercise persistent policy/state/proof calls, late correction,
+stale generation rejection, refusal of embedded initialization in worker mode,
+original Host child exit codes 0/7/23, mismatched responses, graceful EOF,
+terminal cancellation and rejection of old registrations after restart. The
+34 Library cases and transport bounds/escape controls pass. Parser descriptor
+metadata uses bounded inert Scheme v1 objects. Original GPA1 bytes remain intact
+inside the worker envelope: the parent repeats descriptor, event and source
+digest admission. Finite rows undergo the original candidate admission before
+Search performs its lineage/witness checks. Real GQL/Cypher parsing, finite
+inference, forged child row rejection and a configured Source/Search/Temporal
+consumer are exercised; no
+Rust evaluator or legacy transport fallback is introduced. Deadline branches
+and whole-process memory/resource exhaustion still need fault qualification;
+these local cases do not establish provider authentication or atomic effects.
+
+This composition pins POO =203b5858= and its maintained Parser revision.
+Orgize =cbe3750c= pins the same Parser =4a27d980=, closing the conflicting
+Gerbil package tags encountered in the cold native CI installation.
+The TLA interface imports the maintained Parser grammar and qualification
+modules; its nine original syntax/Temporal projection cases also pass the
+native five-second/45-second gate.
+The local Library gates pass 34 native contracts, 3 isolated worker controls,
+6 original Source cases, 1 embedded composition and 1 configured consumer
+composition; POO passes 24 original Query/Orgize/Evidence cases through its
+heap-fenced native gxtest entry. Native and Bazel Parser revisions are synchronized, and 12 dependency/license
+automation controls plus the read-only Bazel lock gate pass. No raw runtime log
+is a Git artifact. The
+interpreted POO =just test-file= startup remains a five-second idle failure on
+this host; the compiled entry does not relax that gate. These are Library
+receipts, not a new real-model or Data transaction qualification.
+
+At the earlier =519d0ea= qualification head, the TLC launch specified a 32 MiB initial heap, 1 GiB maximum heap and
+64 MiB direct-memory ceiling rather than inheriting host-sized JVM defaults.
+Eight existing lifecycle scenarios and both required mutation counterexamples
+pass the original five-second/45-second watchdog locally. Exact-head CI on =519d0ea= also passes the TLA/Lean conformance and shared
+C4 replay jobs. New worker changes require their own exact-head CI.
+
+At that earlier qualification head, cold JVM startup also used one active processor, matching the single TLC
+worker. Completed JVM class initialization is observable through the VM's
+own trace; no timer heartbeat changes the five-second progress deadline.
+With those options, the ten lifecycle cases and ten MetaImpact cases passed
+locally at that head, including required counterexamples, and Lean checked 166 actual TLC
+states. The local JVM is OpenJDK 25; Java 17 CI passes on =8c02320=; each newer head remains an independent gate.
+The current MRR lifecycle and Meta Impact checks use the [[file:../../proofs/quint/README.org][Quint proof gate]];
+the TLA/TLC receipts above describe only those earlier qualification heads.
+Current Rust/Value source extraction freshness passes with pinned Aeneas/Charon.
+The control scope refresh changes source line metadata only. The independent
+Value scope now extracts Fact/element and core Option equality plus the actual
+revision element-change predicate, and passes its Lean build and 53-declaration axiom
+audit, including universal total and exact production =Value::eq= for nonempty
+nested lists and ordered records. Its generated nested recursor discharges all
+child comparison premises. Actual context/Fact/element equality and the option
+change predicate are also proved. Exact changed construction
+and complete revision assembly remain separate source-proof obligations.
+
+Library Hosts select the executable explicitly before Source/Search/Temporal
+calls:
+
+#+begin_src rust
+configure_native_worker(std::path::Path::new("/absolute/path/mrr-native-worker"))?;
+// Existing Source compiler, Search and TemporalHost APIs use the selected owner.
+shutdown_native_worker()?; // terminal: this process cannot switch to embedded mode
+#+end_src
+
+MRR retains source/Temporal/IFC authority. Data Backend/Protocols still owns
+protected atomic publication, operation ledger, ACK and recovery. Worker
+currentness cannot bypass that transaction or become a durable receipt.
