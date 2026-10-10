@@ -46,7 +46,11 @@ pub enum PooSearchPlan {
     },
 }
 impl PooSearchPlan {
-    fn wire(&self, depth: usize, count: &mut usize) -> Result<Value, TemporalRuntimeError> {
+    pub(crate) fn wire(
+        &self,
+        depth: usize,
+        count: &mut usize,
+    ) -> Result<Value, TemporalRuntimeError> {
         *count += 1;
         if depth > 24 || *count > 256 {
             return Err(TemporalRuntimeError::InvalidInput);
@@ -130,8 +134,16 @@ pub fn project_poo_search_strategy(
     ])
     .encode();
     let bytes = TemporalHost.compile_search_projection(request.as_bytes())?;
+    decode_projection(name, generation, &bytes)
+}
+
+pub(crate) fn decode_projection(
+    name: &str,
+    generation: &str,
+    bytes: &[u8],
+) -> Result<PooSearchGraph, TemporalRuntimeError> {
     let invalid = || TemporalRuntimeError::InvalidInput;
-    let value = datum::decode(&bytes).ok_or_else(invalid)?;
+    let value = datum::decode(bytes).ok_or_else(invalid)?;
     let rows = value.as_array().ok_or_else(invalid)?;
     if !matches!(rows.len(), 7 | 8)
         || rows[0].as_str() != Some("mrr.poo.search.projection.v1")

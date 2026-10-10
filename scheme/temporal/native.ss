@@ -3,6 +3,7 @@
 ;;; SPDX-License-Identifier: Apache-2.0
 ;;; Embedded owner projection; uses MRR's existing Gambit initializer and thread.
 (import (only-in ../search/projection mrr-search-compile)
+        (only-in ../search/engine mrr-search-engine-call)
         (only-in :poo-flow/src/ffi/scheme-wire scheme-wire-read scheme-wire-write)
         (only-in :poo-flow/src/ffi/temporal-proof temporal-derivation-admit)
         (only-in :poo-flow/src/ffi/temporal-policy temporal-policy-refresh)
@@ -18,13 +19,14 @@
       (let* ((request (scheme-wire-read payload))
              (value (case operation
                       ((5) (mrr-search-compile payload))
+                      ((6) (mrr-search-engine-call payload))
                       ((0) (temporal-policy-refresh request))
                       ((1) (temporal-proof-state-refresh request))
                       ((2) (temporal-proof-register request))
                       ((3) (temporal-derivation-admit request))
                       ((4) (temporal-proof-current request))
                       (else (error "unsupported Temporal operation"))))
-             (bytes (string->utf8 (scheme-wire-write value))))
+             (bytes (if (= operation 6) value (string->utf8 (scheme-wire-write value)))))
         (unless (<= (u8vector-length bytes) 1048576) (error "Temporal output bound"))
         (set! result-bytes bytes) 0))))
 (def (size) (if result-bytes (u8vector-length result-bytes) -1))

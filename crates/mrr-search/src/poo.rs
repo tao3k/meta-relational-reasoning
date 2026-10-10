@@ -14,7 +14,7 @@ pub struct PooSearchProjection {
     role_evidence: Option<mrr_gerbil::PooRoleEvidence>,
     factors: Vec<SearchFactor>,
     edges: Vec<SearchFactorEdge>,
-    names: BTreeMap<String, SearchFactor>,
+    pub(crate) names: BTreeMap<String, SearchFactor>,
     inputs: BTreeMap<String, SearchFactor>,
     dag_receipt: String,
     paths: Vec<(QueryOperatorId, QueryOperatorId, usize)>,
@@ -69,6 +69,18 @@ pub fn compile_poo_search_plan(
 ) -> Result<PooSearchProjection, String> {
     let projected = mrr_gerbil::project_poo_search_strategy(name, &generation.to_string(), plan)
         .map_err(|e| e.to_string())?;
+    projection_from_graph(name, generation, projected)
+}
+
+#[cfg(any(feature = "native-inference", feature = "worker-inference"))]
+pub(crate) fn projection_from_graph(
+    name: &str,
+    generation: GenerationId,
+    projected: mrr_gerbil::PooSearchGraph,
+) -> Result<PooSearchProjection, String> {
+    if projected.generation != generation.to_string() || projected.strategy_name != name {
+        return Err("foreign POO controller projection".into());
+    }
     let prefix = format!("mrr.search.factor.v1:{name}:");
     let mut names = BTreeMap::new();
     let mut canonical = BTreeMap::new();

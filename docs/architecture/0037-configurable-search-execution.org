@@ -25,9 +25,9 @@ ASP scenario configuration and query
 #+end_example
 
 POO Flow's =docs/10-19-design/search-engine-temporal-design.org= specifies the
-proposed engine configuration, logical state, execution request and returned
-observation contracts. Existing Search declarations and bounded MRR root
-dispatch are foundations, not a completed dependent engine. A ready request
+engine configuration, logical state, execution request and returned
+observation contracts. MRR's retained Scheme controller now connects these
+readiness decisions to bounded Rust dispatch. A ready request
 must retain the original configuration, source cut, input observations and a
 unique attempt identity; stage/generation names alone cannot admit a retry.
 MRR returns admitted observations to Scheme for logical applicability and
@@ -57,8 +57,10 @@ Turso and physical binding contracts. ASP already inherits the Data Turso
 facade, but still directly executes resident regex and Tantivy retrieval before
 submitting the resulting sets to Data composition.
 
-The qualified chain includes plan compilation, candidate aggregation/inference
-and bounded acquisition-root dispatch through one restored Data Query adapter.
+The existing Data adapter qualifies plan compilation, candidate aggregation/
+inference and bounded acquisition-root dispatch through one restored Query port.
+MRR additionally implements Scheme-controlled dependent-stage dispatch; its
+consumer integration requires a separate Data and ASP qualification.
 ASP resident retrieval still executes through its own existing lifecycle. Public
 ASP queries passing does not qualify dependent-stage scheduling, whole-runtime
 cancellation or backend substitution. The actual Rust inference bridge and Data
@@ -221,11 +223,15 @@ Retain negative and unsupported capability controls. Compare actual request and
 resource receipts before making performance claims; FFI or Rust alone establishes
 no speedup. No additional modality adapter is required in this phase.
 
-* First physical dispatch qualification
+* Retained Scheme control and physical dispatch
 
-=SearchDispatch= now admits only acquisition roots from the original immutable
-POO projection. It does not schedule dependent stages or infer a new logical
-order. Each lease binds its original factor and generation. A shared monotonic
+=SearchDispatch::new= preserves the acquisition-root gate. The
+=SearchDispatch::from_plan= constructor retains one Scheme controller session
+and projects the same original POO strategy into Rust factor identities.
+Frontier, issue, completion and selective revision invoke that retained owner;
+Rust does not reconstruct readiness from the projected edges. Each lease keeps
+the exact session, generation, configuration, source cut, revision and attempt
+issued by Scheme. A shared monotonic
 retirement state rejects new leases and late result admission; a separate
 instance cannot reactivate old leases even with the same generation identity.
 
@@ -240,9 +246,11 @@ an existing execution port and retains its original result transport.
 Rust controls cover independent reverse completion, capacity exhaustion, every
 resource dimension, foreign requests, unsupported prerequisites, dropped leases,
 retirement and late results. A finite transition model qualifies the lease
-lifecycle separately from the retained publication model. This is the first
-bounded root-dispatch mechanism; dependent continuation, configurable capability
-admission and whole-runtime cancellation remain separate gates.
+lifecycle separately from the retained publication model. Dependent controller
+controls additionally cover chain readiness, reverse fan-in completion, selective
+invalidation, retries, stale completion/cancellation and foreign or duplicate
+session requests. Configurable capability admission, physical observation
+transport and whole-runtime cancellation remain separate gates.
 
 * Synchronized producer proof increment
 
@@ -251,23 +259,63 @@ attempt kernel, matching Lean admission theorems and a producer Quint model.
 The producer gate also executes the LeanPoo structural invalidation certificate
 controls before MRR consumer proofs. Actual Scheme controls and Quint omission
 counterexamples remain producer-owned. MRR does not duplicate those models.
-This proof pin does not migrate the active runtime or implement dependent
-continuation. Full engine readiness, Scheme stage-graph correspondence and
-physical source/cancellation qualification remain separate gates.
+The active runtime now uses the same immutable POO revision as the proof package.
+Scheme stage-graph correspondence and physical source/cancellation qualification
+remain separate gates.
 
 The next producer increment adds pure predecessor-readiness admission. Exact
 current predecessor completions are required within the downstream generation
 and configuration. MRR runs the producer fan-in, stale-revision and scope controls
-from the pinned source before its own consumer checks. This dependency update
-does not change the Scheme runtime pin or introduce a Rust DAG scheduler. The
-DAG owner still must derive the complete prerequisite set and update expected
-identities after invalidation; full automatic DAG scheduling remains open.
+from the pinned source before its own consumer checks. The retained Scheme DAG
+owner derives prerequisites and updates expected identities after invalidation;
+MRR transports its decisions without introducing a Rust DAG scheduler.
 
 The producer now has a pure DAG controller that derives prerequisites from its
 Search composition objects, computes the frontier, admits exact completions and
 invalidates changed stages plus structural descendants. Independent branches
 retain their original state. MRR qualifies the new DAG controls at the immutable
-proof pin; physical dependent dispatch and the active Scheme runtime pin remain
-separate integration gates. The Rust mediator must consume Scheme decisions,
-not reconstruct another readiness scheduler. Source-level graph refinement,
-backend cancellation and negative-evidence dependencies remain unqualified.
+proof pin and consumes its decisions through the retained controller bridge.
+Source-level graph refinement, backend cancellation and negative-evidence
+dependencies remain unqualified.
+
+* Cancellation and transport failure
+
+Dropping a controlled physical lease cancels only its exact active Scheme
+attempt. A matching cancellation revises that stage and its descendants;
+cancellation from an older attempt is a no-op and cannot erase a newer request.
+Rust releases the physical reservation and retains charged input. Revision does
+not imply that an already running backend has stopped.
+
+The Scheme bridge checks bounded replies before committing transitions. A
+bounded owner validation rejection leaves dispatch live. A transport failure
+with an ambiguous acknowledgement retires Rust dispatch so a possibly committed
+transition cannot be retried as if it never happened. Failed startup releases
+its unique session nonce on a best-effort basis. Sessions are process-local and
+bounded to 64; owner restart requires a new controller.
+
+MRR's =SearchCancellation.qnt= checks exact-attempt cancellation and includes a
+negative control that incorrectly erases a newer attempt. Lean's dispatch
+consumer model reuses POO =SearchAttempt= to prove stale cancellation is a no-op
+and matching cancellation fences the previous request. These models qualify
+consumer protocol laws; they do not prove Rust or Scheme source refinement or
+authenticate a configuration string.
+
+* Local qualification boundary
+
+The retained-controller increment passes the full =mrr-search= unit suite:
+22 actual Rust/Scheme tests, including seven controller controls. The final
+Scheme bridge also passes direct readiness, pre-commit rejection, stale
+cancellation and continuation controls. Lean builds the cancellation theorems
+and passes the source axiom audit. Quint exhausts both consumer models and
+finds the three intended budget, retirement and cancellation counterexamples.
+The existing transport-only worker integration also passes retained session,
+owner rejection, revision and stale cancellation controls with actual V1 IPC.
+Both Rust owners pass =clippy --all-targets -D warnings= with worker inference;
+this checks the shared controller code without rebuilding the embedded archive.
+
+The macOS qualification uses the installed SDK's direct GSC. An old local
+launcher duplicated Gambit runtime options and caused compiler flags to be
+ignored. The SDK's recorded OpenSSL 3.6.4 link directory has been removed by
+Homebrew; local linking uses the installed OpenSSL library directory. Neither
+adjustment changes the search implementation or Cargo target directory.
+Exact-head CI and downstream Data/ASP execution qualification remain separate.

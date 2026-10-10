@@ -48,3 +48,6 @@ mod tests;
 pub use worker_profile::{WorkerFailure, configure_native_worker, shutdown_native_worker};
 
 pub use native::reserve_native_worker_host;
+
+mod search_controller;
+pub use search_controller::{PooSearchController, PooSearchRequest};

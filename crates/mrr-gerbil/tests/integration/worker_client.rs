@@ -1,9 +1,9 @@
 //! Same typed Scheme services without linking the producer program into the host.
 #![cfg(not(feature = "embedded-runtime"))]
 use mrr_gerbil::{
-    FiniteInferenceError, PooSearchPlan, PooSearchRole, TemporalHost, TemporalRuntimeError,
-    configure_native_worker, evaluate_finite_relations, project_poo_search_strategy,
-    shutdown_native_worker,
+    FiniteInferenceError, PooSearchController, PooSearchPlan, PooSearchRole, TemporalHost,
+    TemporalRuntimeError, configure_native_worker, evaluate_finite_relations,
+    project_poo_search_strategy, shutdown_native_worker,
 };
 
 #[test]
@@ -41,6 +41,27 @@ fn transport_only_host_executes_existing_poo_owner_and_finite_solver() {
     assert_eq!(graph.factors.len(), 1);
     assert!(!graph.dag_receipt.is_empty());
     println!("CASE real POO projection across existing V1 transport");
+    {
+        let controller =
+            PooSearchController::new("worker-controller", &"a".repeat(64), "config", "cut", &plan)
+                .unwrap();
+        let old = controller.issue("source").unwrap();
+        assert!(controller.frontier().unwrap().is_empty());
+        assert_eq!(
+            controller.issue("source").unwrap_err(),
+            TemporalRuntimeError::NativeRejected(4)
+        );
+        controller.revise(&["source".into()], "cut2").unwrap();
+        let fresh = controller.issue("source").unwrap();
+        assert_eq!(
+            controller.complete(&old).unwrap_err(),
+            TemporalRuntimeError::NativeRejected(4)
+        );
+        assert!(controller.cancel(&old).unwrap().is_empty());
+        controller.complete(&fresh).unwrap();
+        assert!(controller.frontier().unwrap().is_empty());
+    }
+    println!("CASE retained POO controller and stale-attempt isolation over V1 worker transport");
     let result = evaluate_finite_relations(3, vec![(0, 1), (1, 2)], vec![0]).unwrap();
     assert!(result.paths.contains(&(0, 2, 2)));
     assert_eq!(

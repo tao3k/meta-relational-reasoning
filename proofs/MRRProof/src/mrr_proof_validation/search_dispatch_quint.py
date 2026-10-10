@@ -27,13 +27,18 @@ def main() -> None:
         shutil.copy2(source, work / source.name)
         config = work / 'tlc-config.json'
         config.write_text('{"workers":"1","maxHeap":"-Xmx1G"}\n')
-        for bug, control in [('none', None), ('ignoreBudget', '_input = 3'), ('admitLate', '_late = TRUE')]:
+        cases = [("SearchDispatch", "none", None), ("SearchDispatch", "ignoreBudget", "_input = 3"),
+                 ("SearchDispatch", "admitLate", "_late = TRUE"),
+                 ("SearchCancellation", "none", None), ("SearchCancellation", "cancelAny", "_lostNew = TRUE")]
+        cancellation = ROOT / "proofs/quint/SearchCancellation.qnt"
+        shutil.copy2(cancellation, work / cancellation.name)
+        for model, bug, control in cases:
             case = work / 'Case.qnt'
-            case.write_text(f'module Case {{ import SearchDispatch(BUG="{bug}").* from "./SearchDispatch" }}\n')
+            case.write_text(f'module Case {{ import {model}(BUG="{bug}").* from "./{model}" }}\n')
             result = run([quint, 'verify', case.name, '--main', 'Case', '--backend', 'tlc',
                           '--apalache-version', '0.62.1', '--server-endpoint', '127.0.0.1:8866',
                           '--invariant', 'safety', '--tlc-config', str(config), '--verbosity', '3'],
-                         cwd=work, log=receipt.parent / f'dispatch-{bug}.log', label='DISPATCH-QUINT')
+                         cwd=work, log=receipt.parent / f'{model}-{bug}.log', label='DISPATCH-QUINT')
             output = result.output.decode()
             generated, distinct, remaining = checker_counts(output)
             if control is None:
@@ -41,10 +46,11 @@ def main() -> None:
                     raise SystemExit('dispatch positive finite exhaustion failed')
             elif result.status == 0 or 'Invariant' not in output or control not in output:
                 raise SystemExit(f'dispatch negative control missing: {bug}')
-            checks.append({'bug': bug, 'exit': result.status, 'generated': generated,
+            checks.append({'model': model, 'bug': bug, 'exit': result.status, 'generated': generated,
                            'distinct': distinct, 'remaining': remaining, 'logSha256': sha256(result.output)})
-            print(f'DISPATCH-QUINT-OK bug={bug} states={distinct} exit={result.status}', flush=True)
+            print(f'DISPATCH-QUINT-OK model={model} bug={bug} states={distinct} exit={result.status}', flush=True)
     receipt.write_text(json.dumps({'version': 1, 'modelSha256': sha256(source.read_bytes()),
+        'cancellationModelSha256': sha256(cancellation.read_bytes()),
         'scope': 'finite unit reservations; not whole Rust implementation refinement', 'checks': checks}, indent=2) + '\n')
 
 

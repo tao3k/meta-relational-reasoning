@@ -37,6 +37,9 @@ pub fn run_native_worker() -> io::Result<()> {
             8 => host
                 .compile_search_projection(&payload)
                 .map_err(NativeWorkerError::Native),
+            9 => host
+                .search_engine(&payload)
+                .map_err(NativeWorkerError::Native),
             _ => {
                 return Err(io::Error::new(
                     io::ErrorKind::InvalidData,

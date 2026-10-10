@@ -63,6 +63,9 @@ impl TemporalHost {
     ) -> Result<Vec<u8>, TemporalRuntimeError> {
         self.invoke_routed(5, 8, payload)
     }
+    pub(crate) fn search_engine(self, payload: &[u8]) -> Result<Vec<u8>, TemporalRuntimeError> {
+        self.invoke_routed(6, 9, payload)
+    }
     /// Refresh the process-local policy generation through its Scheme owner.
     pub fn refresh_policy(self, payload: &[u8]) -> Result<Vec<u8>, TemporalRuntimeError> {
         self.invoke(0, payload)

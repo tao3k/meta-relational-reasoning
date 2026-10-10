@@ -20,7 +20,7 @@
         mrr-search-projection?
         mrr-search-factor-observation
         mrr-search-evaluate
-        mrr-search-compile)
+        mrr-search-compile mrr-search-build-strategy mrr-search-compile-strategy)
 
 (def (mrr-search-projection? value)
   (and (object? value)
@@ -250,7 +250,7 @@
       (list "mrr.poo.search.roles.v1" rows roots orders))))
 
 ;;; Closed inert transport on the existing host bridge, not a public POO DSL.
-(def (mrr-search-compile payload)
+(def (mrr-search-build-strategy request)
   (def (name text)
     (unless (and (string? text) (<= (string-length text) 128)
                  (mrr-stable-search-name? (string->symbol text)))
@@ -292,16 +292,21 @@
                        (list-ref row 5) (role (list-ref row 4)))))
           (poo-flow-search-merge id parallel stage)))
        (else (error "invalid Search plan constructor")))))
-  (let (request (scheme-wire-read payload))
-    (unless (and (list? request) (= (length request) 3))
-      (error "invalid Search plan request"))
-    (let* ((strategy (poo-flow-search-strategy (name (car request))
-                                              (node (caddr request) 0) '()))
-           (projection (mrr-search-project strategy (cadr request)))
-           (answer (mrr-search-evaluate projection (cadr request) '()))
-           (dag (call-with-output-string
-                 (lambda (port) (write (.ref projection 'dag-receipt) port)))))
-      (list "mrr.poo.search.projection.v1" (car request)
-            (.ref projection 'generation-canonical-input)
-            (.ref projection 'factor-rows) (.ref projection 'factor-edges) dag
-            (.ref answer 'paths) (mrr-search-role-evidence strategy)))))
+  (unless (and (list? request) (= (length request) 3))
+    (error "invalid Search plan request"))
+  (poo-flow-search-strategy (name (car request)) (node (caddr request) 0) '()))
+
+(def (mrr-search-compile payload)
+  (let* ((request (scheme-wire-read payload))
+         (strategy (mrr-search-build-strategy request)))
+    (mrr-search-compile-strategy strategy (cadr request))))
+
+(def (mrr-search-compile-strategy strategy generation)
+  (let* ((projection (mrr-search-project strategy generation))
+         (answer (mrr-search-evaluate projection generation '()))
+         (dag (call-with-output-string
+               (lambda (port) (write (.ref projection 'dag-receipt) port)))))
+    (list "mrr.poo.search.projection.v1" (symbol->string (.ref strategy 'name))
+          (.ref projection 'generation-canonical-input)
+          (.ref projection 'factor-rows) (.ref projection 'factor-edges) dag
+          (.ref answer 'paths) (mrr-search-role-evidence strategy))))

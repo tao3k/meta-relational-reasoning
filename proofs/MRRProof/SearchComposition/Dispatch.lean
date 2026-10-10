@@ -1,4 +1,5 @@
 import Lean
+import SearchAttempt
 
 namespace MRR.SearchDispatch
 structure State where
@@ -33,6 +34,32 @@ theorem retirement_sticky {cap : Nat} {a b : State}
 theorem retired_no_new_output {cap : Nat} {a b : State}
     (retired : a.retired = true) (step : Step cap a b) : b.output = a.output := by
   cases step <;> simp_all
+
+-- Scheme transport admits cancellation only for the currently active identity.
+-- Its retained owner then delegates to the producer revision transition.
+def cancelAttempt (state : POO.Flow.SearchAttempt.State)
+    (request : POO.Flow.SearchAttempt.Request) : Option POO.Flow.SearchAttempt.State :=
+  if POO.Flow.SearchAttempt.Admits state request then
+    POO.Flow.SearchAttempt.revise state state.scope.sourceCut
+  else some state
+
+theorem stale_cancel_noop (state : POO.Flow.SearchAttempt.State)
+    (request : POO.Flow.SearchAttempt.Request)
+    (stale : ¬ POO.Flow.SearchAttempt.Admits state request) :
+    cancelAttempt state request = some state := by
+  simp [cancelAttempt, stale]
+
+theorem cancelled_attempt_cannot_settle
+    {state next : POO.Flow.SearchAttempt.State} {request : POO.Flow.SearchAttempt.Request}
+    (current : POO.Flow.SearchAttempt.Admits state request)
+    (cancelled : cancelAttempt state request = some next) :
+    POO.Flow.SearchAttempt.settle next request = none := by
+  have revised : POO.Flow.SearchAttempt.revise state state.scope.sourceCut = some next := by
+    unfold cancelAttempt at cancelled
+    split at cancelled
+    · exact cancelled
+    · contradiction
+  exact POO.Flow.SearchAttempt.revision_fences_old_attempt revised
 
 end MRR.SearchDispatch
 #print axioms MRR.SearchDispatch.step_preserves_bound
