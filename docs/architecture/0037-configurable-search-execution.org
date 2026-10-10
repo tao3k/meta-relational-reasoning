@@ -120,7 +120,7 @@ The generic certificate and typed-composition definitions plus their execution
 checks have moved to POO Flow =proofs/Composition=. MRR consumes the package
 through an immutable Git dependency and runs both producer and consumer gates.
 The MRR publication Quint model remains here because it models consumer state.
-The proof dependency is published at =060198f2fec89a683cf539a900f0e1b0e623fb6a=
+The proof dependency is published at =2979253a37fd5f5285bb192934782f3ad626048f=
 ([[https://github.com/tao3k/poo-flow/pull/34][POO PR 34]]). Empty-cache materialization and producer/consumer proof gates pass.
 Delivery to the existing open PR and downstream exact-head CI remain separate qualification gates.
 
@@ -243,3 +243,14 @@ retirement and late results. A finite transition model qualifies the lease
 lifecycle separately from the retained publication model. This is the first
 bounded root-dispatch mechanism; dependent continuation, configurable capability
 admission and whole-runtime cancellation remain separate gates.
+
+* Synchronized producer proof increment
+
+The immutable POO proof dependency now includes the per-stage Scheme temporal
+attempt kernel, matching Lean admission theorems and a producer Quint model.
+The producer gate also executes the LeanPoo structural invalidation certificate
+controls before MRR consumer proofs. Actual Scheme controls and Quint omission
+counterexamples remain producer-owned. MRR does not duplicate those models.
+This proof pin does not migrate the active runtime or implement dependent
+continuation. Full engine readiness, Scheme stage-graph correspondence and
+physical source/cancellation qualification remain separate gates.
