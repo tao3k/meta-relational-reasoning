@@ -440,3 +440,23 @@ POO exact-head Darwin CI at =76b8e97c= likewise completes the original
 Context/Temporal assertions and returns zero before the five-second watchdog
 rejects process shutdown. No standalone executable or private SDK workaround
 is reinstated.
+
+* Context qualification artifact reuse
+
+Cargo excludes its own generated Scheme inputs under =OUT_DIR= from source
+invalidation. External sources, SDK inputs, environment invalidation and linker
+directives remain authoritative. A prepared Context workflow therefore reuses
+its FFI archive instead of rebuilding it inside the five-second output gate.
+
+At MRR =1488496a1c09dab16cabc05c77846d4b38415c96=, both Linux and macOS CI pass
+the original Context feature boundaries and complete Query Context workflow
+and scale qualification. The six formal CI jobs also pass; later runtime and
+lint stages remain separate evidence.
+
+The Scheme and Lean producer pins now agree on POO
+=e5275f2c08832d0c8e28802986ef39e04425651f=. Consumer Lean compilation completes
+63 jobs, and the 1,726-declaration axiom audit passes. The producer's original
+69 Context/Temporal assertions and six module receipts pass locally after role
+imports are narrowed. Full producer process qualification still returns 124
+during Darwin SDK cleanup under the unchanged five-second silence / 45-second
+batch limits. Assertion completion does not admit that failed process gate.
