@@ -120,7 +120,7 @@ The generic certificate and typed-composition definitions plus their execution
 checks have moved to POO Flow =proofs/Composition=. MRR consumes the package
 through an immutable Git dependency and runs both producer and consumer gates.
 The MRR publication Quint model remains here because it models consumer state.
-The proof dependency is published at =41556a34682b14bc67c03ca2482c4b48183b05c3=
+The proof dependency is published at =66a406e55cc9c13bcd36c7a37a2c39aa7513ef20=
 ([[https://github.com/tao3k/poo-flow/pull/34][POO PR 34]]). Empty-cache materialization and producer/consumer proof gates pass.
 Delivery to the existing open PR and downstream exact-head CI remain separate qualification gates.
 
@@ -262,3 +262,12 @@ from the pinned source before its own consumer checks. This dependency update
 does not change the Scheme runtime pin or introduce a Rust DAG scheduler. The
 DAG owner still must derive the complete prerequisite set and update expected
 identities after invalidation; full automatic DAG scheduling remains open.
+
+The producer now has a pure DAG controller that derives prerequisites from its
+Search composition objects, computes the frontier, admits exact completions and
+invalidates changed stages plus structural descendants. Independent branches
+retain their original state. MRR qualifies the new DAG controls at the immutable
+proof pin; physical dependent dispatch and the active Scheme runtime pin remain
+separate integration gates. The Rust mediator must consume Scheme decisions,
+not reconstruct another readiness scheduler. Source-level graph refinement,
+backend cancellation and negative-evidence dependencies remain unqualified.
