@@ -3,11 +3,16 @@
 
 * Decision
 
-POO Flow =modules/search= owns backend-neutral POO stage roles, typed
-composition, strategies, and DAG declarations.  MRR owns only the
-=generation= and factor-identity projection in
-=scheme/search/projection.ss=, plus native Ascent, lineage, and semantic
-admission.  ASP owns its Playbook syntax, concrete operators, resident
+POO Flow owns the generic =search-engine=; =modules/search= supplies its
+backend-neutral POO stage roles, typed composition, strategies and DAG
+declarations. =temporal-causality= is the core semantic composition module for
+readiness, evidence validity, invalidation and logical continuation. The engine
+transition contract is specified upstream in
+=docs/10-19-design/search-engine-temporal-design.org=; it remains an implementation
+target beyond the currently qualified static composition. MRR owns the
+=generation= and factor-identity projection in =scheme/search/projection.ss=,
+Scheme inference binding, lineage, semantic admission and Rust physical
+execution mediation. ASP owns its Playbook syntax, concrete operators, resident
 execution, scoring policy, and public result projection.
 
 The source dependency direction is POO Flow -> MRR -> ASP.  A POO Flow
@@ -116,8 +121,11 @@ runtime generation.  The MRR Scheme observation constructor requires both a
 member stage of the POO Flow strategy and the same generation input.  Native
 =SearchObservation= stores a typed generation and =evaluate_search_factors=
 rejects any observation from another generation before Ascent inference.
-The cross-language projection remains an explicit consumer binding contract;
-there is no live Scheme-to-Rust adapter in ASP yet.
+The cross-language projection remains an explicit consumer binding contract.
+Actual Scheme plan compilation and MRR/Data candidate inference are qualified
+separately from the proposed engine continuation. See
+[[file:0037-configurable-search-execution.org][the execution bridge design]] for
+the implemented root-dispatch boundary and remaining dependent execution gates.
 
 * Ascent and lineage integration
 

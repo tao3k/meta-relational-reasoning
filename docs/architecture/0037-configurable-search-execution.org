@@ -3,8 +3,11 @@
 
 * Decision
 
-MRR provides a configurable search execution bridge between Scheme/POO Flow and
-MRR Data. Scheme owns algorithmic decisions and declarative composition. Rust
+POO Flow maintains the generic =search-engine=, with =temporal-causality= as its
+core composition module for dependency readiness, evidence validity,
+invalidation and logical continuation. MRR provides the execution mediation
+bridge between that engine and the Rust ecosystem through MRR Data.
+Scheme owns algorithmic decisions and declarative composition. Rust
 MRR admits typed requests and results across FFI and dispatches physical work to
 Data. ASP configures concrete scenarios, including code search, and presents
 admitted results. Code search is one consumer profile, not the generic model.
@@ -20,6 +23,17 @@ ASP scenario configuration and query
   -> MRR result admission -> Scheme continuation/inference
   -> ASP projection and reflection
 #+end_example
+
+POO Flow's =docs/10-19-design/search-engine-temporal-design.org= specifies the
+proposed engine configuration, logical state, execution request and returned
+observation contracts. Existing Search declarations and bounded MRR root
+dispatch are foundations, not a completed dependent engine. A ready request
+must retain the original configuration, source cut, input observations and a
+unique attempt identity; stage/generation names alone cannot admit a retry.
+MRR returns admitted observations to Scheme for logical applicability and
+continuation. The compiled dependency graph permits inputs; the actual Temporal
+event graph records their observed causal use. Neither physical completion
+order nor a declared edge can fabricate causal evidence.
 
 The Rust dispatch bridge executes the physical work allowed by the Scheme plan.
 It does not introduce a second composition language, logical planner or rule
@@ -58,7 +72,7 @@ that every unrelated MRR subsystem has removed historical Rust Ascent code.
 | Owner | Responsibility | Boundary |
 |-------+----------------+----------|
 | LeanPoo | C3/C4 mathematics and reusable certificates | No retrieval, source authentication or physical scheduling |
-| POO Flow / Scheme | POO extension, typed composition, DAG and logical continuation decisions | No Rust backend dependency registry |
+| POO Flow / Scheme | Generic Search Engine, POO extension, typed composition, Temporal validity/invalidation and logical continuation | No Rust backend dependency registry |
 | MRR Rust | FFI lifetime/type/identity admission; physical dispatch, bounds, result collection and replay identity | No reimplementation of Scheme rule or composition semantics |
 | MRR Data | Backend capabilities, physical reads/index access, engine dependency lifecycle and execution receipts | No ASP language selectors or product policy |
 | ASP | Scenario profiles, code-language providers, source/resident authority, ranking policy, public packets and reflection | No requirement that generic candidates be file paths |
