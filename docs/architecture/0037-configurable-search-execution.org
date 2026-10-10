@@ -414,8 +414,29 @@ establishes the tested local worker path, not all consumer or producer suites.
 Four embedded parser/CST controls also pass, including malformed node order,
 offsets, unbalanced roots and unknown catalog kinds; execution takes 1.81 seconds
 after compilation.
-The independent
-source-loaded =t/search-framework-test.ss= qualification also exceeded its
-five-second local gate without output, including a hosted gxtest replay against
-the rebuilt declared dependencies, and is not counted as passing. Exact-head CI and
-downstream Data/ASP execution qualification remain separate.
+The independent source-loaded =t/search-framework-test.ss= qualification now
+passes all seven original cases through installed Scheme/gxtest against the
+published POO revision and rebuilt declared dependencies. Its load path contains
+no hand-built POO worktree libraries. The five-second silence cutoff and
+45-second batch budget remain unchanged. Exact-head CI and downstream Data/ASP
+execution qualification remain separate.
+
+Test orchestration uses =mrr_proof_validation.qualification=. The separate test
+executable builder, private SDK copy and preparation receipt have been removed.
+The existing output watchdog, process-group cleanup and upstream Scheme receipt
+checks remain; this is test admission rather than a Python search implementation.
+POO still owns engine semantics and Lean/Quint models. MRR still owns Rust dispatch
+and integration with Rust data adapters; ASP owns scenario execution.
+The producer's 69 original Context/Temporal assertions pass locally, but its
+Darwin SDK unload phase still fails the strict process-completion gate. It is
+not counted as a completed producer runtime qualification.
+
+The installed-SDK full MRR Scheme replay completes all 147 original assertions
+and all eight module receipts with a final =OK=. Its process then fails the
+five-second silence cutoff during SDK shutdown (41.8 seconds into the unchanged
+45-second batch budget). This is a failed full-suite qualification, despite
+passing assertions; it is distinct from the passing seven-case Search gate.
+POO exact-head Darwin CI at =76b8e97c= likewise completes the original
+Context/Temporal assertions and returns zero before the five-second watchdog
+rejects process shutdown. No standalone executable or private SDK workaround
+is reinstated.

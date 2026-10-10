@@ -71,7 +71,7 @@ jobs:
         run: cargo test -p meta-relational-reasoning --test finite-transformations --no-default-features --locked -- --nocapture
 
   test:
-    name: Native Gerbil and Rust (${{ matrix.os }})
+    name: Scheme and Rust (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 120
     strategy:
@@ -154,16 +154,13 @@ jobs:
       - name: Build declared Gerbil package
         run: python3 -m mrr_proof_validation.process_runner --total 900 --label GERBIL-BUILD -- gerbil build
 
-      - name: Prepare source-bound native gxtest executable
-        run: gerbil env python3 -m mrr_proof_validation.native_prepare
-
-      - name: Verify native qualification rejects false success
+      - name: Verify test qualification rejects false success
         run: |
-          uv --project proofs/MRRProof run pytest -q proofs/MRRProof/tests/test_native_tests.py proofs/MRRProof/tests/test_native_prepare.py proofs/MRRProof/tests/test_process_runner.py
-          gerbil env python3 -m mrr_proof_validation.native_tests self-test
+          uv --project proofs/MRRProof run pytest -q proofs/MRRProof/tests/test_qualification.py proofs/MRRProof/tests/test_process_runner.py
+          gerbil env python3 -m mrr_proof_validation.qualification self-test
 
       - name: Test Gerbil package
-        run: gerbil env python3 -m mrr_proof_validation.native_tests scheme
+        run: gerbil env python3 -m mrr_proof_validation.qualification scheme
 
       - name: Compile Rust workspace tests in the Gerbil package environment
         env:

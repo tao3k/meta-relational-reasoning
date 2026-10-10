@@ -277,8 +277,7 @@ Focused owner commands remain available for diagnosis:
 
 #+begin_src bash
 ./.devenv/devenv-profile-exec mrr-gerbil build
-./.devenv/devenv-profile-exec mrr-gerbil env env PYTHONPATH=proofs/MRRProof/src python3 -m mrr_proof_validation.native_prepare
-./.devenv/devenv-profile-exec mrr-gerbil env env PYTHONPATH=proofs/MRRProof/src python3 -m mrr_proof_validation.native_tests scheme
+./.devenv/devenv-profile-exec mrr-gerbil env env PYTHONPATH=proofs/MRRProof/src python3 -m mrr_proof_validation.qualification scheme
 ./.devenv/devenv-profile-exec mrr-cargo test --workspace --locked
 ./.devenv/devenv-profile-exec mrr-cargo test -p mrr-conformance --all-targets
 ./.devenv/devenv-profile-exec env GQL_HARNESS_VERIFY=1 \
@@ -306,15 +305,15 @@ local unpublished dependency edges. Packaging will be enabled only after the
 publication topology is closed.
 
 
-For bounded native qualification after dependency setup, run =just test-native=.
-This compiles all current test modules and the unchanged upstream gxtest into
-one native executable using a private SDK copy. A preparation receipt binds
-the local sources, selected SDK inputs and executable bytes; stale artifacts
-are rejected. Qualification uses real import/evaluation/runtime progress with
-a five-second silence cutoff, a 45-second total limit, explicit upstream gxtest
-exit propagation and normal Scheme/Gambit cleanup. Assertion failures, missing
-modules, empty suites, silent processes and source drift have negative probes.
-The Scheme package build includes Query provider and Search projection modules.
+For bounded installed Scheme/Rust qualification after dependency setup, run
+=just test-runtime=. Upstream gxtest discovers and executes the original test
+modules through the installed SDK. There is no private SDK copy, separately
+built test executable or preparation receipt. Qualification retains genuine
+import/evaluation/runtime progress, the five-second silence cutoff, the
+45-second total limit, upstream gxtest status propagation and normal cleanup.
+Assertion failures, missing modules, empty suites and silent processes have
+negative probes. The Scheme package build includes Query provider and Search
+projection modules.
 
 The complete Query Context workflow and shared positive/negative fixtures are
 covered by =just test-agentic-ai-context=. =just context-scale= records bounded

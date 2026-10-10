@@ -8,12 +8,12 @@ import time
 import unittest
 from unittest.mock import Mock, patch
 
-from mrr_proof_validation import native_tests as native
+from mrr_proof_validation import qualification
 
 
 class OutputRegression(unittest.TestCase):
     def test_delivered_output_starts_silence_window_after_backpressure(self):
-        forward = native.forward_output
+        forward = qualification.forward_output
 
         def delayed_forward(chunk, deadline):
             # Model a blocked CI sink that completes within the original
@@ -23,12 +23,12 @@ class OutputRegression(unittest.TestCase):
             return forward(chunk, deadline)
 
         producer = "import time; print('completed batch', flush=True); time.sleep(6)"
-        with patch.object(native, "forward_output", side_effect=delayed_forward):
-            self.assertEqual(native.qualify([sys.executable, "-c", producer]), 0)
+        with patch.object(qualification, "forward_output", side_effect=delayed_forward):
+            self.assertEqual(qualification.qualify([sys.executable, "-c", producer]), 0)
 
     def test_batch_cannot_consume_callers_stdin(self):
         runner = (
-            "from mrr_proof_validation.native_tests import qualify; "
+            "from mrr_proof_validation.qualification import qualify; "
             "import sys; "
             "raise SystemExit(qualify([sys.executable, '-c', "
             "\"import sys; raise SystemExit(0 if sys.stdin.read() == '' else 1)\"]))"
@@ -56,8 +56,8 @@ class OutputRegression(unittest.TestCase):
             )
             descendant = None
             try:
-                status = native.qualify(
-                    [sys.executable, "-c", producer], native.SchemeReceipt(["x"])
+                status = qualification.qualify(
+                    [sys.executable, "-c", producer], qualification.SchemeReceipt(["x"])
                 )
                 with open(pid_path) as stream:
                     descendant = int(stream.read())
@@ -87,7 +87,7 @@ class OutputRegression(unittest.TestCase):
                         descendant = int(stream.read())
                 if descendant is not None:
                     try:
-                        os.kill(descendant, native.signal.SIGKILL)
+                        os.kill(descendant, qualification.signal.SIGKILL)
                     except ProcessLookupError:
                         pass
 
@@ -95,18 +95,18 @@ class OutputRegression(unittest.TestCase):
         child = Mock(pid=123)
         child.poll.side_effect = [None, 0]
         with patch.object(
-            native.os, "killpg", side_effect=[PermissionError(), ProcessLookupError()]
+            qualification.os, "killpg", side_effect=[PermissionError(), ProcessLookupError()]
         ) as kill:
-            native.signal_owned_group(child, native.signal.SIGTERM)
+            qualification.signal_owned_group(child, qualification.signal.SIGTERM)
         child.wait.assert_called_once_with()
         self.assertEqual(kill.call_count, 2)
 
     def test_live_group_permission_refusal_is_retained(self):
         child = Mock(pid=123)
         child.poll.return_value = None
-        with patch.object(native.os, "killpg", side_effect=PermissionError()):
+        with patch.object(qualification.os, "killpg", side_effect=PermissionError()):
             with self.assertRaises(PermissionError):
-                native.signal_owned_group(child, native.signal.SIGTERM)
+                qualification.signal_owned_group(child, qualification.signal.SIGTERM)
         child.wait.assert_not_called()
 
     def test_short_writes_and_backpressure_preserve_exact_bytes(self):
@@ -123,14 +123,14 @@ class OutputRegression(unittest.TestCase):
             forwarded.extend(remaining[:count])
             return count
 
-        with patch.object(native.os, "write", side_effect=write):
-            with patch.object(native.select, "select", return_value=([], [], [])):
-                self.assertTrue(native.forward_output(payload, time.monotonic() + 2))
+        with patch.object(qualification.os, "write", side_effect=write):
+            with patch.object(qualification.select, "select", return_value=([], [], [])):
+                self.assertTrue(qualification.forward_output(payload, time.monotonic() + 2))
         self.assertEqual(bytes(forwarded), payload)
 
     def test_expired_budget_refuses_output(self):
-        with patch.object(native.os, "write") as write:
-            self.assertFalse(native.forward_output(b"OK\n", time.monotonic() - 1))
+        with patch.object(qualification.os, "write") as write:
+            self.assertFalse(qualification.forward_output(b"OK\n", time.monotonic() - 1))
         write.assert_not_called()
 
     def test_qualify_nonblocking_stdout_preserves_failure_status(self):
@@ -141,7 +141,7 @@ class OutputRegression(unittest.TestCase):
             f"import os; os.write(1, b'x' * {payload_size}); raise SystemExit(42)"
         )
         runner = (
-            "import sys; import mrr_proof_validation.native_tests as m; "
+            "import sys; import mrr_proof_validation.qualification as m; "
             f"raise SystemExit(m.qualify([sys.executable, '-c', {producer!r}]))"
         )
         child = subprocess.Popen([sys.executable, "-c", runner], stdout=write_fd)

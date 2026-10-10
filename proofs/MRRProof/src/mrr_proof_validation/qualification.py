@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Bound native qualification to real output and propagate upstream test status."""
+"""Bound test qualification to real output and propagate upstream test status."""
 
 import argparse
+import json
 import os
 import selectors
 import select
@@ -108,7 +109,7 @@ def report_owned_processes(child):
             timeout=1,
         )
     except (OSError, subprocess.SubprocessError) as error:
-        print(f"NATIVE-DIAGNOSTIC: process snapshot unavailable: {error}", flush=True)
+        print(f"QUALIFICATION-DIAGNOSTIC: process snapshot unavailable: {error}", flush=True)
         return
     lines = snapshot.splitlines()
     rows = [line.split(None, 6) for line in lines[1:]]
@@ -122,10 +123,10 @@ def report_owned_processes(child):
         if descendants <= owned:
             break
         owned.update(descendants)
-    print("NATIVE-DIAGNOSTIC: " + lines[0], flush=True)
+    print("QUALIFICATION-DIAGNOSTIC: " + lines[0], flush=True)
     for line, row in zip(lines[1:], rows):
         if len(row) == 7 and int(row[0]) in owned:
-            print("NATIVE-DIAGNOSTIC: " + line, flush=True)
+            print("QUALIFICATION-DIAGNOSTIC: " + line, flush=True)
 
 
 def qualify(
@@ -176,7 +177,7 @@ def qualify(
                 now = time.monotonic()
                 if now - last_output > 5 or now - started > 45:
                     print(
-                        "NATIVE-FAIL: five seconds without output or 45s batch limit "
+                        "QUALIFICATION-FAIL: five seconds without output or 45s batch limit "
                         f"(direct child status={child.poll()}, "
                         f"output pipe open={bool(selector.get_map())}, "
                         f"last read age={now - last_read:.3f}s, "
@@ -191,7 +192,7 @@ def qualify(
         status = child.wait()
         if status == 0 and receipt is not None and not receipt.valid():
             print(
-                "NATIVE-FAIL: missing successful modules, nonempty cases or final OK",
+                "QUALIFICATION-FAIL: missing successful modules, nonempty cases or final OK",
                 flush=True,
             )
             return 65
@@ -211,14 +212,16 @@ def qualify(
 
 
 def qualify_scheme(paths: list[str]) -> int:
-    from .native_prepare import prepared_command
-
-    try:
-        command, env = prepared_command(paths)
-    except (OSError, ValueError, RuntimeError) as error:
-        print(f"NATIVE-FAIL: {error}; prepare the native harness first", flush=True)
-        return 65
-    return qualify(command, SchemeReceipt(paths), env=env)
+    arguments = " ".join(json.dumps(path) for path in paths)
+    expression = (
+        '(load "proofs/MRRProof/fixtures/scheme-test-progress.ss") '
+        '(import (only-in :gerbil/tools/gxtest main)) '
+        f'(exit (main "-v" "5" {arguments}))'
+    )
+    return qualify(
+        ["gxi", "-:max-heap=1G,debug=q", "-e", expression],
+        SchemeReceipt(paths),
+    )
 
 
 def self_test() -> int:
@@ -228,7 +231,7 @@ def self_test() -> int:
         ("missing", 42),
         ("empty", 65),
     ]:
-        path = f"proofs/MRRProof/fixtures/native-qualification/{name}-test.ss"
+        path = f"proofs/MRRProof/fixtures/test-qualification/{name}-test.ss"
         print(f"QUALIFICATION-PROBE: {name}", flush=True)
         actual = qualify_scheme([path])
         if actual != expected:
@@ -246,9 +249,20 @@ def self_test() -> int:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("suite", choices=("scheme", "rust", "self-test"))
+    parser.add_argument(
+        "--source",
+        action="append",
+        default=[],
+        metavar="PATH",
+        help="Run source modules through installed gxtest without a separate executable",
+    )
     args = parser.parse_args()
     if args.suite == "self-test":
         return self_test()
+    if args.source:
+        if args.suite != "scheme":
+            parser.error("--source requires the scheme suite")
+        return qualify_scheme(args.source)
     if args.suite == "rust":
         os.environ["MRR_NATIVE_PROGRESS"] = "1"
         return qualify(
@@ -266,7 +280,7 @@ def main() -> int:
         )
     paths = [str(path) for path in sorted(Path("t").glob("*-test.ss"))]
     if not paths:
-        print("NATIVE-FAIL: no Scheme test modules", flush=True)
+        print("QUALIFICATION-FAIL: no Scheme test modules", flush=True)
         return 65
     return qualify_scheme(paths)
 

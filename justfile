@@ -19,28 +19,26 @@ build:
 # Run the complete local contract suite in canonical dependency order.
 test:
     {{profile}} mrr-gerbil build
-    {{profile}} mrr-gerbil env {{proof_python}} mrr_proof_validation.native_prepare
-    {{profile}} mrr-gerbil env {{proof_python}} mrr_proof_validation.native_tests self-test
-    {{profile}} mrr-gerbil env {{proof_python}} mrr_proof_validation.native_tests scheme
+    {{profile}} mrr-gerbil env {{proof_python}} mrr_proof_validation.qualification self-test
+    {{profile}} mrr-gerbil env {{proof_python}} mrr_proof_validation.qualification scheme
     {{profile}} mrr-cargo test --workspace --locked
 
-# Qualify native tests with real stage output and a five-second silence cutoff.
-test-native:
+# Qualify installed Scheme and Rust tests with real stage output and a five-second silence cutoff.
+test-runtime:
     {{profile}} mrr-gerbil build
     {{profile}} mrr-cargo test -p mrr-gerbil --tests --locked --offline --no-run
-    {{profile}} mrr-gerbil env {{proof_python}} mrr_proof_validation.native_prepare
-    {{profile}} mrr-gerbil env {{proof_python}} mrr_proof_validation.native_tests self-test
-    {{profile}} mrr-gerbil env {{proof_python}} mrr_proof_validation.native_tests scheme
-    {{profile}} gerbil env {{proof_python}} mrr_proof_validation.native_tests rust
+    {{profile}} mrr-gerbil env {{proof_python}} mrr_proof_validation.qualification self-test
+    {{profile}} mrr-gerbil env {{proof_python}} mrr_proof_validation.qualification scheme
+    {{profile}} gerbil env {{proof_python}} mrr_proof_validation.qualification rust
 
 # Run the backend-neutral Search factor contracts independently.
 test-search:
     {{profile}} mrr-cargo test -p mrr-search --locked
     {{profile}} mrr-cargo test -p mrr-asp-rust-build-support --locked
 
-# Direct POO object-to-MRR Scheme contract; no Python supervisor or new runtime.
+# Installed Scheme/gxtest; no separate executable, five-second silence admission.
 test-poo-search gerbil_path loadpath:
-    {{profile}} bash -c 'cd "{{justfile_directory()}}"; exec env GERBIL_PATH="{{gerbil_path}}" GERBIL_LOADPATH="{{loadpath}}" timeout --foreground --signal=TERM --kill-after=1s 5s gxi -:max-heap=1G,debug=q :gerbil/tools/gxtest -v 5 t/search-framework-test.ss'
+    {{profile}} bash -c 'cd "{{justfile_directory()}}"; exec env GERBIL_PATH="{{gerbil_path}}" GERBIL_LOADPATH="{{loadpath}}" {{proof_python}} mrr_proof_validation.qualification scheme --source t/search-framework-test.ss'
 
 # Check explicit Context selection, source admission, shared C4 replay, and proofs.
 test-agentic-ai-context:

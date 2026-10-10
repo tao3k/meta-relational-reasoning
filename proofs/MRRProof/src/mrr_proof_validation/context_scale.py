@@ -9,7 +9,7 @@ import resource
 import subprocess
 import sys
 
-from . import native_tests
+from . import qualification
 
 CASES = {
     "small": [256, 1024, 16, 4, 3],
@@ -24,7 +24,7 @@ def one_case(name: str, binary: str, output: Path) -> int:
     path = output / f"{name}.json"
     path.unlink(missing_ok=True)
     os.environ["MRR_CONTEXT_SCALE_RECEIPT"] = str(path.resolve())
-    status = native_tests.qualify([binary, *map(str, CASES[name])])
+    status = qualification.qualify([binary, *map(str, CASES[name])])
     if status != 0:
         return status
     record = json.loads(path.read_text())

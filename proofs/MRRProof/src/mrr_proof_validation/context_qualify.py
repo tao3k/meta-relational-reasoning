@@ -4,7 +4,7 @@
 import argparse
 import subprocess
 
-from . import native_tests
+from . import qualification
 
 
 def main() -> int:
@@ -69,7 +69,7 @@ def main() -> int:
             if status != 0:
                 return status
             print(f"CONTEXT-QUALIFY: {name}", flush=True)
-            status = native_tests.qualify([*command, "--", "--nocapture"])
+            status = qualification.qualify([*command, "--", "--nocapture"])
             if status != 0:
                 return status
         print("CONTEXT-MATRIX-OK", flush=True)
@@ -92,7 +92,7 @@ def main() -> int:
             "--nocapture",
         ]
     )
-    return native_tests.qualify(command)
+    return qualification.qualify(command)
 
 
 if __name__ == "__main__":

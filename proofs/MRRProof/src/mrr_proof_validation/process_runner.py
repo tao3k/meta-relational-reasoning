@@ -10,7 +10,7 @@ import subprocess
 import sys
 import time
 
-from . import native_tests
+from . import qualification
 
 
 @dataclass(frozen=True)
@@ -92,7 +92,7 @@ def _finish_owned_group(child: subprocess.Popen[bytes]) -> None:
 
 def _signal_owned_group(child: subprocess.Popen[bytes], signum: int) -> None:
     try:
-        native_tests.signal_owned_group(child, signum)
+        qualification.signal_owned_group(child, signum)
         return
     except PermissionError:
         # Darwin may reject a negative-PID group signal for a live, owned
@@ -160,10 +160,10 @@ def run(command: list[str], *, cwd: Path, log: Path | None = None,
                         selector.unregister(child.stdout)
                         continue
                     now = time.monotonic()
-                    if not native_tests.forward_output(
+                    if not qualification.forward_output(
                         chunk, min(started + total_limit, now + idle_limit)
                     ):
-                        native_tests.forward_output(
+                        qualification.forward_output(
                             f"{label}-FAIL: output backpressure exceeded {idle_limit}s\n".encode(),
                             time.monotonic() + 1,
                         )
@@ -185,11 +185,11 @@ def run(command: list[str], *, cwd: Path, log: Path | None = None,
                     if cpu_delta > 0.01:
                         message = (f"{label}-WORK: measured child CPU "
                                    f"+{cpu_delta:.2f}s processes={len(cpu)}\n").encode()
-                        if not native_tests.forward_output(
+                        if not qualification.forward_output(
                             message, min(started + total_limit,
                                          time.monotonic() + idle_limit)
                         ):
-                            native_tests.forward_output(
+                            qualification.forward_output(
                                 f"{label}-FAIL: output backpressure exceeded {idle_limit}s\n".encode(),
                                 time.monotonic() + 1,
                             )
@@ -201,7 +201,7 @@ def run(command: list[str], *, cwd: Path, log: Path | None = None,
                               if now - last_progress > idle_limit else
                               f"{label}-FAIL: {total_limit}s total limit")
                     print(reason, flush=True)
-                    native_tests.report_owned_processes(child)
+                    qualification.report_owned_processes(child)
                     _signal_owned_group(child, signal.SIGTERM)
                     return Result(124, bytes(data), log)
         return Result(child.wait(), bytes(data), log)

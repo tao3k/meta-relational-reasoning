@@ -4,7 +4,7 @@
 import argparse
 from pathlib import Path
 
-from . import native_tests
+from . import qualification
 
 
 def main() -> int:
@@ -14,10 +14,10 @@ def main() -> int:
     receipt = Path(args.receipt).resolve()
     receipt.parent.mkdir(parents=True, exist_ok=True)
     receipt.unlink(missing_ok=True)
-    status = native_tests.qualify(["target/debug/examples/context_refinement", str(receipt)])
+    status = qualification.qualify(["target/debug/examples/context_refinement", str(receipt)])
     if status != 0:
         return status
-    return native_tests.qualify(
+    return qualification.qualify(
         [".lake/build/bin/agentic-ai-context-refinement", str(receipt)],
         cwd="proofs/MRRProof/AgenticAIContext",
     )

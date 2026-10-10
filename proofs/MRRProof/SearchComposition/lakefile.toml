@@ -6,7 +6,7 @@ moreLeanArgs = ["-DautoImplicit=false", "-DwarningAsError=true"]
 [[require]]
 name = "POOFlowCompositionProofs"
 git = "https://github.com/tao3k/poo-flow.git"
-rev = "0b7a53442006243b80116f4cdfc444fede66b77d"
+rev = "76b8e97c60a9537edbcbbbf5d0bb9edd2314d2ba"
 subDir = "proofs/Composition"
 
 [[lean_lib]]
