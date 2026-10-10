@@ -282,7 +282,11 @@ separate gates.
 
 =SearchDispatch::from_plan_with_evidence= retains the same POO controller with
 mandatory Temporal evidence. A lease's =inputs()= returns the actual current
-predecessor observations from Scheme. Rust transports each observation's event
+predecessor observations through POO's =poo-flow-search-engine-inputs=. The
+producer checks the exact current request and complete predecessor evidence,
+preserves declared dependency order, and returns detached event snapshots.
+MRR does not reconstruct readiness or expose retained mutable event strings.
+Rust transports each observation's event
 identity, generation, stage, source cut, logical position, payload identity,
 causal parent identities, modality and committed flag. These nine fields pass
 through the existing Version 1 transport; Rust does not synthesize causal edges
@@ -306,6 +310,11 @@ evidence. It cannot complete an evidence-required session without an observation
 POO's LeanPoo-backed =SearchEvidence= and =SearchEvidenceHistory= models own
 semantic admission and replay rejection. MRR's Lean dispatch model imports those
 producer laws and proves that rejected observations cannot publish. The consumer
+also imports the producer's =InputSnapshot= laws: a stale request or missing
+predecessor evidence cannot be handed to an operator. That predicate reuses the
+original LeanPoo C4 parent orders rather than a second graph representation.
+The producer Quint =SearchInputs= model checks current and complete input reads,
+with omission controls for each guard. The consumer
 Quint model adds an =ignoreEvidence= negative control, alongside budget,
 retirement and exact-attempt cancellation controls. These are protocol proofs;
 the actual bridge is qualified separately by Rust/Scheme and worker IPC tests.
@@ -375,17 +384,38 @@ historical event identity and accepts a fresh identity. This test executes in
 Both Rust owners pass =clippy --all-targets -D warnings= with worker inference;
 this checks the shared controller code without rebuilding the embedded archive.
 
+The input-handoff increment reruns all 23 Rust/Scheme dispatch tests against the
+rebuilt declared dependencies; they pass in 2.07 seconds after compilation.
+It pins the same POO revision in =gerbil.pkg= and the
+Lean package, delegates reads to the producer, and passes the consumer axiom
+audit with 1,726 declarations. The declared dependency packages and MRR Scheme
+package compile with the current parser language-pack interface. MRR selects
+GQL or OpenCypher through parser-owned language handles; parsing, descriptors
+and result-buffer allocation remain parser responsibilities. The search wire
+and parse-artifact layout remain Version 1. The upstream language-handle ABI
+version is a separate producer contract.
+
 The macOS qualification uses the installed SDK's direct GSC. An old local
 launcher duplicated Gambit runtime options and caused compiler flags to be
 ignored. The SDK's recorded OpenSSL 3.6.4 link directory has been removed by
 Homebrew; local linking uses the installed OpenSSL library directory. Neither
 adjustment changes the search implementation or Cargo target directory.
-The evidence qualification loads the current producer search-engine artifacts
-with the existing local parser closure. The immutable producer dependency now
-uses a parser revision that removed =parse-artifact-v1-native=, while MRR's native
-archive and parser calls still reference that legacy ABI. A clean full native
-build therefore requires a separate parser consumer migration; these local
-search receipts do not establish that dependency closure. The independent
+The earlier evidence receipts used a previously built parser closure and did
+not establish current dependency integration. The current consumer imports
+language-pack descriptors from their producer parser modules and replaces
+=parse-artifact-v1-native= with the parser language-handle ABI. The archive
+contract explicitly forbids the removed module, preventing stale fallback.
+Current package compilation and worker linking pass against the declared
+dependency closure, without hand-built producer libraries on the load path.
+Actual worker IPC passes the retained evidence and historical-replay controls
+and accepts GQL/OpenCypher artifacts whose Rowan text exactly preserves the
+source. The test completes in 2.73 seconds after building the worker. This
+establishes the tested local worker path, not all consumer or producer suites.
+Four embedded parser/CST controls also pass, including malformed node order,
+offsets, unbalanced roots and unknown catalog kinds; execution takes 1.81 seconds
+after compilation.
+The independent
 source-loaded =t/search-framework-test.ss= qualification also exceeded its
-five-second local gate without output and is not counted as passing. Exact-head CI and
+five-second local gate without output, including a hosted gxtest replay against
+the rebuilt declared dependencies, and is not counted as passing. Exact-head CI and
 downstream Data/ASP execution qualification remain separate.

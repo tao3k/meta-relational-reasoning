@@ -55,6 +55,22 @@ theorem historical_observation_rejected
     ¬ POO.Flow.SearchEvidence.AdmitsEvidence node state request observations history event :=
   POO.Flow.SearchEvidence.historical_identity_rejects used
 
+-- Input handoff reuses producer admission over the original LeanPoo C4 node.
+theorem stale_input_no_handoff {node : LeanPoo.C4.Node}
+    {state : POO.Flow.SearchAttempt.State} {request : POO.Flow.SearchAttempt.Request}
+    {observations : String → Option POO.Flow.SearchEvidence.Event}
+    (stale : ¬ POO.Flow.SearchAttempt.Admits state request) :
+    ¬ POO.Flow.SearchEvidence.InputSnapshot node state request observations :=
+  POO.Flow.SearchEvidence.stale_input_snapshot_rejects stale
+
+theorem missing_input_no_handoff {node : LeanPoo.C4.Node}
+    {state : POO.Flow.SearchAttempt.State} {request : POO.Flow.SearchAttempt.Request}
+    {observations : String → Option POO.Flow.SearchEvidence.Event} {parent : String}
+    (edge : parent ∈ node.parentOrders.flatten) (missing : observations parent = none) :
+    ¬ POO.Flow.SearchEvidence.InputSnapshot node state request observations :=
+  POO.Flow.SearchEvidence.missing_input_snapshot_rejects edge missing
+
+-- Consumer cancellation delegates to the same producer attempt kernel.
 -- Scheme transport admits cancellation only for the currently active identity.
 -- Its retained owner then delegates to the producer revision transition.
 abbrev cancelAttempt := POO.Flow.SearchAttempt.cancel

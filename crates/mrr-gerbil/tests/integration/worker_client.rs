@@ -128,6 +128,17 @@ fn transport_only_host_executes_existing_poo_owner_and_finite_solver() {
         evidence.observe(&fresh, &revised).unwrap();
     }
     println!("CASE actual Temporal observation and replay rejection over V1 worker transport");
+    for artifact in [
+        mrr_gerbil::parse_gql_artifact("MATCH (n) RETURN n\n").unwrap(),
+        mrr_gerbil::parse_cypher_artifact("MATCH (n) RETURN n\n").unwrap(),
+    ] {
+        assert_eq!(artifact.status, mrr_gerbil::ParseArtifactStatus::Accepted);
+        assert_eq!(
+            artifact.to_rowan_cst().unwrap().root().text().to_string(),
+            "MATCH (n) RETURN n\n"
+        );
+    }
+    println!("CASE parser-owned language handles preserve V1 artifacts over worker transport");
     let result = evaluate_finite_relations(3, vec![(0, 1), (1, 2)], vec![0]).unwrap();
     assert!(result.paths.contains(&(0, 2, 2)));
     assert_eq!(

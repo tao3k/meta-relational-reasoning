@@ -2,8 +2,8 @@
 ;;; Canonical adapter from gerbil-parser language descriptors to MRR projections.
 
 (import :gerbil-parser/src/language/descriptor
-        :gerbil-parser/languages/gql/grammar
-        (prefix-in :gerbil-parser/languages/cypher/grammar
+        :gerbil-parser/languages/gql/parser
+        (prefix-in :gerbil-parser/languages/cypher/parser
                    cypher-))
 (export mrr-gql-parser-authority
         mrr-cypher-parser-authority

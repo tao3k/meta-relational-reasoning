@@ -3,7 +3,7 @@
 (import ./native
         ../reasoning/finite-native
         ../temporal/native
-        :gerbil-parser/src/ffi/parse-artifact-v1-native)
+        ./parser-language)
 (export main)
 
 ;; The compiler-generated startup stub initializes the complete immutable

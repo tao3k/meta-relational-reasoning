@@ -1,5 +1,6 @@
 //! Raw declarations isolated behind the safe native grammar loader.
 
+use super::parse_artifact::ParserLanguage;
 use std::ffi::{CStr, c_char};
 
 #[repr(C)]
@@ -84,16 +85,15 @@ unsafe extern "C" {
         column: i64,
         index: i64,
     ) -> i32;
-    fn gerbil_parser_result_v1_init(result: *mut GerbilParserResultV1);
-    fn gerbil_parser_result_v1_release(result: *mut GerbilParserResultV1);
-    fn gerbil_parser_native_abi_version() -> u32;
-    fn gerbil_parser_native_descriptor(
-        language: *const c_char,
-        result: *mut GerbilParserResultV1,
-    ) -> i32;
-    fn gerbil_parser_native_parse(
-        language: *const c_char,
-        source: *const c_char,
+    fn gerbil_parser_result_init(result: *mut GerbilParserResultV1);
+    fn gerbil_parser_result_release(result: *mut GerbilParserResultV1);
+    fn gerbil_parser_language_abi_version() -> u32;
+    fn mrr_parser_language_handle(language: i32) -> u64;
+    fn gerbil_parser_language_descriptor(language: u64, result: *mut GerbilParserResultV1) -> i32;
+    fn gerbil_parser_language_parse(
+        language: u64,
+        source: *const u8,
+        length: usize,
         result: *mut GerbilParserResultV1,
     ) -> i32;
 }
@@ -225,19 +225,35 @@ pub(super) fn enhanced_query_operand_text_char(
 }
 
 pub(super) fn parser_native_abi_version() -> u32 {
-    unsafe { gerbil_parser_native_abi_version() }
+    unsafe { gerbil_parser_language_abi_version() }
 }
 
-pub(super) fn parser_native_descriptor(language: &CStr) -> ParserNativeResult {
+fn parser_language_handle(language: ParserLanguage) -> u64 {
     unsafe {
-        parser_native_result(|result| gerbil_parser_native_descriptor(language.as_ptr(), result))
+        mrr_parser_language_handle(match language {
+            ParserLanguage::Gql => 0,
+            ParserLanguage::Cypher => 1,
+        })
     }
 }
 
-pub(super) fn parser_native_parse(language: &CStr, source: &CStr) -> ParserNativeResult {
+pub(super) fn parser_native_descriptor(language: ParserLanguage) -> ParserNativeResult {
     unsafe {
+        let handle = parser_language_handle(language);
+        parser_native_result(|result| gerbil_parser_language_descriptor(handle, result))
+    }
+}
+
+pub(super) fn parser_native_parse(language: ParserLanguage, source: &CStr) -> ParserNativeResult {
+    unsafe {
+        let handle = parser_language_handle(language);
         parser_native_result(|result| {
-            gerbil_parser_native_parse(language.as_ptr(), source.as_ptr(), result)
+            gerbil_parser_language_parse(
+                handle,
+                source.to_bytes().as_ptr(),
+                source.to_bytes().len(),
+                result,
+            )
         })
     }
 }
@@ -250,7 +266,7 @@ unsafe fn parser_native_result(
         payload: std::ptr::null_mut(),
         length: 0,
     };
-    unsafe { gerbil_parser_result_v1_init(&mut result) };
+    unsafe { gerbil_parser_result_init(&mut result) };
     let call_status = call(&mut result);
     let result_status = result.status;
     let payload = if result.payload.is_null() {
@@ -258,7 +274,7 @@ unsafe fn parser_native_result(
     } else {
         Some(unsafe { std::slice::from_raw_parts(result.payload, result.length) }.to_vec())
     };
-    unsafe { gerbil_parser_result_v1_release(&mut result) };
+    unsafe { gerbil_parser_result_release(&mut result) };
     ParserNativeResult {
         call_status,
         result_status,

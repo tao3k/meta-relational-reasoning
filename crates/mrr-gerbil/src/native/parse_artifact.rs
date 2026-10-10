@@ -16,6 +16,8 @@ use super::{
 pub const PARSE_ARTIFACT_SCHEMA_V1: &str = "gerbil-parser.parse-artifact.v1";
 /// Canonical parser-owned native descriptor schema.
 pub const PARSER_NATIVE_DESCRIPTOR_SCHEMA_V1: &str = "gerbil-parser.native-descriptor.v1";
+// The upstream language-handle ABI is independent of the V1 artifact layout.
+const LANGUAGE_HANDLE_ABI: u32 = 2;
 
 /// Parser language selected explicitly at the native ABI boundary.
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
@@ -307,9 +309,8 @@ pub(crate) fn request_parse_artifact(
     }
     .get_or_init(|| load_native_kind_catalog(language))
     .clone()?;
-    let language = CString::new(language.as_str()).expect("static parser language has no NUL");
     let source = CString::new(source).map_err(|_| ParseArtifactLoadError::InteriorNul)?;
-    let native = with_native_runtime(move || ffi::parser_native_parse(&language, &source))
+    let native = with_native_runtime(move || ffi::parser_native_parse(language, &source))
         .map_err(parse_runtime_error)?;
     let payload = native_payload(native, |call_status, result_status, diagnostic| {
         ParseArtifactLoadError::ParserFailed {
@@ -417,15 +418,14 @@ fn load_binary_event(
 fn load_native_kind_catalog(
     language: ParserLanguage,
 ) -> Result<Arc<ParserKindCatalog>, ParseArtifactLoadError> {
-    let language_name = CString::new(language.as_str()).expect("static parser language has no NUL");
     let (abi, native) = with_native_runtime(move || {
         (
             ffi::parser_native_abi_version(),
-            ffi::parser_native_descriptor(&language_name),
+            ffi::parser_native_descriptor(language),
         )
     })
     .map_err(parse_runtime_error)?;
-    if abi != 1 {
+    if abi != LANGUAGE_HANDLE_ABI {
         return Err(ParseArtifactLoadError::InvalidHostDescriptor);
     }
     let payload = native_payload(native, |call_status, result_status, diagnostic| {
@@ -477,7 +477,11 @@ pub(crate) fn load_kind_catalog(
     if string_field(payload, "schema")? != PARSER_NATIVE_DESCRIPTOR_SCHEMA_V1 {
         return Err(ParseArtifactLoadError::InvalidHostDescriptor);
     }
-    if string_field(payload, "language")? != language.as_str() {
+    let descriptor_language = match language {
+        ParserLanguage::Gql => "gql",
+        ParserLanguage::Cypher => "opencypher",
+    };
+    if string_field(payload, "language")? != descriptor_language {
         return Err(ParseArtifactLoadError::InvalidHostDescriptor);
     }
     let grammar_digest = string_field(payload, "grammarDigest")?.to_owned();

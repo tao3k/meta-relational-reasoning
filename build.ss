@@ -9,6 +9,7 @@
 
 (def mrr-library-modules
   '("scheme/grammar/parser-authority"
+    "scheme/grammar/parser-language"
     "scheme/grammar/parser-authority-receipt"
     "scheme/grammar/core"
     "scheme/grammar/gql-declaration"

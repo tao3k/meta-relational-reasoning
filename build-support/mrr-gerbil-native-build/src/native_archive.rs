@@ -23,10 +23,12 @@ const REQUIRED_MODULES: &[&str] = &[
     "gerbil-ascent/table/expression",
     "meta-relational-reasoning/scheme/temporal/native",
     "poo-flow/src/ffi/temporal-proof-host",
-    "gerbil-parser/src/ffi/parse-artifact-v1-native",
+    "meta-relational-reasoning/scheme/grammar/parser-language",
+    "gerbil-parser/src/ffi/language-abi",
 ];
 
 const FORBIDDEN_RUNTIME_MODULES: &[&str] = &[
+    "gerbil-parser/src/ffi/parse-artifact-v1-native",
     "asp-gerbil-scheme/src/build-api/package-build",
     "asp-gerbil-scheme/src/build-api/native-import-closure",
     "asp-gerbil-scheme/src/support/time",
@@ -253,7 +255,7 @@ impl NativeBuild {
         let prefix = env::var_os("GERBIL_PATH")
             .map_or_else(|| self.workspace.join(".gerbil"), PathBuf::from);
         let parser_include = prefix.join("pkg/github.com/tao3k/gerbil-parser/include");
-        let parser_headers = [parser_include.join("gerbil-parser/parse-artifact-v1.h")];
+        let parser_headers = [parser_include.join("gerbil-parser/language.h")];
         let native_headers = [NativeHeaderInput {
             include_directory: &parser_include,
             header_files: &parser_headers,

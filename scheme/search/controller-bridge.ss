@@ -106,14 +106,7 @@
                         (save (poo-flow-search-engine-observe engine name request
                                 (wire->event (list-ref arguments 4)))))
                        ((equal? command "inputs")
-                        (unless (and (.ref engine 'evidence-required?)
-                                     (poo-flow-search-attempt-current? (.ref node 'state) request))
-                          (error "foreign, stale or identity-only Search inputs"))
-                        (map (lambda (parent)
-                               (let (event (.ref (poo-flow-search-engine-node engine parent) 'evidence))
-                                 (unless event (error "missing Search predecessor evidence"))
-                                 (event->wire event)))
-                             (.ref node 'dependencies)))
+                        (map event->wire (poo-flow-search-engine-inputs engine name request)))
                        (else (save (poo-flow-search-engine-complete engine name request))))))
                    (else (error "unknown Search controller command"))))))))
       ;; Encode once before mutation. Native publication only retains these bytes.
