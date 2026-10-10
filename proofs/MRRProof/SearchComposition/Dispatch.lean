@@ -38,7 +38,7 @@ theorem retired_no_new_output {cap : Nat} {a b : State}
 
 -- Rust publication is permitted only after the producer accepts the observation.
 def publishObservation (state : State) (producerAccepted : Bool) : Option State :=
-  if producerAccepted = true ∧ state.retired = false ∧ 0 < state.active then
+  if producerAccepted = true /\ state.retired = false /\ 0 < state.active then
     some {state with active := state.active - 1, output := state.output + 1}
   else none
 
@@ -49,25 +49,25 @@ theorem rejected_observation_no_publication (state : State) :
 theorem historical_observation_rejected
     {node : LeanPoo.C4.Node} {state : POO.Flow.SearchAttempt.State}
     {request : POO.Flow.SearchAttempt.Request}
-    {observations : String → Option POO.Flow.SearchEvidence.Event}
+    {observations : String -> Option POO.Flow.SearchEvidence.Event}
     {history : List Nat} {event : POO.Flow.SearchEvidence.Event}
-    (used : event.identity ∈ history) :
-    ¬ POO.Flow.SearchEvidence.AdmitsEvidence node state request observations history event :=
+    (used : List.Mem event.identity history) :
+    Not (POO.Flow.SearchEvidence.AdmitsEvidence node state request observations history event) :=
   POO.Flow.SearchEvidence.historical_identity_rejects used
 
 -- Input handoff reuses producer admission over the original LeanPoo C4 node.
 theorem stale_input_no_handoff {node : LeanPoo.C4.Node}
     {state : POO.Flow.SearchAttempt.State} {request : POO.Flow.SearchAttempt.Request}
-    {observations : String → Option POO.Flow.SearchEvidence.Event}
-    (stale : ¬ POO.Flow.SearchAttempt.Admits state request) :
-    ¬ POO.Flow.SearchEvidence.InputSnapshot node state request observations :=
+    {observations : String -> Option POO.Flow.SearchEvidence.Event}
+    (stale : Not (POO.Flow.SearchAttempt.Admits state request)) :
+    Not (POO.Flow.SearchEvidence.InputSnapshot node state request observations) :=
   POO.Flow.SearchEvidence.stale_input_snapshot_rejects stale
 
 theorem missing_input_no_handoff {node : LeanPoo.C4.Node}
     {state : POO.Flow.SearchAttempt.State} {request : POO.Flow.SearchAttempt.Request}
-    {observations : String → Option POO.Flow.SearchEvidence.Event} {parent : String}
-    (edge : parent ∈ node.parentOrders.flatten) (missing : observations parent = none) :
-    ¬ POO.Flow.SearchEvidence.InputSnapshot node state request observations :=
+    {observations : String -> Option POO.Flow.SearchEvidence.Event} {parent : String}
+    (edge : List.Mem parent node.parentOrders.flatten) (missing : observations parent = none) :
+    Not (POO.Flow.SearchEvidence.InputSnapshot node state request observations) :=
   POO.Flow.SearchEvidence.missing_input_snapshot_rejects edge missing
 
 -- Consumer cancellation delegates to the same producer attempt kernel.
@@ -77,7 +77,7 @@ abbrev cancelAttempt := POO.Flow.SearchAttempt.cancel
 
 theorem stale_cancel_noop (state : POO.Flow.SearchAttempt.State)
     (request : POO.Flow.SearchAttempt.Request)
-    (stale : ¬ POO.Flow.SearchAttempt.Admits state request) :
+    (stale : Not (POO.Flow.SearchAttempt.Admits state request)) :
     cancelAttempt state request = some state := by
   exact POO.Flow.SearchAttempt.stale_cancel_noop state request stale
 
