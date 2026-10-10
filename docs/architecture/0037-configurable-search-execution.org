@@ -6,8 +6,8 @@
 POO Flow maintains the generic =search-engine=, with =temporal-causality= as its
 core composition module for dependency readiness, evidence validity,
 invalidation and logical continuation. The generic implementation is maintained
-in POO Flow =modules/search/engine.ss= and =modules/search/attempt.ss=, exported
-through =modules/search/interface.ss=.
+in POO Flow =modules/search-engine/engine.ss= and =modules/search-engine/attempt.ss=, exported
+through =modules/search-engine/interface.ss=.
 
 MRR provides the Rust dispatch interface and Rust ecosystem scheduling hub.
 It connects engine decisions to MRR Data and other Rust ecosystem adapters,
@@ -275,7 +275,40 @@ lifecycle separately from the retained publication model. Dependent controller
 controls additionally cover chain readiness, reverse fan-in completion, selective
 invalidation, retries, stale completion/cancellation and foreign or duplicate
 session requests. Configurable capability admission, physical observation
-transport and whole-runtime cancellation remain separate gates.
+transport to downstream Data/ASP operators and whole-runtime cancellation remain
+separate gates.
+
+* Temporal evidence transport
+
+=SearchDispatch::from_plan_with_evidence= retains the same POO controller with
+mandatory Temporal evidence. A lease's =inputs()= returns the actual current
+predecessor observations from Scheme. Rust transports each observation's event
+identity, generation, stage, source cut, logical position, payload identity,
+causal parent identities, modality and committed flag. These nine fields pass
+through the existing Version 1 transport; Rust does not synthesize causal edges
+from the strategy graph.
+
+The physical operator returns its observation through =admit_observation()=.
+POO validates the original active request, scope, current predecessor evidence,
+causal order and generation-wide event identity history before completing the
+stage. Uncommitted, hypothesized, foreign, stale or replayed observations cannot
+publish output counters or a dispatch receipt. Dropping rejected work cancels
+the exact attempt and releases its reservation; the input charge is retained.
+Revision clears affected evidence while preserving independent branches and
+historical event identities.
+
+=scheme/search/controller-bridge.ss= owns only bounded serialization and retained
+session transport. Its =start-evidence=, =inputs= and =observe= commands delegate
+semantics to POO Flow =modules/search-engine=. The earlier identity-only
+constructor remains available for execution contracts that do not claim Temporal
+evidence. It cannot complete an evidence-required session without an observation.
+
+POO's LeanPoo-backed =SearchEvidence= and =SearchEvidenceHistory= models own
+semantic admission and replay rejection. MRR's Lean dispatch model imports those
+producer laws and proves that rejected observations cannot publish. The consumer
+Quint model adds an =ignoreEvidence= negative control, alongside budget,
+retirement and exact-attempt cancellation controls. These are protocol proofs;
+the actual bridge is qualified separately by Rust/Scheme and worker IPC tests.
 
 * Synchronized producer proof increment
 
@@ -328,13 +361,17 @@ authenticate a configuration string.
 * Local qualification boundary
 
 The retained-controller increment passes the full =mrr-search= unit suite:
-22 actual Rust/Scheme tests, including seven controller controls. The final
+23 actual Rust/Scheme tests, including eight controller controls. The final
 Scheme bridge also passes direct readiness, pre-commit rejection, stale
 cancellation and continuation controls. Lean builds the cancellation theorems
 and passes the source axiom audit. Quint exhausts both consumer models and
-finds the three intended budget, retirement and cancellation counterexamples.
-The existing transport-only worker integration also passes retained session,
-owner rejection, revision and stale cancellation controls with actual V1 IPC.
+finds the four intended budget, retirement, evidence and cancellation counterexamples.
+The transport-only worker integration also passes retained session, owner
+rejection, revision and stale cancellation controls with actual V1 IPC. It
+rejects uncommitted, foreign-cut, missing-parent and hypothesized observations,
+then admits the unchanged valid event. A later revision rejects reuse of the
+historical event identity and accepts a fresh identity. This test executes in
+2.82 seconds after the producer worker has been built.
 Both Rust owners pass =clippy --all-targets -D warnings= with worker inference;
 this checks the shared controller code without rebuilding the embedded archive.
 
@@ -343,4 +380,12 @@ launcher duplicated Gambit runtime options and caused compiler flags to be
 ignored. The SDK's recorded OpenSSL 3.6.4 link directory has been removed by
 Homebrew; local linking uses the installed OpenSSL library directory. Neither
 adjustment changes the search implementation or Cargo target directory.
-Exact-head CI and downstream Data/ASP execution qualification remain separate.
+The evidence qualification loads the current producer search-engine artifacts
+with the existing local parser closure. The immutable producer dependency now
+uses a parser revision that removed =parse-artifact-v1-native=, while MRR's native
+archive and parser calls still reference that legacy ABI. A clean full native
+build therefore requires a separate parser consumer migration; these local
+search receipts do not establish that dependency closure. The independent
+source-loaded =t/search-framework-test.ss= qualification also exceeded its
+five-second local gate without output and is not counted as passing. Exact-head CI and
+downstream Data/ASP execution qualification remain separate.

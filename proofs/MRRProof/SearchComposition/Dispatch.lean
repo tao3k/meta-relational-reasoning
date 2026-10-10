@@ -1,5 +1,6 @@
 import Lean
 import SearchAttempt
+import SearchEvidenceHistory
 
 namespace MRR.SearchDispatch
 structure State where
@@ -35,31 +36,41 @@ theorem retired_no_new_output {cap : Nat} {a b : State}
     (retired : a.retired = true) (step : Step cap a b) : b.output = a.output := by
   cases step <;> simp_all
 
+-- Rust publication is permitted only after the producer accepts the observation.
+def publishObservation (state : State) (producerAccepted : Bool) : Option State :=
+  if producerAccepted = true ∧ state.retired = false ∧ 0 < state.active then
+    some {state with active := state.active - 1, output := state.output + 1}
+  else none
+
+theorem rejected_observation_no_publication (state : State) :
+    publishObservation state false = none := by
+  simp [publishObservation]
+
+theorem historical_observation_rejected
+    {node : LeanPoo.C4.Node} {state : POO.Flow.SearchAttempt.State}
+    {request : POO.Flow.SearchAttempt.Request}
+    {observations : String → Option POO.Flow.SearchEvidence.Event}
+    {history : List Nat} {event : POO.Flow.SearchEvidence.Event}
+    (used : event.identity ∈ history) :
+    ¬ POO.Flow.SearchEvidence.AdmitsEvidence node state request observations history event :=
+  POO.Flow.SearchEvidence.historical_identity_rejects used
+
 -- Scheme transport admits cancellation only for the currently active identity.
 -- Its retained owner then delegates to the producer revision transition.
-def cancelAttempt (state : POO.Flow.SearchAttempt.State)
-    (request : POO.Flow.SearchAttempt.Request) : Option POO.Flow.SearchAttempt.State :=
-  if POO.Flow.SearchAttempt.Admits state request then
-    POO.Flow.SearchAttempt.revise state state.scope.sourceCut
-  else some state
+abbrev cancelAttempt := POO.Flow.SearchAttempt.cancel
 
 theorem stale_cancel_noop (state : POO.Flow.SearchAttempt.State)
     (request : POO.Flow.SearchAttempt.Request)
     (stale : ¬ POO.Flow.SearchAttempt.Admits state request) :
     cancelAttempt state request = some state := by
-  simp [cancelAttempt, stale]
+  exact POO.Flow.SearchAttempt.stale_cancel_noop state request stale
 
 theorem cancelled_attempt_cannot_settle
     {state next : POO.Flow.SearchAttempt.State} {request : POO.Flow.SearchAttempt.Request}
     (current : POO.Flow.SearchAttempt.Admits state request)
     (cancelled : cancelAttempt state request = some next) :
     POO.Flow.SearchAttempt.settle next request = none := by
-  have revised : POO.Flow.SearchAttempt.revise state state.scope.sourceCut = some next := by
-    unfold cancelAttempt at cancelled
-    split at cancelled
-    · exact cancelled
-    · contradiction
-  exact POO.Flow.SearchAttempt.revision_fences_old_attempt revised
+  exact POO.Flow.SearchAttempt.cancelled_attempt_cannot_settle current cancelled
 
 end MRR.SearchDispatch
 #print axioms MRR.SearchDispatch.step_preserves_bound

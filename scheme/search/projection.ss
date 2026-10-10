@@ -9,7 +9,7 @@
 (import (only-in :clan/poo/object .ref object? object-supers compute-precedence-list!)
         (only-in :std/list/list append-map delete-duplicates/hash every filter)
         :poo-flow/src/core/object-syntax
-        :poo-flow/modules/search/interface
+        :poo-flow/modules/search-engine/interface
         (only-in :poo-flow/src/core/plan flow->linear-plan execution-plan-nodes
                  execution-plan->dag-receipt plan-node-id plan-node-kind
                  plan-node-name plan-node-step plan-node-dependencies)

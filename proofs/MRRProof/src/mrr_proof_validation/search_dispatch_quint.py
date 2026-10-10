@@ -29,6 +29,7 @@ def main() -> None:
         config.write_text('{"workers":"1","maxHeap":"-Xmx1G"}\n')
         cases = [("SearchDispatch", "none", None), ("SearchDispatch", "ignoreBudget", "_input = 3"),
                  ("SearchDispatch", "admitLate", "_late = TRUE"),
+                 ("SearchDispatch", "ignoreEvidence", "_rejectedPublication = TRUE"),
                  ("SearchCancellation", "none", None), ("SearchCancellation", "cancelAny", "_lostNew = TRUE")]
         cancellation = ROOT / "proofs/quint/SearchCancellation.qnt"
         shutil.copy2(cancellation, work / cancellation.name)

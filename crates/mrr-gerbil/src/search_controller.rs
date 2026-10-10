@@ -20,6 +20,73 @@ pub struct PooSearchRequest {
     revision: usize,
     attempt: usize,
 }
+/// A transport projection of one Temporal event; Scheme owns semantic admission.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PooSearchObservation {
+    pub identity: String,
+    pub generation: String,
+    pub stage: String,
+    pub source_cut: String,
+    pub logical_position: usize,
+    pub payload_identity: String,
+    pub causal_parents: Vec<String>,
+    pub modality: PooSearchModality,
+    pub committed: bool,
+}
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum PooSearchModality {
+    Observed,
+    Derived,
+    Hypothesized,
+}
+impl PooSearchObservation {
+    fn wire(&self) -> Value {
+        Value::List(vec![
+            text(&self.identity),
+            text(&self.generation),
+            text(&self.stage),
+            text(&self.source_cut),
+            Value::Integer(self.logical_position),
+            text(&self.payload_identity),
+            Value::List(self.causal_parents.iter().map(|s| text(s)).collect()),
+            text(match self.modality {
+                PooSearchModality::Observed => "observed",
+                PooSearchModality::Derived => "derived",
+                PooSearchModality::Hypothesized => "hypothesized",
+            }),
+            Value::Bool(self.committed),
+        ])
+    }
+    fn decode(value: &Value) -> Result<Self, TemporalRuntimeError> {
+        let r = value
+            .as_array()
+            .filter(|r| r.len() == 9)
+            .ok_or(TemporalRuntimeError::InvalidInput)?;
+        let string = |i: usize| {
+            r[i].as_str()
+                .map(str::to_owned)
+                .ok_or(TemporalRuntimeError::InvalidInput)
+        };
+        Ok(Self {
+            identity: string(0)?,
+            generation: string(1)?,
+            stage: string(2)?,
+            source_cut: string(3)?,
+            logical_position: r[4].integer().ok_or(TemporalRuntimeError::InvalidInput)?,
+            payload_identity: string(5)?,
+            causal_parents: names(r[6].clone())?,
+            modality: match r[7].as_str() {
+                Some("observed") => PooSearchModality::Observed,
+                Some("derived") => PooSearchModality::Derived,
+                _ => return Err(TemporalRuntimeError::InvalidInput),
+            },
+            committed: match r[8] {
+                Value::Bool(b) => b,
+                _ => return Err(TemporalRuntimeError::InvalidInput),
+            },
+        })
+    }
+}
 impl PooSearchRequest {
     #[must_use]
     pub fn stage(&self) -> &str {
@@ -45,6 +112,35 @@ impl PooSearchController {
         source_cut: &str,
         plan: &PooSearchPlan,
     ) -> Result<Self, TemporalRuntimeError> {
+        Self::start(name, generation, configuration, source_cut, plan, "start")
+    }
+    /// Creates a session that requires Temporal evidence for every completion.
+    /// # Errors
+    /// Rejects invalid plans, bounded transport failures and unavailable owners.
+    pub fn with_evidence(
+        name: &str,
+        generation: &str,
+        configuration: &str,
+        source_cut: &str,
+        plan: &PooSearchPlan,
+    ) -> Result<Self, TemporalRuntimeError> {
+        Self::start(
+            name,
+            generation,
+            configuration,
+            source_cut,
+            plan,
+            "start-evidence",
+        )
+    }
+    fn start(
+        name: &str,
+        generation: &str,
+        configuration: &str,
+        source_cut: &str,
+        plan: &PooSearchPlan,
+        command: &str,
+    ) -> Result<Self, TemporalRuntimeError> {
         if configuration.is_empty()
             || configuration.len() > 4096
             || source_cut.is_empty()
@@ -62,7 +158,7 @@ impl PooSearchController {
             &key,
             generation,
             configuration,
-            "start",
+            command,
             vec![text(name), plan.wire(0, &mut 0)?, text(source_cut)],
         );
         let decoded = started.and_then(|value| {
@@ -160,6 +256,47 @@ impl PooSearchController {
                 text(source_cut),
             ],
         )?)
+    }
+    /// Returns the actual current predecessor observations for this active request.
+    /// # Errors
+    /// Rejects stale/foreign requests, missing evidence and identity-only sessions.
+    pub fn inputs(
+        &self,
+        request: &PooSearchRequest,
+    ) -> Result<Vec<PooSearchObservation>, TemporalRuntimeError> {
+        let value = self.invoke("inputs", self.request_args(request)?)?;
+        value
+            .as_array()
+            .ok_or(TemporalRuntimeError::InvalidInput)?
+            .iter()
+            .map(PooSearchObservation::decode)
+            .collect()
+    }
+    /// Transports an observation to the POO owner without deriving causal parents in Rust.
+    /// # Errors
+    /// Rejects foreign/stale scope, bad causal evidence and reused event identities.
+    pub fn observe(
+        &self,
+        request: &PooSearchRequest,
+        observation: &PooSearchObservation,
+    ) -> Result<Vec<String>, TemporalRuntimeError> {
+        let mut args = self.request_args(request)?;
+        args.push(observation.wire());
+        names(self.invoke("observe", args)?)
+    }
+    fn request_args(&self, request: &PooSearchRequest) -> Result<Vec<Value>, TemporalRuntimeError> {
+        if request.key != self.key
+            || request.generation != self.generation
+            || request.configuration != self.configuration
+        {
+            return Err(TemporalRuntimeError::InvalidInput);
+        }
+        Ok(vec![
+            text(&request.stage),
+            text(&request.source_cut),
+            Value::Integer(request.revision),
+            Value::Integer(request.attempt),
+        ])
     }
     fn finish(
         &self,

@@ -145,6 +145,33 @@ impl SearchDispatch {
         dispatch.controller = Some(Arc::new(controller));
         Ok(dispatch)
     }
+    /// Build a retained controller that requires Temporal evidence before admitting results.
+    /// # Errors
+    /// Rejects invalid POO plans, unavailable owners and transport/admission failures.
+    #[cfg(any(feature = "native-inference", feature = "worker-inference"))]
+    pub fn from_plan_with_evidence(
+        name: &str,
+        generation: GenerationId,
+        plan: &crate::PooSearchPlan,
+        configuration: &str,
+        source_cut: &str,
+        max_in_flight: NonZeroUsize,
+        limits: SearchDispatchResources,
+    ) -> Result<Self, String> {
+        let controller = mrr_gerbil::PooSearchController::with_evidence(
+            name,
+            &generation.to_string(),
+            configuration,
+            source_cut,
+            plan,
+        )
+        .map_err(|e| e.to_string())?;
+        let projection =
+            crate::poo::projection_from_graph(name, generation, controller.graph().clone())?;
+        let mut dispatch = Self::new(projection, max_in_flight, limits);
+        dispatch.controller = Some(Arc::new(controller));
+        Ok(dispatch)
+    }
     /// Resolve original stage identity without constructing a second factor registry.
     #[must_use]
     pub fn factor_by_name(&self, name: &str) -> Option<SearchFactor> {
@@ -332,6 +359,24 @@ impl SearchDispatchLease {
         output_bytes: usize,
         results: usize,
     ) -> Result<SearchDispatchReceipt, SearchDispatchError> {
+        self.admit_inner(
+            output_bytes,
+            results,
+            #[cfg(any(feature = "native-inference", feature = "worker-inference"))]
+            None,
+        )
+    }
+    /// Return original POO predecessor evidence for the active physical lease.
+    /// # Errors
+    /// Rejects stale work, identity-only sessions and missing evidence.
+    #[cfg(any(feature = "native-inference", feature = "worker-inference"))]
+    pub fn inputs(&self) -> Result<Vec<mrr_gerbil::PooSearchObservation>, SearchDispatchError> {
+        let (controller, request) = self
+            .dispatch
+            .controller
+            .as_ref()
+            .zip(self.request.as_ref())
+            .ok_or(SearchDispatchError::UnsupportedPrerequisites)?;
         let mut state = self
             .dispatch
             .state
@@ -339,6 +384,42 @@ impl SearchDispatchLease {
             .map_err(|_| SearchDispatchError::Poisoned)?;
         if state.snapshot.retired {
             return Err(SearchDispatchError::Retired);
+        }
+        controller
+            .inputs(request)
+            .map_err(|error| SearchDispatch::controller_error(&mut state, error))
+    }
+    /// Admit physical counters only after Scheme accepts the bound Temporal observation.
+    /// # Errors
+    /// Rejects stale/foreign evidence and resource overflow before publishing a receipt.
+    #[cfg(any(feature = "native-inference", feature = "worker-inference"))]
+    pub fn admit_observation(
+        self,
+        output_bytes: usize,
+        results: usize,
+        observation: &mrr_gerbil::PooSearchObservation,
+    ) -> Result<SearchDispatchReceipt, SearchDispatchError> {
+        self.admit_inner(output_bytes, results, Some(observation))
+    }
+    fn admit_inner(
+        #[allow(unused_mut)] mut self,
+        output_bytes: usize,
+        results: usize,
+        #[cfg(any(feature = "native-inference", feature = "worker-inference"))] observation: Option<
+            &mrr_gerbil::PooSearchObservation,
+        >,
+    ) -> Result<SearchDispatchReceipt, SearchDispatchError> {
+        let mut state = self
+            .dispatch
+            .state
+            .lock()
+            .map_err(|_| SearchDispatchError::Poisoned)?;
+        if state.snapshot.retired {
+            return Err(SearchDispatchError::Retired);
+        }
+        #[cfg(any(feature = "native-inference", feature = "worker-inference"))]
+        if observation.is_some() && (self.dispatch.controller.is_none() || self.request.is_none()) {
+            return Err(SearchDispatchError::UnsupportedPrerequisites);
         }
         if output_bytes > self.reservation.output_bytes || results > self.reservation.results {
             return Err(SearchDispatchError::ReservationExceeded);
@@ -352,9 +433,11 @@ impl SearchDispatchLease {
         let attempt = None;
         #[cfg(any(feature = "native-inference", feature = "worker-inference"))]
         if let (Some(controller), Some(request)) = (&self.dispatch.controller, &self.request) {
-            controller
-                .complete(request)
-                .map_err(|error| SearchDispatch::controller_error(&mut state, error))?;
+            match observation {
+                Some(event) => controller.observe(request, event),
+                None => controller.complete(request),
+            }
+            .map_err(|error| SearchDispatch::controller_error(&mut state, error))?;
             self.request = None;
         }
         state.snapshot.consumed.output_bytes += output_bytes;

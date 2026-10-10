@@ -235,7 +235,7 @@ component-local safety does not imply safety after composition.
 The current checkout already consumes POO Flow rather than rebuilding its
 composition machinery:
 
-- POO Flow =modules/search/interface.ss= owns backend-neutral Search
+- POO Flow =modules/search-engine/interface.ss= owns backend-neutral Search
   roles, typed stages, compositions, and strategies.  MRR consumes its
   declarations for semantic reasoning; ASP owns its Playbook grammar and
   lowers concrete operators into this framework;

@@ -21,8 +21,8 @@ handoff. MRR Data owns physical query, index and storage execution; ASP composes
 scenario-specific search and presents admitted results.
 
 The generic search engine is maintained in POO Flow's
-=modules/search/engine.ss=, with temporal attempt admission in
-=modules/search/attempt.ss=. Its Lean and Quint semantic proofs are producer-owned.
+=modules/search-engine/engine.ss=, with temporal attempt admission in
+=modules/search-engine/attempt.ss=. Its Lean and Quint semantic proofs are producer-owned.
 MRR's retained Scheme controller transports the engine's decisions to Rust.
 Logical readiness and continuation remain in POO Flow; Rust schedules the
 admitted physical work through explicit execution ports. See

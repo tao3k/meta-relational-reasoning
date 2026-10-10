@@ -22,7 +22,7 @@
     "scheme/temporal/native"
     "scheme/search/enhanced-tree-sitter-query"
     "scheme/search/projection"
-    "scheme/search/engine"
+    "scheme/search/controller-bridge"
     "scheme/query/provider/config"
     "scheme/query/provider/contracts"
     "scheme/query/provider/result-types"

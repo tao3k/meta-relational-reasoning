@@ -201,3 +201,108 @@ fn controller_sessions_reject_foreign_and_duplicate_completions() {
     first.complete(&first_request).unwrap();
     println!("SEARCH-CONTROLLER-OK distinct sessions and once-only completion");
 }
+
+#[test]
+fn temporal_evidence_dispatch_transports_fan_in_and_revision() {
+    use mrr_gerbil::{PooSearchModality, PooSearchObservation};
+    let generation = GenerationId::from_canonical_bytes("evidence-dispatch").unwrap();
+    let plan = PooSearchPlan::Merge {
+        name: "join".into(),
+        parallel: Box::new(PooSearchPlan::Parallel {
+            name: "branches".into(),
+            children: vec![stage("a"), stage("b")],
+        }),
+        stage_name: "c".into(),
+        role: crate::PooSearchRole::Reasoning,
+        output_domain: "rows".into(),
+    };
+    let d = SearchDispatch::from_plan_with_evidence(
+        "evidence",
+        generation,
+        &plan,
+        "config",
+        "cut",
+        NonZeroUsize::new(2).unwrap(),
+        resources(32),
+    )
+    .unwrap();
+    let event =
+        |stage: &str, id: &str, cut: &str, position, parents: Vec<String>| PooSearchObservation {
+            identity: id.into(),
+            generation: generation.to_string(),
+            stage: stage.into(),
+            source_cut: cut.into(),
+            logical_position: position,
+            payload_identity: "candidate".into(),
+            causal_parents: parents,
+            modality: PooSearchModality::Derived,
+            committed: true,
+        };
+    let a = d.factor_by_name("a").unwrap();
+    let b = d.factor_by_name("b").unwrap();
+    let c = d.factor_by_name("c").unwrap();
+    for (factor, name, id, position) in [(b, "b", "B", 1), (a, "a", "A", 2)] {
+        let lease = d.reserve(generation, factor, resources(1)).unwrap();
+        assert!(lease.inputs().unwrap().is_empty());
+        lease
+            .admit_observation(1, 1, &event(name, id, "cut", position, vec![]))
+            .unwrap();
+    }
+    let lease = d.reserve(generation, c, resources(1)).unwrap();
+    let inputs = lease.inputs().unwrap();
+    assert_eq!(
+        inputs
+            .iter()
+            .map(|e| e.identity.as_str())
+            .collect::<Vec<_>>(),
+        ["A", "B"]
+    );
+    lease
+        .admit_observation(
+            1,
+            1,
+            &event(
+                "c",
+                "C",
+                "cut",
+                3,
+                inputs.iter().map(|e| e.identity.clone()).collect(),
+            ),
+        )
+        .unwrap();
+    d.revise(&[a], "cut2").unwrap();
+    let lease = d.reserve(generation, a, resources(1)).unwrap();
+    assert_eq!(
+        lease.admit_observation(1, 1, &event("a", "A", "cut2", 4, vec![])),
+        Err(SearchDispatchError::ControllerRejected)
+    );
+    assert!(!d.snapshot().unwrap().retired);
+    let lease = d.reserve(generation, a, resources(1)).unwrap();
+    lease
+        .admit_observation(1, 1, &event("a", "A2", "cut2", 4, vec![]))
+        .unwrap();
+    let lease = d.reserve(generation, c, resources(1)).unwrap();
+    let inputs = lease.inputs().unwrap();
+    assert_eq!(
+        inputs
+            .iter()
+            .map(|e| e.identity.as_str())
+            .collect::<Vec<_>>(),
+        ["A2", "B"]
+    );
+    lease
+        .admit_observation(
+            1,
+            1,
+            &event(
+                "c",
+                "C2",
+                "cut2",
+                5,
+                inputs.iter().map(|e| e.identity.clone()).collect(),
+            ),
+        )
+        .unwrap();
+    assert_eq!(d.snapshot().unwrap().in_flight, 0);
+    println!("CASE Temporal evidence crosses Rust dispatch, fan-in, revision and replay guards");
+}

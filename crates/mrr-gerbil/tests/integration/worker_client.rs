@@ -62,6 +62,72 @@ fn transport_only_host_executes_existing_poo_owner_and_finite_solver() {
         assert!(controller.frontier().unwrap().is_empty());
     }
     println!("CASE retained POO controller and stale-attempt isolation over V1 worker transport");
+    {
+        use mrr_gerbil::{PooSearchModality, PooSearchObservation};
+        let generation = "b".repeat(64);
+        let evidence = PooSearchController::with_evidence(
+            "worker-evidence",
+            &generation,
+            "config",
+            "cut",
+            &plan,
+        )
+        .unwrap();
+        let request = evidence.issue("source").unwrap();
+        assert!(evidence.inputs(&request).unwrap().is_empty());
+        assert_eq!(
+            evidence.complete(&request),
+            Err(TemporalRuntimeError::NativeRejected(4))
+        );
+        let event = PooSearchObservation {
+            identity: "worker-event".into(),
+            generation,
+            stage: "source".into(),
+            source_cut: "cut".into(),
+            logical_position: 1,
+            payload_identity: "candidate".into(),
+            causal_parents: vec![],
+            modality: PooSearchModality::Observed,
+            committed: true,
+        };
+        for invalid in [
+            PooSearchObservation {
+                committed: false,
+                ..event.clone()
+            },
+            PooSearchObservation {
+                source_cut: "foreign-cut".into(),
+                ..event.clone()
+            },
+            PooSearchObservation {
+                causal_parents: vec!["missing-parent".into()],
+                ..event.clone()
+            },
+            PooSearchObservation {
+                modality: PooSearchModality::Hypothesized,
+                ..event.clone()
+            },
+        ] {
+            assert_eq!(
+                evidence.observe(&request, &invalid),
+                Err(TemporalRuntimeError::NativeRejected(4))
+            );
+            assert!(evidence.inputs(&request).unwrap().is_empty());
+        }
+        evidence.observe(&request, &event).unwrap();
+        evidence.revise(&["source".into()], "cut2").unwrap();
+        let fresh = evidence.issue("source").unwrap();
+        let mut revised = event.clone();
+        revised.source_cut = "cut2".into();
+        revised.logical_position = 2;
+        assert_eq!(
+            evidence.observe(&fresh, &revised),
+            Err(TemporalRuntimeError::NativeRejected(4))
+        );
+        revised.identity = "worker-event-2".into();
+        evidence.observe(&fresh, &revised).unwrap();
+    }
+    println!("CASE actual Temporal observation and replay rejection over V1 worker transport");
     let result = evaluate_finite_relations(3, vec![(0, 1), (1, 2)], vec![0]).unwrap();
     assert!(result.paths.contains(&(0, 2, 2)));
     assert_eq!(
