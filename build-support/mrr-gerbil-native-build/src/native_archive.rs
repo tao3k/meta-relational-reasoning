@@ -38,7 +38,9 @@ const FORBIDDEN_RUNTIME_MODULES: &[&str] = &[
     "poo-flow/src/module-system/observability/config",
 ];
 
-struct CargoObserver;
+struct CargoObserver {
+    output_directory: PathBuf,
+}
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum ObservationChannel {
@@ -74,7 +76,11 @@ impl ProgramArchiveObserver for CargoObserver {
     }
 
     fn observe_source_input(&self, source: &Path) {
-        println!("cargo:rerun-if-changed={}", source.display());
+        // Generated Scheme inputs belong to this build attempt. Watching them
+        // makes Cargo invalidate the finished archive immediately after build.
+        if !source.starts_with(&self.output_directory) {
+            println!("cargo:rerun-if-changed={}", source.display());
+        }
     }
 }
 
@@ -91,7 +97,9 @@ pub fn build_native_archive(manifest: &Path) {
     println!("cargo:rerun-if-env-changed=GERBIL_GXPKG");
     println!("cargo:rerun-if-env-changed=GERBIL_BUILD_VERBOSE");
     let build = NativeBuild::new(manifest);
-    let observer = CargoObserver;
+    let observer = CargoObserver {
+        output_directory: PathBuf::from(env::var_os("OUT_DIR").expect("OUT_DIR")),
+    };
     build.prepare_package(&observer);
     build.stage_program(&observer);
     build.package_archive(&observer);
@@ -279,9 +287,17 @@ impl NativeBuild {
         )
         .expect("package MRR and parser Gerbil native archive");
         for directive in receipt.cargo_directives {
-            println!("{}", directive.line());
+            let line = directive.line();
+            if retain_cargo_directive(&line, &observer.output_directory) {
+                println!("{line}");
+            }
         }
     }
+}
+
+pub(crate) fn retain_cargo_directive(line: &str, output_directory: &Path) -> bool {
+    line.strip_prefix("cargo:rerun-if-changed=")
+        .is_none_or(|path| !Path::new(path).starts_with(output_directory))
 }
 
 pub(crate) fn observation_channel(
