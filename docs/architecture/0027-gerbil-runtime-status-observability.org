@@ -91,3 +91,13 @@ the actual Scheme artifact, and strict all-target Clippy pass locally. Cargo
 watches standard pkg-config environment selectors for cache invalidation; CI
 does not supply library search flags. These checks establish producer/consumer
 agreement, not a completed remote workspace-link or runtime acceptance result.
+
+The preceding CI run at =e3a0b69= has two additional, distinct failures. Darwin
+prints all module results, =HARNESS-OK= and =OK=, then remains running beyond the
+unchanged five-second no-output gate; process-group cleanup reports a permission
+error. Ubuntu reaches the Library/Data preparation stage, where the independently
+pinned MRR =68ffa47d= build rejects an unbound
+=cypher-opencypher-language-grammar= reference in its Parser authority source.
+The current package's link projection cannot repair that frozen source graph.
+Neither marker completion nor local linkage tests close these failures; no cache
+source edits, compatibility shim or dependency-pin change is used to hide them.
