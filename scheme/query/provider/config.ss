@@ -4,7 +4,8 @@
 ;;; SPDX-License-Identifier: Apache-2.0 AND LGPL-2.1-or-later
 
 ;;; Inert MRR Provider declaration.  Rust owns execution; Scheme owns binding.
-(import :yuanxu/poo-clos/interface
+(import (only-in :yuanxu/poo-clos/classes poo-clos-class)
+        (only-in :yuanxu/poo-clos/lifecycle poo-clos-make-instance)
         (only-in :agentic-ai-lab/modules/query/objects
                  QueryReceiptBindingExecutor
                  agentic-ai-lab-query-provider))

@@ -68,10 +68,12 @@ def main() -> None:
         ["git", "-C", str(target), "submodule", "update", "--init", "--depth=1", "--", "core"],
         check=True,
     )
-    # These maintained owner recipes perform dependency acquisition and build.
+    # These maintained owner recipes install the producer's prerequisites.
+    # MRR's subsequent standard deps --install owns the producer package build
+    # and its manifest; building the product here would duplicate that work.
     # No compiler flags, link strategy or copied dependency resolver lives here.
     subprocess.run(
-        ["just", "--justfile", str(target / "justfile"), "bootstrap-native-poo", "deps", "build"],
+        ["just", "--justfile", str(target / "justfile"), "bootstrap-native-poo", "deps"],
         check=True,
     )
 

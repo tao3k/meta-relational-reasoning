@@ -14,8 +14,9 @@ remain producer-owned; MRR does not copy or rename their mathematical content.
 The selected Core gitlink and Parser's Yuanxu dependency both bind
 =79a5526a2ecd06408201be87b4a028b167c8d8a0=. Their POO dependency is
 =98fcce3abec760373cc7486a8b51d6bb97424658=. These are inherited source facts,
-not additional MRR dependency pins. LeanPoo and the Gerbil bridge retain their
-existing consumer revisions. No floating branch is used for acceptance.
+not additional MRR dependency pins. LeanPoo and the runtime Gerbil bridge retain
+their existing consumer revisions. The separately approved build-owner migration
+below is the sole additional source change. No floating branch is used for acceptance.
 
 * Direct public API migration
 
@@ -24,7 +25,7 @@ existing consumer revisions. No floating branch is used for acceptance.
 | Role object syntax | =:yuanxu/object-family/role-syntax= |
 | Functional utilities | =:yuanxu/utilities/functional= |
 | Flow plans and DAG receipts | =:yuanxu/modules/funflow/control-plane/graph= |
-| POO CLOS interfaces | =:yuanxu/poo-clos/interface= |
+| Provider class construction | =:yuanxu/poo-clos/classes= and =lifecycle= |
 | Query and Search semantics | =:agentic-ai-lab/modules/query= and =modules/search-engine= |
 | Temporal host/wire adapters | =:agentic-ai-lab/modules/workflow/runtime= |
 | C semantic exports | =agentic_ai_lab_semantic_v1_*= |
@@ -97,3 +98,71 @@ The first migration CI exposes a case-sensitive entrypoint error: the producer
 tracks =justfile=, not =Justfile=. Darwin's case-insensitive volume hid this
 mistake. Acquisition now names the tracked lowercase file exactly; the failed
 Ubuntu bootstrap remains separate from the successful local bootstrap.
+
+* Compiler host layout and the approved build-owner adoption
+
+The retained POO table C has 20,116 labels. Its producer already specifies
+=___SINGLE_HOST_LIMIT=10000= in =build.ss=. Recompilation from the static Scheme
+carrier by the generic archive does not carry those gxc command-line options.
+The unbounded single-host archive compilation therefore differs from the
+successfully installed dynamic module. GCC reports approximately 91,000 basic
+blocks and 445,000 registers before signal 9. That signal alone does not prove
+which operating-system resource policy killed the compiler.
+
+The upstream owner now uses Gambit's existing =___OPTIMIZED_MODULE_LIMIT= as
+the generic GCC module host-split threshold. O2, paired runtime headers, the
+complete module graph and actual host workers are retained. The compiler's
+existing object fingerprint includes the new code-generation option. The exact
+retained failed C compiles naturally in 66.36 seconds, with maximum RSS
+1,756,725,248 bytes. This is focused compiler-process evidence, not a complete
+concurrent-build peak or runtime performance comparison.
+
+The user explicitly authorizes adopting the repaired build owner and its existing
+=gerbil-scheme-aot-build= package identity. The thin MRR adapter consumes
+=f7329ec179253da051fca3f285ebc3ce8cb02f25=, which includes the host-layout and
+link-kind fixes. CI provisions Gerbil through that same build owner's action.
+The adapter consumes that API directly. The =gerbil-scheme-sys= runtime source, Agentic AI Lab, LeanPoo,
+Data and independently locked release-pair revisions remain unchanged. A lock
+identity/checksum audit finds no existing package source/version removed or
+changed; additions belong to the approved build owner and its dependencies.
+
+* Full Scheme inventory and dependency loading
+
+Both Query tests now import the exercised producer modules instead of the
+all-Query facade, which includes Orgize. No Orgize operation is tested by those
+suites; avoiding its import does not remove an assertion, test module, feature
+or rejection condition. The provider declaration imports the existing class
+construction and lifecycle owners directly. Two remaining old GQL type names
+are corrected to the actual producer exports. The original eight test modules,
+one-gigabyte heap, five-second idle and 45-second batch wall gate remain.
+
+An initial isolated test run without installed MRR modules refuses. Standard
+dependency registration is required in addition to the producer's source build;
+handwritten package manifests are not acceptance. An incomplete shared-clone
+object database is repaired by an exact-source Git refetch. The subsequent
+standard =gerbil deps --install= completes naturally. A raw Gerbil package build
+inside the captured Nix Rust environment exposes mixed Apple header paths and
+=FILE= errors. The canonical Cargo adapter uses the upstream =gerbil_command=
+environment boundary to keep the selected Gambit compiler separate from those
+ambient Rust paths. Compiler environment policy is not copied into Python.
+
+The next complete compile exposes a separate upstream link-check error: a normal
+=-lcrypto= was required to have a static archive. The upstream correction preserves
+the declared link kind and retains refusal for explicit static requests. The
+selected package manager's shared OpenSSL dependency is not a missing static
+contract. Upstream standard tests cover shared acceptance and static rejection;
+the unit suite passes 28 tests with seven opt-in tests unchanged, and strict
+Clippy passes.
+
+The standard full Scheme entry now completes naturally with all eight module
+receipts, 147 case receipts, =HARNESS-OK= and final =OK= under the unchanged
+45-second wall and five-second idle gate. It reuses Parser's existing artifact
+and LR stage trace to report actual decompression, digest verification and IR
+admission. No timer, polling input or fake heartbeat qualifies work. The prior
+unobserved admission run is retained as an idle failure at about 29.6 seconds.
+
+The previous Darwin CI uses a separate old Gerbil setup action and refuses
+Ascent's =add-compile-output-job!= import. The admitted build owner's action
+already provisions the newer Darwin release with that API. Aligning provisioning
+and the build API avoids altering the pinned Ascent source or copying its code.
+CI still measures the actual runner's core count; no test limit is widened.

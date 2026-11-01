@@ -2,7 +2,7 @@
 use std::io::Read;
 use std::path::{Path, PathBuf};
 
-use gerbil_scheme_native_build::{CargoDirective, CargoDirectiveKind};
+use gerbil_scheme_aot_build::{CargoDirective, CargoDirectiveKind};
 
 pub(crate) fn read(path: &Path) -> Result<Vec<CargoDirective>, String> {
     let mut bytes = Vec::new();

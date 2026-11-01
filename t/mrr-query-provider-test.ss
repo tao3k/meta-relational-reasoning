@@ -6,7 +6,11 @@
 (import (only-in :std/test check check-exception test-suite test-case)
         (only-in :clan/poo/object .o .ref)
         (only-in :clan/poo/mop validate)
-        :agentic-ai-lab/modules/query/interface
+        :agentic-ai-lab/modules/query/types
+        :agentic-ai-lab/modules/query/objects
+        :agentic-ai-lab/modules/query/funs
+        :agentic-ai-lab/modules/query/contracts
+        :agentic-ai-lab/modules/query/results/interface
         :agentic-ai-lab/modules/temporal-causality/candidates/interface
         :meta-relational-reasoning/scheme/query/provider/interface)
 (export mrr-query-provider-test)
@@ -25,7 +29,7 @@
 ;;; POO AST, so inheritance and slot algebra remain available without creating
 ;;; a second Scheme Query language.
 (def CaseProfileProgram
-  (.o (:: @ PooFlowGqlQueryProgram.)
+  (.o (:: @ AgenticAILabGqlQueryProgram.)
       identity: 'healthcare-case-profile-relations
       match:
       (.o (:: @ GraphSyntaxPath.)
@@ -69,7 +73,7 @@
        semantic-revision: "sha256:space-v1"
        element-space-identity: 'healthcare/case-space
        selected-element-identities: '(case-1 profile-1)
-       language: PooFlowGqlQueryLanguage.
+       language: AgenticAILabGqlQueryLanguage.
        program: CaseProfileProgram
        result-bound: 16
        completeness-requirement: 'complete

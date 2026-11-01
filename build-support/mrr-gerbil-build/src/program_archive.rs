@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::Duration;
 
-use gerbil_scheme_native_build::{
+use gerbil_scheme_aot_build::{
     NativeHeaderInput, ProgramArchiveContract, ProgramArchiveObservation, ProgramArchiveObserver,
     ProgramArchiveOperation, ProgramArchiveRequest, build_program_archive_with_contract,
     configure_gerbil_runtime_diagnostics, discover_gambit_gsc_from_env, gerbil_command,

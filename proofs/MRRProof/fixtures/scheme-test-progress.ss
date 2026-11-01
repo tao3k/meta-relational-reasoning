@@ -1,5 +1,7 @@
 ;;; Report actual expander work while upstream gxtest prepares its harness.
 ;;; Load this file before importing gxtest; retain both upstream callbacks.
+;;; Reuse Parser's actual artifact/IR admission trace, never a timer heartbeat.
+(setenv "GERBIL_PARSER_LR_TRACE" "1")
 (def mrr-original-import (gx#current-expander-module-import))
 (def mrr-original-eval (gx#current-expander-module-eval))
 (def mrr-reported-imports (make-hash-table))

@@ -9,7 +9,7 @@ repository.workspace = true
 publish = false
 
 [dependencies]
-gerbil-scheme-native-build.workspace = true
+gerbil-scheme-aot-build.workspace = true
 sha2.workspace = true
 
 [lints]

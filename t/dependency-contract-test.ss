@@ -5,7 +5,11 @@
 (import :std/test
         (only-in :clan/poo/object .o .ref)
         (only-in :clan/poo/mop validate)
-        :agentic-ai-lab/modules/query/interface)
+        (only-in :agentic-ai-lab/modules/query/types AgenticAILabQuery)
+        (only-in :agentic-ai-lab/modules/query/objects
+                 AgenticAILabQuery. agentic-ai-lab-query-result-contract
+                 agentic-ai-lab-query-element-space)
+        (only-in :agentic-ai-lab/modules/query/funs agentic-ai-lab-query-admit))
 
 (def dependencies
   (call-with-input-file "gerbil.pkg"
