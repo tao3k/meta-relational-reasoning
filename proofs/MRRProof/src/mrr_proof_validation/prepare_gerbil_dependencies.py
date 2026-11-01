@@ -71,7 +71,7 @@ def main() -> None:
     # These maintained owner recipes perform dependency acquisition and build.
     # No compiler flags, link strategy or copied dependency resolver lives here.
     subprocess.run(
-        ["just", "--justfile", str(target / "Justfile"), "bootstrap-native-poo", "deps", "build"],
+        ["just", "--justfile", str(target / "justfile"), "bootstrap-native-poo", "deps", "build"],
         check=True,
     )
 

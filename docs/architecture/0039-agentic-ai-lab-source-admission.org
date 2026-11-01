@@ -92,3 +92,8 @@ Python nor CI injects additional compiler or linker policy.
 Raw process/build logs remain in temporary or CI artifact storage, outside Git.
 Existing wall, idle, heap and concurrency policies are not widened. Host worker
 capacity remains actual machine capacity; the current run observes 12 cores.
+
+The first migration CI exposes a case-sensitive entrypoint error: the producer
+tracks =justfile=, not =Justfile=. Darwin's case-insensitive volume hid this
+mistake. Acquisition now names the tracked lowercase file exactly; the failed
+Ubuntu bootstrap remains separate from the successful local bootstrap.
