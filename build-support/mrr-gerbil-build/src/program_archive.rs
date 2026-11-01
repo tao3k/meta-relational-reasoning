@@ -60,17 +60,17 @@ impl ProgramArchiveObserver for CargoObserver {
             ObservationChannel::Silent => {}
             ObservationChannel::Trace => {
                 let mut output = io::stderr().lock();
-                writeln!(output, "[mrr-gerbil-native] {observation}")
-                    .expect("write native build trace");
-                output.flush().expect("flush native build trace");
+                writeln!(output, "[mrr-gerbil-build] {observation}")
+                    .expect("write Scheme build trace");
+                output.flush().expect("flush Scheme build trace");
             }
             ObservationChannel::Warning => {
                 let mut output = io::stdout().lock();
-                writeln!(output, "cargo:warning=[mrr-gerbil-native] {observation}")
-                    .expect("write failed native build observation");
+                writeln!(output, "cargo:warning=[mrr-gerbil-build] {observation}")
+                    .expect("write failed Scheme build observation");
                 output
                     .flush()
-                    .expect("flush failed native build observation");
+                    .expect("flush failed Scheme build observation");
             }
         }
     }
@@ -86,8 +86,8 @@ impl ProgramArchiveObserver for CargoObserver {
 
 /// Materializes the MRR program and delegates its complete AOT graph to the
 /// upstream Gerbil-to-Rust builder.
-pub fn build_native_archive(manifest: &Path) {
-    // SDK selection changes the imported module closure and compiler inputs.
+pub fn build_program_archive(manifest: &Path) {
+    // Gerbil toolchain selection changes the imported module closure and compiler inputs.
     // A cached archive from another prefix must not survive that selection.
     for name in ["GERBIL_PATH", "GERBIL_LOADPATH", "GERBIL_HOME", "GAMBOPT"] {
         println!("cargo:rerun-if-env-changed={name}");
@@ -96,7 +96,9 @@ pub fn build_native_archive(manifest: &Path) {
     println!("cargo:rerun-if-env-changed=GERBIL_GXI");
     println!("cargo:rerun-if-env-changed=GERBIL_GXPKG");
     println!("cargo:rerun-if-env-changed=GERBIL_BUILD_VERBOSE");
-    let build = NativeBuild::new(manifest);
+    println!("cargo:rerun-if-env-changed=GERBIL_BUILD_COMPILER_DIAGNOSTICS");
+    println!("cargo:rerun-if-env-changed=GERBIL_BUILD_OBJECT_PROGRESS");
+    let build = ProgramBuild::new(manifest);
     let observer = CargoObserver {
         output_directory: PathBuf::from(env::var_os("OUT_DIR").expect("OUT_DIR")),
     };
@@ -105,7 +107,7 @@ pub fn build_native_archive(manifest: &Path) {
     build.package_archive(&observer);
 }
 
-struct NativeBuild {
+struct ProgramBuild {
     workspace: PathBuf,
     program_source: PathBuf,
     program_stage: PathBuf,
@@ -117,7 +119,7 @@ struct NativeBuild {
     gxpkg: PathBuf,
 }
 
-impl NativeBuild {
+impl ProgramBuild {
     fn new(manifest: &Path) -> Self {
         let workspace = manifest
             .ancestors()
@@ -142,7 +144,8 @@ impl NativeBuild {
             package_load_path,
             gxi: selected_gerbil_tool("GERBIL_GXI", "gxi"),
             workspace,
-            gsc: discover_gambit_gsc_from_env().expect("discover SDK paired Gambit compiler"),
+            gsc: discover_gambit_gsc_from_env()
+                .expect("discover Gerbil toolchain paired Gambit compiler"),
             gxpkg: selected_gerbil_tool("GERBIL_GXPKG", "gxpkg"),
         }
     }
@@ -196,9 +199,9 @@ impl NativeBuild {
         digest.update(b"mrr-package-v2\0");
         for tool in [&self.gsc, &self.gxi] {
             let path = fs::canonicalize(tool)
-                .map_err(|error| format!("resolve package SDK tool: {error}"))?;
-            let bytes =
-                fs::read(&path).map_err(|error| format!("read package SDK tool: {error}"))?;
+                .map_err(|error| format!("resolve package Gerbil toolchain tool: {error}"))?;
+            let bytes = fs::read(&path)
+                .map_err(|error| format!("read package Gerbil toolchain tool: {error}"))?;
             digest.update(format!("{path:?}\0").as_bytes());
             digest.update(Sha256::digest(bytes));
         }
@@ -321,7 +324,7 @@ pub(crate) fn observation_channel(
             | "static-archive"
     );
     let slow_terminal = elapsed.is_some_and(|elapsed| elapsed.as_millis() >= 5_000);
-    if verbose_level >= 9 || (verbose_level > 0 && (phase_summary || slow_terminal)) {
+    if phase_summary || verbose_level >= 9 || (verbose_level > 0 && slow_terminal) {
         ObservationChannel::Trace
     } else {
         ObservationChannel::Silent
@@ -340,7 +343,7 @@ fn gerbil_build_verbose_level() -> u8 {
 }
 
 fn run(command: &mut Command, operation: &str) -> Result<(), String> {
-    run_with_progress(command, operation, gerbil_build_verbose_level() > 0)
+    run_with_progress(command, operation, true)
 }
 
 pub(crate) fn run_package_attempt(

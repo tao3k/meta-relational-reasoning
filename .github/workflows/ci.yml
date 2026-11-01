@@ -141,9 +141,11 @@ jobs:
           brew install coreutils lld openssl pkg-config sqlite zlib
           openssl_prefix="$(brew --prefix openssl@3 2>/dev/null || brew --prefix openssl)"
           macos_major="$(sw_vers -productVersion | cut -d. -f1)"
-          echo "PKG_CONFIG_PATH=$openssl_prefix/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}" >> "$GITHUB_ENV"
-          echo "MACOSX_DEPLOYMENT_TARGET=$macos_major.0" >> "$GITHUB_ENV"
-          echo "CARGO_TARGET_AARCH64_APPLE_DARWIN_RUSTFLAGS=-C link-arg=-fuse-ld=$(brew --prefix lld)/bin/ld64.lld" >> "$GITHUB_ENV"
+          {
+            echo "PKG_CONFIG_PATH=$openssl_prefix/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
+            echo "MACOSX_DEPLOYMENT_TARGET=$macos_major.0"
+            echo "CARGO_TARGET_AARCH64_APPLE_DARWIN_RUSTFLAGS=-C link-arg=-fuse-ld=$(brew --prefix lld)/bin/ld64.lld"
+          } >> "$GITHUB_ENV"
 
       - name: Prefetch declared native commit objects
         run: python3 -m mrr_proof_validation.prepare_gerbil_dependencies
@@ -161,6 +163,9 @@ jobs:
 
       - name: Test Gerbil package
         run: gerbil env python3 -m mrr_proof_validation.qualification scheme
+
+      - name: MRR PackageSpec build protocol
+        run: gerbil env cargo test -p mrr-gerbil-build --lib --locked
 
       - name: Compile Rust workspace tests in the Gerbil package environment
         env:
@@ -308,8 +313,8 @@ jobs:
           MATHLIB_NO_CACHE_ON_UPDATE: "1"
         run: |
           lake update
-          modules=$(rg --no-filename '^(public )?(meta )?import (Mathlib|Batteries)' .lake/packages/aeneas/backends/lean/Aeneas .lake/packages/aeneas/backends/lean/AeneasMeta NativeFacts.lean -g '*.lean' | sed -E 's/^(public )?(meta )?import ([A-Za-z0-9_.]+).*/\3/' | sort -u)
-          lake exe cache get $modules
+          read -r -a modules <<< "$(rg --no-filename '^(public )?(meta )?import (Mathlib|Batteries)' .lake/packages/aeneas/backends/lean/Aeneas .lake/packages/aeneas/backends/lean/AeneasMeta NativeFacts.lean -g '*.lean' | sed -E 's/^(public )?(meta )?import ([A-Za-z0-9_.]+).*/\3/' | sort -u | tr '\n' ' ')"
+          lake exe cache get "${modules[@]}"
       - name: Prove generated production functions and audit axioms
         working-directory: proofs/MRRProof/AgenticAIContextRust
         run: |

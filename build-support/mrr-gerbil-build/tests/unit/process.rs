@@ -1,4 +1,4 @@
-use crate::native_archive::run_with_progress;
+use crate::program_archive::run_with_progress;
 use std::process::Command;
 
 #[test]

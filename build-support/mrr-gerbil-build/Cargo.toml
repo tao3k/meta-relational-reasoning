@@ -1,6 +1,6 @@
 [package]
-name = "mrr-gerbil-native-build"
-description = "Native AOT archive owner for the MRR Gerbil grammar ABI"
+name = "mrr-gerbil-build"
+description = "Scheme AOT archive builder for the MRR Gerbil grammar ABI"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

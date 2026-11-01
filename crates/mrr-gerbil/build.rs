@@ -13,5 +13,5 @@ fn main() {
     ] {
         println!("cargo:rerun-if-changed={path}");
     }
-    mrr_gerbil_native_build::build_native_archive(std::path::Path::new(env!("CARGO_MANIFEST_DIR")));
+    mrr_gerbil_build::build_program_archive(std::path::Path::new(env!("CARGO_MANIFEST_DIR")));
 }

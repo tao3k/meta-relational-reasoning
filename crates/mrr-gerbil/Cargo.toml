@@ -23,7 +23,7 @@ rowan.workspace = true
 sha2.workspace = true
 
 [build-dependencies]
-mrr-gerbil-native-build.workspace = true
+mrr-gerbil-build.workspace = true
 
 [dev-dependencies]
 mrr-asp-rust-build-support.workspace = true

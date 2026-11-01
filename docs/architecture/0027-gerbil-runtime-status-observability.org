@@ -38,3 +38,30 @@ $ "known"(c) = "false" => "preserve"(c) and "fail-closed" $
 Unit tests cover a recognized upstream code and an unknown code.  Native AOT
 tests exercise propagation through the existing fixed-width ABI after a fresh
 =mrr-gerbil build=.
+
+* Build observations and source-handoff ownership
+
+The module closure belongs to root =build.ss= and its existing PackageSpec.
+=crates/mrr-gerbil/build.rs= delegates to =mrr-gerbil-build=; the latter uses
+the pinned gerbil-scheme-rust integration project. It is not an MRR Data SDK.
+Compiler selection, optimization, ABI and subprocess diagnostic framing belong
+to gerbil-scheme-rust. Consumer Python must not construct compiler commands.
+
+The PackageSpec emits actual entry and return observations regardless of detailed
+verbosity. Return is not interpreter quiescence; successful child termination
+and complete archive identity are still necessary. Cargo phase summaries remain
+visible at verbosity zero, while per-module diagnostics retain their existing
+verbosity filter. Failed observations always use the error observation channel.
+There is no timer heartbeat or timeout extension.
+
+MRR's workspace explicitly selects =mrr-frontends/embedded-runtime= rather than
+inheriting it from frontend defaults. This preserves the original source parsing
+semantics: =mrr-property-source= depends on those frontends even without its
+optional =native-inference= feature. Thus MRR Data =source-handoff= can require
+the embedded Scheme grammar, while its base storage layer does not. Turning
+that feature off merely to make CI green would change the application contract.
+
+The current dependency pin still names an earlier upstream build package.
+Renaming the MRR-owned adapter does not rename or replace that pinned dependency.
+A separately verified upstream framing fix is not automatically present in this
+pinned consumer; adoption requires a later explicitly authorized dependency change.

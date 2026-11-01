@@ -1,6 +1,6 @@
 #!/usr/bin/env gxi
 ;;; -*- Gerbil -*-
-;;; Native MRR library build declaration.
+;;; MRR Scheme library build declaration.
 
 (import (only-in :std/build-script defbuild-script)
         (only-in :asp-gerbil-scheme/building-api
@@ -46,16 +46,10 @@
     main))
 
 (def (main . args)
-  (def progress?
-    (let* ((raw (getenv "GERBIL_BUILD_VERBOSE" #f))
-           (level (and raw (string->number raw))))
-      (and (real? level) (> level 0))))
-  (when progress?
-    (displayln "MRR-PACKAGE build-script entered " args)
-    (force-output))
+  ;; Phase boundaries are genuine observations even when detailed diagnostics
+  ;; are disabled. A returned build is not interpreter cleanup or process exit.
+  (displayln "MRR-PACKAGE build-script entered " args)
+  (force-output)
   (apply mrr-package-build-main args)
-  ;; Returning from make includes its pending compiler jobs, but not the
-  ;; interpreter's later dynamic-module cleanup. Exit status remains required.
-  (when progress?
-    (displayln "MRR-PACKAGE build-script returned " args)
-    (force-output)))
+  (displayln "MRR-PACKAGE build-script returned " args)
+  (force-output))

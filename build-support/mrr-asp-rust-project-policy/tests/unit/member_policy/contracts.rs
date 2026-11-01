@@ -46,7 +46,7 @@ const MRR_DEPENDENCY_POLICY: &[(&str, &[&str])] = &[
         "mrr-gerbil",
         &[
             "mrr-bundle",
-            "mrr-gerbil-native-build",
+            "mrr-gerbil-build",
             "mrr-identity",
             "mrr-logic",
             "mrr-query",

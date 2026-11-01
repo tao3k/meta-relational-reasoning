@@ -1,5 +1,5 @@
 //! An interrupted package must not reuse current-looking SSI intermediates.
-use crate::native_archive::run_package_attempt;
+use crate::program_archive::run_package_attempt;
 
 #[test]
 fn failed_rebuild_invalidates_partial_outputs_before_the_next_attempt() {

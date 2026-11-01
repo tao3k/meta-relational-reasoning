@@ -1010,7 +1010,7 @@ dependencies = [
  "gerbil-scheme-sys",
  "mrr-asp-rust-build-support",
  "mrr-bundle",
- "mrr-gerbil-native-build",
+ "mrr-gerbil-build",
  "mrr-identity",
  "mrr-logic",
  "mrr-query",
@@ -1020,7 +1020,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "mrr-gerbil-native-build"
+name = "mrr-gerbil-build"
 version = "0.1.0"
 dependencies = [
  "gerbil-scheme-native-build",
