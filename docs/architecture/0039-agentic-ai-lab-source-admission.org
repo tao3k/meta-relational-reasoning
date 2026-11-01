@@ -151,7 +151,7 @@ The next complete compile exposes a separate upstream link-check error: a normal
 the declared link kind and retains refusal for explicit static requests. The
 selected package manager's shared OpenSSL dependency is not a missing static
 contract. Upstream standard tests cover shared acceptance and static rejection;
-the unit suite passes 28 tests with seven opt-in tests unchanged, and strict
+the clean isolated Darwin unit suite passes 27 tests with seven opt-in tests unchanged, and strict
 Clippy passes.
 
 The standard full Scheme entry now completes naturally with all eight module
@@ -166,3 +166,56 @@ Ascent's =add-compile-output-job!= import. The admitted build owner's action
 already provisions the newer Darwin release with that API. Aligning provisioning
 and the build API avoids altering the pinned Ascent source or copying its code.
 CI still measures the actual runner's core count; no test limit is widened.
+
+* Complete compile receipt
+
+The consumer's complete =cargo test -vv --workspace --locked --no-run= entry
+now returns naturally with status zero in 4 minutes 37 seconds. It stages 479
+module carriers and compiles all 279 generated native objects with 12 workers;
+the native object batch completes in 135,581 milliseconds. This is actual linked
+consumer compilation, not substitution of the focused retained table object.
+Rust dependency artifacts and the admitted dependency prefix were already
+available; it is not a fully cold dependency-bootstrap performance result.
+
+The subsequent complete test entry does not rebuild the archive (Cargo reports
+0.56 seconds preparation). Its first execution refuses four real-kernel tests
+because the required Lean 4.31.0 toolchain is absent and discovery attempts a
+download inside its unchanged five-second budget. This failure is retained.
+The already declared toolchain must be installed as CI does before repeating
+the complete entry; kernel version checks or budgets must not be relaxed.
+
+After that declared installation, all 291 executable Rust cases pass, but the
+first complete process is refused during rustdoc's I/O wait at the original
+five-second idle gate. This outlier is retained. The isolated standard build-owner
+doctest control completes naturally; it includes 24.05 seconds of compilation
+and cannot be treated as a pure rustdoc timing sample. A subsequent unchanged
+full =cargo test --workspace --locked= entry returns zero naturally in 60.47
+seconds: 291 passed, zero failed, three existing opt-in tests ignored, including
+all 48 test/doc-test result blocks. No doctest is disabled. A successful
+confirmation does not explain away the earlier I/O stall or establish a latency
+distribution; compiler repair and host-dependent full-entry timing are separate.
+
+Watchdog tests report nine passes and one pre-existing skip. Standard negative
+qualification controls still reject assertions, missing/empty results and a
+silent child at the original five-second boundary. Parser trace output cannot
+substitute for those acceptance receipts.
+
+All three existing opt-in controls also pass under the original 45-second gate:
+actual root link-input receipt, streaming phase delivery and the paired Cargo
+backpressure test. The latter uses 12 workers and checks 1,508,947 complete bytes,
+retains the inherited-output negative control and verifies child reaping. These
+are required controls, not additional ignored tests introduced by this repair.
+The separate existing transport-only worker-client gate also passes its real
+integration case: original POO projection, retained controller, stale-attempt
+rejection, finite solver and terminal worker shutdown. Its feature boundary
+intentionally has no cases in the default embedded run, so that zero-case target
+is not counted as transport execution evidence.
+
+Upstream Ubuntu CI separately exposes an instantaneous kernel-thread count race
+after Tokio joins its worker handles. Upstream test/documentation-only commit
+=7c3def52a16d8160026e37722dd770a91ab0de1e= observes exact return to baseline
+within the original five-second gate. A clean isolated Darwin checkout passes
+27 standard tests with the seven existing opt-in tests unchanged. This does not
+change the production build API or require another consumer pin update. The
+original failed Ubuntu receipt remains; current remote CI must be reported
+independently from these local consumer results.
