@@ -4,7 +4,7 @@
 ;;; not parse Agent-authored Tree-sitter Query strings; that parser belongs to
 ;;; the Search compiler and the selected provider's admitted query grammar.
 
-(import :poo-flow/src/utilities/functional)
+(import (only-in :yuanxu/utilities/functional yuanxu-all? yuanxu-stable-duplicates))
 
 (export mrr-enhanced-tree-sitter-query-operator-table
         enhanced-tree-sitter-query-table
@@ -21,12 +21,7 @@
          value))
 
 (def (unique? values)
-  (= (length values)
-     (length
-      (poo-flow-fold-left
-       (lambda (value seen) (if (member value seen) seen (cons value seen)))
-       '()
-       values))))
+  (null? (yuanxu-stable-duplicates values)))
 
 (def (valid-operator-row? row)
   (and (list? row)
@@ -54,10 +49,10 @@
               (enhanced-tree-sitter-query-table 'owner)
               "mrr-gerbil-aot")
              (pair? operators)
-             (poo-flow-all? valid-operator-row? operators)
+             (yuanxu-all? valid-operator-row? operators)
              (unique? (map car operators))
              (pair? recoveries)
-             (poo-flow-all?
+             (yuanxu-all?
               (lambda (row)
                 (and (list? row)
                      (= (length row) 3)

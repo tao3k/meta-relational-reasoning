@@ -134,7 +134,7 @@ preserved separately from Temporal model/projection identity.
 
 * ABI v1 direct migration
 
-Only =poo_flow_semantic_v1_*= native entry symbols are loaded/exported. Descriptor
+Only =agentic_ai_lab_semantic_v1_*= native entry symbols are loaded/exported. Descriptor
 =abiVersion= is 1 and =wireFormat= is =scheme-datum-v1=. There is no legacy JSON
 fallback. Artifact manifests and differential oracles use =.ss= files. Native MRR
 values are passed directly; this adapter no longer calls MRR JSON transport.
@@ -172,7 +172,7 @@ a historical revision/journal receipt never establishes current eligibility.
 
 * Complete Family premise archive and detached replay
 
-=MrrFamilyRevision::archive= exports a bounded native =PooFlowTemporalFamilyArchive=.
+=MrrFamilyRevision::archive= exports a bounded native =AgenticAILabTemporalFamilyArchive=.
 Its Scheme datum contains every admission Model/Query, original Source Model and
 scope, Frontier, operation, predecessor and expected revision envelope. Native
 POO constructors replay admissions and the whole graph before returning its
@@ -223,7 +223,7 @@ Foreign bundle/query/generation, substituted payload, missing reference, policy
 mismatch and stale native Source reject before returning a check receipt.
 
 =context_policy_digest= defines the explicit versioned correspondence: SHA-256
-of the UTF-8 domain =poo-flow.mrr-context-policy.v1= followed by NUL, the policy
+of the UTF-8 domain =agentic-ai-lab.mrr-context-policy.v1= followed by NUL, the policy
 byte length as a big-endian u64, then the native policy token's UTF-8 bytes. This
 binds a host policy identity; it neither interprets nor authenticates that policy.
 =register_context_use= enrolls the original MRR contract and manifest through a
@@ -410,7 +410,7 @@ MRR consumes the immutable POO Flow dependency declared in =gerbil.pkg=.
 POO CI has no MRR checkout or runtime pin. Run the consumer gate in MRR:
 
 #+begin_src sh
-gerbil env bash runtime/tools/qualify-library.sh .gerbil/pkg/github.com/tao3k/poo-flow .ci/library
+gerbil env bash runtime/tools/qualify-library.sh .gerbil/pkg/github.com/tao3k/agentic-ai-lab .ci/library
 #+end_src
 
 This reuses the installed Gerbil SDK and package graph, builds POO's official

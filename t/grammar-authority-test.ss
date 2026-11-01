@@ -2,7 +2,7 @@
 
 (import :std/test
         :clan/poo/object
-        :poo-flow/src/core/object-syntax
+        :yuanxu/object-family/role-syntax
         :meta-relational-reasoning/scheme/grammar/gql
         :meta-relational-reasoning/scheme/grammar/cypher
         :meta-relational-reasoning/scheme/grammar/parser-authority-receipt)

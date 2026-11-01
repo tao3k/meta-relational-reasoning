@@ -151,7 +151,7 @@ fn candidate(query: &m::CatalogBoundQuery, duplicate: bool) -> m::CandidateQuery
 }
 #[test]
 fn original_mrr_values_project_to_real_native_poo() {
-    if std::env::var_os("POO_FLOW_ARCHIVE_REPLAY_ONLY").is_some() {
+    if std::env::var_os("AGENTIC_AI_LAB_ARCHIVE_REPLAY_ONLY").is_some() {
         replay_archive_after_restart();
         return;
     }
@@ -171,7 +171,7 @@ fn original_mrr_values_project_to_real_native_poo() {
     assert_eq!(received.correspondence(), evidence.correspondence());
     assert_eq!(
         received.correspondence()["schema"],
-        "poo-flow.mrr-observation-correspondence.v1"
+        "agentic-ai-lab.mrr-observation-correspondence.v1"
     );
     assert!(
         std::str::from_utf8(&transport)
@@ -265,8 +265,8 @@ fn original_mrr_values_project_to_real_native_poo() {
     );
     println!("Transport tamper, scope, duplicate and empty controls rejected");
     let runtime = SemanticRuntime::open(
-        std::env::var("POO_FLOW_SEMANTIC_LIBRARY").unwrap(),
-        &std::env::var("POO_FLOW_SEMANTIC_SHA256").unwrap(),
+        std::env::var("AGENTIC_AI_LAB_SEMANTIC_LIBRARY").unwrap(),
+        &std::env::var("AGENTIC_AI_LAB_SEMANTIC_SHA256").unwrap(),
         64,
     )
     .unwrap();
@@ -318,7 +318,7 @@ fn original_mrr_values_project_to_real_native_poo() {
         let at = |n| datum!({"identity":format!("context-at-{n}"),"domain":"context-clock","coordinate":n,"provenance":"host","modality":"observed"});
         let policy = runtime
             .refresh_policy(
-                &datum!({"schema":"poo-flow.temporal-policy-refresh-request.v1",
+                &datum!({"schema":"agentic-ai-lab.temporal-policy-refresh-request.v1",
             "policy":datum!({"identity":"policy-1","revision":"r1","start":at(1),"end":at(4)}),
             "generation":1,"effectiveAt":at(1)}),
             )
@@ -418,14 +418,14 @@ fn original_mrr_values_project_to_real_native_poo() {
                 .call("$host.context.use.refresh", &datum!({}))
                 .is_err()
         );
-        let request = datum!({"schema":"poo-flow.context-use-observe-request.v1",
+        let request = datum!({"schema":"agentic-ai-lab.context-use-observe-request.v1",
             "identity":"context-display","expectedGeneration":1,"purpose":"display",
             "admissionDigest":&historical.result()["admissionDigest"]});
         let observed = runtime.call("context.use.observe", &request).unwrap();
         let mut forged = request.clone();
         forged["effectiveAt"] = at(1);
         assert!(runtime.call("context.use.observe", &forged).is_err());
-        let mut changed = datum!({"schema":"poo-flow.context-use-refresh-request.v1",
+        let mut changed = datum!({"schema":"agentic-ai-lab.context-use-refresh-request.v1",
             "identity":"context-display","generation":2,"manifestDigest":&observed["manifestDigest"],
             "admissionDigest":&historical.result()["admissionDigest"],"contract":&observed["contract"],
             "policyIdentity":"policy-1","policyDigest":&policy["policyDigest"],
@@ -478,7 +478,7 @@ fn original_mrr_values_project_to_real_native_poo() {
             .unwrap();
         runtime
             .refresh_policy(
-                &datum!({"schema":"poo-flow.temporal-policy-refresh-request.v1",
+                &datum!({"schema":"agentic-ai-lab.temporal-policy-refresh-request.v1",
             "policy":datum!({"identity":"policy-1","revision":"r1","start":at(1),"end":at(4)}),
             "generation":2,"effectiveAt":at(4)}),
             )
@@ -768,7 +768,7 @@ fn original_mrr_values_project_to_real_native_poo() {
         replayed["journal"]["revisions"].as_array().unwrap().len(),
         3
     );
-    let archive_dir = std::env::var_os("POO_FLOW_ARCHIVE_DIRECTORY")
+    let archive_dir = std::env::var_os("AGENTIC_AI_LAB_ARCHIVE_DIRECTORY")
         .map(std::path::PathBuf::from)
         .unwrap_or_else(|| {
             std::env::temp_dir().join(format!("poo-family-archive-{}", std::process::id()))
@@ -817,9 +817,9 @@ fn original_mrr_values_project_to_real_native_poo() {
             "--nocapture",
             "--test-threads=1",
         ])
-        .env("POO_FLOW_ARCHIVE_REPLAY_ONLY", "1")
-        .env("POO_FLOW_ARCHIVE_DIRECTORY", &archive_dir)
-        .env("POO_FLOW_ARCHIVE_EXPECTED_DIGEST", archive_digest)
+        .env("AGENTIC_AI_LAB_ARCHIVE_REPLAY_ONLY", "1")
+        .env("AGENTIC_AI_LAB_ARCHIVE_DIRECTORY", &archive_dir)
+        .env("AGENTIC_AI_LAB_ARCHIVE_EXPECTED_DIGEST", archive_digest)
         .status()
         .unwrap();
     assert!(child.success());
@@ -828,16 +828,16 @@ fn original_mrr_values_project_to_real_native_poo() {
 
 fn replay_archive_after_restart() {
     let archive_dir =
-        std::path::PathBuf::from(std::env::var("POO_FLOW_ARCHIVE_DIRECTORY").unwrap());
+        std::path::PathBuf::from(std::env::var("AGENTIC_AI_LAB_ARCHIVE_DIRECTORY").unwrap());
     let bytes = std::fs::read(archive_dir.join("archive.ss")).unwrap();
-    let expected = std::env::var("POO_FLOW_ARCHIVE_EXPECTED_DIGEST").unwrap();
+    let expected = std::env::var("AGENTIC_AI_LAB_ARCHIVE_EXPECTED_DIGEST").unwrap();
     let archive = MrrFamilyProofArchive::from_bytes(&bytes, &expected).unwrap();
     assert!(
         MrrFamilyProofArchive::from_bytes(&bytes, &format!("sha256:{}", "0".repeat(64))).is_err()
     );
     let runtime = SemanticRuntime::open(
-        std::env::var("POO_FLOW_SEMANTIC_LIBRARY").unwrap(),
-        &std::env::var("POO_FLOW_SEMANTIC_SHA256").unwrap(),
+        std::env::var("AGENTIC_AI_LAB_SEMANTIC_LIBRARY").unwrap(),
+        &std::env::var("AGENTIC_AI_LAB_SEMANTIC_SHA256").unwrap(),
         64,
     )
     .unwrap();

@@ -2,14 +2,14 @@
 ;;; SPDX-FileCopyrightText: 2026 tao3k team and Contributors
 ;;;
 ;;; SPDX-License-Identifier: Apache-2.0 AND LGPL-2.1-or-later
-;;; MRR factor projection from POO Flow's typed Search declaration.
+;;; MRR factor projection from Agentic AI Lab's typed Search declaration.
 
 (import :std/test
         (only-in :clan/poo/object .ref)
-        :poo-flow/src/core/object-syntax
-        :poo-flow/modules/search-engine/interface
-        (only-in :poo-flow/modules/temporal-causality/funs
-                 poo-flow-causal-event-graph)
+        :yuanxu/object-family/role-syntax
+        :agentic-ai-lab/modules/search-engine/interface
+        (only-in :agentic-ai-lab/modules/temporal-causality/funs
+                 agentic-ai-lab-causal-event-graph)
         :meta-relational-reasoning/scheme/search/projection)
 
 (export search-framework-test)
@@ -17,25 +17,25 @@
 (def acquisition-role
   (poo-core-role-object
    (slots ((consumer 'fixture)))
-   (supers poo-flow-search-acquisition-role)))
+   (supers agentic-ai-lab-search-acquisition-role)))
 
 (def refinement-role
   (poo-core-role-object
    (slots ((consumer 'fixture)))
-   (supers poo-flow-search-refinement-role)))
+   (supers agentic-ai-lab-search-refinement-role)))
 
 (def source-stage
-  (poo-flow-search-stage 'source 'fixture-source '()
+  (agentic-ai-lab-search-stage 'source 'fixture-source '()
                          'workspace 'candidate-set acquisition-role))
 
 (def rank-stage
-  (poo-flow-search-stage 'rank 'fixture-rank '()
+  (agentic-ai-lab-search-stage 'rank 'fixture-rank '()
                          'candidate-set 'ranked-candidate-set refinement-role))
 
 (def source-rank-strategy
-  (poo-flow-search-strategy
+  (agentic-ai-lab-search-strategy
    'fixture-search
-   (poo-flow-search-chain 'candidate-ranking (list source-stage rank-stage))
+   (agentic-ai-lab-search-chain 'candidate-ranking (list source-stage rank-stage))
    '((limit . 20))))
 
 (def source-rank-projection
@@ -45,7 +45,7 @@
   (with-catch (lambda (_) #t) (lambda () (thunk) #f)))
 
 (def search-framework-test
-  (test-suite "MRR projection of POO Flow Search"
+  (test-suite "MRR projection of Agentic AI Lab Search"
     (test-case "DAG receipt and stage graph disagreement are rejected"
       (let (forged-receipt
             (poo-core-role-object
@@ -58,9 +58,9 @@
       (let* ((root (.ref source-rank-strategy 'root))
              (missing-rank
               (poo-core-role-object
-               (slots ((flow (poo-flow-search-node-flow source-stage))))
+               (slots ((flow (agentic-ai-lab-search-node-flow source-stage))))
                (supers root)))
-             (strategy (poo-flow-search-strategy 'missing-rank missing-rank '())))
+             (strategy (agentic-ai-lab-search-strategy 'missing-rank missing-rank '())))
         (check (raises? (lambda () (mrr-search-project strategy "generation"))) => #t)))
     (test-case "actual POO strategy directly drives MRR inference"
       (let (answer (mrr-search-evaluate source-rank-projection "runtime-generation-one" (list source-stage)))
@@ -69,9 +69,9 @@
                            "mrr.search.factor.v1:fixture-search:rank" 1)
                        (.ref answer 'influences)) ? pair?))
       (check (raises? (lambda () (mrr-search-evaluate source-rank-projection "stale" (list source-stage)))) => #t)
-      (let (foreign (poo-flow-search-stage 'foreign 'foreign '() 'workspace 'candidate-set acquisition-role))
+      (let (foreign (agentic-ai-lab-search-stage 'foreign 'foreign '() 'workspace 'candidate-set acquisition-role))
         (check (raises? (lambda () (mrr-search-evaluate source-rank-projection "runtime-generation-one" (list foreign)))) => #t)))
-    (test-case "POO Flow owns typed composition; MRR projects native identities"
+    (test-case "Agentic AI Lab owns typed composition; MRR projects native identities"
       (check-equal? (.ref source-stage 'search/stage-role) 'acquisition)
       (check-equal? (.ref source-rank-projection 'strategy) source-rank-strategy)
       (check-equal? (.ref source-rank-projection 'generation-canonical-input)
@@ -94,7 +94,7 @@
                source-rank-projection "runtime-generation-one"
                "event-refined" "request-one" rank-stage "candidate-one"
                2 "runtime-owner-one" '("event-acquired") 'derived #t))
-             (graph (poo-flow-causal-event-graph
+             (graph (agentic-ai-lab-causal-event-graph
                      "request-one" (list refined acquired))))
         (check-equal? (.ref graph 'complete?) #t))
       (check
@@ -104,7 +104,7 @@
                    "stale" "request-one" source-stage "candidate-one"
                    1 "runtime-owner-one" '() 'observed #t))) => #t)
       (let (foreign
-            (poo-flow-search-stage 'foreign 'fixture-foreign '()
+            (agentic-ai-lab-search-stage 'foreign 'fixture-foreign '()
                                    'workspace 'candidate-set acquisition-role))
         (check
          (raises? (lambda ()
@@ -114,31 +114,31 @@
                      1 "runtime-owner-one" '() 'observed #t))) => #t)))
     (test-case "parallel branches have no invented influence edge"
       (let* ((other
-              (poo-flow-search-stage 'other 'fixture-other '()
+              (agentic-ai-lab-search-stage 'other 'fixture-other '()
                                      'workspace 'structural-candidates
                                      acquisition-role))
              (parallel
-              (poo-flow-search-parallel 'parallel-search
+              (agentic-ai-lab-search-parallel 'parallel-search
                                         (list source-stage other)))
-             (strategy (poo-flow-search-strategy 'parallel-search parallel '())))
+             (strategy (agentic-ai-lab-search-strategy 'parallel-search parallel '())))
         (check-equal?
          (.ref (mrr-search-project strategy "runtime-generation-one") 'factor-edges)
          '())))
     (test-case "explicit merge receives both branch edges"
       (let* ((other
-              (poo-flow-search-stage 'other 'fixture-other '()
+              (agentic-ai-lab-search-stage 'other 'fixture-other '()
                                      'workspace 'structural-candidates
                                      acquisition-role))
              (parallel
-              (poo-flow-search-parallel 'parallel-search
+              (agentic-ai-lab-search-parallel 'parallel-search
                                         (list source-stage other)))
              (merge-stage
-              (poo-flow-search-stage
+              (agentic-ai-lab-search-stage
                'merge 'fixture-merge '()
-               (poo-flow-search-node-output-domain parallel)
+               (agentic-ai-lab-search-node-output-domain parallel)
                'candidate-set refinement-role))
-             (merged (poo-flow-search-merge 'explicit-merge parallel merge-stage))
-             (strategy (poo-flow-search-strategy 'merged-search merged '())))
+             (merged (agentic-ai-lab-search-merge 'explicit-merge parallel merge-stage))
+             (strategy (agentic-ai-lab-search-strategy 'merged-search merged '())))
         (let (edges (.ref (mrr-search-project strategy "runtime-generation-one")
                           'factor-edges))
           (check-equal? (length edges) 2)
@@ -150,10 +150,10 @@
                            "mrr.search.factor.v1:merged-search:merge") edges)) => #t))))
     (test-case "duplicate factor names fail closed"
       (let* ((duplicate
-              (poo-flow-search-stage 'source 'another '()
+              (agentic-ai-lab-search-stage 'source 'another '()
                                      'candidate-set 'result-set refinement-role))
-             (chain (poo-flow-search-chain 'duplicate
+             (chain (agentic-ai-lab-search-chain 'duplicate
                                            (list source-stage duplicate)))
-             (strategy (poo-flow-search-strategy 'same-name chain '())))
+             (strategy (agentic-ai-lab-search-strategy 'same-name chain '())))
         (check (raises? (lambda () (mrr-search-project strategy "generation")))
                => #t)))))

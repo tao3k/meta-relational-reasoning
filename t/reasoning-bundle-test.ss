@@ -3,7 +3,7 @@
 
 (import :std/test
         :clan/poo/object
-        :poo-flow/src/core/object-syntax
+        :yuanxu/object-family/role-syntax
         :meta-relational-reasoning/scheme/reasoning/core
         :meta-relational-reasoning/scheme/reasoning/default)
 (export reasoning-bundle-test)

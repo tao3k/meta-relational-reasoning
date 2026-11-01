@@ -4,10 +4,10 @@
 ;;; SPDX-License-Identifier: Apache-2.0 AND LGPL-2.1-or-later
 
 ;;; Inert MRR Provider declaration.  Rust owns execution; Scheme owns binding.
-(import :core/poo-clos/interface
-        (only-in :poo-flow/modules/query/objects
+(import :yuanxu/poo-clos/interface
+        (only-in :agentic-ai-lab/modules/query/objects
                  QueryReceiptBindingExecutor
-                 poo-flow-query-provider))
+                 agentic-ai-lab-query-provider))
 
 (export MrrQueryReceiptBindingExecutor
         MrrQueryReceiptBinder
@@ -22,5 +22,5 @@
   (poo-clos-make-instance MrrQueryReceiptBindingExecutor))
 
 (def MrrGqlQueryProvider
-  (poo-flow-query-provider
+  (agentic-ai-lab-query-provider
    'mrr '(gql) 'mrr MrrQueryReceiptBinder))

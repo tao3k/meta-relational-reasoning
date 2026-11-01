@@ -4,10 +4,10 @@
 ;;; MRR-owned session and wire bridge to the generic POO modules/search-engine.
 (import (only-in :std/list/list every)
         (only-in :clan/poo/object .ref)
-        :poo-flow/modules/search-engine/interface
-        (only-in :poo-flow/modules/temporal-causality/objects
-                 poo-flow-temporal-observation poo-flow-causal-event)
-        (only-in :poo-flow/src/ffi/scheme-wire scheme-wire-read scheme-wire-write)
+        :agentic-ai-lab/modules/search-engine/interface
+        (only-in :agentic-ai-lab/modules/temporal-causality/objects
+                 agentic-ai-lab-temporal-observation agentic-ai-lab-causal-event)
+        (only-in :agentic-ai-lab/modules/workflow/runtime/scheme-wire scheme-wire-read scheme-wire-write)
         (only-in ./projection mrr-search-build-strategy mrr-search-compile-strategy))
 (export mrr-search-controller-call)
 (def sessions (make-hash-table))
@@ -27,9 +27,9 @@
                (list? (list-ref row 6)) (every text? (list-ref row 6))
                (boolean? (list-ref row 8)))
     (error "invalid Temporal observation wire value"))
-  (poo-flow-causal-event
+  (agentic-ai-lab-causal-event
    (car row) (cadr row) (string->symbol (caddr row))
-   (poo-flow-temporal-observation (string-append (car row) ":observation")
+   (agentic-ai-lab-temporal-observation (string-append (car row) ":observation")
                                 'logical-version (list-ref row 4) (cadddr row))
    (list-ref row 5) (list-ref row 6) (string->symbol (list-ref row 7))
    (list-ref row 8)))
@@ -53,11 +53,11 @@
                   (error "Search controller session bound or duplicate identity"))
                 (let* ((plan (list (car arguments) generation (cadr arguments)))
                        (strategy (mrr-search-build-strategy plan))
-                       (initial (poo-flow-search-engine strategy generation configuration (caddr arguments)))
+                       (initial (agentic-ai-lab-search-engine strategy generation configuration (caddr arguments)))
                        (engine (if (equal? command "start-evidence")
-                                 (poo-flow-search-engine-require-evidence initial) initial))
+                                 (agentic-ai-lab-search-engine-require-evidence initial) initial))
                        (projection (mrr-search-compile-strategy strategy generation))
-                       (result (list (scheme-wire-write projection) (map symbol->string (poo-flow-search-engine-frontier engine)))))
+                       (result (list (scheme-wire-write projection) (map symbol->string (agentic-ai-lab-search-engine-frontier engine)))))
                   (bounded result)
                   (set! commit (lambda () (hash-put! sessions key (list generation configuration engine))))
                   result))
@@ -66,7 +66,7 @@
                              (equal? configuration (cadr session)))
                   (error "foreign or released Search controller"))
                 (let* ((engine (caddr session))
-                       (frontier (lambda (next) (map symbol->string (poo-flow-search-engine-frontier next))))
+                       (frontier (lambda (next) (map symbol->string (agentic-ai-lab-search-engine-frontier next))))
                        (save (lambda (next) (let (result (bounded (frontier next)))
                                                (set! commit (lambda () (hash-put! sessions key (list generation configuration next)))) result))))
                   (cond
@@ -79,11 +79,11 @@
                     (unless (and (= (length arguments) 2) (list? (car arguments))
                                  (every text? (car arguments)) (text? (cadr arguments)))
                       (error "invalid revision request"))
-                    (save (poo-flow-search-engine-revise engine (map string->symbol (car arguments)) (cadr arguments))))
+                    (save (agentic-ai-lab-search-engine-revise engine (map string->symbol (car arguments)) (cadr arguments))))
                    ((equal? command "issue")
                     (unless (and (= (length arguments) 1) (text? (car arguments)))
                       (error "invalid issue request"))
-                    (let* ((issued (poo-flow-search-engine-issue engine (string->symbol (car arguments))))
+                    (let* ((issued (agentic-ai-lab-search-engine-issue engine (string->symbol (car arguments))))
                            (request (.ref issued 'request))
                            (result (list (car arguments) (.ref request 'source-cut)
                                          (.ref request 'revision) (.ref request 'attempt))))
@@ -96,18 +96,18 @@
                                         (list (caddr arguments) (cadddr arguments))))
                       (error "invalid completion identity"))
                     (let* ((name (string->symbol (car arguments)))
-                           (node (poo-flow-search-engine-node engine name))
-                           (request (poo-flow-search-attempt-request (.ref node 'state)
+                           (node (agentic-ai-lab-search-engine-node engine name))
+                           (request (agentic-ai-lab-search-attempt-request (.ref node 'state)
                                        (cadr arguments) (caddr arguments) (cadddr arguments))))
                       (cond
                        ((equal? command "cancel")
-                        (save (poo-flow-search-engine-cancel engine name request)))
+                        (save (agentic-ai-lab-search-engine-cancel engine name request)))
                        ((equal? command "observe")
-                        (save (poo-flow-search-engine-observe engine name request
+                        (save (agentic-ai-lab-search-engine-observe engine name request
                                 (wire->event (list-ref arguments 4)))))
                        ((equal? command "inputs")
-                        (map event->wire (poo-flow-search-engine-inputs engine name request)))
-                       (else (save (poo-flow-search-engine-complete engine name request))))))
+                        (map event->wire (agentic-ai-lab-search-engine-inputs engine name request)))
+                       (else (save (agentic-ai-lab-search-engine-complete engine name request))))))
                    (else (error "unknown Search controller command"))))))))
       ;; Encode once before mutation. Native publication only retains these bytes.
       (let (bytes (string->utf8 (scheme-wire-write

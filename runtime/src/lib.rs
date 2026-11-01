@@ -41,7 +41,7 @@ impl std::fmt::Display for Error {
 }
 impl std::error::Error for Error {}
 fn trace(stage: &str) {
-    if std::env::var_os("POO_FLOW_RUNTIME_TRACE").is_some() {
+    if std::env::var_os("AGENTIC_AI_LAB_RUNTIME_TRACE").is_some() {
         eprintln!("NATIVE-PROGRESS {stage}");
     }
 }
@@ -140,7 +140,7 @@ impl SemanticRuntime {
                                 b"(object)",
                             )
                             .and_then(|value| {
-                                if value["schema"] != "poo-flow.semantic-descriptor"
+                                if value["schema"] != "agentic-ai-lab.semantic-descriptor"
                                     || value["abiVersion"] != 1_i32
                                     || value["wireFormat"] != "scheme-datum-v1"
                                 {
@@ -476,52 +476,52 @@ impl Native {
         let symbol_error = |e: libloading::Error| Error::Transport(e.to_string());
         let open = unsafe {
             *library
-                .get::<Open>(b"poo_flow_semantic_v1_open\0")
+                .get::<Open>(b"agentic_ai_lab_semantic_v1_open\0")
                 .map_err(symbol_error)?
         };
         let close = unsafe {
             *library
-                .get::<Open>(b"poo_flow_semantic_v1_close\0")
+                .get::<Open>(b"agentic_ai_lab_semantic_v1_close\0")
                 .map_err(symbol_error)?
         };
         let call = unsafe {
             *library
-                .get::<Call>(b"poo_flow_semantic_v1_call\0")
+                .get::<Call>(b"agentic_ai_lab_semantic_v1_call\0")
                 .map_err(symbol_error)?
         };
         let release = unsafe {
             *library
-                .get::<Release>(b"poo_flow_semantic_v1_result_release\0")
+                .get::<Release>(b"agentic_ai_lab_semantic_v1_result_release\0")
                 .map_err(symbol_error)?
         };
         let proof_state_refresh = unsafe {
             *library
-                .get::<Register>(b"poo_flow_semantic_v1_proof_state_refresh\0")
+                .get::<Register>(b"agentic_ai_lab_semantic_v1_proof_state_refresh\0")
                 .map_err(symbol_error)?
         };
         let proof_register = unsafe {
             *library
-                .get::<Register>(b"poo_flow_semantic_v1_proof_register\0")
+                .get::<Register>(b"agentic_ai_lab_semantic_v1_proof_register\0")
                 .map_err(symbol_error)?
         };
         let derivation_admit = unsafe {
             *library
-                .get::<Register>(b"poo_flow_semantic_v1_derivation_admit\0")
+                .get::<Register>(b"agentic_ai_lab_semantic_v1_derivation_admit\0")
                 .map_err(symbol_error)?
         };
         let context_use_refresh = unsafe {
             *library
-                .get::<Register>(b"poo_flow_semantic_v1_context_use_refresh\0")
+                .get::<Register>(b"agentic_ai_lab_semantic_v1_context_use_refresh\0")
                 .map_err(symbol_error)?
         };
         let policy_refresh = unsafe {
             *library
-                .get::<Register>(b"poo_flow_semantic_v1_policy_refresh\0")
+                .get::<Register>(b"agentic_ai_lab_semantic_v1_policy_refresh\0")
                 .map_err(|e| Error::Transport(e.to_string()))?
         };
         let register = unsafe {
             *library
-                .get::<Register>(b"poo_flow_semantic_v1_source_register\0")
+                .get::<Register>(b"agentic_ai_lab_semantic_v1_source_register\0")
                 .map_err(symbol_error)?
         };
         // Keep Gambit code mapped for process lifetime, including after terminal close.

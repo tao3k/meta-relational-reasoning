@@ -9,7 +9,7 @@ from .process_runner import run
 def resolve(project: Path) -> Path:
     project = project.resolve()
     config = tomllib.loads((project / 'lakefile.toml').read_text())
-    dependencies = [item for item in config['require'] if item['name'] == 'POOFlowCompositionProofs']
+    dependencies = [item for item in config['require'] if item['name'] == 'AgenticAILabCompositionProofs']
     if len(dependencies) != 1:
         raise SystemExit('expected exactly one POO composition proof owner')
     dependency = dependencies[0]
@@ -23,7 +23,7 @@ def resolve(project: Path) -> Path:
     subdir = Path(dependency.get('subDir', ''))
     if subdir.is_absolute() or '..' in subdir.parts or not subdir.parts:
         raise SystemExit('POO proof source requires a bounded package subdirectory')
-    repository = project / '.lake/packages/POOFlowCompositionProofs'
+    repository = project / '.lake/packages/AgenticAILabCompositionProofs'
     repository.mkdir(parents=True, exist_ok=True)
 
     def git(*args: str) -> str:
@@ -50,7 +50,7 @@ def resolve(project: Path) -> Path:
         raise SystemExit('POO proof dependency revision mismatch')
     owner = repository / subdir
     owned_config = tomllib.loads((owner / 'lakefile.toml').read_text())
-    if owned_config['name'] != 'POOFlowCompositionProofs':
+    if owned_config['name'] != 'AgenticAILabCompositionProofs':
         raise SystemExit('foreign POO proof package at declared source')
     if (owner / 'lean-toolchain').read_bytes() != (project / 'lean-toolchain').read_bytes():
         raise SystemExit('producer and consumer Lean toolchains disagree')

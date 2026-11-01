@@ -90,12 +90,12 @@ impl MrrFamilyAdmission {
         purposes: &[mrr::AgenticAiContextUsePurpose],
     ) -> Result<MrrContextUseGrant, MrrBridgeError> {
         self.check_context_binding(runtime, context, bundle, snapshot)?;
-        if policy_registration["schema"] != "poo-flow.temporal-policy-refresh-result.v1"
+        if policy_registration["schema"] != "agentic-ai-lab.temporal-policy-refresh-result.v1"
             || policy_registration["policyIdentity"] != self.result()["conclusion"]["policy"]
         {
             return Err(MrrBridgeError::ContextBindingMismatch);
         }
-        let request = datum!({"schema":"poo-flow.context-use-refresh-request.v1",
+        let request = datum!({"schema":"agentic-ai-lab.context-use-refresh-request.v1",
             "identity":identity,"generation":generation,"manifestDigest":hex(context.manifest().digest()),
             "admissionDigest":&self.result()["admissionDigest"],"contract":wire_contract(&context.manifest().record().contract),
             "policyIdentity":&policy_registration["policyIdentity"],"policyDigest":&policy_registration["policyDigest"],
@@ -103,7 +103,7 @@ impl MrrFamilyAdmission {
         let registered = runtime
             .refresh_context_use(&request)
             .map_err(MrrBridgeError::Native)?;
-        if registered["schema"] != "poo-flow.context-use-refresh-result.v1"
+        if registered["schema"] != "agentic-ai-lab.context-use-refresh-result.v1"
             || registered["identity"] != identity
             || registered["generation"] != Value::from(generation)
             || registered["enabled"] != true
@@ -140,7 +140,7 @@ impl MrrFamilyAdmission {
                 &NativeAuthority { runtime, grant },
             )
             .map_err(MrrBridgeError::ContextUse)?;
-        receipt["schema"] = "poo-flow.mrr-context-use-check.v1".into();
+        receipt["schema"] = "agentic-ai-lab.mrr-context-use-check.v1".into();
         receipt["purpose"] = purpose(use_purpose).into();
         Ok(receipt)
     }
@@ -158,15 +158,15 @@ impl mrr::AgenticAiContextUseAuthority for NativeAuthority<'_> {
     ) -> Result<mrr::AgenticAiContextUseObservation, Error> {
         let v = self.runtime.call(
             "context.use.observe",
-            &datum!({"schema":"poo-flow.context-use-observe-request.v1",
+            &datum!({"schema":"agentic-ai-lab.context-use-observe-request.v1",
             "identity":&self.grant.identity,"expectedGeneration":self.grant.generation,
             "purpose":purpose(p),"admissionDigest":&self.grant.admission_digest}),
         )?;
-        if v["schema"] != "poo-flow.context-use-observation.v1"
+        if v["schema"] != "agentic-ai-lab.context-use-observation.v1"
             || v["abiVersion"] != 1
             || v["identity"] != self.grant.identity
             || v["purpose"] != purpose(p)
-            || v["currentSource"]["schema"] != "poo-flow.temporal-family-applicability.v1"
+            || v["currentSource"]["schema"] != "agentic-ai-lab.temporal-family-applicability.v1"
             || v["currentSource"]["admissionDigest"] != self.grant.admission_digest
             || v["sourceAuthenticated"] != false
             || v["actionAuthorized"] != false

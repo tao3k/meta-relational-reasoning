@@ -22,7 +22,7 @@ const REQUIRED_MODULES: &[&str] = &[
     "meta-relational-reasoning/scheme/reasoning/finite-native",
     "gerbil-ascent/table/expression",
     "meta-relational-reasoning/scheme/temporal/native",
-    "poo-flow/src/ffi/temporal-proof-host",
+    "agentic-ai-lab/modules/workflow/runtime/temporal-proof-host",
     "meta-relational-reasoning/scheme/grammar/parser-language",
     "gerbil-parser/src/ffi/language-abi",
 ];
@@ -32,10 +32,10 @@ const FORBIDDEN_RUNTIME_MODULES: &[&str] = &[
     "asp-gerbil-scheme/src/build-api/package-build",
     "asp-gerbil-scheme/src/build-api/native-import-closure",
     "asp-gerbil-scheme/src/support/time",
-    "poo-flow/src/module-system/observability/interface",
-    "poo-flow/src/module-system/observability/source-admission",
-    "poo-flow/src/module-system/observability/build-projection",
-    "poo-flow/src/module-system/observability/config",
+    "yuanxu/module-system/observability/interface",
+    "yuanxu/module-system/observability/source-admission",
+    "yuanxu/module-system/observability/build-projection",
+    "yuanxu/module-system/observability/config",
 ];
 
 struct CargoObserver {

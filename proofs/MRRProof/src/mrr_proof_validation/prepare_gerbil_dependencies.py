@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Prefetch the declared POO checkout, then use its native SHA prefetch owner."""
+"""Acquire the declared Agentic AI Lab source and delegate its owned bootstrap."""
 
-import importlib.util
 import json
+import os
 import re
 import subprocess
 from pathlib import Path
@@ -11,13 +11,13 @@ from pathlib import Path
 def main() -> None:
     root = Path(__file__).resolve().parents[4]
     pins = re.findall(
-        r'"(github\.com/tao3k/poo-flow)@([0-9a-f]{40})"',
+        r'"(github\.com/tao3k/agentic-ai-lab)@([0-9a-f]{40})"',
         (root / "gerbil.pkg").read_text(),
     )
     if len(pins) != 1:
-        raise ValueError("expected one immutable POO Flow dependency")
+        raise ValueError("expected one immutable Agentic AI Lab dependency")
     repository, revision = pins[0]
-    package_root = root / ".gerbil" / "pkg"
+    package_root = Path(os.environ.get("GERBIL_PATH", root / ".gerbil")) / "pkg"
     target = package_root / repository
     if not target.exists():
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -40,7 +40,7 @@ def main() -> None:
         text=True,
     )
     if current.returncode != 0:
-        print(f"Prefetch POO Flow {revision}", flush=True)
+        print(f"Acquire Agentic AI Lab {revision}", flush=True)
         subprocess.run(
             [
                 "git",
@@ -61,15 +61,19 @@ def main() -> None:
         target.with_name(target.name + ".tag").write_text(json.dumps(revision) + "\n")
     elif current.stdout.strip() != revision:
         raise ValueError(
-            "cached POO Flow checkout differs from gerbil.pkg; refresh the package cache"
+            "cached Agentic AI Lab checkout differs from gerbil.pkg; refresh the package cache"
         )
-    helper = target / "packages/automation/gerbil_dependency_pin.py"
-    spec = importlib.util.spec_from_file_location("poo_native_pins", helper)
-    if spec is None or spec.loader is None:
-        raise ValueError("declared POO Flow checkout has no native pin helper")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    module.prepare_native_pins(package_root)
+    # Core is Agentic AI Lab's declared gitlink, never a second MRR pin.
+    subprocess.run(
+        ["git", "-C", str(target), "submodule", "update", "--init", "--depth=1", "--", "core"],
+        check=True,
+    )
+    # These maintained owner recipes perform dependency acquisition and build.
+    # No compiler flags, link strategy or copied dependency resolver lives here.
+    subprocess.run(
+        ["just", "--justfile", str(target / "Justfile"), "bootstrap-native-poo", "deps", "build"],
+        check=True,
+    )
 
 
 if __name__ == "__main__":

@@ -145,7 +145,7 @@ impl MrrSupportProjection {
                 premises.push(datum!({"subject":b.subject.clone(),"revision":b.revision.clone()}));
             }
             facts.sort_by(|a, b| a.as_str().cmp(&b.as_str()));
-            let origin = datum!({"schema":"poo-flow.mrr-support-identity.v1",
+            let origin = datum!({"schema":"agentic-ai-lab.mrr-support-identity.v1",
                 "derivation":d.id().to_string(),"rule":d.rule().to_string(),
                 "generation":d.generation().to_string(),"output":d.output().id().to_string(),"support":facts});
             let proof = format!(
@@ -187,9 +187,9 @@ impl MrrSupportProjection {
         recheck_catalog(catalog, self.catalog_digest)?;
         runtime.call(
             "temporal.support.revise",
-            &datum!({"schema":"poo-flow.temporal-support-revision-request.v1",
+            &datum!({"schema":"agentic-ai-lab.temporal-support-revision-request.v1",
             "previousAsOf":previous_as_of,"task":{
-            "schema":"poo-flow.temporal-support-request.v1", "program":self.program.clone(),
+            "schema":"agentic-ai-lab.temporal-support-request.v1", "program":self.program.clone(),
             "journal":journal,"asOf":cut.as_of,"validAt":cut.valid_at,"budget":cut.budget}}),
         )
     }
@@ -209,7 +209,7 @@ impl MrrSupportProjection {
         runtime.call(
             "temporal.support.claim",
             &datum!({
-            "schema":"poo-flow.temporal-support-claim-request.v1","expectedGeneration":query.policy_generation,
+            "schema":"agentic-ai-lab.temporal-support-claim-request.v1","expectedGeneration":query.policy_generation,
             "expectedPolicyDigest":query.policy_digest,"task":task,"claim":query.claim.to_string(),
             "expectedContextBinding":query.expected_context.map(Value::from).unwrap_or(false.into())}),
         )
@@ -225,7 +225,7 @@ impl MrrSupportProjection {
         budget: u32,
     ) -> Result<Value, Error> {
         recheck_catalog(catalog, self.catalog_digest)?;
-        runtime.call("temporal.support.evaluate", &datum!({"schema":"poo-flow.temporal-support-request.v1",
+        runtime.call("temporal.support.evaluate", &datum!({"schema":"agentic-ai-lab.temporal-support-request.v1",
             "program":self.program.clone(),"journal":journal,"asOf":as_of,"validAt":valid_at,"budget":budget}))
     }
 }
@@ -278,7 +278,7 @@ impl MrrFactProjection {
         let generation = fact.context().generation().to_string();
         let relation = fact.relation().to_string();
         let canonical = Value::Array(vec![
-            "poo-flow.mrr-fact-content.v1".into(),
+            "agentic-ai-lab.mrr-fact-content.v1".into(),
             id.clone().into(),
             generation.clone().into(),
             relation.clone().into(),
@@ -292,7 +292,7 @@ impl MrrFactProjection {
         Ok(Self {
             original: fact.clone(),
             catalog_digest: catalog.digest(),
-            payload: datum!({"schema":"poo-flow.mrr-fact-request.v1",
+            payload: datum!({"schema":"agentic-ai-lab.mrr-fact-request.v1",
             "identity":id,"generation":generation,"relationId":relation,"evaluatorRelation":evaluator_relation,"row":row}),
             content_digest,
         })

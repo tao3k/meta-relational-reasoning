@@ -8,13 +8,13 @@
 
 (import (only-in :clan/poo/object .ref object? object-supers compute-precedence-list!)
         (only-in :std/list/list append-map delete-duplicates/hash every filter)
-        :poo-flow/src/core/object-syntax
-        :poo-flow/modules/search-engine/interface
-        (only-in :poo-flow/src/core/plan flow->linear-plan execution-plan-nodes
+        :yuanxu/object-family/role-syntax
+        :agentic-ai-lab/modules/search-engine/interface
+        (only-in :yuanxu/modules/funflow/control-plane/graph flow->linear-plan execution-plan-nodes
                  execution-plan->dag-receipt plan-node-id plan-node-kind
                  plan-node-name plan-node-step plan-node-dependencies)
         ../reasoning/finite
-        (only-in :poo-flow/src/ffi/scheme-wire scheme-wire-read scheme-wire-write))
+        (only-in :agentic-ai-lab/modules/workflow/runtime/scheme-wire scheme-wire-read scheme-wire-write))
 
 (export mrr-search-project
         mrr-search-projection?
@@ -29,12 +29,12 @@
         (lambda () (eq? (.ref value 'kind) 'mrr-search-projection)))))
 
 (def (mrr-search-stages node)
-  (if (poo-flow-search-stage? node)
+  (if (agentic-ai-lab-search-stage? node)
     (list node)
     (append-map mrr-search-stages (.ref node 'children))))
 
 (def (mrr-search-boundary node side)
-  (if (poo-flow-search-stage? node)
+  (if (agentic-ai-lab-search-stage? node)
     (list node)
     (let (children (.ref node 'children))
       (if (eq? (.ref node 'mode) 'parallel)
@@ -49,7 +49,7 @@
                  (symbol->string (.ref stage 'name))))
 
 (def (mrr-search-edges strategy-name node)
-  (if (poo-flow-search-stage? node)
+  (if (agentic-ai-lab-search-stage? node)
     '()
     (let* ((children (.ref node 'children))
            (nested (append-map (lambda (child) (mrr-search-edges strategy-name child))
@@ -140,7 +140,7 @@
                      (string->list text))))))
 
 (def (mrr-search-project strategy-value generation-value)
-  (unless (and (poo-flow-search-strategy? strategy-value)
+  (unless (and (agentic-ai-lab-search-strategy? strategy-value)
                (string? generation-value)
                (> (string-length generation-value) 0))
     (error "MRR Search projection requires a POO strategy and generation"
@@ -153,7 +153,7 @@
                  (every mrr-stable-search-name? names)
                  (= (length names) (length (delete-duplicates/hash names))))
       (error "MRR Search factors require distinct stable names" name-value names))
-    (let* ((flow (poo-flow-search-node-flow root-value))
+    (let* ((flow (agentic-ai-lab-search-node-flow root-value))
            (compiled (flow->linear-plan flow))
            (expanded (mrr-search-plan-graph name-value flow))
            (factor-inputs (map (lambda (stage) (mrr-search-factor-input name-value stage)) stages))
@@ -180,14 +180,14 @@
       projection-value observed-generation identity subject factor candidate-identity
       logical-position provenance-identity causal-parent-identities modality committed?)
   (unless (and (mrr-search-projection? projection-value)
-               (poo-flow-search-stage? factor)
+               (agentic-ai-lab-search-stage? factor)
                (memq factor (mrr-search-stages
                              (.ref (.ref projection-value 'strategy) 'root)))
                (equal? observed-generation
                        (.ref projection-value 'generation-canonical-input)))
     (error "Search observation is outside its strategy or generation"
            identity observed-generation))
-  (poo-flow-search-factor-observation
+  (agentic-ai-lab-search-factor-observation
    identity subject factor candidate-identity logical-position
    provenance-identity causal-parent-identities modality committed?))
 
@@ -258,10 +258,10 @@
     (string->symbol text))
   (def (role text)
     (cond
-     ((equal? text "acquisition") poo-flow-search-acquisition-role)
-     ((equal? text "refinement") poo-flow-search-refinement-role)
-     ((equal? text "reasoning") poo-flow-search-reasoning-role)
-     ((equal? text "projection") poo-flow-search-projection-role)
+     ((equal? text "acquisition") agentic-ai-lab-search-acquisition-role)
+     ((equal? text "refinement") agentic-ai-lab-search-refinement-role)
+     ((equal? text "reasoning") agentic-ai-lab-search-reasoning-role)
+     ((equal? text "projection") agentic-ai-lab-search-projection-role)
      (else (error "invalid Search plan role"))))
   (def (node row depth)
     (unless (and (list? row) (>= (length row) 3) (<= depth 24))
@@ -274,27 +274,27 @@
                      (> (string-length (list-ref row 3)) 0)
                      (> (string-length (list-ref row 4)) 0))
           (error "invalid Search plan stage"))
-        (poo-flow-search-stage id id '() (list-ref row 3) (list-ref row 4)
+        (agentic-ai-lab-search-stage id id '() (list-ref row 3) (list-ref row 4)
                                (role (list-ref row 2))))
        ((or (equal? kind "chain") (equal? kind "parallel"))
         (unless (and (= (length row) 3) (list? (caddr row)))
           (error "invalid Search plan children"))
-        ((if (equal? kind "chain") poo-flow-search-chain poo-flow-search-parallel)
+        ((if (equal? kind "chain") agentic-ai-lab-search-chain agentic-ai-lab-search-parallel)
          id (map (lambda (child) (node child (+ depth 1))) (caddr row))))
        ((equal? kind "merge")
         (unless (and (= (length row) 6) (string? (list-ref row 5))
                      (> (string-length (list-ref row 5)) 0))
           (error "invalid Search plan merge"))
         (let* ((parallel (node (caddr row) (+ depth 1)))
-               (stage (poo-flow-search-stage
+               (stage (agentic-ai-lab-search-stage
                        (name (list-ref row 3)) (name (list-ref row 3)) '()
-                       (poo-flow-search-node-output-domain parallel)
+                       (agentic-ai-lab-search-node-output-domain parallel)
                        (list-ref row 5) (role (list-ref row 4)))))
-          (poo-flow-search-merge id parallel stage)))
+          (agentic-ai-lab-search-merge id parallel stage)))
        (else (error "invalid Search plan constructor")))))
   (unless (and (list? request) (= (length request) 3))
     (error "invalid Search plan request"))
-  (poo-flow-search-strategy (name (car request)) (node (caddr request) 0) '()))
+  (agentic-ai-lab-search-strategy (name (car request)) (node (caddr request) 0) '()))
 
 (def (mrr-search-compile payload)
   (let* ((request (scheme-wire-read payload))

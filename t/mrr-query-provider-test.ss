@@ -6,18 +6,18 @@
 (import (only-in :std/test check check-exception test-suite test-case)
         (only-in :clan/poo/object .o .ref)
         (only-in :clan/poo/mop validate)
-        :poo-flow/modules/query/interface
-        :poo-flow/modules/temporal-causality/candidates/interface
+        :agentic-ai-lab/modules/query/interface
+        :agentic-ai-lab/modules/temporal-causality/candidates/interface
         :meta-relational-reasoning/scheme/query/provider/interface)
 (export mrr-query-provider-test)
 
 (def QueryResult
-  (poo-flow-query-result-contract
+  (agentic-ai-lab-query-result-contract
    'healthcare/query-result 'relation-row
    '(source target evidence) 32))
 
 (def QuerySpace
-  (poo-flow-query-element-space
+  (agentic-ai-lab-query-element-space
    'healthcare/case-space "sha256:space-v1"
    '(case-1 profile-1 source-1) #t))
 
@@ -62,8 +62,8 @@
 
 (def Query
   (validate
-   PooFlowQuery
-   (.o (:: @ PooFlowQuery.)
+   AgenticAILabQuery
+   (.o (:: @ AgenticAILabQuery.)
        identity: 'healthcare/case-profile-relations
        version: "1"
        semantic-revision: "sha256:space-v1"
@@ -85,10 +85,10 @@
    (test-case "native MRR admission remains incomplete and separate from scalar rows"
      (let* ((cut (test-sha256 #\a))
             (query
-             (validate PooFlowQuery
+             (validate AgenticAILabQuery
                        (.o (:: @ Query) semantic-revision: cut)))
             (space
-             (poo-flow-query-element-space
+             (agentic-ai-lab-query-element-space
               'healthcare/case-space cut
               '(case-1 profile-1 source-1) #t))
             (projection
@@ -97,27 +97,27 @@
               (string-append "mrr:generation:v1:" (make-string 64 #\1))
               (test-sha256 #\c) (test-sha256 #\d) (test-sha256 #\f)
               (test-sha256 #\e) 1 cut 7))
-            (admission (poo-flow-query-admit query space))
+            (admission (agentic-ai-lab-query-admit query space))
             (execution-candidate
-             (poo-flow-query-execution-candidate
+             (agentic-ai-lab-query-execution-candidate
               'mrr (.ref query 'identity) (.ref query 'version) cut
-              (poo-flow-query-source-content-identity query)
+              (agentic-ai-lab-query-source-content-identity query)
               'gerbil-parser "sha256:provenance"
               (.ref projection 'result-digest) 1 #t))
             (source-receipt
-             (poo-flow-query-bind-execution-receipt
+             (agentic-ai-lab-query-bind-execution-receipt
               MrrGqlQueryProvider query admission execution-candidate))
             (scope
-             (poo-flow-candidate-scope
+             (agentic-ai-lab-candidate-scope
               "scope" cut 7 "sha256:coverage" '(gql)))
             (candidate-receipt
              (mrr-projected-candidate-receipt
               "mrr" "candidate" scope query space
               source-receipt projection))
             (exchange
-             (poo-flow-candidate-exchange
+             (agentic-ai-lab-candidate-exchange
               "exchange" "candidate" scope (list candidate-receipt)
-              (list (poo-flow-candidate-check
+              (list (agentic-ai-lab-candidate-check
                      "claimed-check" candidate-receipt
                      "unverified-native-result" 'valid
                      "sha256:declared-basis")))))
@@ -142,21 +142,21 @@
        (check (.ref exchange 'unchecked-receipts) => '())
        (check (.ref exchange 'admitted?) => #f)
        (check-exception
-        (poo-flow-gql-candidate-row-check
+        (agentic-ai-lab-gql-candidate-row-check
          "wrong-profile" candidate-receipt query
-         (poo-flow-query-result-set
+         (agentic-ai-lab-query-result-set
           "rows" QueryResult (.ref query 'identity)
           (.ref query 'version) cut
-          (list (poo-flow-query-result-row
+          (list (agentic-ai-lab-query-result-row
                  "row"
-                 (list (poo-flow-query-result-cell 'source "s")
-                       (poo-flow-query-result-cell 'target "t")
-                       (poo-flow-query-result-cell 'evidence #t)))) #t))
+                 (list (agentic-ai-lab-query-result-cell 'source "s")
+                       (agentic-ai-lab-query-result-cell 'target "t")
+                       (agentic-ai-lab-query-result-cell 'evidence #t)))) #t))
         true)
        (check-exception
         (mrr-projected-candidate-receipt
          "stale" "candidate"
-         (poo-flow-candidate-scope
+         (agentic-ai-lab-candidate-scope
           "scope" cut 8 "sha256:coverage" '(gql))
          query space source-receipt projection)
         true)

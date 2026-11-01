@@ -102,7 +102,7 @@ impl MrrDerivationProjection {
         Ok(Self {
             facts: facts.to_vec(),
             derivations: derivations.to_vec(),
-            payload: datum!({"schema":"poo-flow.mrr-derivation-projection.v1","identity":identity,
+            payload: datum!({"schema":"agentic-ai-lab.mrr-derivation-projection.v1","identity":identity,
                 "program":program.payload().clone(),"rootFact":root.to_string(),"facts":projected,"derivations":ds}),
         })
     }
@@ -144,7 +144,7 @@ impl MrrDerivationProjection {
             projected.push(datum!({"fact":b.fact.to_string(),"subject":b.subject.clone(),"revision":b.revision.clone()}));
         }
         let result = runtime.admit_derivation(
-            &datum!({"schema":"poo-flow.temporal-derivation-admit-request.v1",
+            &datum!({"schema":"agentic-ai-lab.temporal-derivation-admit-request.v1",
             "projection":self.payload.clone(),"journal":journal.clone(),"sourceBindings":projected,
             "workSteps":work_steps,"maximumNodes":maximum_nodes}),
         )?;
@@ -156,7 +156,7 @@ impl MrrDerivationProjection {
             .iter()
             .find(|d| d.output().id().to_string() == root)
             .ok_or(Error::InvalidInput)?;
-        if result["schema"] != "poo-flow.temporal-derivation-admit-result.v1"
+        if result["schema"] != "agentic-ai-lab.temporal-derivation-admit-result.v1"
             || result["abiVersion"] != 1
             || result["proofAdmitted"] != true
             || result["derivationCorrespondenceVerified"] != true

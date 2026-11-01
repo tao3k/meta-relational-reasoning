@@ -63,7 +63,7 @@ impl PublicationPlan {
         if [scope, operation]
             .iter()
             .any(|s| s.is_empty() || s.len() > 256)
-            || flow["schema"] != "poo-flow.context-flow-request.v1"
+            || flow["schema"] != "agentic-ai-lab.context-flow-request.v1"
             || flow["expectedRestrictionDigest"].as_str().is_none()
             || admission.result()["admissionDigest"].as_str().is_none()
             || admission.result()["classification"] != "necessary"
@@ -92,7 +92,7 @@ impl PublicationPlan {
             Value::Bool(false),
             |r| datum!({"revision":r.revision,"root":r.root.to_string()}),
         );
-        let binding = datum!({"schema":"poo-flow.data-publication-plan.v1",
+        let binding = datum!({"schema":"agentic-ai-lab.data-publication-plan.v1",
             "scope":scope,"operation":operation,"expected":previous,
             "replacement":replacement.to_string(),"admission":admission.result()["admissionDigest"].clone(),"flow":flow.clone()});
         let bytes = wire::to_vec(&binding).map_err(|_| PublicationError::InvalidPlan)?;

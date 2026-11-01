@@ -236,7 +236,7 @@ separate gates.
 * Semantic owner and consumer qualification
 
 The reusable C3/C4 certificate composition, typed stages and sequential/parallel
-algebra now live in POO Flow =proofs/Composition/PooFlowComposition.lean=.
+algebra now live in Agentic AI Lab =proofs/Composition/AgenticAILabComposition.lean=.
 MRR's Lake dependency imports that library directly, without duplicate generic
 definitions. =just search-composition-proof= first verifies its transitive
 LeanPoo pin and executes POO's =check-composition-proof= gate, then executes
@@ -248,12 +248,12 @@ publication model, =Graph= source-bound influence, =Replay= state correspondence
 actual execution/order/candidate witness checks. These constrain the Rust FFI
 bridge and consumer publication boundary. They are not a POO scheduler proof.
 
-The consumer dependency uses published POO revision =060198f2fec89a683cf539a900f0e1b0e623fb6a=
+The consumer dependency uses published POO revision =921e75f830a60c2ec42c384139846b05ba5d3317=
 with =subDir = proofs/Composition=. There is no machine-specific path in the
 manifest. The resolver verifies the declared source, full SHA and toolchain,
 then delegates LeanPoo bootstrap to the producer and checks the inherited cache.
 An empty-cache consumer qualification passes. The producer draft is
-[[https://github.com/tao3k/poo-flow/pull/34][POO PR 34]]; producer CI and downstream consumer CI remain separate receipts.
+[[https://github.com/tao3k/agentic-ai-lab/pull/34][Agentic AI Lab PR 34]]; producer CI and downstream consumer CI remain separate receipts.
 Delivery to the existing open PR and MRR consumer CI at the exact submitted head are still required.
 The original publication Quint model is unchanged and remains MRR-owned;
 producer-specific Quint and Scheme implementation refinement are separate gates.

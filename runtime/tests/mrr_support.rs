@@ -95,8 +95,8 @@ fn original_mrr_support_identity_and_native_temporal_cuts() {
         ds[0].output().id().to_string()
     );
     let runtime = SemanticRuntime::open(
-        std::env::var("POO_FLOW_SEMANTIC_LIBRARY").unwrap(),
-        &std::env::var("POO_FLOW_SEMANTIC_SHA256").unwrap(),
+        std::env::var("AGENTIC_AI_LAB_SEMANTIC_LIBRARY").unwrap(),
+        &std::env::var("AGENTIC_AI_LAB_SEMANTIC_SHA256").unwrap(),
         64,
     )
     .unwrap();
@@ -141,9 +141,9 @@ fn original_mrr_support_identity_and_native_temporal_cuts() {
         first
     );
     println!("CASE final withdrawal and historical replay");
-    let req = datum!({"schema":"poo-flow.temporal-support-request.v1","program":projection.program().clone(),
+    let req = datum!({"schema":"agentic-ai-lab.temporal-support-request.v1","program":projection.program().clone(),
         "journal":journal(),"asOf":1,"validAt":false,"budget":128});
-    if let Ok(path) = std::env::var("POO_FLOW_MRR_SUPPORT_ORACLE") {
+    if let Ok(path) = std::env::var("AGENTIC_AI_LAB_MRR_SUPPORT_ORACLE") {
         std::fs::write(
             path,
             wire::to_vec(&datum!({"request":req,"expected":first})).unwrap(),
@@ -279,7 +279,7 @@ fn original_mrr_fact_content_parity_and_profile_controls(runtime: &SemanticRunti
     );
     assert!(MrrFactProjection::admit(&partial, &catalog()).is_err());
     declared_context_flow_original_mrr(runtime, &fixtures);
-    if let Ok(path) = std::env::var("POO_FLOW_MRR_FACT_ORACLE") {
+    if let Ok(path) = std::env::var("AGENTIC_AI_LAB_MRR_FACT_ORACLE") {
         std::fs::write(path, wire::to_vec(&Value::Array(fixtures)).unwrap()).unwrap();
     }
 }
@@ -575,8 +575,8 @@ fn named_claim_lifecycle(runtime: &SemanticRuntime) {
             }
         );
         assert_eq!(find(&result["current"], unproved)["status"], "unsupported");
-        let task = datum!({"schema":"poo-flow.temporal-support-request.v1","program":projection.program().clone(),"journal":journal(),"asOf":to,"validAt":false,"budget":128});
-        oracles.push(datum!({"operation":"temporal.support.revise","request":{"schema":"poo-flow.temporal-support-revision-request.v1","task":task,"previousAsOf":from},"expected":result}));
+        let task = datum!({"schema":"agentic-ai-lab.temporal-support-request.v1","program":projection.program().clone(),"journal":journal(),"asOf":to,"validAt":false,"budget":128});
+        oracles.push(datum!({"operation":"temporal.support.revise","request":{"schema":"agentic-ai-lab.temporal-support-revision-request.v1","task":task,"previousAsOf":from},"expected":result}));
         println!(
             "CASE named MRR reverse claim frontier {from}->{to} with downstream and empty claim"
         );
@@ -712,9 +712,9 @@ fn named_claim_lifecycle(runtime: &SemanticRuntime) {
         first
     );
     let instant = |n| datum!({"identity":format!("policy-{n}"),"domain":"policy-clock","coordinate":n,"provenance":"host","modality":"observed"});
-    let refresh = |generation, now| datum!({"schema":"poo-flow.temporal-policy-refresh-request.v1","policy":{"identity":"read-only","revision":"r1","start":instant(1),"end":instant(10)},"generation":generation,"effectiveAt":instant(now)});
+    let refresh = |generation, now| datum!({"schema":"agentic-ai-lab.temporal-policy-refresh-request.v1","policy":{"identity":"read-only","revision":"r1","start":instant(1),"end":instant(10)},"generation":generation,"effectiveAt":instant(now)});
     let reg = runtime.refresh_policy(&refresh(1, 1)).unwrap();
-    let task = |at| datum!({"schema":"poo-flow.temporal-support-request.v1","program":projection.program().clone(),"journal":journal(),"asOf":at,"validAt":false,"budget":128});
+    let task = |at| datum!({"schema":"agentic-ai-lab.temporal-support-request.v1","program":projection.program().clone(),"journal":journal(),"asOf":at,"validAt":false,"budget":128});
     let query = |reg: &Value, expected: Option<String>| MrrSupportClaimQuery {
         claim: root,
         policy_generation: match reg["generation"] {
@@ -809,7 +809,7 @@ fn named_claim_lifecycle(runtime: &SemanticRuntime) {
         )["status"],
         "unsupported"
     );
-    if let Ok(path) = std::env::var("POO_FLOW_MRR_CLAIM_ORACLE") {
+    if let Ok(path) = std::env::var("AGENTIC_AI_LAB_MRR_CLAIM_ORACLE") {
         std::fs::write(path, wire::to_vec(&Value::from(oracles)).unwrap()).unwrap();
     }
 }
@@ -817,7 +817,7 @@ fn named_claim_lifecycle(runtime: &SemanticRuntime) {
 fn declared_context_flow_original_mrr(runtime: &SemanticRuntime, facts: &[Value]) {
     let declaration = |readers: Vec<&str>, provenance: &Value, start, end| {
         datum!({
-        "schema":"poo-flow.context-restriction.v1","domain":"declared-library-clock",
+        "schema":"agentic-ai-lab.context-restriction.v1","domain":"declared-library-clock",
         "readers":readers.into_iter().map(Value::from).collect::<Vec<_>>(),
         "destinations":["library-store"],"provenance":vec![provenance.clone()],"leaseStart":start,"leaseEnd":end})
     };
@@ -830,7 +830,7 @@ fn declared_context_flow_original_mrr(runtime: &SemanticRuntime, facts: &[Value]
         ),
         declaration(vec!["reader"], &facts[2]["request"]["identity"], 2, 8),
     ]);
-    let compose_request = datum!({"schema":"poo-flow.context-restriction-compose-request.v1","restrictions":declarations.clone()});
+    let compose_request = datum!({"schema":"agentic-ai-lab.context-restriction-compose-request.v1","restrictions":declarations.clone()});
     let composed = runtime
         .call("context.restriction.compose", &compose_request)
         .unwrap();
@@ -842,7 +842,7 @@ fn declared_context_flow_original_mrr(runtime: &SemanticRuntime, facts: &[Value]
             .len(),
         2
     );
-    let request = datum!({"schema":"poo-flow.context-flow-request.v1","restrictions":declarations,
+    let request = datum!({"schema":"agentic-ai-lab.context-flow-request.v1","restrictions":declarations,
         "expectedRestrictionDigest":composed["bindingDigest"].clone(),
         "sourceDigest":facts[0]["expected"]["contentDigest"].clone(),
         "contentDigest":facts[2]["expected"]["contentDigest"].clone(),
@@ -902,7 +902,7 @@ fn declared_context_flow_original_mrr(runtime: &SemanticRuntime, facts: &[Value]
     widened["restrictions"] = Value::from(labels);
     assert!(runtime.call("context.flow.evaluate", &widened).is_err());
     println!("CASE stale restriction and injected clock/authority fields reject");
-    if let Ok(path) = std::env::var("POO_FLOW_MRR_CONTEXT_FLOW_ORACLE") {
+    if let Ok(path) = std::env::var("AGENTIC_AI_LAB_MRR_CONTEXT_FLOW_ORACLE") {
         std::fs::write(
             path,
             wire::to_vec(&datum!({

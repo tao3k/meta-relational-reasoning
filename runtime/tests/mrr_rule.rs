@@ -74,7 +74,7 @@ fn original_rule_content_and_catalog_projection() {
             .len(),
         2
     );
-    if let Ok(path) = std::env::var("POO_FLOW_MRR_RULE_ORACLE") {
+    if let Ok(path) = std::env::var("AGENTIC_AI_LAB_MRR_RULE_ORACLE") {
         std::fs::write(path, wire::to_vec(projection.payload()).unwrap()).unwrap();
     }
     println!("CASE original base and recursive Rules retain head/body/variables and owner catalog");

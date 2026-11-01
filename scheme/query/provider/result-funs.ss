@@ -8,9 +8,9 @@
         (only-in :std/crypto/digest sha256)
         (only-in :std/encoding/hex hex-encode)
         (only-in :std/list/list every)
-        (only-in :poo-flow/modules/query/types poo-flow-query?)
-        (only-in :poo-flow/modules/query/contracts
-                 poo-flow-query-source-content-identity)
+        (only-in :agentic-ai-lab/modules/query/types agentic-ai-lab-query?)
+        (only-in :agentic-ai-lab/modules/query/contracts
+                 agentic-ai-lab-query-source-content-identity)
         (only-in "result-types.ss"
                  mrr-result-admission-projection?)
         (only-in "result-objects.ss"
@@ -47,17 +47,17 @@
 (def (mrr-result-admission-projection
       id query binding generation relation entity snapshot native-result count
       temporal-cut temporal-generation)
-  (unless (and (text? id) (poo-flow-query? query)
+  (unless (and (text? id) (agentic-ai-lab-query? query)
                (every sha256-text?
                       (list binding relation entity snapshot native-result temporal-cut))
                (native-generation? generation)
                (exact-integer? temporal-generation) (>= temporal-generation 0)
                (exact-integer? count) (>= count 0))
     (error "invalid native MRR result admission projection"))
-  (let* ((source (poo-flow-query-source-content-identity query))
+  (let* ((source (agentic-ai-lab-query-source-content-identity query))
          (result (string-append +mrr-result-prefix+ native-result))
          (semantic
-          (digest (list 'poo-flow.mrr-result-projection.v2 id
+          (digest (list 'agentic-ai-lab.mrr-result-projection.v2 id
                         +mrr-result-schema+ source binding generation
                         relation entity snapshot result count
                         temporal-cut temporal-generation))))
@@ -67,7 +67,7 @@
 
 (def (mrr-result-admission-projection-replay projection query)
   (unless (and (mrr-result-admission-projection? projection)
-               (poo-flow-query? query)
+               (agentic-ai-lab-query? query)
                (equal? (.ref projection 'native-schema)
                        +mrr-result-schema+)
                (string? (.ref projection 'result-digest))

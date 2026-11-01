@@ -149,7 +149,7 @@ fn original_recursive_derivation_preserves_direct_inputs() {
     assert_eq!(projection.derivations(), ds.as_slice());
     assert!(ds[1].support().contains(&ds[0].output().id()));
     assert!(!ds[1].support().contains(&facts[0].id()));
-    if let Ok(path) = std::env::var("POO_FLOW_MRR_DERIVATION_ORACLE") {
+    if let Ok(path) = std::env::var("AGENTIC_AI_LAB_MRR_DERIVATION_ORACLE") {
         std::fs::write(path, wire::to_vec(projection.payload()).unwrap()).unwrap();
     }
     println!(
@@ -278,11 +278,11 @@ fn actual_native_joint_proof_and_temporal_source_bindings() {
         });
     }
     let journal = datum!({"identity":"host-journal","admissionDomain":"txn","validDomain":"valid","revisions":revisions});
-    let request = datum!({"schema":"poo-flow.temporal-derivation-admit-request.v1","projection":projection.payload().clone(),
+    let request = datum!({"schema":"agentic-ai-lab.temporal-derivation-admit-request.v1","projection":projection.payload().clone(),
         "journal":journal.clone(),"sourceBindings":wire_bindings,"workSteps":512,"maximumNodes":32});
     let runtime = SemanticRuntime::open(
-        std::env::var("POO_FLOW_SEMANTIC_LIBRARY").unwrap(),
-        &std::env::var("POO_FLOW_SEMANTIC_SHA256").unwrap(),
+        std::env::var("AGENTIC_AI_LAB_SEMANTIC_LIBRARY").unwrap(),
+        &std::env::var("AGENTIC_AI_LAB_SEMANTIC_SHA256").unwrap(),
         64,
     )
     .unwrap();
@@ -323,14 +323,14 @@ fn actual_native_joint_proof_and_temporal_source_bindings() {
         datum!({"identity":n.to_string(),"domain":"txn","coordinate":n,
         "provenance":"host-clock","modality":"observed"})
     };
-    let mut policy = datum!({"schema":"poo-flow.temporal-policy-refresh-request.v1",
+    let mut policy = datum!({"schema":"agentic-ai-lab.temporal-policy-refresh-request.v1",
         "policy":{"identity":"rust-proof-policy","revision":"v1","start":instant(1),"end":instant(4)},
         "generation":1,"effectiveAt":instant(1)});
     let p = runtime.refresh_policy(&policy).unwrap();
-    let mut state = datum!({"schema":"poo-flow.temporal-proof-state-refresh-request.v1","identity":"rust-proof-scope",
+    let mut state = datum!({"schema":"agentic-ai-lab.temporal-proof-state-refresh-request.v1","identity":"rust-proof-scope",
         "generation":1,"program":retained_task["projection"]["program"].clone(),"journal":retained_task["journal"].clone()});
     let registered_state = runtime.refresh_proof_state(&state).unwrap();
-    let register = datum!({"schema":"poo-flow.temporal-proof-register-request.v1","stateIdentity":"rust-proof-scope",
+    let register = datum!({"schema":"agentic-ai-lab.temporal-proof-register-request.v1","stateIdentity":"rust-proof-scope",
         "expectedStateDigest":registered_state["stateDigest"].clone(),"policyIdentity":"rust-proof-policy","task":retained_task.clone()});
     assert!(
         runtime
@@ -346,7 +346,7 @@ fn actual_native_joint_proof_and_temporal_source_bindings() {
     let original = runtime.admit_derivation(&retained_task).unwrap();
     assert_eq!(registration["proofDigest"], original["bindingDigest"]);
     assert_eq!(runtime.register_proof(&register).unwrap(), registration);
-    let mut current = datum!({"schema":"poo-flow.temporal-proof-current-request.v1",
+    let mut current = datum!({"schema":"agentic-ai-lab.temporal-proof-current-request.v1",
         "registration":registration["registration"].clone(),"expectedStateGeneration":1,"expectedPolicyGeneration":1,
         "expectedPolicyDigest":p["policyDigest"].clone(),"budget":128});
     let checked = runtime.current_proof(&current).unwrap();
@@ -387,7 +387,7 @@ fn actual_native_joint_proof_and_temporal_source_bindings() {
     println!(
         "CASE late source correction rejects current applicability and history erasure without effect grants"
     );
-    if let Ok(path) = std::env::var("POO_FLOW_NATIVE_DERIVATION_ORACLE") {
+    if let Ok(path) = std::env::var("AGENTIC_AI_LAB_NATIVE_DERIVATION_ORACLE") {
         std::fs::write(
             path,
             wire::to_vec(&datum!({"request":request,"expected":result})).unwrap(),

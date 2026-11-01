@@ -366,8 +366,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
     println!("Original Scheme v1 transport admitted; unsupported version rejected");
     let runtime = SemanticRuntime::open(
-        std::env::var("POO_FLOW_SEMANTIC_LIBRARY")?,
-        &std::env::var("POO_FLOW_SEMANTIC_SHA256")?,
+        std::env::var("AGENTIC_AI_LAB_SEMANTIC_LIBRARY")?,
+        &std::env::var("AGENTIC_AI_LAB_SEMANTIC_SHA256")?,
         64,
     )?;
     let descriptor = runtime.call("descriptor", &datum!({}))?;
@@ -410,10 +410,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     )
     .await?;
     let publication_port = publication_backend.profile("poo-temporal.v1", "qualification")?;
-    let restrictions = datum!([{"schema":"poo-flow.context-restriction.v1","domain":"host-clock",
+    let restrictions = datum!([{"schema":"agentic-ai-lab.context-restriction.v1","domain":"host-clock",
         "readers":["reader"],"destinations":["library-store"],"provenance":["physical-root"],"leaseStart":1,"leaseEnd":5}]);
-    let composed = runtime.call("context.restriction.compose", &datum!({"schema":"poo-flow.context-restriction-compose-request.v1","restrictions":restrictions.clone()}))?;
-    let flow = datum!({"schema":"poo-flow.context-flow-request.v1","restrictions":restrictions,
+    let composed = runtime.call("context.restriction.compose", &datum!({"schema":"agentic-ai-lab.context-restriction-compose-request.v1","restrictions":restrictions.clone()}))?;
+    let flow = datum!({"schema":"agentic-ai-lab.context-flow-request.v1","restrictions":restrictions,
         "expectedRestrictionDigest":composed["bindingDigest"].clone(),
         "sourceDigest":historical.result()["sourceDigest"].clone(),
         "contentDigest":format!("sha256:{}",snapshot.cid().hash().digest().iter().map(|b|format!("{b:02x}")).collect::<String>()),
@@ -932,10 +932,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("NATIVE-TO-DATA-STALE-REFUTED-RESTART-OK");
     println!("PHYSICAL-CORRECTION -> MRR-REQUERY -> HISTORICAL-STALE -> NATIVE-READMISSION OK");
     runtime.close()?;
-    if let Some(path) = std::env::var_os("POO_FLOW_PHYSICAL_RECEIPT") {
+    if let Some(path) = std::env::var_os("AGENTIC_AI_LAB_PHYSICAL_RECEIPT") {
         let original_transport = mrr_runtime::wire::from_slice(handoff.result_bytes())?;
         let hex = |bytes: &[u8]| bytes.iter().map(|b| format!("{b:02x}")).collect::<String>();
-        let receipt = datum!({"schema":"poo-flow.temporal-physical-publication.v1",
+        let receipt = datum!({"schema":"agentic-ai-lab.temporal-physical-publication.v1",
             "abiVersion":1,"wireFormat":"scheme-datum-v1",
             "source":SOURCE,"sourceDigest":digest,"root":snapshot.cid().to_string(),
             "compilationReceipt":{"schema":source.compilation().schema,
@@ -944,11 +944,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 "source_digest":source.compilation().source_digest.clone(),
                 "grammar_digest":source.compilation().grammar_digest.clone(),
                 "query_id":source.compilation().query_id.to_string()},
-            "nativeArtifactSha256":std::env::var("POO_FLOW_SEMANTIC_SHA256")?,
+            "nativeArtifactSha256":std::env::var("AGENTIC_AI_LAB_SEMANTIC_SHA256")?,
             "mrrPin":env!("POO_QUALIFIED_MRR_PIN"),
             "mrrDataPin":env!("POO_QUALIFIED_DATA_PIN"),
             "nativeBuildPin":env!("POO_QUALIFIED_NATIVE_BUILD_PIN"),
-            "publication":{"schema":"poo-flow.data-publication-qualification.v1",
+            "publication":{"schema":"agentic-ai-lab.data-publication-qualification.v1",
                 "provider":"turso","profile":"poo-temporal.v1","namespace":"qualification",
                 "scope":"publication","operation":"first","grantCommitment":plan.commitment().to_string(),
                 "committedRevision":first_head.revision,"committedRoot":first_head.root.to_string(),
@@ -972,7 +972,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .open(path)?;
         std::io::Write::write_all(&mut output, &mrr_runtime::wire::to_vec(&receipt)?)?;
     }
-    if let Some(path) = std::env::var_os("POO_FLOW_PHYSICAL_ORACLE") {
+    if let Some(path) = std::env::var_os("AGENTIC_AI_LAB_PHYSICAL_ORACLE") {
         let oracle =
             datum!([{"name":"physical-gql-necessary","payload":request,"expected":result}]);
         let mut output = std::fs::OpenOptions::new()

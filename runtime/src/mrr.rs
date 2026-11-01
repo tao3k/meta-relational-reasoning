@@ -435,7 +435,7 @@ impl MrrObservationEvidence {
         let receipt = original.receipt();
         let binding = receipt.binding();
         let correspondence = datum!({
-            "schema": "poo-flow.mrr-observation-correspondence.v1",
+            "schema": "agentic-ai-lab.mrr-observation-correspondence.v1",
             "claim": "host-declared-same-domain-observation-projection",
             "mrrQueryBindingDigest": hex(binding.query_binding_digest()),
             "mrrGeneration": binding.generation().to_string(),
@@ -536,7 +536,7 @@ impl MrrFamilyAdmission {
     /// Exact Scheme receipt fact payload; this binds identity, not provider authenticity.
     pub fn context_reference(&self) -> Result<(mrr::FactId, MrrValue), MrrBridgeError> {
         let bytes = wire::to_vec(&datum!({
-            "schema": "poo-flow.mrr-context-temporal-reference.v1",
+            "schema": "agentic-ai-lab.mrr-context-temporal-reference.v1",
             "admission": &self.result, "correspondence": &self.correspondence
         }))
         .map_err(|_| MrrBridgeError::ContextBindingMismatch)?;
@@ -555,7 +555,7 @@ impl MrrFamilyAdmission {
             .as_str()
             .ok_or(MrrBridgeError::ContextBindingMismatch)?;
         let mut hash = Sha256::new();
-        hash.update(b"poo-flow.mrr-context-policy.v1\0");
+        hash.update(b"agentic-ai-lab.mrr-context-policy.v1\0");
         hash.update((policy.len() as u64).to_be_bytes());
         hash.update(policy.as_bytes());
         Ok(hash.finalize().into())
@@ -607,7 +607,7 @@ impl MrrFamilyAdmission {
             .iter()
             .map(|byte| format!("{byte:02x}"))
             .collect::<String>();
-        Ok(datum!({"schema": "poo-flow.mrr-context-temporal-check.v1",
+        Ok(datum!({"schema": "agentic-ai-lab.mrr-context-temporal-check.v1",
             "contextManifestDigest": manifest, "temporalFact": id.to_string(),
             "admissionDigest": &self.result["admissionDigest"], "currentSource": current,
             "sourceAuthenticated": false, "actionAuthorized": false,

@@ -4,10 +4,10 @@
 ;;; Embedded owner projection; uses MRR's existing Gambit initializer and thread.
 (import (only-in ../search/projection mrr-search-compile)
         (only-in ../search/controller-bridge mrr-search-controller-call)
-        (only-in :poo-flow/src/ffi/scheme-wire scheme-wire-read scheme-wire-write)
-        (only-in :poo-flow/src/ffi/temporal-proof temporal-derivation-admit)
-        (only-in :poo-flow/src/ffi/temporal-policy temporal-policy-refresh)
-        (only-in :poo-flow/src/ffi/temporal-proof-host
+        (only-in :agentic-ai-lab/modules/workflow/runtime/scheme-wire scheme-wire-read scheme-wire-write)
+        (only-in :agentic-ai-lab/modules/workflow/runtime/temporal-proof temporal-derivation-admit)
+        (only-in :agentic-ai-lab/modules/workflow/runtime/temporal-policy temporal-policy-refresh)
+        (only-in :agentic-ai-lab/modules/workflow/runtime/temporal-proof-host
                  temporal-proof-state-refresh temporal-proof-register temporal-proof-current))
 (def result-bytes #f)
 (def (reset!) (set! result-bytes #f) 0)

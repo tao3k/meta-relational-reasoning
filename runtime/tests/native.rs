@@ -9,9 +9,9 @@ use std::{sync::Arc, time::Duration};
 
 #[test]
 fn native_python_differential_and_lifetime() {
-    let path = std::env::var("POO_FLOW_SEMANTIC_LIBRARY").expect("native artifact required");
-    let digest = std::env::var("POO_FLOW_SEMANTIC_SHA256").expect("artifact digest required");
-    let fixture = std::env::var("POO_FLOW_RUST_DIFFERENTIAL").expect("Python oracle required");
+    let path = std::env::var("AGENTIC_AI_LAB_SEMANTIC_LIBRARY").expect("native artifact required");
+    let digest = std::env::var("AGENTIC_AI_LAB_SEMANTIC_SHA256").expect("artifact digest required");
+    let fixture = std::env::var("AGENTIC_AI_LAB_RUST_DIFFERENTIAL").expect("Python oracle required");
     assert!(matches!(
         SemanticRuntime::open(&path, &"0".repeat(64), 64),
         Err(Error::DigestMismatch)
@@ -63,10 +63,10 @@ fn native_python_differential_and_lifetime() {
                     *const u8,
                     usize,
                     *mut RawResult,
-                ) -> i32>(b"poo_flow_semantic_v1_call\0")
+                ) -> i32>(b"agentic_ai_lab_semantic_v1_call\0")
                 .unwrap();
         let release = library
-            .get::<unsafe extern "C" fn(*mut RawResult)>(b"poo_flow_semantic_v1_result_release\0")
+            .get::<unsafe extern "C" fn(*mut RawResult)>(b"agentic_ai_lab_semantic_v1_result_release\0")
             .unwrap();
         let mut result = RawResult {
             status: 0,

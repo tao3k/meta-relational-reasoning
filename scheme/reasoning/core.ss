@@ -1,7 +1,7 @@
 ;;; Gerbil POO authority for ReasoningBundle declarations.
 
 (import :clan/poo/object
-        :poo-flow/src/core/object-syntax)
+        :yuanxu/object-family/role-syntax)
 (export defmrr-reasoning-module
         mrr-reasoning-module-prototype
         mrr-driver-start

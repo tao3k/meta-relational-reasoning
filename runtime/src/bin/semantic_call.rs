@@ -16,8 +16,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Err("request requires exactly operation and payload".into());
     }
     let runtime = SemanticRuntime::open(
-        std::env::var("POO_FLOW_SEMANTIC_LIBRARY")?,
-        &std::env::var("POO_FLOW_SEMANTIC_SHA256")?,
+        std::env::var("AGENTIC_AI_LAB_SEMANTIC_LIBRARY")?,
+        &std::env::var("AGENTIC_AI_LAB_SEMANTIC_SHA256")?,
         64,
     )?;
     let result = runtime.call(

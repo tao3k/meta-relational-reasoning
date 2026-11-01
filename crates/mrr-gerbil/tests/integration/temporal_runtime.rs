@@ -27,7 +27,7 @@ fn policy(generation: i32, now: i32) -> String {
         )
     };
     format!(
-        "(object (\"schema\" \"poo-flow.temporal-policy-refresh-request.v1\") (\"policy\" (object (\"identity\" \"mrr-production-policy\") (\"revision\" \"v1\") (\"start\" {}) (\"end\" {}))) (\"generation\" {generation}) (\"effectiveAt\" {}))",
+        "(object (\"schema\" \"agentic-ai-lab.temporal-policy-refresh-request.v1\") (\"policy\" (object (\"identity\" \"mrr-production-policy\") (\"revision\" \"v1\") (\"start\" {}) (\"end\" {}))) (\"generation\" {generation}) (\"effectiveAt\" {}))",
         instant(1),
         instant(4),
         instant(now)
@@ -35,7 +35,7 @@ fn policy(generation: i32, now: i32) -> String {
 }
 fn current(registration: &str, state: i32, policy: i32, digest: &str) -> String {
     format!(
-        "(object (\"schema\" \"poo-flow.temporal-proof-current-request.v1\") (\"registration\" \"{registration}\") (\"expectedStateGeneration\" {state}) (\"expectedPolicyGeneration\" {policy}) (\"expectedPolicyDigest\" \"{digest}\") (\"budget\" 128))"
+        "(object (\"schema\" \"agentic-ai-lab.temporal-proof-current-request.v1\") (\"registration\" \"{registration}\") (\"expectedStateGeneration\" {state}) (\"expectedPolicyGeneration\" {policy}) (\"expectedPolicyDigest\" \"{digest}\") (\"budget\" 128))"
     )
 }
 #[test]
@@ -63,7 +63,7 @@ fn temporal_and_existing_inference_share_the_production_runtime() {
     let task =
         std::str::from_utf8(include_bytes!("../fixtures/temporal-derivation-v1.ss")).unwrap();
     let request = format!(
-        "(object (\"schema\" \"poo-flow.temporal-proof-register-request.v1\") (\"stateIdentity\" \"mrr-production-source\") (\"expectedStateDigest\" \"{sd}\") (\"policyIdentity\" \"mrr-production-policy\") (\"task\" {task}))"
+        "(object (\"schema\" \"agentic-ai-lab.temporal-proof-register-request.v1\") (\"stateIdentity\" \"mrr-production-source\") (\"expectedStateDigest\" \"{sd}\") (\"policyIdentity\" \"mrr-production-policy\") (\"task\" {task}))"
     );
     let registered = text(host.register_proof(request.as_bytes()).unwrap());
     let registration = digest_field(&registered, "registration");

@@ -3,15 +3,8 @@
 ;;; MRR Scheme library build declaration.
 
 (import (only-in :std/build-script defbuild-script)
-        (only-in :std/make pkg-config)
-        (only-in :std/string/misc string-trim)
-        (only-in :asp-gerbil-scheme/building-api
-                 asp-gerbil-scheme-package-spec!
-                 asp-gerbil-scheme-library-package-prototype
-                 asp-gerbil-scheme-package-native-profile
-                 asp-gerbil-scheme-package-pkg-config-libs
-                 asp-gerbil-scheme-native-profile-prepare!
-                 asp-gerbil-scheme-native-pkg-config-options))
+        (only-in :std/make pkg-config pkg-config-cflags pkg-config-libs)
+        (only-in :std/string/misc string-trim))
 
 (def mrr-system-libraries '("openssl"))
 
@@ -42,14 +35,13 @@
     "scheme/grammar/native"
     "scheme/grammar/native-program"))
 
-(asp-gerbil-scheme-package-spec!
- (mrr-library-package-spec
-  @ asp-gerbil-scheme-library-package-prototype)
- (spec mrr-build-spec)
- (modules mrr-library-modules)
- (pkg-config-libs mrr-system-libraries)
- (native-options-resolver
-  (lambda () (asp-gerbil-scheme-native-pkg-config-options mrr-system-libraries))))
+;; Standard Gerbil owns target projection and pkg-config discovery.
+(def (mrr-build-spec)
+  (let ((cflags (apply pkg-config-cflags mrr-system-libraries))
+        (libraries (apply pkg-config-libs mrr-system-libraries)))
+    (map (lambda (module)
+           (list gxc: module "-cc-options" cflags "-ld-options" libraries))
+         mrr-library-modules)))
 
 (def mrr-package-build-main
   (let ()
@@ -58,9 +50,7 @@
 
 ;; Standard pkg-config owns library identity and location. No CI linker flags.
 (def (mrr-system-link-inputs output)
-  (def libraries (asp-gerbil-scheme-package-pkg-config-libs mrr-library-package-spec))
-  ((asp-gerbil-scheme-native-profile-prepare!
-    (asp-gerbil-scheme-package-native-profile mrr-library-package-spec)) libraries)
+  (def libraries mrr-system-libraries)
   ;; Resolve all declared inputs before publishing a complete Cargo receipt.
   (def inputs
     (apply append

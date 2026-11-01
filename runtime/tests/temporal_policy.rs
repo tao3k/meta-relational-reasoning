@@ -5,21 +5,21 @@ fn instant(n: i64) -> Value {
     datum!({"identity":format!("at-{n}"),"domain":"policy-clock","coordinate":n,"provenance":"host-observation","modality":"observed"})
 }
 fn refresh(generation: i64, now: i64) -> Value {
-    datum!({"schema":"poo-flow.temporal-policy-refresh-request.v1","policy":datum!({"identity":"rust-policy","revision":"r1","start":instant(1),"end":instant(4)}),"generation":generation,"effectiveAt":instant(now)})
+    datum!({"schema":"agentic-ai-lab.temporal-policy-refresh-request.v1","policy":datum!({"identity":"rust-policy","revision":"r1","start":instant(1),"end":instant(4)}),"generation":generation,"effectiveAt":instant(now)})
 }
 fn task() -> Value {
-    datum!({"schema":"poo-flow.temporal-support-request.v1",
+    datum!({"schema":"agentic-ai-lab.temporal-support-request.v1",
     "program":datum!({"identity":"p","policy":"rust-policy","complete":true,"supports":vec![datum!({"identity":"s","conclusion":"claim","proof":"declared","premises":vec![datum!({"subject":"source","revision":"r1"})],"parents":Vec::<Value>::new()})]}),
     "journal":datum!({"identity":"j","admissionDomain":"txn","validDomain":"valid","revisions":vec![datum!({"identity":"r1","subject":"source","operation":"assert","predecessor":false,"admitted":1,"validRange":vec![Value::from(0),Value::from(10)],"content":"declared"})]}),"asOf":1,"validAt":false,"budget":128})
 }
 fn guard(reg: &Value) -> Value {
-    datum!({"schema":"poo-flow.temporal-support-guard-request.v1","expectedGeneration":reg["generation"].clone(),"expectedPolicyDigest":reg["policyDigest"].clone(),"task":task()})
+    datum!({"schema":"agentic-ai-lab.temporal-support-guard-request.v1","expectedGeneration":reg["generation"].clone(),"expectedPolicyDigest":reg["policyDigest"].clone(),"task":task()})
 }
 #[test]
 fn actual_native_host_policy_control_and_failure_atomicity() {
     let runtime = SemanticRuntime::open(
-        std::env::var("POO_FLOW_SEMANTIC_LIBRARY").unwrap(),
-        &std::env::var("POO_FLOW_SEMANTIC_SHA256").unwrap(),
+        std::env::var("AGENTIC_AI_LAB_SEMANTIC_LIBRARY").unwrap(),
+        &std::env::var("AGENTIC_AI_LAB_SEMANTIC_SHA256").unwrap(),
         64,
     )
     .unwrap();
@@ -87,7 +87,7 @@ fn actual_native_host_policy_control_and_failure_atomicity() {
     );
     let descriptor = runtime.call("descriptor", &datum!({})).unwrap();
     assert_eq!(descriptor["abiVersion"], 1);
-    if let Ok(path) = std::env::var("POO_FLOW_POLICY_ORACLE") {
+    if let Ok(path) = std::env::var("AGENTIC_AI_LAB_POLICY_ORACLE") {
         std::fs::write(path,mrr_runtime::wire::to_vec(&datum!({"refresh":refresh(1,1),"registered":registered,"currentRefresh":refresh(2,4),"current":current.clone(),"query":guard(&current),"expired":expired})).unwrap()).unwrap();
     }
 }

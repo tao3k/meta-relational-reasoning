@@ -60,7 +60,7 @@ impl MrrRuleProgramProjection {
         Ok(Self {
             originals: rules.to_vec(),
             catalog_digest,
-            payload: datum!({"schema":"poo-flow.mrr-rule-program.v1","identity":identity,
+            payload: datum!({"schema":"agentic-ai-lab.mrr-rule-program.v1","identity":identity,
                 "catalogDigest":digest,"generation":generation.to_string(),"ascentGeneration":ascent_generation,
                 "relations":relations,"rules":projected}),
         })
