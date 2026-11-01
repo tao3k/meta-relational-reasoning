@@ -89,7 +89,16 @@ impl ProgramArchiveObserver for CargoObserver {
 pub fn build_program_archive(manifest: &Path) {
     // Gerbil toolchain selection changes the imported module closure and compiler inputs.
     // A cached archive from another prefix must not survive that selection.
-    for name in ["GERBIL_PATH", "GERBIL_LOADPATH", "GERBIL_HOME", "GAMBOPT"] {
+    for name in [
+        "GERBIL_PATH",
+        "GERBIL_LOADPATH",
+        "GERBIL_HOME",
+        "GAMBOPT",
+        "PKG_CONFIG",
+        "PKG_CONFIG_PATH",
+        "PKG_CONFIG_LIBDIR",
+        "PKG_CONFIG_SYSROOT_DIR",
+    ] {
         println!("cargo:rerun-if-env-changed={name}");
     }
     println!("cargo:rerun-if-env-changed=GERBIL_GSC");
@@ -105,6 +114,7 @@ pub fn build_program_archive(manifest: &Path) {
     build.prepare_package(&observer);
     build.stage_program(&observer);
     build.package_archive(&observer);
+    build.emit_system_link_inputs();
 }
 
 struct ProgramBuild {
@@ -192,6 +202,26 @@ impl ProgramBuild {
             },
         )
         .expect("prepare isolated MRR Scheme package");
+    }
+
+    fn emit_system_link_inputs(&self) {
+        let receipt = self.program_stage.join("package-link-inputs");
+        match fs::remove_file(&receipt) {
+            Ok(()) => {}
+            Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+            Err(error) => panic!("invalidate previous package link receipt: {error}"),
+        }
+        run(
+            self.package_command(&self.gxi)
+                .arg(self.workspace.join("build.ss"))
+                .arg("link-inputs")
+                .arg(&receipt),
+            "project declared Scheme package linkage",
+        )
+        .expect("Scheme package link projection");
+        for input in crate::system_link::read(&receipt).expect("declared system link inputs") {
+            println!("{}", input.line());
+        }
     }
 
     fn package_identity(&self) -> Result<String, String> {

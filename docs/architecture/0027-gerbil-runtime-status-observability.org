@@ -77,7 +77,17 @@ line is unchanged; locked offline metadata and the existing dependency-graph
 checker pass. An external package name is provenance, not a local namespace.
 
 Darwin completed the Scheme archive but could not link =ssl= and =crypto=.
-Its existing Homebrew setup now adds the discovered OpenSSL library directory
-to the existing target-specific Rust linker flags. No compiler optimization,
-ABI or timeout changes. Complete CI acceptance remains distinct from correcting
+The CI path injection was withdrawn. The canonical Scheme PackageSpec now
+declares pkg-config-libs and resolves through its existing host profile; the Rust
+package adapter receives standard Cargo linkage from that declaration. No compiler
+optimization, ABI or timeout changes. Complete CI acceptance remains distinct from correcting
 these two reproduced input/link-discovery failures.
+
+The actual root =build.ss spec= and =build.ss link-inputs= entries naturally exit
+successfully with the declared package dependencies. The latter atomically
+publishes its complete build artifact, then the existing CargoDirective type
+validates the bounded inputs. Eight default unit tests, one explicit test reading
+the actual Scheme artifact, and strict all-target Clippy pass locally. Cargo
+watches standard pkg-config environment selectors for cache invalidation; CI
+does not supply library search flags. These checks establish producer/consumer
+agreement, not a completed remote workspace-link or runtime acceptance result.
