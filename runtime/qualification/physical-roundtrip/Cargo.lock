@@ -2809,7 +2809,7 @@ dependencies = [
  "blake3",
  "gerbil-scheme-sys",
  "mrr-bundle",
- "mrr-gerbil-build",
+ "mrr-gerbil-native-build",
  "mrr-identity",
  "mrr-logic",
  "mrr-query",
@@ -2819,7 +2819,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "mrr-gerbil-build"
+name = "mrr-gerbil-native-build"
 version = "0.1.0"
 source = "git+https://github.com/tao3k/meta-relational-reasoning.git?rev=68ffa47d65f6dc92a653377992d28df0376c5ea8#68ffa47d65f6dc92a653377992d28df0376c5ea8"
 dependencies = [

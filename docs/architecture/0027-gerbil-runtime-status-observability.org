@@ -65,3 +65,19 @@ The current dependency pin still names an earlier upstream build package.
 Renaming the MRR-owned adapter does not rename or replace that pinned dependency.
 A separately verified upstream framing fix is not automatically present in this
 pinned consumer; adoption requires a later explicitly authorized dependency change.
+
+* Complete CI failure attribution
+
+The reviewed Linux run completed the Scheme package, the full Rust workspace
+compile/test and source-bound property checks. Its later physical-roundtrip
+metadata failed because the local build-adapter rename had incorrectly rewritten
+a frozen upstream package name. The lock entry now again names the package
+actually provided by that upstream revision. Every version, source and checksum
+line is unchanged; locked offline metadata and the existing dependency-graph
+checker pass. An external package name is provenance, not a local namespace.
+
+Darwin completed the Scheme archive but could not link =ssl= and =crypto=.
+Its existing Homebrew setup now adds the discovered OpenSSL library directory
+to the existing target-specific Rust linker flags. No compiler optimization,
+ABI or timeout changes. Complete CI acceptance remains distinct from correcting
+these two reproduced input/link-discovery failures.
