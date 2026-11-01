@@ -4,11 +4,25 @@ import select
 import subprocess
 import sys
 import unittest
+from pathlib import Path
+from unittest.mock import patch
 
 from mrr_proof_validation import process_runner
 
 
 class ProcessCpuRegression(unittest.TestCase):
+    def test_failed_forwarding_distinguishes_expired_wall_budget(self):
+        for total, expected in [(0, b"total limit"), (45, b"output backpressure")]:
+            with self.subTest(total=total), patch.object(
+                process_runner.qualification, "forward_output", return_value=False
+            ) as forward:
+                result = process_runner.run(
+                    [sys.executable, "-u", "-c", "print('actual child output',flush=True)"],
+                    cwd=Path.cwd(), total_limit=total, label="OUTPUT-CONTROL",
+                )
+                self.assertEqual(result.status, 124)
+                self.assertIn(expected, forward.call_args_list[-1].args[0])
+
     @unittest.skipUnless(sys.platform.startswith("linux"), "requires Linux /proc")
     def test_reaped_child_cpu_counts_after_short_compiler_invocations(self):
         child = (

@@ -90,6 +90,12 @@ def _finish_owned_group(child: subprocess.Popen[bytes]) -> None:
             raise
 
 
+def _forward_refusal(label: str, started: float, total: float, idle: float) -> str:
+    if time.monotonic() >= started + total:
+        return f"{label}-FAIL: {total}s total limit"
+    return f"{label}-FAIL: output backpressure exceeded {idle}s"
+
+
 def _signal_owned_group(child: subprocess.Popen[bytes], signum: int) -> None:
     try:
         qualification.signal_owned_group(child, signum)
@@ -164,7 +170,7 @@ def run(command: list[str], *, cwd: Path, log: Path | None = None,
                         chunk, min(started + total_limit, now + idle_limit)
                     ):
                         qualification.forward_output(
-                            f"{label}-FAIL: output backpressure exceeded {idle_limit}s\n".encode(),
+                            (_forward_refusal(label, started, total_limit, idle_limit) + "\n").encode(),
                             time.monotonic() + 1,
                         )
                         return Result(124, bytes(data), log)
@@ -190,7 +196,7 @@ def run(command: list[str], *, cwd: Path, log: Path | None = None,
                                          time.monotonic() + idle_limit)
                         ):
                             qualification.forward_output(
-                                f"{label}-FAIL: output backpressure exceeded {idle_limit}s\n".encode(),
+                                (_forward_refusal(label, started, total_limit, idle_limit) + "\n").encode(),
                                 time.monotonic() + 1,
                             )
                             return Result(124, bytes(data), log)

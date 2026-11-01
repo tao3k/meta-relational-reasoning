@@ -75,6 +75,7 @@ jobs:
           - macos-latest
     env:
       GERBIL_PREFIX: ${{ github.workspace }}/.ci/gerbil
+      GERBIL_PATH: ${{ github.workspace }}/.gerbil
       GERBIL_BUILD_VERBOSE: "1"
     steps:
       - uses: actions/checkout@v4
@@ -149,18 +150,21 @@ jobs:
       - name: Verify test qualification rejects false success
         run: |
           uv --project proofs/MRRProof run pytest -q proofs/MRRProof/tests/test_qualification.py proofs/MRRProof/tests/test_process_runner.py
-          gerbil env python3 -m mrr_proof_validation.qualification self-test
+          python3 -m mrr_proof_validation.qualification self-test
 
       - name: Test Gerbil package
-        run: gerbil env python3 -m mrr_proof_validation.qualification scheme
+        run: python3 -m mrr_proof_validation.qualification scheme
 
       - name: MRR PackageSpec build protocol
-        run: gerbil env cargo test -p mrr-gerbil-build --lib --locked
+        run: cargo test -p mrr-gerbil-build --lib --locked
+
+      - name: Cargo stream backpressure and resource ownership
+        run: python3 -m mrr_proof_validation.process_runner --total 45 --label CARGO-ENTRY -- cargo test -p mrr-gerbil-build --lib --locked cargo_backpressure_pair_preserves_host_parallelism_and_reaps_processes -- --ignored --nocapture
 
       - name: Compile Rust workspace tests in the Gerbil package environment
         env:
           MRR_NATIVE_PROGRESS: "1"
-        run: python3 -m mrr_proof_validation.process_runner --total 1800 --label RUST-COMPILE -- gerbil env cargo test -vv --workspace --locked --no-run
+        run: python3 -m mrr_proof_validation.process_runner --total 1800 --label RUST-COMPILE -- cargo test -vv --workspace --locked --no-run
 
       - name: Preserve owned Scheme compiler inputs on failure
         if: failure()
@@ -176,26 +180,26 @@ jobs:
           retention-days: 7
 
       - name: Verify pinned kernel discovery in the Gerbil package environment
-        run: gerbil env sh -c 'command -v elan && ELAN_TOOLCHAIN=leanprover/lean4:v4.31.0 elan which lean && elan run leanprover/lean4:v4.31.0 lean --version'
+        run: sh -c 'command -v elan && ELAN_TOOLCHAIN=leanprover/lean4:v4.31.0 elan which lean && elan run leanprover/lean4:v4.31.0 lean --version'
 
       - name: Test Rust workspace in the Gerbil package environment
         env:
           MRR_NATIVE_PROGRESS: "1"
-        run: python3 -m mrr_proof_validation.process_runner --total 1800 --label RUST-TEST -- gerbil env cargo test --workspace --locked
+        run: python3 -m mrr_proof_validation.process_runner --total 1800 --label RUST-TEST -- cargo test --workspace --locked
 
       - name: Qualify transport-only POO and Scheme execution
-        run: python3 -m mrr_proof_validation.process_runner --total 1800 --label WORKER-CLIENT -- gerbil env cargo test --locked -p mrr-gerbil --no-default-features --test worker_client -- --nocapture
+        run: python3 -m mrr_proof_validation.process_runner --total 1800 --label WORKER-CLIENT -- cargo test --locked -p mrr-gerbil --no-default-features --test worker_client -- --nocapture
 
       - name: Test optional Context feature boundaries
         run: |
-          gerbil env python3 -m mrr_proof_validation.context_features
-          gerbil env python3 -m mrr_proof_validation.context_qualify matrix
+          python3 -m mrr_proof_validation.context_features
+          python3 -m mrr_proof_validation.context_qualify matrix
 
       - name: Qualify complete Query Context workflow and scale
         run: |
-          python3 -m mrr_proof_validation.process_runner --total 900 --label CONTEXT-BUILD -- gerbil env cargo build -p meta-relational-reasoning --examples --features agentic-ai-context-tokens --locked
-          gerbil env python3 -m mrr_proof_validation.context_qualify workflow
-          gerbil env python3 -m mrr_proof_validation.context_scale --output .ci/context-scale
+          python3 -m mrr_proof_validation.process_runner --total 900 --label CONTEXT-BUILD -- cargo build -p meta-relational-reasoning --examples --features agentic-ai-context-tokens --locked
+          python3 -m mrr_proof_validation.context_qualify workflow
+          python3 -m mrr_proof_validation.context_scale --output .ci/context-scale
 
       - name: Save Context scale receipts
         if: always()
@@ -206,7 +210,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Lint optional Context features
-        run: python3 -m mrr_proof_validation.process_runner --total 1800 --label CONTEXT-LINT -- gerbil env cargo clippy -p mrr-agentic-ai-context -p meta-relational-reasoning --all-targets --all-features --locked -- -D warnings
+        run: python3 -m mrr_proof_validation.process_runner --total 1800 --label CONTEXT-LINT -- cargo clippy -p mrr-agentic-ai-context -p meta-relational-reasoning --all-targets --all-features --locked -- -D warnings
 
       - name: Verify transition parity with Quint
         env:
@@ -219,33 +223,33 @@ jobs:
           test "$(proofs/quint/node_modules/.bin/quint --version)" = 0.33.0
           mkdir -p "$QUINT_HOME" "$OUT_DIR"
           proofs/quint/node_modules/.bin/quint typecheck crates/mrr-transition/quint/MrrTransitionOracle.qnt
-          python3 -m mrr_proof_validation.process_runner --total 900 --label TRANSITION-TEST -- gerbil env cargo test -p mrr-transition --locked ten_transition_fixtures_match_quint_status_and_counterexample_length -- --nocapture
+          python3 -m mrr_proof_validation.process_runner --total 900 --label TRANSITION-TEST -- cargo test -p mrr-transition --locked ten_transition_fixtures_match_quint_status_and_counterexample_length -- --nocapture
 
       - name: Test source-bound property query integration
         run: |
-          python3 -m mrr_proof_validation.process_runner --total 900 --label PROPERTY-BUILD -- gerbil env cargo build -p mrr-gerbil --bin mrr-native-worker --locked
-          python3 -m mrr_proof_validation.process_runner --total 900 --label PROPERTY-TEST -- gerbil env cargo test -p mrr-property-source --features native-inference --locked
+          python3 -m mrr_proof_validation.process_runner --total 900 --label PROPERTY-BUILD -- cargo build -p mrr-gerbil --bin mrr-native-worker --locked
+          python3 -m mrr_proof_validation.process_runner --total 900 --label PROPERTY-TEST -- cargo test -p mrr-property-source --features native-inference --locked
 
       - name: Compile MRR-owned POO Library runtime and verify producer graph
         run: |
-          gerbil env python3 runtime/tools/check_mrr_dependency_graph.py
-          gerbil env python3 -m unittest discover -s runtime/tools/tests -v
-          python3 -m mrr_proof_validation.process_runner --total 900 --label RUNTIME-COMPILE -- gerbil env cargo test --manifest-path runtime/Cargo.toml --features mrr-context,orgize-source --locked --no-run
-          python3 -m mrr_proof_validation.process_runner --total 900 --label RUNTIME-LINT -- gerbil env cargo clippy --manifest-path runtime/Cargo.toml --features mrr-context,data-publication,orgize-source --tests --locked -- -D warnings
+          python3 runtime/tools/check_mrr_dependency_graph.py
+          python3 -m unittest discover -s runtime/tools/tests -v
+          python3 -m mrr_proof_validation.process_runner --total 900 --label RUNTIME-COMPILE -- cargo test --manifest-path runtime/Cargo.toml --features mrr-context,orgize-source --locked --no-run
+          python3 -m mrr_proof_validation.process_runner --total 900 --label RUNTIME-LINT -- cargo clippy --manifest-path runtime/Cargo.toml --features mrr-context,data-publication,orgize-source --tests --locked -- -D warnings
           if [ "$RUNNER_OS" = macOS ]; then
             deadline_command=gtimeout
           else
             deadline_command=timeout
           fi
-          gerbil env "$deadline_command" --foreground --signal=TERM --kill-after=1s 5s cargo test --manifest-path runtime/Cargo.toml --features mrr-context,orgize-source --test org_source --locked -- --nocapture
+          "$deadline_command" --foreground --signal=TERM --kill-after=1s 5s cargo test --manifest-path runtime/Cargo.toml --features mrr-context,orgize-source --test org_source --locked -- --nocapture
 
       - name: Prepare MRR runtime against its declared POO Library and Data Backend
         if: runner.os == 'Linux'
-        run: python3 -m mrr_proof_validation.process_runner --total 3600 --label LIBRARY-PREPARE -- gerbil env bash runtime/tools/qualify-library.sh .gerbil/pkg/github.com/tao3k/poo-flow .ci/library prepare-only
+        run: python3 -m mrr_proof_validation.process_runner --total 3600 --label LIBRARY-PREPARE -- bash runtime/tools/qualify-library.sh .gerbil/pkg/github.com/tao3k/poo-flow .ci/library prepare-only
 
       - name: Qualify MRR runtime against its declared POO Library and Data Backend
         if: runner.os == 'Linux'
-        run: python3 -m mrr_proof_validation.process_runner --total 900 --label LIBRARY-QUALIFY -- gerbil env bash runtime/tools/qualify-library.sh .gerbil/pkg/github.com/tao3k/poo-flow .ci/library --prepared
+        run: python3 -m mrr_proof_validation.process_runner --total 900 --label LIBRARY-QUALIFY -- bash runtime/tools/qualify-library.sh .gerbil/pkg/github.com/tao3k/poo-flow .ci/library --prepared
 
       - name: Preserve MRR Library Scheme evidence
         if: always() && runner.os == 'Linux'
@@ -257,10 +261,10 @@ jobs:
           retention-days: 7
 
       - name: Lint Rust workspace
-        run: python3 -m mrr_proof_validation.process_runner --total 1800 --label RUST-LINT -- gerbil env cargo clippy --all-targets --locked -- -D warnings
+        run: python3 -m mrr_proof_validation.process_runner --total 1800 --label RUST-LINT -- cargo clippy --all-targets --locked -- -D warnings
 
       - name: Lint source-bound property query integration
-        run: python3 -m mrr_proof_validation.process_runner --total 900 --label PROPERTY-LINT -- gerbil env cargo clippy -p mrr-property-source --all-targets --locked -- -D warnings
+        run: python3 -m mrr_proof_validation.process_runner --total 900 --label PROPERTY-LINT -- cargo clippy -p mrr-property-source --all-targets --locked -- -D warnings
 
       - name: Test Python evidence projects
         run: |

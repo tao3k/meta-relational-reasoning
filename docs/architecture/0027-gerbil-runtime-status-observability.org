@@ -101,3 +101,41 @@ pinned MRR =68ffa47d= build rejects an unbound
 The current package's link projection cannot repair that frozen source graph.
 Neither marker completion nor local linkage tests close these failures; no cache
 source edits, compatibility shim or dependency-pin change is used to hide them.
+
+* Embedded tooling ownership and inherited Cargo output
+
+The required public build/test API belongs in gerbil-scheme-rust and invokes
+the actual Gerbil Scheme procedures through C ABI. The existing minimal runtime
+image does not provide the complete compiler/gxtest closure. Tokio process I/O
+is bootstrap hardening, not an embedded tooling implementation. MRR's build.ss
+remains unchanged; no Cargo loop, eval endpoint or second build DSL is added.
+The upstream embedded-tooling contract records admission, affine VM ownership,
+root lifetime, cancellation observation and complete build/test evidence.
+
+Cargo must run as the native root. In the audited standard gxpkg implementation,
+=env= starts native children with inherited descriptors. Actual Darwin probes
+show nonblocking stdout/stderr after that entry. A slow native-reader fixture
+reproduces truncated Cargo metadata despite zero exit status, and a nonzero
+verbose-build refusal. Native Cargo preserves all 1,508,947 metadata bytes across
+12 host workers and leaves no owned process groups. The complete paired check
+including verbose refusal/recovery passes within the unchanged 45-second bound.
+
+CI therefore invokes Cargo/Python and existing legacy qualification scripts
+without an outer Gerbil interpreter. The job declares its standard local
+=GERBIL_PATH= explicitly; this is package location, not compiler/linker policy.
+Existing bootstrap package
+actions remain standard Gerbil commands pending the admitted C ABI capability.
+Isolated Rust probes exercise dependency installation and safe package recovery
+through the existing pinned API; these probes remain temporary evidence rather
+than a new MRR driver. Rust build.rs already delegates artifact construction to
+the pinned upstream builder. This does not claim that dependency has the new C ABI
+tooling API. The optional backpressure test retains a native negative control;
+neither successful status nor short output is accepted as complete evidence.
+
+Local full-entry failures remain separate: missing Parser output, incomplete
+dependency products after a mixed compiler environment, unsafe all-package clean
+ordering and a 900-second wall refusal incorrectly labeled as five-second
+backpressure. The supervisor's reporting correction preserves every deadline
+and only distinguishes an expired total budget from a live forwarding refusal.
+Only standard package clean/build
+actions recover generated products; no uninstall or source-pin edit is used.
