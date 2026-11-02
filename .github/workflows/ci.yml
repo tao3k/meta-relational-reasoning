@@ -107,7 +107,7 @@ jobs:
         run: npm install --global @mermaid-js/mermaid-cli@11.12.0 @bazel/bazelisk@1.28.1
 
       - name: Set up immutable Gerbil release
-        uses: tao3k/gerbil-scheme-rust/.github/actions/setup-gerbil@1b22d37b71cffe278d40d94abd9c9560636ff0e5
+        uses: tao3k/gerbil-scheme-rust/.github/actions/setup-gerbil@d9df9a8d4c34ac1a3482e0be53f7f1780ef84cd3
         with:
           release-root: ${{ env.GERBIL_PREFIX }}
 
@@ -150,7 +150,7 @@ jobs:
         run: gerbil deps --install
 
       - name: Build declared Gerbil package
-        run: python3 -m mrr_proof_validation.process_runner --total 900 --label GERBIL-BUILD -- gerbil build
+        run: python3 -m mrr_proof_validation.process_runner --total 900 --label GERBIL-BUILD -- cargo run -vv -p mrr-gerbil-build --bin mrr-package --locked -- build
 
       - name: Verify test qualification rejects false success
         run: |
@@ -158,7 +158,7 @@ jobs:
           python3 -m mrr_proof_validation.qualification self-test
 
       - name: Test Gerbil package
-        run: python3 -m mrr_proof_validation.qualification scheme
+        run: python3 -m mrr_proof_validation.qualification scheme --scheme-driver target/debug/mrr-package
 
       - name: MRR PackageSpec build protocol
         run: cargo test -p mrr-gerbil-build --lib --locked

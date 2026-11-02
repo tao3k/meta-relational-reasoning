@@ -42,6 +42,16 @@ class DependencyEnvironmentRegression(unittest.TestCase):
                     self.assertNotIn("GERBIL_BUILD_CORES", recipes.kwargs["env"])
 
 
+class PackageDriverRegression(unittest.TestCase):
+    def test_cabi_driver_keeps_explicit_source_inventory(self):
+        paths = ["t/search-framework-test.ss", "t/finite-inference-test.ss"]
+        with patch.object(qualification, "qualify", return_value=42) as run:
+            self.assertEqual(qualification.qualify_scheme(paths, "/host/mrr-package"), 42)
+        arguments, receipt = run.call_args.args
+        self.assertEqual(arguments, ["/host/mrr-package", "test", *paths])
+        self.assertEqual(receipt.expected, set(paths))
+
+
 class OutputRegression(unittest.TestCase):
     def test_delivered_output_starts_silence_window_after_backpressure(self):
         forward = qualification.forward_output

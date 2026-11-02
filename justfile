@@ -8,28 +8,27 @@ default:
 
 # Prefetch immutable upstream objects before the package manager builds them.
 deps:
-    {{profile}} {{proof_python}} mrr_proof_validation.prepare_gerbil_dependencies
-    {{profile}} mrr-gerbil deps --install
+    {{profile}} cargo run -p mrr-gerbil-build --bin mrr-package --locked -- deps
 
-# Build the Gerbil package through the SDK-sanitizing repository wrapper first.
+# Build through the upstream C ABI host, then compile the Rust workspace.
 build:
-    {{profile}} mrr-gerbil build
-    {{profile}} mrr-cargo build --workspace --locked
+    {{profile}} cargo run -p mrr-gerbil-build --bin mrr-package --locked -- build
+    {{profile}} cargo build --workspace --locked
 
 # Run the complete local contract suite in canonical dependency order.
 test:
-    {{profile}} mrr-gerbil build
-    {{profile}} mrr-gerbil env {{proof_python}} mrr_proof_validation.qualification self-test
-    {{profile}} mrr-gerbil env {{proof_python}} mrr_proof_validation.qualification scheme
-    {{profile}} mrr-cargo test --workspace --locked
+    {{profile}} cargo run -p mrr-gerbil-build --bin mrr-package --locked -- build
+    {{profile}} {{proof_python}} mrr_proof_validation.qualification self-test
+    {{profile}} {{proof_python}} mrr_proof_validation.qualification scheme --scheme-driver "{{env_var_or_default("CARGO_TARGET_DIR", "target")}}/debug/mrr-package"
+    {{profile}} cargo test --workspace --locked
 
 # Qualify installed Scheme and Rust tests with real stage output and a five-second silence cutoff.
 test-runtime:
-    {{profile}} mrr-gerbil build
-    {{profile}} mrr-cargo test -p mrr-gerbil --tests --locked --offline --no-run
-    {{profile}} mrr-gerbil env {{proof_python}} mrr_proof_validation.qualification self-test
-    {{profile}} mrr-gerbil env {{proof_python}} mrr_proof_validation.qualification scheme
-    {{profile}} gerbil env {{proof_python}} mrr_proof_validation.qualification rust
+    {{profile}} cargo run -p mrr-gerbil-build --bin mrr-package --locked -- build
+    {{profile}} cargo test -p mrr-gerbil --tests --locked --offline --no-run
+    {{profile}} {{proof_python}} mrr_proof_validation.qualification self-test
+    {{profile}} {{proof_python}} mrr_proof_validation.qualification scheme --scheme-driver "{{env_var_or_default("CARGO_TARGET_DIR", "target")}}/debug/mrr-package"
+    {{profile}} {{proof_python}} mrr_proof_validation.qualification rust
 
 # Run the backend-neutral Search factor contracts independently.
 test-search:
@@ -108,7 +107,7 @@ search-candidates executions candidates schema output=".ci/search-model/candidat
 
 # Enforce Rust lints after refreshing the Gerbil native inputs.
 lint:
-    {{profile}} mrr-gerbil build
+    {{profile}} cargo run -p mrr-gerbil-build --bin mrr-package --locked -- build
     {{profile}} mrr-cargo clippy --workspace --all-targets --locked -- -D warnings
 
 # Validate executable proof and live-evidence projects.

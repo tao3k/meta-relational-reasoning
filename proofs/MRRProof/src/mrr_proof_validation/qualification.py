@@ -211,7 +211,9 @@ def qualify(
         child.stdout.close()
 
 
-def qualify_scheme(paths: list[str]) -> int:
+def qualify_scheme(paths: list[str], driver: str | None = None) -> int:
+    if driver is not None:
+        return qualify([driver, "test", *paths], SchemeReceipt(paths))
     arguments = " ".join(json.dumps(path) for path in paths)
     expression = (
         '(load "proofs/MRRProof/fixtures/scheme-test-progress.ss") '
@@ -254,15 +256,18 @@ def main() -> int:
         action="append",
         default=[],
         metavar="PATH",
-        help="Run source modules through installed gxtest without a separate executable",
+        help="Select source modules; official GxTest retains discovery and assertions",
     )
+    parser.add_argument("--scheme-driver", metavar="PATH", help="Use the already-built package-owned C ABI test host")
     args = parser.parse_args()
+    if args.scheme_driver and args.suite != "scheme":
+        parser.error("--scheme-driver requires the scheme suite")
     if args.suite == "self-test":
         return self_test()
     if args.source:
         if args.suite != "scheme":
             parser.error("--source requires the scheme suite")
-        return qualify_scheme(args.source)
+        return qualify_scheme(args.source, args.scheme_driver)
     if args.suite == "rust":
         os.environ["MRR_NATIVE_PROGRESS"] = "1"
         return qualify(
@@ -282,7 +287,7 @@ def main() -> int:
     if not paths:
         print("QUALIFICATION-FAIL: no Scheme test modules", flush=True)
         return 65
-    return qualify_scheme(paths)
+    return qualify_scheme(paths, args.scheme_driver)
 
 
 if __name__ == "__main__":

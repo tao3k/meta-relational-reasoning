@@ -10,7 +10,12 @@ publish = false
 
 [dependencies]
 gerbil-scheme-aot-build.workspace = true
+gerbil-scheme.workspace = true
 sha2.workspace = true
 
 [lints]
 workspace = true
+
+[[bin]]
+name = "mrr-package"
+path = "src/bin/package.rs"

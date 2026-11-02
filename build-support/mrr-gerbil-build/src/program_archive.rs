@@ -1,19 +1,19 @@
 //! Thin Cargo adapter for the canonical Gerbil AOT program builder.
 
+use gerbil_scheme::GerbilRuntime;
 use sha2::{Digest, Sha256};
 use std::env;
 use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
+#[cfg(test)]
 use std::process::Command;
 use std::time::Duration;
 
 use gerbil_scheme_aot_build::{
     NativeHeaderInput, ProgramArchiveContract, ProgramArchiveObservation, ProgramArchiveObserver,
     ProgramArchiveOperation, ProgramArchiveRequest, build_program_archive_with_contract,
-    configure_gerbil_runtime_diagnostics, discover_gambit_gsc_from_env, gerbil_command,
-    observe_program_archive_operation, prepare_gsc_progress_launcher, resolve_gerbil_executable,
-    run_native_process, source_workspace,
+    discover_gambit_gsc_from_env, observe_program_archive_operation, resolve_gerbil_executable,
 };
 
 const REQUIRED_MODULES: &[&str] = &[
@@ -126,7 +126,7 @@ struct ProgramBuild {
     package_load_path: std::ffi::OsString,
     gxi: PathBuf,
     gsc: PathBuf,
-    gxpkg: PathBuf,
+    runtime: GerbilRuntime,
 }
 
 impl ProgramBuild {
@@ -146,7 +146,21 @@ impl ProgramBuild {
             libraries.extend(env::split_paths(&paths));
         }
         let package_load_path = env::join_paths(libraries).expect("package library search path");
+        let runtime = GerbilRuntime::initialize().expect("initialize upstream C ABI build host");
+        let libraries = package_load_path
+            .to_str()
+            .expect("Gerbil library UTF-8 paths");
+        assert_eq!(
+            runtime
+                .configure_package_paths(
+                    package_prefix.to_str().expect("package UTF-8 prefix"),
+                    libraries
+                )
+                .expect("bind isolated package paths"),
+            0
+        );
         Self {
+            runtime,
             program_source: workspace.join("scheme/grammar/native-program.ss"),
             program_manifest: program_stage.join("program.json"),
             program_stage,
@@ -156,20 +170,7 @@ impl ProgramBuild {
             workspace,
             gsc: discover_gambit_gsc_from_env()
                 .expect("discover Gerbil toolchain paired Gambit compiler"),
-            gxpkg: selected_gerbil_tool("GERBIL_GXPKG", "gxpkg"),
         }
-    }
-
-    fn package_command(&self, program: &Path) -> Command {
-        let mut command = gerbil_command(program);
-        // Both direct GXI and `gxpkg env gxi` enter the Scheme compiler.
-        // Inherit diagnostics through the package launcher as well.
-        configure_gerbil_runtime_diagnostics(&mut command, gerbil_build_verbose_level() > 0);
-        command
-            .current_dir(&self.workspace)
-            .env("GERBIL_PATH", &self.package_prefix)
-            .env("GERBIL_LOADPATH", &self.package_load_path);
-        command
     }
 
     fn prepare_package(&self, observer: &CargoObserver) {
@@ -186,16 +187,9 @@ impl ProgramBuild {
             || {
                 let identity = self.package_identity()?;
                 run_package_attempt(&self.package_prefix, identity.as_bytes(), || {
-                    let compiler = prepare_gsc_progress_launcher(
-                        &self.gsc,
-                        &self.package_prefix.join("compiler"),
-                        gerbil_build_verbose_level() > 0,
-                    )?;
-                    run(
-                        self.package_command(&self.gxi)
-                            .env("GERBIL_GSC", compiler)
-                            .arg(&declaration)
-                            .arg("compile"),
+                    package_call_result(
+                        self.runtime
+                            .build_package(self.workspace.to_str().expect("package UTF-8 root")),
                         "compile canonical MRR PackageSpec",
                     )
                 })
@@ -211,11 +205,14 @@ impl ProgramBuild {
             Err(error) if error.kind() == io::ErrorKind::NotFound => {}
             Err(error) => panic!("invalidate previous package link receipt: {error}"),
         }
-        run(
-            self.package_command(&self.gxi)
-                .arg(self.workspace.join("build.ss"))
-                .arg("link-inputs")
-                .arg(&receipt),
+        package_call_result(
+            self.runtime.run_package_main(
+                self.workspace.to_str().expect("package UTF-8 root"),
+                &[
+                    "link-inputs",
+                    receipt.to_str().expect("link receipt UTF-8 path"),
+                ],
+            ),
             "project declared Scheme package linkage",
         )
         .expect("Scheme package link projection");
@@ -268,23 +265,12 @@ impl ProgramBuild {
             },
             || {
                 fs::create_dir_all(&self.program_stage).map_err(|error| error.to_string())?;
-                let program_build = source_workspace().join("scheme/program-build.ss");
-                if !program_build.is_file() {
-                    return Err(format!(
-                        "gerbil-scheme-rust program builder is missing: {}",
-                        program_build.display()
-                    ));
-                }
-                let expression = format!(
-                    "(begin (import {}) (gerbil-rs-stage-program {} {}))",
-                    scheme_string(&program_build),
-                    scheme_string(&self.program_source),
-                    scheme_string(&self.program_stage),
-                );
-                run(
-                    self.package_command(&self.gxpkg)
-                        .args(["env", "gxi", "-e"])
-                        .arg(expression),
+                package_call_result(
+                    self.runtime.stage_package_program(
+                        self.workspace.to_str().expect("package UTF-8 root"),
+                        self.program_source.to_str().expect("program UTF-8 source"),
+                        self.program_stage.to_str().expect("stage UTF-8 output"),
+                    ),
                     "stage compiler-owned Gerbil AOT program",
                 )
             },
@@ -372,10 +358,6 @@ fn gerbil_build_verbose_level() -> u8 {
         .unwrap_or(0)
 }
 
-fn run(command: &mut Command, operation: &str) -> Result<(), String> {
-    run_with_progress(command, operation, true)
-}
-
 pub(crate) fn run_package_attempt(
     prefix: &Path,
     identity: &[u8],
@@ -404,12 +386,13 @@ pub(crate) fn run_package_attempt(
         .map_err(|error| format!("publish package completion marker: {error}"))
 }
 
+#[cfg(test)]
 pub(crate) fn run_with_progress(
     command: &mut Command,
     operation: &str,
     stream: bool,
 ) -> Result<(), String> {
-    run_native_process(command, operation, stream)
+    gerbil_scheme_aot_build::run_native_process(command, operation, stream)
 }
 
 fn selected_gerbil_tool(variable: &str, default: &str) -> PathBuf {
@@ -418,11 +401,13 @@ fn selected_gerbil_tool(variable: &str, default: &str) -> PathBuf {
         .unwrap_or_else(|| panic!("locate {variable} tool: {}", program.display()))
 }
 
-fn scheme_string(path: &Path) -> String {
-    format!(
-        "\"{}\"",
-        path.to_string_lossy()
-            .replace('\\', "\\\\")
-            .replace('"', "\\\"")
-    )
+fn package_call_result(
+    result: Result<i32, gerbil_scheme::NativeError>,
+    operation: &str,
+) -> Result<(), String> {
+    match result {
+        Ok(0) => Ok(()),
+        Ok(code) => Err(format!("{operation}: official Scheme result {code}")),
+        Err(error) => Err(format!("{operation}: C ABI {error}")),
+    }
 }

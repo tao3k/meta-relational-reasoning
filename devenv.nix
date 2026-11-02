@@ -6,23 +6,13 @@
   ...
 }:
 
-let
-  gerbilSdkRev =
-    (builtins.fromTOML (builtins.readFile ./Cargo.toml)).workspace.dependencies."gerbil-scheme-native-build".rev;
-  gerbilBuildCommand = pkgs.fetchurl {
-    url = "https://raw.githubusercontent.com/tao3k/gerbil-scheme-rust/${gerbilSdkRev}/tools/gerbil-build-command.sh";
-    hash = "sha256-KRty/WH1SXcqb0RQtbTBRPT7O75ykyB+uBRiM969rtk=";
-  };
-in
 {
   dotenv.enable = true;
   dotenv.filename = [ ".env" ];
 
   # https://devenv.sh/basics/
   env.GREET = "devenv";
-  # Request all local performance cores; ASP Gerbil still applies its bounded
-  # memory-admission ceiling before launching compiler workers.
-  env.GERBIL_BUILD_CORES = "12";
+  # Build capacity is resolved by the upstream owner on the executing host.
   # https://devenv.sh/packages/
   packages = [
     pkgs.pkg-config
@@ -65,13 +55,12 @@ in
   # Homebrew Gerbil/Gambit must use the host SDK.  Keep Nix's compiler
   # environment for Rust, and quarantine it only at the standard Gerbil edge.
   scripts.mrr-gerbil.exec = ''
-    exec ${pkgs.bash}/bin/bash ${gerbilBuildCommand} gerbil "$@"
+    exec gerbil "$@"
   '';
   scripts.mrr-gerbil-deps.exec = "mrr-gerbil deps --install";
-  # Preserve devenv's Rust compiler/SDK while inheriting gxpkg's canonical
-  # project package path. Cargo's AOT adapter sanitizes its Gerbil children.
+  # Cargo stays the process root. Its upstream C ABI owner binds package paths.
   scripts.mrr-cargo.exec = ''
-    exec gerbil env cargo "$@"
+    exec cargo "$@"
   '';
 
   # https://devenv.sh/basics/
