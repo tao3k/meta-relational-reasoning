@@ -25,8 +25,9 @@ extension and hands execution to Gerbil's first-party =defbuild-script= and
 MRR does not implement a parallel Scheme package builder.
 
 Cargo has a separate target-link responsibility. The workspace pins the
-=gerbil-scheme-native-build= and =gerbil-scheme-sys= interfaces from
-=gerbil-scheme-rust= to the same revision. A thin build adapter asks that
+=gerbil-scheme-aot-build= and =gerbil-scheme-sys= interfaces from
+=gerbil-scheme-rust= independently. The approved build-only update does not
+move the runtime ABI revision. A thin build adapter asks that
 upstream implementation to stage =native-program.ss=, compile the complete
 Gerbil program closure to target-native Gambit objects, package one static
 archive, generate its linker, and emit Cargo link directives. The adapter owns

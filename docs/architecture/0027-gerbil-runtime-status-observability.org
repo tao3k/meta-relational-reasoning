@@ -41,6 +41,29 @@ tests exercise propagation through the existing fixed-width ABI after a fresh
 
 * Build observations and source-handoff ownership
 
+** Executing-host compiler capacity
+
+The upstream AOT owner resolves the executing host's available parallelism
+and injects =GERBIL_BUILD_CORES= into Gerbil build children. The object-worker
+pool and shared Tokio coordinator use that same capacity. A stale inherited
+value cannot replace it; no CPU count is embedded from the machine that built
+the driver. The upstream package declaration also removes its fixed one-worker
+setting. MRR consumes this behavior through its existing build adapter, rather
+than adding another environment wrapper or compiler policy.
+
+The build dependency and corresponding setup action advance together to
+=1b22d37b71cffe278d40d94abd9c9560636ff0e5=. Runtime, Agentic AI Lab and other
+independent pins remain unchanged. Upstream unit tests passed 28 cases and
+strict Clippy passed; the MRR build adapter passed eight standard unit cases.
+Existing resource-control tests retain their explicit admission prerequisites.
+These receipts do not establish full native entry completion or remote CI
+success. The prior Darwin compiler completed its object batch with three
+workers before the final Rust linker failed; that failure is not evidence of
+a missing compiler-core variable. Preserve its separate diagnosis and the
+original wall/idle limits.
+
+** Existing source-handoff contract
+
 The module closure belongs to root =build.ss= and its existing PackageSpec.
 =crates/mrr-gerbil/build.rs= delegates to =mrr-gerbil-build=; the latter uses
 the pinned gerbil-scheme-rust integration project. It is not an MRR Data SDK.

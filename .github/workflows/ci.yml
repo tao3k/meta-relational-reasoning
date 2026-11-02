@@ -107,7 +107,7 @@ jobs:
         run: npm install --global @mermaid-js/mermaid-cli@11.12.0 @bazel/bazelisk@1.28.1
 
       - name: Set up immutable Gerbil release
-        uses: tao3k/gerbil-scheme-rust/.github/actions/setup-gerbil@f7329ec179253da051fca3f285ebc3ce8cb02f25
+        uses: tao3k/gerbil-scheme-rust/.github/actions/setup-gerbil@1b22d37b71cffe278d40d94abd9c9560636ff0e5
         with:
           release-root: ${{ env.GERBIL_PREFIX }}
 
