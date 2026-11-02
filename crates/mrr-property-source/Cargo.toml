@@ -7,6 +7,10 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 
+[features]
+default = []
+native-inference = ["meta-relational-reasoning/native-inference"]
+
 [dependencies]
 meta-relational-reasoning.workspace = true
 mrr-frontends.workspace = true
@@ -16,3 +20,8 @@ mrr-asp-rust-build-support.workspace = true
 
 [lints]
 workspace = true
+
+[[test]]
+name = "native_worker_profile"
+path = "tests/integration/native_worker_profile.rs"
+required-features = ["native-inference"]

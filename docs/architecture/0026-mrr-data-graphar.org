@@ -183,6 +183,14 @@ their identities and receipts remain different:
 - storage import, graph merge, CID availability, or query success cannot
   promote Context into Content.
 
+RFC 0035 and RFC 0036 propose the next MRR semantic contracts for Content
+authority, compliance and Context projection.  They do not move Agent,
+obligation, verifier, prompt, tokenizer or KV semantics into =mrr-data=.  A
+persisted receipt is a physical artifact on restore; MRR must re-admit its
+semantic dependencies and the designated runtime must enforce current scope
+before use.  These proposed contracts are not yet an implemented data-plane
+integration.
+
 This separation is semantic and survives changes of Arrow batch, GraphAr
 layout, database engine, object store, or transport.
 

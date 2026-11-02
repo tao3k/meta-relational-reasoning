@@ -1,0 +1,21 @@
+[package]
+name = "mrr-gerbil-build"
+description = "Scheme AOT archive builder for the MRR Gerbil grammar ABI"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[dependencies]
+gerbil-scheme-aot-build.workspace = true
+gerbil-scheme.workspace = true
+sha2.workspace = true
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "mrr-package"
+path = "src/bin/package.rs"

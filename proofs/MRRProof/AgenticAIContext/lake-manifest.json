@@ -1,0 +1,16 @@
+{"version": "1.2.0",
+ "packagesDir": ".lake/packages",
+ "packages":
+ [{"url": "https://github.com/tao3k/lean-poo.git",
+   "type": "git",
+   "subDir": null,
+   "scope": "",
+   "rev": "2abf644bb4a10871345b1e6c38f5a75f607d43b5",
+   "name": "LeanPoo",
+   "manifestFile": "lake-manifest.json",
+   "inputRev": "2abf644bb4a10871345b1e6c38f5a75f607d43b5",
+   "inherited": false,
+   "configFile": "lakefile.toml"}],
+ "name": "MRRAgenticAIContextProofs",
+ "lakeDir": ".lake",
+ "fixedToolchain": false}

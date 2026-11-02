@@ -5,6 +5,10 @@ edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
 
+[features]
+default = ["embedded-runtime"]
+embedded-runtime = ["mrr-gerbil/embedded-runtime"]
+
 [dependencies]
 icu_properties.workspace = true
 mrr-query.workspace = true

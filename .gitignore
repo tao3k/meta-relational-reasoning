@@ -15,3 +15,13 @@ manifest.ss
 .venv/
 .env
 .devenv.flake.nix
+/proofs/MRRProof/AgenticAIContext/.lake/
+/proofs/MRRProof/AgenticAIContextRust/.lake/
+/proofs/MRRProof/AgenticAIContextValue/.lake/
+/proofs/MRRProof/SearchComposition/.lake/
+/proofs/quint/node_modules/
+/.cache/
+
+# Independently locked production runtime and physical qualification outputs.
+/runtime/target/
+/runtime/qualification/physical-roundtrip/target/

@@ -1,0 +1,221 @@
+#+TITLE: Agentic AI Lab Source Admission and Core Ownership
+#+LANGUAGE: en
+
+* Authoritative revision
+
+The explicitly authorized migration replaces the former POO Flow source with
+=https://github.com/tao3k/agentic-ai-lab=, PR 34 head
+=921e75f830a60c2ec42c384139846b05ba5d3317=. The root =gerbil.pkg= and
+SearchComposition's Lake declaration/manifest bind the same revision. The
+producer's actual Lean package and entry are =AgenticAILabCompositionProofs=
+and =AgenticAILabComposition=. Existing semantic namespaces in the theorems
+remain producer-owned; MRR does not copy or rename their mathematical content.
+
+The selected Core gitlink and Parser's Yuanxu dependency both bind
+=79a5526a2ecd06408201be87b4a028b167c8d8a0=. Their POO dependency is
+=98fcce3abec760373cc7486a8b51d6bb97424658=. These are inherited source facts,
+not additional MRR dependency pins. LeanPoo and the runtime Gerbil bridge retain
+their existing consumer revisions. The separately approved build-owner migration
+below is the sole additional source change. No floating branch is used for acceptance.
+
+* Direct public API migration
+
+| Concern | Authoritative owner |
+|---------+---------------------|
+| Role object syntax | =:yuanxu/object-family/role-syntax= |
+| Functional utilities | =:yuanxu/utilities/functional= |
+| Flow plans and DAG receipts | =:yuanxu/modules/funflow/control-plane/graph= |
+| Provider class construction | =:yuanxu/poo-clos/classes= and =lifecycle= |
+| Query and Search semantics | =:agentic-ai-lab/modules/query= and =modules/search-engine= |
+| Temporal host/wire adapters | =:agentic-ai-lab/modules/workflow/runtime= |
+| C semantic exports | =agentic_ai_lab_semantic_v1_*= |
+| Published wire schemas | Producer's =agentic-ai-lab.*= identities |
+
+The Rust transport and its standard tests use the actual new symbols and schema
+identities. The library qualification entry consumes the corresponding installed
+Python package, headers and =AGENTIC_AI_LAB_*= environment contract. MRR does not
+add an alias layer for obsolete source paths or C symbols.
+
+* Bootstrap and stale ABI recovery
+
+The existing acquisition glue reads the single declared revision. It delegates
+Core, dependency installation and product build to the selected source owner's
+maintained Just entrypoints. Its old Python =prepare_native_pins= import is no
+longer an upstream API and is removed. Python does not select compiler flags,
+reimplement package resolution or own the build algorithm. Gerbil's package APIs
+and the producer's =build.ss= retain those responsibilities.
+
+The initial retained-prefix migration fails with an object initializer arity
+error after the POO revision changes. A checkout identity alone does not qualify
+previously compiled dynamic modules. The failed prefix is preserved. The same
+revision is rebuilt into an independent empty library prefix, leaving the old
+source and evidence intact. =gxpkg uninstall= is never used. Installed outputs
+must come from one admitted source/ABI cohort before the full MRR entry can pass.
+
+This bootstrap is separate from the new upstream embedded build/test capability.
+MRR's frozen Gerbil bridge cannot be described as consuming that newer API. Its
+CLI bootstrap remains explicit until a separately authorized bridge adoption.
+
+MRR's =build.ss= now uses standard Gerbil =defbuild-script= targets and
+=pkg-config-cflags= / =pkg-config-libs= for its declared OpenSSL dependency.
+The former ASP building helper was an undeclared dependency exposed by the
+migration; it is removed rather than installed as another production owner.
+The package still publishes its complete link-input receipt atomically. Neither
+Python nor CI injects additional compiler or linker policy.
+
+* Evidence boundaries
+
+- The existing SearchComposition build completes all 63 jobs against the new
+  producer using its declared Lean toolchain. Composition, Protocol and
+  Reflection checks pass; the consumer axiom audit reports 1,726 declarations
+  (C3: 238; C4: 987). The producer's serialized proof/audit gate reports 1,463
+  declarations. This is semantic composition evidence, not native execution evidence.
+- The standard Rust build-support tests pass, and strict build-support Clippy
+  passes after the namespace migration.
+- A standalone runtime test invocation refuses because the real semantic native
+  artifact is not yet supplied. This failure is retained; no native test is
+  skipped or converted into a transport-only pass.
+- The original complete Rust compile refuses at the obsolete Core import. The
+  subsequent retained-prefix ABI error is also retained. The empty-prefix
+  source-owned bootstrap completes naturally, and the current MRR package build
+  completes in the full Cargo entry. At the 279-object archive phase, the system
+  kills =gcc-16/cc1= while compiling =clan__poo__table.c= (signal 9). This is a
+  failed complete native build; successful staging does not qualify final linking.
+- The standard eight-module Scheme suite retains its original 45-second batch
+  gate. It reaches dynamic Orgize module loading but exceeds that wall bound
+  before a complete harness result. There is no native runtime acceptance claim.
+- Producer and consumer Lake builds must run sequentially: both write the
+  producer's build directory. An overlapping diagnostic fails to open a
+  transitive =SearchAttempt.olean=; the serialized producer build and its five
+  existing proof/audit entrypoints subsequently pass. Root-directory invocations
+  must select the project's declared Lean toolchain, not the host default.
+
+Raw process/build logs remain in temporary or CI artifact storage, outside Git.
+Existing wall, idle, heap and concurrency policies are not widened. Host worker
+capacity remains actual machine capacity; the current run observes 12 cores.
+
+The first migration CI exposes a case-sensitive entrypoint error: the producer
+tracks =justfile=, not =Justfile=. Darwin's case-insensitive volume hid this
+mistake. Acquisition now names the tracked lowercase file exactly; the failed
+Ubuntu bootstrap remains separate from the successful local bootstrap.
+
+* Compiler host layout and the approved build-owner adoption
+
+The retained POO table C has 20,116 labels. Its producer already specifies
+=___SINGLE_HOST_LIMIT=10000= in =build.ss=. Recompilation from the static Scheme
+carrier by the generic archive does not carry those gxc command-line options.
+The unbounded single-host archive compilation therefore differs from the
+successfully installed dynamic module. GCC reports approximately 91,000 basic
+blocks and 445,000 registers before signal 9. That signal alone does not prove
+which operating-system resource policy killed the compiler.
+
+The upstream owner now uses Gambit's existing =___OPTIMIZED_MODULE_LIMIT= as
+the generic GCC module host-split threshold. O2, paired runtime headers, the
+complete module graph and actual host workers are retained. The compiler's
+existing object fingerprint includes the new code-generation option. The exact
+retained failed C compiles naturally in 66.36 seconds, with maximum RSS
+1,756,725,248 bytes. This is focused compiler-process evidence, not a complete
+concurrent-build peak or runtime performance comparison.
+
+The user explicitly authorizes adopting the repaired build owner and its existing
+=gerbil-scheme-aot-build= package identity. The thin MRR adapter consumes
+=f7329ec179253da051fca3f285ebc3ce8cb02f25=, which includes the host-layout and
+link-kind fixes. CI provisions Gerbil through that same build owner's action.
+The adapter consumes that API directly. The =gerbil-scheme-sys= runtime source, Agentic AI Lab, LeanPoo,
+Data and independently locked release-pair revisions remain unchanged. A lock
+identity/checksum audit finds no existing package source/version removed or
+changed; additions belong to the approved build owner and its dependencies.
+
+* Full Scheme inventory and dependency loading
+
+Both Query tests now import the exercised producer modules instead of the
+all-Query facade, which includes Orgize. No Orgize operation is tested by those
+suites; avoiding its import does not remove an assertion, test module, feature
+or rejection condition. The provider declaration imports the existing class
+construction and lifecycle owners directly. Two remaining old GQL type names
+are corrected to the actual producer exports. The original eight test modules,
+one-gigabyte heap, five-second idle and 45-second batch wall gate remain.
+
+An initial isolated test run without installed MRR modules refuses. Standard
+dependency registration is required in addition to the producer's source build;
+handwritten package manifests are not acceptance. An incomplete shared-clone
+object database is repaired by an exact-source Git refetch. The subsequent
+standard =gerbil deps --install= completes naturally. A raw Gerbil package build
+inside the captured Nix Rust environment exposes mixed Apple header paths and
+=FILE= errors. The canonical Cargo adapter uses the upstream =gerbil_command=
+environment boundary to keep the selected Gambit compiler separate from those
+ambient Rust paths. Compiler environment policy is not copied into Python.
+
+The next complete compile exposes a separate upstream link-check error: a normal
+=-lcrypto= was required to have a static archive. The upstream correction preserves
+the declared link kind and retains refusal for explicit static requests. The
+selected package manager's shared OpenSSL dependency is not a missing static
+contract. Upstream standard tests cover shared acceptance and static rejection;
+the clean isolated Darwin unit suite passes 27 tests with seven opt-in tests unchanged, and strict
+Clippy passes.
+
+The standard full Scheme entry now completes naturally with all eight module
+receipts, 147 case receipts, =HARNESS-OK= and final =OK= under the unchanged
+45-second wall and five-second idle gate. It reuses Parser's existing artifact
+and LR stage trace to report actual decompression, digest verification and IR
+admission. No timer, polling input or fake heartbeat qualifies work. The prior
+unobserved admission run is retained as an idle failure at about 29.6 seconds.
+
+The previous Darwin CI uses a separate old Gerbil setup action and refuses
+Ascent's =add-compile-output-job!= import. The admitted build owner's action
+already provisions the newer Darwin release with that API. Aligning provisioning
+and the build API avoids altering the pinned Ascent source or copying its code.
+CI still measures the actual runner's core count; no test limit is widened.
+
+* Complete compile receipt
+
+The consumer's complete =cargo test -vv --workspace --locked --no-run= entry
+now returns naturally with status zero in 4 minutes 37 seconds. It stages 479
+module carriers and compiles all 279 generated native objects with 12 workers;
+the native object batch completes in 135,581 milliseconds. This is actual linked
+consumer compilation, not substitution of the focused retained table object.
+Rust dependency artifacts and the admitted dependency prefix were already
+available; it is not a fully cold dependency-bootstrap performance result.
+
+The subsequent complete test entry does not rebuild the archive (Cargo reports
+0.56 seconds preparation). Its first execution refuses four real-kernel tests
+because the required Lean 4.31.0 toolchain is absent and discovery attempts a
+download inside its unchanged five-second budget. This failure is retained.
+The already declared toolchain must be installed as CI does before repeating
+the complete entry; kernel version checks or budgets must not be relaxed.
+
+After that declared installation, all 291 executable Rust cases pass, but the
+first complete process is refused during rustdoc's I/O wait at the original
+five-second idle gate. This outlier is retained. The isolated standard build-owner
+doctest control completes naturally; it includes 24.05 seconds of compilation
+and cannot be treated as a pure rustdoc timing sample. A subsequent unchanged
+full =cargo test --workspace --locked= entry returns zero naturally in 60.47
+seconds: 291 passed, zero failed, three existing opt-in tests ignored, including
+all 48 test/doc-test result blocks. No doctest is disabled. A successful
+confirmation does not explain away the earlier I/O stall or establish a latency
+distribution; compiler repair and host-dependent full-entry timing are separate.
+
+Watchdog tests report nine passes and one pre-existing skip. Standard negative
+qualification controls still reject assertions, missing/empty results and a
+silent child at the original five-second boundary. Parser trace output cannot
+substitute for those acceptance receipts.
+
+All three existing opt-in controls also pass under the original 45-second gate:
+actual root link-input receipt, streaming phase delivery and the paired Cargo
+backpressure test. The latter uses 12 workers and checks 1,508,947 complete bytes,
+retains the inherited-output negative control and verifies child reaping. These
+are required controls, not additional ignored tests introduced by this repair.
+The separate existing transport-only worker-client gate also passes its real
+integration case: original POO projection, retained controller, stale-attempt
+rejection, finite solver and terminal worker shutdown. Its feature boundary
+intentionally has no cases in the default embedded run, so that zero-case target
+is not counted as transport execution evidence.
+
+Upstream Ubuntu CI separately exposes an instantaneous kernel-thread count race
+after Tokio joins its worker handles. Upstream test/documentation-only commit
+=7c3def52a16d8160026e37722dd770a91ab0de1e= observes exact return to baseline
+within the original five-second gate. A clean isolated Darwin checkout passes
+27 standard tests with the seven existing opt-in tests unchanged. This does not
+change the production build API or require another consumer pin update. The
+original failed Ubuntu receipt remains; current remote CI must be reported
+independently from these local consumer results.

@@ -45,67 +45,6 @@ fn stale_scheme_input_fails_closed() {
 }
 
 #[test]
-fn rust_commands_inherit_the_canonical_gxpkg_environment() {
-    let devenv = include_str!("../../../../devenv.nix");
-    let justfile = include_str!("../../../../justfile");
-    let readme = include_str!("../../../../README.md");
-    let ci = include_str!("../../../../.github/workflows/ci.yml");
-    let gerbil_release = include_str!("../../../../tools/ci/install-gerbil-release.sh");
-
-    assert!(devenv.contains("scripts.mrr-cargo.exec"));
-    assert!(devenv.contains("exec gerbil env cargo \"$@\""));
-    assert!(justfile.contains("mrr-gerbil build"));
-    assert!(justfile.contains("mrr-cargo test --workspace --locked"));
-    assert!(!justfile.contains(" gxpkg "));
-    assert!(!justfile.contains(" cargo test"));
-    assert!(readme.contains("devenv-profile-exec mrr-cargo test --workspace"));
-    assert!(!readme.contains("devenv-profile-exec cargo test --workspace"));
-    assert!(ci.contains("gerbil env cargo test --workspace --locked"));
-    assert!(ci.contains("macos-latest"));
-    assert!(ci.contains("github.event_name"));
-    assert!(ci.contains("GERBIL_BUILD_VERBOSE: \"1\""));
-    assert!(ci.contains("Install declared Gerbil dependencies"));
-    assert!(ci.contains("Build declared Gerbil package"));
-    assert!(ci.contains("Install immutable Gerbil release"));
-    assert!(ci.contains("tools/ci/install-gerbil-release.sh"));
-    assert!(ci.contains("hashFiles('gerbil.pkg', 'tools/ci/install-gerbil-release.sh')"));
-    assert!(ci.contains("brew install gcc jq openssl pkg-config sqlite zlib"));
-    assert!(ci.contains("PKG_CONFIG_PATH=$openssl_prefix/lib/pkgconfig"));
-    assert!(ci.contains("macos_major=\"$(sw_vers -productVersion | cut -d. -f1)\""));
-    assert!(ci.contains("MACOSX_DEPLOYMENT_TARGET=$macos_major.0"));
-    assert!(!ci.contains("CPPFLAGS="));
-    assert!(!ci.contains("LDFLAGS="));
-    assert!(!ci.contains("LIBRARY_PATH="));
-    assert!(gerbil_release.contains("revision=2591dcd9b7c6d2c4e9dd8611a17c5b1a5d82bbdb"));
-    assert!(gerbil_release.contains("shasum -a 256 --check"));
-    assert!(!ci.contains("gparse"));
-    assert!(!ci.contains("audit-spec"));
-}
-
-#[test]
-fn native_aot_reuses_the_upstream_program_builder_and_runtime() {
-    let workspace = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .and_then(Path::parent)
-        .expect("mrr-gerbil is a workspace crate");
-    let adapter =
-        include_str!("../../../../build-support/mrr-gerbil-native-build/src/native_archive.rs");
-    let ffi = include_str!("../../src/native/ffi.rs");
-
-    assert!(adapter.contains("build_program_archive_with_contract"));
-    assert!(adapter.contains("ProgramArchiveObserver"));
-    assert!(adapter.contains("gerbil-parser/src/ffi/parse-artifact-v1-native"));
-    assert!(!adapter.contains("Command::new(\"gxc\")"));
-    assert!(!adapter.contains("Command::new(\"gcc\")"));
-    assert!(ffi.contains("gerbil_scheme_rust_runtime_init_program(Some(mrr_grammar_linker))"));
-    assert!(
-        !workspace
-            .join("crates/mrr-gerbil/native/runtime.c")
-            .exists()
-    );
-}
-
-#[test]
 fn native_projection_identifies_its_parser_owned_grammar() {
     let authority = crate::load_parser_authority()
         .expect("native projection must expose canonical parser authority");
@@ -117,7 +56,7 @@ fn native_projection_identifies_its_parser_owned_grammar() {
         "iso-iec-39075-2024.opengql-1.9.0-syntax.v1"
     );
     assert_eq!(authority.grammar_schema, "gerbil-parser.grammar-ir.v1");
-    assert_eq!(authority.grammar_id, "gql-iso-grammar");
+    assert_eq!(authority.grammar_id, "gql-grammar");
 }
 
 #[test]
@@ -221,88 +160,77 @@ fn parse_artifact_payload(source: &str) -> Vec<u8> {
     payload
 }
 
-fn parser_kind_descriptor() -> serde_json::Value {
-    serde_json::json!({
-        "schema": crate::PARSER_NATIVE_DESCRIPTOR_SCHEMA_V1,
-        "language": "gql",
-        "grammarDigest": TEST_GRAMMAR_DIGEST,
-        "fields": ["text", "operator", "sign"],
-        "syntaxKinds": [
-            ["GqlProgram", "node", []],
-            ["UnknownToken", "token", ["text"]]
-        ],
-        "terminals": [["unknown", "UnknownToken"]]
-    })
+fn parser_kind_descriptor() -> crate::native::datum::Value {
+    descriptor_value(&format!(
+        r#"(object ("schema" "{}") ("language" "gql") ("grammarDigest" "{}") ("fields" (list "text" "operator" "sign")) ("syntaxKinds" (list (list "GqlProgram" "node" (list)) (list "UnknownToken" "token" (list "text")))) ("terminals" (list (list "unknown" "UnknownToken"))))"#,
+        crate::PARSER_NATIVE_DESCRIPTOR_SCHEMA_V1,
+        TEST_GRAMMAR_DIGEST
+    ))
 }
-
+fn descriptor_value(text: &str) -> crate::native::datum::Value {
+    crate::native::datum::decode(text.as_bytes()).unwrap()
+}
 fn test_parser_kind_catalog() -> std::sync::Arc<crate::ParserKindCatalog> {
     std::sync::Arc::new(
         crate::native::parse_artifact::load_kind_catalog(
             &parser_kind_descriptor(),
             crate::ParserLanguage::Gql,
         )
-        .expect("test parser kind catalog"),
+        .unwrap(),
     )
 }
-
-fn assert_invalid_kind_catalog(descriptor: serde_json::Value) {
+fn replace_field(key: &str, value: crate::native::datum::Value) -> crate::native::datum::Value {
+    let crate::native::datum::Value::Object(mut fields) = parser_kind_descriptor() else {
+        panic!("object")
+    };
+    fields.insert(key.into(), value);
+    crate::native::datum::Value::Object(fields)
+}
+fn assert_invalid_kind_catalog(descriptor: crate::native::datum::Value) {
     assert_eq!(
-        crate::native::parse_artifact::load_kind_catalog(&descriptor, crate::ParserLanguage::Gql,),
+        crate::native::parse_artifact::load_kind_catalog(&descriptor, crate::ParserLanguage::Gql),
         Err(crate::ParseArtifactLoadError::InvalidHostDescriptor)
     );
 }
-
 #[test]
 fn parser_kind_catalog_rejects_stale_descriptor_authority() {
-    let mut wrong_schema = parser_kind_descriptor();
-    wrong_schema["schema"] = serde_json::json!("gerbil-parser.native-descriptor.unknown");
-    assert_invalid_kind_catalog(wrong_schema);
-
-    let mut malformed_grammar_digest = parser_kind_descriptor();
-    malformed_grammar_digest["grammarDigest"] = serde_json::json!("sha256:not-a-digest");
-    assert_invalid_kind_catalog(malformed_grammar_digest);
-
-    let mut wrong_language = parser_kind_descriptor();
-    wrong_language["language"] = serde_json::json!("cypher");
-    assert_invalid_kind_catalog(wrong_language);
+    for (key, value) in [
+        ("schema", "gerbil-parser.native-descriptor.unknown"),
+        ("grammarDigest", "sha256:not-a-digest"),
+        ("language", "cypher"),
+    ] {
+        assert_invalid_kind_catalog(replace_field(
+            key,
+            crate::native::datum::Value::String(value.into()),
+        ));
+    }
 }
-
 #[test]
 fn parser_kind_catalog_rejects_duplicate_and_unknown_kinds() {
-    let mut duplicate = parser_kind_descriptor();
-    duplicate["syntaxKinds"] = serde_json::json!([
-        ["GqlProgram", "node", []],
-        ["GqlProgram", "token", ["text"]]
-    ]);
-    assert_invalid_kind_catalog(duplicate);
-
-    let mut unknown_category = parser_kind_descriptor();
-    unknown_category["syntaxKinds"][0][1] = serde_json::json!("opaque");
-    assert_invalid_kind_catalog(unknown_category);
-
-    let mut duplicate_fields = parser_kind_descriptor();
-    duplicate_fields["fields"] = serde_json::json!(["text", "text"]);
-    assert_invalid_kind_catalog(duplicate_fields);
-
-    let mut undeclared_field = parser_kind_descriptor();
-    undeclared_field["fields"] = serde_json::json!(["operator", "sign"]);
-    assert_invalid_kind_catalog(undeclared_field);
+    for (key, value) in [
+        (
+            "syntaxKinds",
+            r#"(list (list "GqlProgram" "node" (list)) (list "GqlProgram" "token" (list "text")))"#,
+        ),
+        (
+            "syntaxKinds",
+            r#"(list (list "GqlProgram" "opaque" (list)))"#,
+        ),
+        ("fields", r#"(list "text" "text")"#),
+        ("fields", r#"(list "operator" "sign")"#),
+    ] {
+        assert_invalid_kind_catalog(replace_field(key, descriptor_value(value)));
+    }
 }
-
 #[test]
 fn parser_kind_catalog_rejects_invalid_terminal_ownership() {
-    let mut duplicate = parser_kind_descriptor();
-    duplicate["terminals"] =
-        serde_json::json!([["unknown", "UnknownToken"], ["unknown", "UnknownToken"]]);
-    assert_invalid_kind_catalog(duplicate);
-
-    let mut missing_kind = parser_kind_descriptor();
-    missing_kind["terminals"][0][1] = serde_json::json!("MissingToken");
-    assert_invalid_kind_catalog(missing_kind);
-
-    let mut node_kind = parser_kind_descriptor();
-    node_kind["terminals"][0][1] = serde_json::json!("GqlProgram");
-    assert_invalid_kind_catalog(node_kind);
+    for value in [
+        r#"(list (list "unknown" "UnknownToken") (list "unknown" "UnknownToken"))"#,
+        r#"(list (list "unknown" "MissingToken"))"#,
+        r#"(list (list "unknown" "GqlProgram"))"#,
+    ] {
+        assert_invalid_kind_catalog(replace_field("terminals", descriptor_value(value)));
+    }
 }
 
 #[test]

@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 use std::ffi::CString;
 use std::sync::{Arc, OnceLock};
 
-use serde_json::Value;
+use super::datum::{self, Value};
 use sha2::{Digest, Sha256};
 
 use super::{
@@ -16,6 +16,8 @@ use super::{
 pub const PARSE_ARTIFACT_SCHEMA_V1: &str = "gerbil-parser.parse-artifact.v1";
 /// Canonical parser-owned native descriptor schema.
 pub const PARSER_NATIVE_DESCRIPTOR_SCHEMA_V1: &str = "gerbil-parser.native-descriptor.v1";
+// The upstream language-handle ABI is independent of the V1 artifact layout.
+const LANGUAGE_HANDLE_ABI: u32 = 2;
 
 /// Parser language selected explicitly at the native ABI boundary.
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
@@ -79,6 +81,7 @@ pub struct ParserKindCatalog {
     terminals: BTreeMap<String, u16>,
     terminal_names: Vec<String>,
     field_names: Vec<String>,
+    pub(crate) descriptor: Value,
 }
 
 impl ParserKindCatalog {
@@ -172,6 +175,7 @@ pub struct ParseArtifact {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ParseArtifactLoadError {
     InteriorNul,
+    Worker(crate::worker_profile::WorkerFailure),
     RuntimeUnavailable,
     RuntimeStatus(super::NativeRuntimeStatus),
     ParserFailed {
@@ -215,6 +219,14 @@ fn parse_artifact(
     language: ParserLanguage,
     source: &str,
 ) -> Result<ParseArtifact, ParseArtifactLoadError> {
+    if let Some(result) =
+        crate::worker_profile::with_worker(|worker| worker.parse_artifact(language, source))
+    {
+        return result.map_err(|error| match error {
+            crate::NativeWorkerError::Parser(error) => error,
+            error => ParseArtifactLoadError::Worker(error.failure()),
+        });
+    }
     let (payload, kind_catalog) = request_parse_artifact(language, source)?;
     let artifact = decode_parse_artifact(&payload, source, kind_catalog)?;
     validate_source_digest(&artifact, source)?;
@@ -287,7 +299,7 @@ pub(crate) fn decode_parse_artifact(
     })
 }
 
-fn request_parse_artifact(
+pub(crate) fn request_parse_artifact(
     language: ParserLanguage,
     source: &str,
 ) -> Result<(Vec<u8>, Arc<ParserKindCatalog>), ParseArtifactLoadError> {
@@ -297,9 +309,8 @@ fn request_parse_artifact(
     }
     .get_or_init(|| load_native_kind_catalog(language))
     .clone()?;
-    let language = CString::new(language.as_str()).expect("static parser language has no NUL");
     let source = CString::new(source).map_err(|_| ParseArtifactLoadError::InteriorNul)?;
-    let native = with_native_runtime(move || ffi::parser_native_parse(&language, &source))
+    let native = with_native_runtime(move || ffi::parser_native_parse(language, &source))
         .map_err(parse_runtime_error)?;
     let payload = native_payload(native, |call_status, result_status, diagnostic| {
         ParseArtifactLoadError::ParserFailed {
@@ -407,15 +418,14 @@ fn load_binary_event(
 fn load_native_kind_catalog(
     language: ParserLanguage,
 ) -> Result<Arc<ParserKindCatalog>, ParseArtifactLoadError> {
-    let language_name = CString::new(language.as_str()).expect("static parser language has no NUL");
     let (abi, native) = with_native_runtime(move || {
         (
             ffi::parser_native_abi_version(),
-            ffi::parser_native_descriptor(&language_name),
+            ffi::parser_native_descriptor(language),
         )
     })
     .map_err(parse_runtime_error)?;
-    if abi != 1 {
+    if abi != LANGUAGE_HANDLE_ABI {
         return Err(ParseArtifactLoadError::InvalidHostDescriptor);
     }
     let payload = native_payload(native, |call_status, result_status, diagnostic| {
@@ -425,7 +435,8 @@ fn load_native_kind_catalog(
             diagnostic,
         }
     })?;
-    let descriptor = serde_json::from_slice(&payload)
+    let descriptor = datum::decode(&payload)
+        .ok_or(())
         .map_err(|_| ParseArtifactLoadError::InvalidHostDescriptor)?;
     load_kind_catalog(&descriptor, language).map(Arc::new)
 }
@@ -433,6 +444,7 @@ fn load_native_kind_catalog(
 fn parse_runtime_error(error: NativeRuntimeError) -> ParseArtifactLoadError {
     match error {
         NativeRuntimeError::Unavailable => ParseArtifactLoadError::RuntimeUnavailable,
+        #[cfg(feature = "embedded-runtime")]
         NativeRuntimeError::Status(status) => ParseArtifactLoadError::RuntimeStatus(status),
     }
 }
@@ -465,7 +477,11 @@ pub(crate) fn load_kind_catalog(
     if string_field(payload, "schema")? != PARSER_NATIVE_DESCRIPTOR_SCHEMA_V1 {
         return Err(ParseArtifactLoadError::InvalidHostDescriptor);
     }
-    if string_field(payload, "language")? != language.as_str() {
+    let descriptor_language = match language {
+        ParserLanguage::Gql => "gql",
+        ParserLanguage::Cypher => "opencypher",
+    };
+    if string_field(payload, "language")? != descriptor_language {
         return Err(ParseArtifactLoadError::InvalidHostDescriptor);
     }
     let grammar_digest = string_field(payload, "grammarDigest")?.to_owned();
@@ -560,6 +576,7 @@ pub(crate) fn load_kind_catalog(
         terminals,
         terminal_names,
         field_names,
+        descriptor: payload.clone(),
     })
 }
 

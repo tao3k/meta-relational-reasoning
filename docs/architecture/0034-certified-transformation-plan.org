@@ -1,0 +1,690 @@
+#+title: RFC 0034: Certified Transformation Plan Audit and Delivery Gates
+#+status: implemented; qualification requires all exact-head PR checks
+#+date: 2026-10-06
+#+options: toc:2
+#+property: header-args :eval never-export :exports code
+#+filetags: :transformation:admission:lean:ascent:audit:
+
+* Audit findings and evidence snapshots
+:PROPERTIES:
+:CUSTOM_ID: transformation-audit
+:END:
+
+The user supplied working session =01a0de90-bc08-7fa3-bdcf-5aa1cf71f0a1=.
+This RFC completes its proposed cross-repository delivery plan. Runtime
+completion requires executable evidence for each delivery gate below.
+The source snapshots inspected on 2026-10-06 were:
+
+#+name: transformation-source-cuts
+| Owner | Exact source snapshot | Implemented capabilities | Remaining gap |
+|-------+-----------------------+--------------------------+---------------|
+| MRR | faedb3e49d63b0ba32e74a037a1bd0859a18b9c6 | Typed relations, identity, revision/snapshot, lineage, query-result admission | No public TransformationEdge/Plan model or dedicated admission was found |
+| LeanPOO | 5028d45fc6e3f51300af39874acaf0326f120125 | Certified factories, entails, conjoin, context pullback, ResultIndex | No CertifiedTransformation across Problem endpoints or runtime certificate bridge was found |
+| ASCENT | 0aae58cd770590c0b22b0b6fa29103f97bf9bf9d | Finite consequence, receipts, partial native refinement theorems | Full refinement of native rows, descriptors, indexes, deltas, mutation, and traces remains open |
+
+All 16 checks on LeanPOO [[https://github.com/tao3k/lean-poo/pull/8][PR #8]] succeeded at the inspected head.
+The session's latest ResultIndex experiment retained a negative performance
+result: for 64 keys and 4096 tail-field reads, list queries took about
+0.421 ms and indexed queries about 3.234 ms. This workload does not justify
+making the index the default. Transformation correctness and external
+maintenance savings require their own evidence.
+
+Direct local references are LeanPOO's
+[[file:../../../lean-poo/LeanPoo/Functional/ContractConsequence.lean][ContractConsequence]],
+[[file:../../../lean-poo/LeanPoo/Functional/ContractJoin.lean][ContractJoin]],
+[[file:../../../lean-poo/LeanPoo/Functional/ContextPullback.lean][ContextPullback]], and
+[[file:../../../lean-poo/docs/performance/result-index.org][ResultIndex cost receipt]], plus ASCENT's
+[[file:../../../gerbil-ascent/docs/scheme-compiler-proof-bridge.org][compiler proof bridge]]. Its 2026-10-06 section on positive traversal to
+consequence lists the remaining native refinement obligations. Cross-repository
+paths support local inspection. Revalidation must use the commits above;
+later commits need their own CI evidence.
+
+MRR should own canonical transformation descriptions, type/context binding,
+evidence references, and semantic admission. LeanPOO supplies generic
+mathematical composition and proofs. ASCENT derives candidate consequences
+from explicit inputs within explicit budgets. POO Flow and source owners
+supply source completeness, authorization, temporal selection, and current
+revisions. Runtime/Marlin owns execution, effects, retries, and recovery.
+MRR validates these inputs and bindings while preserving their source and
+execution authorities.
+
+* Gaps requiring corrections to the original plan
+:PROPERTIES:
+:CUSTOM_ID: transformation-gaps
+:END:
+
+#+name: transformation-gap-matrix
+| ID | Original gap | Required contract | Counterexample or acceptance condition |
+|----+--------------+-------------------+----------------------------------------|
+| G1 | TargetResult is undefined and unbound to an input | Result is indexed by the instance; extract binds the source input and actual forward input | An answer for a different target instance fails typing or admission |
+| G2 | Every transformation is treated as a reduction | The first profile covers total deterministic witness transport; decision, optimization, partial, and effectful profiles have separate laws | One-way witness soundness cannot establish decision equivalence |
+| G3 | Matching graph-node names imply composability | Exact endpoint schema/semantics/version equality, or an explicitly proved transport adapter | Endpoints named B with different versions cannot compose directly |
+| G4 | A certificate reference is treated as a proof | Bind theorem statement, assumptions, encoding, implementation artifact, checker/toolchain, and environment dependencies | A reused theorem name, old artifact, wrong schema, or added axiom invalidates receipt reuse |
+| G5 | Requirements and capabilities are simple sets | Bind input, context, provider, scope, and revision; check step ordering and unmet conditions | A reachable path is not executable if one step fails to establish the next step's premise |
+| G6 | Parameter contracts have no composition laws | Specify input-size/parameter maps, costs, and growth bounds per profile | Separate polynomial descriptions do not establish composite complexity or approximation guarantees |
+| G7 | Generation is part of edge identity | Separate stable content identity from current admission and source selection | Changing generation preserves an unchanged edge's identity and changes admission/plan identity |
+| G8 | Only individual edges can be canonical | Individual edges and explicitly admitted composite artifacts can be canonical; derived routes require admission | An inferred route without an artifact and evidence cannot acquire admitted artifact identity |
+| G9 | Reachability implies solvability or executability | Require solver correctness, input-domain validity, step premises, encoding, and execution authorization | Missing solver, resources, or authorization keeps the plan candidate or blocked |
+| G10 | WHY-NOT, uncertainty, and temporal claims are too broad | Specify the finite universe, coverage, budgets, truth states, and both temporal coordinates | Incomplete, stale, and conflicting evidence cannot become FALSE; what-if results do not publish into the current source |
+| G11 | Proof composition is assumed to provide traceability | Separate semantic proofs from lineage; bind ordered edge instances, dependency snapshots, and receipt references into the plan digest | Semantically equal functions with different lineage cannot exchange receipts |
+| G12 | Qualification covers only successful paths | Include tampering, context mismatch, revocation, missing/conflicting evidence, budget stops, and an independent corpus oracle | Rejection produces no admitted plan and preserves the previous completed state |
+
+* Canonical model and implementation placement
+:PROPERTIES:
+:CUSTOM_ID: transformation-model
+:END:
+
+Start with a dedicated module under =crates/meta-relational-reasoning/src/=.
+Extract =mrr-transformation= after a second independent consumer is identified
+and the dependency graph is stable. Maintain one admission implementation
+across the facade and any eventual crate. Reuse:
+
+- [[file:../../crates/mrr-identity/src/api.rs][mrr-identity]] for domain-separated identities and versioned canonical encoding;
+- [[file:../../crates/mrr-relation/src/lib.rs][mrr-relation]] for complete ValueSchema/RelationSchema contracts;
+- [[file:../../crates/mrr-revision/src/snapshot.rs][mrr-revision]] for SemanticSnapshot;
+- [[file:../../crates/mrr-lineage/src/lib.rs][mrr-lineage]] for provenance, derivations, and admitted premise references;
+- [[file:0032-query-result-admission.org][RFC 0032]] for exact binding, nonzero budgets, and rejection without a receipt.
+
+=TransformationDefinition= requires schema version, profile, complete
+source/target semantic type identities, forward artifact/reference,
+extractor artifact/reference, parameter contract, condition expressions,
+capability requirements, semantic evidence statement/reference, and encoding
+contract/reference. It describes immutable content. =TransformationId= is
+derived from that canonical content. Current availability belongs to a
+separate admission state. Retain stable public names separately from content
+versions; changing the implementation produces a new content identity.
+
+=TransformationAdmission= binds the definition digest, exact source-authority
+revision set, MRR generation/snapshot digest, certificate-check receipt,
+policy/verifier version, scope, and selected temporal coordinates. Physical
+blob CIDs, code commits, MRR semantic IDs, and Lean theorem names remain
+distinct coordinates checked individually by the receipt.
+
+=TransformationPlanCandidate= carries request/context/input digests, ordered
+edge instances including parameters and adapters, selected source snapshot,
+target solver/reference, and budgets. =TransformationPlanAdmission= also
+carries per-edge obligation receipts, ordered dependency digest, composite
+statement, plan digest, and completion status. External callers cannot
+construct admitted values directly; decoded values are revalidated. Canonical
+encoding specifies field order, optional tags, set ordering, duplicate
+rejection, string normalization, and size bounds.
+
+Source selection must atomically identify revisions of all participating
+sources. A generation alone is insufficient. Mathematical definitions and
+theorems may be reused across time; current availability, capabilities, and
+authorization require fresh admission. Declared temporal policy selects
+valid-time and knowledge-time. Timestamps do not establish causality, and
+polling does not establish completeness. See [[file:0013-generation-revision-semantics.org][RFC 0013]].
+
+* Minimal complete Lean contract
+:PROPERTIES:
+:CUSTOM_ID: transformation-proof
+:END:
+
+The first profile states that a correct target result for a valid input can
+be soundly extracted into a source result. Forward is total and the extractor
+is indexed by the original instance. Additional parameters can be packaged
+into Input/Context. This profile establishes witness soundness; decision
+reductions additionally need yes/no equivalence, optimization profiles need
+objective/approximation laws, and partial or effectful transformations need
+failure, termination, or trace contracts. Inverse behavior and runtime
+complexity require explicit additional laws.
+
+The following standalone contract is a candidate for the LeanPOO slice.
+Prove semantic composition first, then attach Certified factories/ContextSlot
+evidence reuse around it. =conjoin= combines claims about one factory family;
+cross-endpoint transformation composition requires the contract below.
+Its four theorems must pass kernel checking with no added axioms. Concrete
+edges must supply soundness proofs; replacing the task specification with
+=True= does not satisfy that obligation.
+
+The same example compiled with LeanPOO's pinned Lean 4.34.0 and MRR's pinned
+Lean 4.31.0. All four =#print axioms= reports showed no axiom dependencies.
+Future library dependencies and artifacts require version-specific checking
+before crossing this bridge.
+
+#+name: transformation-contract-kernel
+#+begin_src lean
+namespace TransformationAudit
+
+structure Problem where
+  Input : Type
+  Result : Input -> Type
+  Valid : Input -> Prop
+  Correct : (a : Input) -> Result a -> Prop
+
+structure CertifiedTransformation (A B : Problem) where
+  forward : A.Input -> B.Input
+  preserves : forall a, A.Valid a -> B.Valid (forward a)
+  extract : (a : A.Input) -> B.Result (forward a) -> A.Result a
+  sound : forall a, A.Valid a -> forall r, B.Correct (forward a) r ->
+    A.Correct a (extract a r)
+
+def identity (A : Problem) : CertifiedTransformation A A where
+  forward := id
+  preserves := fun _ valid => valid
+  extract := fun _ r => r
+  sound := fun _ _ _ correct => correct
+
+def compose {A B C : Problem} (f : CertifiedTransformation A B)
+    (g : CertifiedTransformation B C) : CertifiedTransformation A C where
+  forward := fun a => g.forward (f.forward a)
+  preserves := fun a valid => g.preserves _ (f.preserves a valid)
+  extract := fun a r => f.extract a (g.extract (f.forward a) r)
+  sound := fun a valid r correct =>
+    f.sound a valid _ (g.sound _ (f.preserves a valid) r correct)
+
+theorem compose_sound {A B C : Problem} (f : CertifiedTransformation A B)
+    (g : CertifiedTransformation B C) (a : A.Input) (valid : A.Valid a)
+    (r : C.Result ((compose f g).forward a))
+    (correct : C.Correct ((compose f g).forward a) r) :
+    A.Correct a ((compose f g).extract a r) :=
+  (compose f g).sound a valid r correct
+
+theorem compose_forward_assoc {A B C D : Problem}
+    (f : CertifiedTransformation A B) (g : CertifiedTransformation B C)
+    (h : CertifiedTransformation C D) (a : A.Input) :
+    (compose (compose f g) h).forward a =
+      (compose f (compose g h)).forward a := rfl
+
+theorem compose_extract_assoc {A B C D : Problem}
+    (f : CertifiedTransformation A B) (g : CertifiedTransformation B C)
+    (h : CertifiedTransformation C D) (a : A.Input)
+    (r : D.Result (h.forward (g.forward (f.forward a)))) :
+    (compose (compose f g) h).extract a r =
+      (compose f (compose g h)).extract a r := rfl
+
+theorem identity_extract {A : Problem} (a : A.Input) (r : A.Result a) :
+    (identity A).extract a r = r := rfl
+
+#print axioms compose_sound
+#print axioms compose_forward_assoc
+#print axioms compose_extract_assoc
+#print axioms identity_extract
+end TransformationAudit
+#+end_src
+
+Endpoints that are not definitionally equal require an explicit adapter
+whose input/result transport preserves Correct and Valid. Identity and
+associativity are semantic laws of forward functions and extraction.
+Preserving origin requires a separate ordered-lineage theorem.
+=mapInput=/=mapOutput= can issue certificates only for mappings satisfying
+the required domain and correctness-transport laws.
+
+* Certificate bridge and trust boundary
+:PROPERTIES:
+:CUSTOM_ID: transformation-bridge
+:END:
+
+MRR must validate more than a deserialized theorem name. The first bridge
+uses a fixed checker and auditable build artifacts: exact Lean toolchain,
+library/dependency manifest, module artifact digest, complete statement
+digest, declared assumptions, and implementation/codec digests. The checker
+returns a completed check receipt. Admission policy determines allowed
+axioms and environments. Source authority is checked independently of the
+axiom report.
+
+A slice compiling and executing pure Lean forward/extract definitions can
+bind the same definitions and artifacts. An external Rust, Scheme, or Python
+function sharing a Lean definition's name still requires implementation
+refinement. Until proved, identify its evidence as tested or reference
+correspondence. A digest binds content; semantic correctness and issuer
+authentication require separate checks.
+
+The protocol distinguishes Candidate, CheckedSemanticEvidence,
+AdmittedDefinition, AdmittedPlan, and ExecutionReceipt. A correct edge
+certificate leaves runtime authorization and execution success as separate
+obligations. Execution receipts bind concrete input/output, plan, artifact,
+context/source snapshot, output codec, and correctness witness. Source or
+current-revision changes trigger revalidation. Partial results and unknown
+execution outcomes cannot enter a completed-result cache.
+
+* ASCENT projection and path validation
+:PROPERTIES:
+:CUSTOM_ID: transformation-ascent
+:END:
+
+MRR admits inputs before projecting bounded scalar-ID tables:
+edge(instance,src,dst), admitted(instance,cut), requires(instance,requirement),
+available(requirement,context,cut), and terminal-solver(target,solver,cut).
+The MRR adapter binds the schema and scalar-ID codec. ASCENT receipts bind
+query/program, codec, row digest, source snapshot, budget, and completion.
+
+=reachable= establishes a graph consequence. Under an open-world contract,
+absence of a capability cannot establish its unavailability. Admitted rules
+or checkers establish dynamic premises. If a capability requires execution,
+planning retains an obligation and publishes the capability only after
+execution succeeds. Consumable resources accumulate step by step; runtime
+effects require their own execution model.
+
+Recursive reachability must avoid unbounded path-list materialization,
+especially in cyclic graphs. ASCENT returns bounded edge supports or candidate
+endpoints. MRR extracts a length-bounded ordered witness and validates each
+edge's connectivity, version, context, parameters, and evidence. Alternative
+enumeration has explicit count/depth/work budgets. Exhaustive enumeration
+claims require a finite path domain. Empty paths require equal endpoints and
+the identity profile. Before dereferencing evidence, confirm every external
+reference belongs to the same admitted source selection.
+
+Deletion or revocation affects dependents. MRR lineage computes reverse
+impact and invalidates old admissions. Publish a candidate source selection
+atomically after its solve completes; retain the previous completed result
+with STALE freshness. What-if uses a forked selection and independent receipt.
+WHY-NOT projects to FALSE only with complete finite closed-world coverage of
+every rule and source. Budget stops are INCOMPLETE, missing coverage is
+UNKNOWN, and incompatible authorities produce CONFLICT. Reuse the state
+projections in [[file:0023-mrr-truth-and-incompleteness.org][RFC 0023]].
+
+ASCENT retains ownership of native encoding, decoders, index completeness,
+pivot/delta selection, mutation, and asynchronous trace refinement. These
+bridge obligations complement the partial PositiveConsequence theorems;
+the native runtime needs its own complete refinement evidence.
+
+* Five delivery slices with acceptance gates
+:PROPERTIES:
+:CUSTOM_ID: transformation-delivery
+:END:
+
+#+name: transformation-delivery-gates
+| Slice | Owner / dependency | Deliverable and completion gate | Required rejection cases |
+|-------+--------------------+---------------------------------+--------------------------|
+| S1 | MRR | Proposed wire/model, admission API, typed identity, canonical encoding, negative fixtures; independent of Lean execution | Wrong endpoint/schema, duplicate field/ID, missing source selection, invalid scope, budget excess; no admitted receipt |
+| S2 | LeanPOO; refine the contract alongside S1 | Generic Problem/CertifiedTransformation, identity/compose, soundness and forward/extractor associativity; exact axiom receipt | Wrong intermediate-instance result, incompatible context, missing domain premise; no sorry or custom axioms |
+| S3 | MRR and LeanPOO; requires S1+S2 | Checker/encoding/artifact/source binding; two valid edges and a composite receipt; fixed checker threat model | Forged references, statement/artifact/codec/toolchain mismatch, stale source evidence, unproved external implementations |
+| S4 | MRR to ASCENT; requires S3 | One finite source selection, consequence receipt, ordered-witness admission, revocation/what-if/WHY-NOT; domain soundness supplied upstream | Reachable path with missing premise/solver, mixed source selections, budget stop, cycle, stale receipt |
+| S5 | Corpus adapter and runtime owners; requires S4 | Legally usable real corpus; execute a two-edge reduction, target solver, reverse extraction, independent source-answer validation; record limits/costs | Wrong answer, incompatible edges, revoked capability, changed input encoding, unknown execution outcome |
+
+Develop S1 and S2 together against one small specification so the Rust model
+and Lean extractor remain compatible. Public certified-execution claims
+require S3 completion. S5 keeps the problem catalog in an external adapter.
+The first Scenario should be small enough to enumerate source answers, with
+alternative paths and a deliberately incorrect edge. Introduce an NP
+reduction corpus after this independent source-answer oracle is executable.
+
+Performance acceptance covers edge count, type/parameter width, path depth,
+evidence bytes, cold checks, warm reuse, and revocation fanout. Include zero,
+one, and many edges, cycles, diamonds, broken paths, and multi-source updates.
+Establish correctness, memory, and work bounds before applying the owner's
+benchmark gates. The current LeanPOO ResultIndex negative result reinforces
+the need for matched real workloads. Indexes, caches, and generalized APIs
+need their own cost measurements; library code growth does not establish
+maintenance savings.
+
+* Handoff and remaining obligations
+:PROPERTIES:
+:CUSTOM_ID: transformation-handoff
+:END:
+
+The referenced working session can begin with S2's small contract, validate
+the input-dependent extractor against S1 wire fixtures, and then build the
+S3 checker bridge. Keep OpenAI source audits, POOF paper mechanisms, project
+runtime evidence, and external maintenance costs in separate evidence
+records. Each slice records base/head commits, exact gates, axiom/dependency
+manifests, and remaining obligations in the owning repository's Org/API
+inventory. Reference code or paper mechanisms require project-specific
+qualification before supporting runtime claims.
+
+The implemented V1 profile is pure, total transport over finite, explicitly
+selected specifications. It now includes the public LeanPOO contract, an actual
+pinned Lean kernel checker, exhaustive qualification of native table dispatch,
+materialized composition, and durable local publication. The owner-supplied
+finite specification and configured Elan installation remain explicit trust
+roots. General external providers and effectful programs need their own adapters
+and refinement; they are not admitted by this profile.
+
+* Implemented finite profile and executable receipts
+:PROPERTIES:
+:CUSTOM_ID: transformation-implementation
+:END:
+
+The implementation extends MRR PR #9 base
+=519d0ea94ba19b0e21cbf87940e0c8d904f2b040=. It provides:
+
+- [[file:../../crates/mrr-identity/src/api.rs][TransformationId]] with a distinct identity domain, canonical definition
+  encoding, bounded schemas, and generation-independent content identity;
+- [[file:../../crates/meta-relational-reasoning/src/transformation.rs][Definition and plan admission]] binding exact endpoints, selected revisions,
+  request/context/scope, both temporal coordinates, ordered steps and parameters,
+  solver, checker/environment/assumptions, and verifier policy;
+- [[file:../../crates/meta-relational-reasoning/src/transformation_finite.rs][Finite native catalog]] with immutable complete forward/extract tables,
+  independent endpoint specifications, exhaustive qualification of actual dispatch,
+  bounded canonical serialization, ordered composition lineage and shared revocation;
+- [[file:../../crates/meta-relational-reasoning/src/transformation_kernel.rs][Pinned kernel adapter]] that generates the exact finite table model and checks
+  it with Lean 4.31.0. Each child has a fixed five-second deadline and a bounded
+  output buffer; checking uses one worker and a 1024 MiB Lean memory limit.
+  Balanced selection avoids expanding entire arrays during kernel reduction.
+  Every table constructs a concrete =CertifiedTransformation=; admission requires
+  its axiom report and all generic identity/composition/finite-soundness reports.
+  Failed checks cannot construct an opaque certificate or admission;
+- [[file:../../crates/meta-relational-reasoning/src/transformation_projection.rs][Independent closure verification]] of ordered supports, endpoint continuity,
+  soundness and exact finite completeness. [[file:../../crates/meta-relational-reasoning/src/transformation_route.rs][Scheme ASCENT routing]] consumes those
+  checks; its native build qualification remains a separate gate;
+- [[file:../../crates/meta-relational-reasoning/src/transformation_execution.rs][Execution]] that validates forward instances, solver output, reverse extraction,
+  independent endpoint correctness and final source authority before release;
+- [[file:../../crates/meta-relational-reasoning/src/transformation_store.rs][Durable publication]] with an exclusive OS file lock, bounded canonical CBOR,
+  file sync, atomic replacement and directory sync. The lock guard explicitly
+  unlocks on release, including decode failures, so a descriptor inherited before
+  another thread execs a child cannot prolong a released store lock. Reopen is STALE until checked
+  replay; reverse support lookup drives durable invalidation. Failed writes retain
+  prior history; uncertain directory sync has an explicit error. Request/scope
+  isolation rejects what-if replacement of another publication slot;
+- [[file:../../proofs/MRRProof/Transformation.lean][Generic Lean contract]] and [[file:../../proofs/MRRProof/FiniteTransformation.lean][finite soundness bridge]], mirrored from public
+  LeanPOO modules in [[https://github.com/tao3k/lean-poo/pull/8][LeanPOO PR #8]], with identity and composition laws;
+- [[file:../../crates/meta-relational-reasoning/tests/fixtures/iris-provenance.org][UCI Iris provenance]] and the unmodified 150-row CSV. Its SHA-256 is checked.
+  Two transformations reverse input order and rename labels; actual execution
+  and materialized composition are compared to labels read independently from
+  the CSV. This qualifies transport; it makes no machine-learning accuracy claim.
+
+The V1 CBOR frame uses =mrr.transformation.v1=. Dependencies and requirements
+are sorted unique sets; record fields retain schema order and exact UTF-8 names.
+Decoding must equal canonical re-encoding. Unknown fields, alternative order,
+trailing bytes, unsupported frames and noncanonical encodings are rejected.
+Explicit bounds cover bytes, schema/value nodes and depth, source/dependency/
+requirement counts, steps, closure pairs and outputs, and finite table cells/work.
+The caller's byte limit is per encoded object; it is not an aggregate heap limit.
+
+The generic identity/composition declarations have seven empty axiom reports.
+Finite soundness uses only standard =propext= and =Quot.sound=; generated transport
+checks permit only standard =propext=. Missing reports, custom axioms and =sorry=
+are rejected. Kernel evidence binds exact generated source, kernel version/output,
+checker source, native dispatcher policy and selected source binding. The native
+bridge is exhaustive whole-domain qualification, not a formal proof of the Rust
+compiler or machine code. Owner specification authenticity is an explicit local
+configuration assumption; no external theorem reference is accepted on hash
+matching alone.
+
+Opaque admission and execution receipts cannot be deserialized by callers. A
+route is a candidate and cannot serve as a concrete admitted plan. Empty routes
+are rejected; identity requires an explicit admitted artifact. A FALSE absence
+claim is confined to the exact verified complete finite cut. Truncation yields
+INCOMPLETE and source revocation yields STALE. Semantically equivalent composites
+with different ordered lineage have different content identities.
+
+Publication coordinates one configured source authority. The authenticated
+adapter verifies issuer-signed grants for the exact binding, native tables and
+kernel, checks each permitted operation, and holds a grant read lease during
+final publication. Stored freshness retains that lease and observes expiry and
+persistent nonce revocation. A revoked catalog or grant cannot refresh a stored
+result; reopening retains history and requires fresh checked replay. The local
+ledger and wall clock are configured authority roots; no distributed transaction
+or global revocation service is claimed.
+
+#+name: transformation-local-implementation-gates
+| Gate | Observed local result | Evidence boundary |
+|------+-----------------------+-------------------|
+| Portable Rust facade and identity | 41 unit + 9 isolated integration + 7 identity tests passed | Includes concrete profiles, signed grants, actual expiry, kernel lowering rejection, corpus composition and revocation |
+| Clippy | Passed with warnings denied | Facade and identity, all targets, no default features |
+| Proof Python suite | 32 passed | Includes real Lean rejection of missing decision, optimality, partial, resource and effect premises |
+| MRR Lean 4.31.0 | Combined kernel and Org receipt passed; all 22 transformation axiom reports admitted | Exact selected model declarations; standard axioms only |
+| Pinned Aeneas source extraction | Refreshed and independently regenerated after identity changes | Only identity source-location comments changed; extracted definitions are identical |
+| LeanPOO public modules | Library and profile tests passed; PR #9 has 16 exact-head checks passed | Follow-up to merged PR #8, preserving concurrent FiniteDiagnostics work |
+| UCI Iris | All 150 CSV labels matched for sequential and materialized composition | Whole finite domain, not arbitrary external inputs |
+| Durable example | Execution, stale reopen, checked replay and revoke passed | Local OS lock and publication file |
+| Gerbil native build | Fresh declared package build; local source-bound AOT passed all 8 modules and 145 cases; five qualification probe classes passed; latest exact-head native CI required | Native job remains an independent required gate |
+
+Reproduce the portable profile from this checkout:
+
+#+begin_src sh
+./.devenv/devenv-profile-exec cargo test -p meta-relational-reasoning -p mrr-identity --tests --no-default-features -- --nocapture
+./.devenv/devenv-profile-exec cargo clippy -p meta-relational-reasoning -p mrr-identity --all-targets --no-default-features -- -D warnings
+env PYTHONPATH=proofs/MRRProof/src ./.devenv/devenv-profile-exec proofs/MRRProof/.venv/bin/python -m pytest -vv -s proofs/MRRProof/tests
+env PYTHONPATH=proofs/MRRProof/src ./.devenv/devenv-profile-exec proofs/MRRProof/.venv/bin/python -m mrr_proof_validation.cli crates/meta-relational-reasoning/src/transformation.rs crates/mrr-identity/src/api.rs
+./.devenv/devenv-profile-exec cargo run -p meta-relational-reasoning --no-default-features --example finite_transformation -- /tmp/mrr-finite-result.cbor
+#+end_src
+
+CI installs the pinned Lean toolchain and separately runs the portable Rust,
+Clippy and durable-example gates. The native job remains an independent gate.
+A local pass does not stand in for exact-head remote checks.
+
+* Concrete profiles, resource laws and authenticated publication
+
+[[file:../../crates/meta-relational-reasoning/src/transformation_profiles.rs][Concrete finite profile factories]] build distinct typed adapters:
+
+- =KernelCheckedDecisionReduction= uses Boolean decision specifications and
+  identity Boolean extraction. The exact finite transport checks agreement on
+  positive and negative decisions.
+- =KernelCheckedOptimizationReduction= lowers feasible answers and natural costs
+  to every minimum-cost answer, retaining ties. Independent Lean obligations
+  compare every lowered row with the original feasibility/cost predicate before
+  issuing the kernel certificate. A feasible but nonoptimal extraction fails.
+- =KernelCheckedPartialTransformation= restricts to explicitly successful original
+  inputs. =source_instance= supplies the required compact-domain adapter; omitted
+  inputs return =Unknown=. The domain map participates in endpoint identity.
+
+The canonical V1 carrier remains exact finite witness transport. Richer profile
+properties are supplied by these checked factories and their endpoint
+specifications, rather than an unchecked wire enum. The source owner still owns
+the meaning of the supplied domain, feasibility, decision and cost tables.
+
+[[file:../../proofs/MRRProof/TransformationProfiles.lean][Generic profile laws]] prove decision equivalence, successful partial
+composition and optimality transport. [[file:../../proofs/MRRProof/TransformationResources.lean][Measured resource and effect laws]] prove
+composition of bounds on actual implementation size/cost functions and of actual
+state-indexed authorized forward/extractor traces. These public interfaces are
+also in [[https://github.com/tao3k/lean-poo/pull/9][LeanPOO PR #9]]. Native consumers must instantiate their premises; a raw
+resource declaration supplies no CPU complexity proof.
+
+[[file:../../crates/meta-relational-reasoning/src/transformation_authority.rs][Authenticated finite publication]] accepts a bounded canonical CBOR signed grant
+from a configured Ed25519 issuer. The grant binds the exact snapshot/request/
+context/scope/time coordinates, complete catalog, pinned kernel, checker/runtime policy, authentication/execution/publication source and dependency lock, nonce,
+validity interval, per-operation capabilities, logical runtime-call budget and
+encoded-value byte budget. The adapter uses =ed25519-dalek= 2.2.0
+[[https://docs.rs/ed25519-dalek/2.2.0/ed25519_dalek/struct.VerifyingKey.html#method.verify_strict][strict signature verification]] and rejects weak issuer keys. Authentication is
+additional to the actual semantic checker. Grant issuance/signing belongs to the
+source owner; this module stores no signing key and admits no foreign code.
+
+For a plan with =n= transport steps, the fixed runtime invokes =n= forwards,
+one solver, =n= extractors, and =n + 1= independent answer checks. Admission
+requires the signed operation limit to cover =3n + 2=. This counts logical
+runtime calls, not machine instructions or checker CPU time. Values are checked
+against the signed encoded-byte limit at actual runtime boundaries; affine
+resource composition uses checked =u64= arithmetic and rejects overflow.
+
+The grant ledger has an exclusive OS lock, canonical bounded state, issuer pin,
+monotone revocation epoch, atomic replacement and directory fsync. Capacity or epoch exhaustion quarantines the authority and persists that state; an idempotent revocation retry repeats the write before acknowledging success. A pending
+revocation file prevents reopening after an uncertain interrupted write. Failed
+persistence never acknowledges durable revocation; the live owner remains
+revoked. Deleting or rolling back owner-controlled ledger files is outside its
+trust model. =revoke_grant= records nonce revocation before invalidating a result;
+policy and nonce support identities enter the durable reverse index. If the
+result write fails, the grant remains revoked.
+
+Each admission and actual forward/solve/extract checks a fresh grant lease.
+Final publication holds the ledger read guard and native source guard while
+writing the result. Stored freshness checks expiry/revocation again. If expiry or a directory-sync failure follows atomic replacement, publication
+returns =PublicationUncertain=, keeps the previous known in-memory result and
+never acknowledges the new bytes as fresh. Historical
+answers survive denied operations, exhausted budgets, expiry and revocation;
+they are never upgraded by reopening serialized records.
+
+#+name: transformation-gap-implementation-map
+| Gap | Executable contract or integration | Qualification |
+|-----+------------------------------------+---------------|
+| G1 | Indexed Lean results; instance digests; explicit partial-domain adapter | Wrong instance and unknown original input rejected |
+| G2 | Distinct decision, partial and optimization factories and generic effect laws | Positive/negative decisions, ties, nonoptimal witness, unknown partial and missing effect permission |
+| G3 | Exact endpoint equality and explicit restricted-domain semantics | Incompatible endpoints and unchecked casts rejected |
+| G4 | Actual pinned kernel, row lowering obligations and authenticated issuer/catalog binding | Forged feasible-row optimization lowering rejected by Lean |
+| G5 | Ordered step receipts; signed capabilities; current grant/source leases | Disabled solve/publication, wrong binding, expiry and persistent revocation |
+| G6 | Measured composition theorem; intermediate-size affine arithmetic; runtime call/value limits | Wrong intermediate growth, overflow, insufficient call and value budgets |
+| G7 | Stable edge identity separated from admission generation | Identity/domain separation and changed selection receipts |
+| G8 | Kernel-checked materialized composition with ordered lineage | Sequential and composed corpus results agree |
+| G9 | Actual solver and independent answer oracle plus resource/permission gates | Missing/bad solver, bad answers and denied capability emit no completed result |
+| G10 | Exact finite coverage and explicit unknown/stale/conflict/what-if states | No false or fresh projection from incomplete, expired or stale evidence |
+| G11 | Ordered receipts and durable dependency/policy/nonce reverse index | Lineage exchange and revoked replay rejected; history retained |
+| G12 | Kernel, native, wire, authorization, corpus and durable negative fixtures | 57 portable Rust tests and 32 proof tests; native CI remains separate |
+
+General ASCENT index/mutation/delta/trace source refinement and arbitrary foreign
+provider effects still require their respective owners' implementations and
+premises. Global closed-world coverage and arbitrary complexity guarantees are
+not consequences of finite table execution. The new code supplies explicit
+profile, measurement, authorization and publication interfaces for those
+integrations; it does not silently certify them.
+
+* Production table source refinement and asynchronous dispatch
+
+The finite runtime now calls the production =transformation_table= functions
+for forward, solver and extraction access. The pinned Charon/Aeneas gate
+regenerates these three functions from the actual facade crate. Six Lean
+declarations establish exact selected-cell semantics, first-answer selection,
+the solver/extractor correspondence and rejection of missing source indices.
+The axiom audit admits only =propext=, =Classical.choice= and =Quot.sound=.
+Slice and Vec access use the pinned Aeneas library models. Catalog admission,
+value codecs, source leases and the overall execution driver remain separate
+source-refinement obligations; these access theorems do not certify them.
+
+=AsyncTransformationRuntime= supports the existing asynchronous physical query
+backend without blocking a native owner thread. Each returned operation
+revalidates the plan and runtime identity before proceeding to the next
+operation. Cancellation issues no completed receipt; effect cancellation and
+recovery remain backend responsibilities. Qualification checks synchronous /
+asynchronous receipt equality, revocation during a suspended solver and
+cancellation before extraction. The concrete property-query provider is being
+connected to MRR Data's existing =RestoredPropertyBackend=; the async port alone
+is not that provider implementation.
+
+Kernel checks reserve the SDK's Rust process Host before spawning Elan. A Host
+that has already embedded Gambit cannot own checker children, because Gambit's
+process-wide reaper consumes their exit status (=ECHILD=). Native inference in
+a Rust process Host uses the existing isolated native worker. The kernel tests
+run in a separate integration executable; the embedded native unit executable
+checks explicit mode rejection before any child spawn. Both executables remain
+in =cargo test --workspace=, and portable CI explicitly runs =--tests=. No kernel
+fixture or native gate is skipped, and checker deadlines are unchanged.
+
+Concurrent finite kernel admissions share a process-local slot. Each launched
+checker retains its fixed deadline; the slot prevents parallel fixtures from
+spending that deadline competing for macOS runner CPU. Slot poisoning fails
+with the typed KernelUnavailable error.
+
+Generated kernel sources explicitly import the required Lean List/Fin, core
+tactic, proposition and Nat division modules. They retain every model,
+whole-domain table obligation and axiom audit while avoiding the complete
+default Init import. Budget failures report the actual phase, elapsed time,
+output byte count and a bounded partial diagnostic without changing admission.
+The native workflow separates compilation from execution, and a fresh macOS
+finite-kernel job checks all nine actual integration cases independently.
+
+At the earlier =6a71f0a= head both AOT Scheme batches passed. One macOS Rust
+run rejected the first authenticated catalog with Budget while eight other
+kernel cases passed; the independent push run passed all nine. That failed
+receipt is retained. The selective-import implementation requires fresh CI.
+
+The Scheme qualification profile compiles all current test modules with the
+unchanged upstream gxtest into a native executable. Canonical SDK tool SCM is
+compiled only inside a private SDK copy. Preparation binds local Scheme and
+test sources, harness glue, selected SDK inputs and executable bytes, and rejects
+drift before execution. The same executable runs the positive, assertion,
+missing-module and empty-suite qualification probes. Real runtime output,
+nonempty case receipts, upstream status, final OK and actual process exit are
+required under the original five-second silence and 45-second total limits.
+Normal Scheme and Gambit cleanup remains enabled.
+
+The earlier macOS interpreted gxi batch produced successful case receipts and
+returned from Scheme cleanup, then stalled during native process teardown.
+That batch remains a failed receipt. Native AOT qualification must pass its own
+complete CI gate; it does not establish that interpreted gxi teardown is fixed.
+
+* Native provider discovery and execution bridge
+
+=NativeTransformationExecutionRequest= binds one current admitted cut, a
+concrete ordered plan, actual input, and both transformation/native inference
+limits. =execute_native_transformation_plan= rechecks every source edge and all
+concrete plan premises before calling the real Scheme ASCENT owner. Only the
+exact returned native route can enter execution; no fallback or route
+substitution occurs. Execution repeats current admission and independent answer
+checks and retains the original native closure receipt alongside the completed
+answer. Missing routes remain Unknown, including truncated searches.
+
+This bridge accepts the existing runtime/verifier ports without requiring a
+finite-table runtime implementation. Its first native integration fixture uses
+the actual Scheme provider and the existing finite runtime, with wrong-input,
+missing-cut, invalid-solver, generation-mismatch and revoked-source refusals.
+Physical external provider implementations, authenticated grants and their
+native refinement are still owner obligations. Qualification requires the new
+=native-transformations= integration target to pass on the exact PR head; the
+local private macOS SDK currently retains a dynamic-load startup failure.
+
+* Physical-provider signed grant boundary
+
+=AuthenticatedTransformationGrant= authenticates an Ed25519 grant against a
+separately configured ledger issuer and the caller's exact expected binding and
+catalog digests. It reuses the durable nonce ledger and its exclusive lock,
+quarantine, expiry and atomic persistence rules. Operation capabilities and
+cumulative operation/value budgets are checked before a guarded action.
+=with_current= holds a synchronous read lease and checks expiry after the action;
+providers refresh before and after asynchronous work rather than holding a lock
+across await. Publication must use the guarded action at the physical owner.
+
+This grant is source authority, not a transformation certificate. It does not
+invent an issuer, prove an arbitrary provider, authenticate an unsigned cut or
+replace the current proof verifier. The portable negative fixture rejects forged
+signatures, changed binding/catalog, denied publication and exhausted budgets;
+revocation survives reopening the ledger. The property provider consumes this
+boundary separately from its already admitted transformation edge.
+
+* Byte identity transport source refinement
+
+The production =transport_transformation_bytes= helper clones an arbitrary byte
+slice using Rust =to_vec=. Charon/Aeneas extracts that exact helper alongside the
+three table access operations. =transport_bytes_exact= proves that the copied
+vector's slice is the original input for every model slice. The existing source
+freshness and axiom audit gate includes this theorem and the two relation
+preservation corollaries, for nine source theorems. Standard
+allocator behavior and pinned Vec/Slice models remain explicit trust roots.
+
+The property provider calls this helper for forward and extraction. This closes
+byte sequence preservation for the actual shared primitive; it does not by
+itself certify the provider's guards, codecs, solver/oracle or authenticated
+admission owner. Those cannot be inferred from an identity transport theorem.
+
+* Physical durable publication and restart recovery
+
+=TransformationResultStore::execute_and_publish_async= executes the selected
+physical runtime and independent answer checker before its synchronous owner
+publication lease. The existing process lock, bounded canonical archive,
+atomic replacement and file/directory fsync implement persistence.
+
+The support cut includes provider authority supports, runtime identity, admitted
+edges, dependencies, requirements, source revisions, solver and binding.
+Reopening exposes historical data only. =replay_async= repeats admission,
+physical execution and answer checking and compares the exact archived support,
+plan, execution and answer before recovering freshness. Durable invalidation
+survives restart. Cancellation releases no fresh record; loss of authorization
+after replacement reports =PublicationUncertain=.
+
+The publication port is an owner trust boundary, separate from transformation
+certification. Physical integration must supply a live lease tracking both
+local revocation and durable signed-grant revocation. This API does not turn a
+test verifier or a signed source grant into a production correctness certificate.
+
+* Built-in identity law and production owner boundary
+
+=TransformationByteIdentityProof= is an opaque descriptor of the library's
+single checked byte-copy primitive, generated Lean functions, exact theorem
+source and pinned extraction tools. Callers cannot select another implementation
+or supply arbitrary evidence. The two source theorems preserve an arbitrary
+endpoint relation under copied source bytes and copied answer bytes. They do
+not define the endpoint relation or certify a foreign solver.
+
+MRR Data's selected production owner composes this law with its audited guards
+for one original query/root and one signed source cut. It accepts no arbitrary
+transformation, checker or solver. Byte preservation is machine checked;
+provider guard composition, endpoint semantics, codec and independently checked
+physical query execution remain explicit owner trust boundaries. This is a
+bounded identity admission policy, not whole-provider source refinement.
+
+* Native tool discovery and CI execution
+
+MRR native archive preparation delegates Gambit compiler selection to the
+shared SDK discovery API. Runtime and build-time discovery follow the selected
+Gerbil installation, reject Ghostscript, recognize release and development
+version formats, and apply the selected native environment. SDK PR #18 owns
+this behavior; consumers do not require redundant GSC overrides.
+
+Feature branches run CI through pull requests; push CI is retained for main.
+This removes duplicate runs for each PR update without removing any gate or
+changing operation budgets, process progress deadlines or build parallelism.
+
+Publication refresh runs immediately before and after the provider's synchronous
+read lease. The write action does not reenter runtime identity, verifier or
+lease checks. This avoids recursive ledger read acquisition while a revocation
+writer waits. The retained owned lease is Send/Sync and observes later source
+revocation; serialized archives cannot recreate that lease.

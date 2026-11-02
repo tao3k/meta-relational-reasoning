@@ -46,3 +46,10 @@ and terminates on cycles.  State or transition budget exhaustion returns
 =Incomplete=.  An invariant violation returns a shortest BFS
 =CounterexampleIr=.  Exhausting the reachable graph without a violation is the
 only path to =Safe=.
+
+* Current external oracle
+
+The committed transition fixture is authored in Quint and checked through
+=quint verify= in CI. These TLA+ and explicit-state references remain research
+sources for state-machine reasoning; they are not active MRR specification or
+checker entrypoints. See [[file:../docs/architecture/0021-mrr-differential-oracles.org][MRR Differential Oracles]].

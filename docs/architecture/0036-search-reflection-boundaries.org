@@ -1,0 +1,203 @@
+#+title: Search Chain Architecture and Reflection Boundaries
+#+language: en
+
+* Decision and scope
+
+Keep one execution chain: POO Flow composition, MRR identity and inference,
+MRR Data physical candidate composition, and ASP public Search/Query decisions.
+Lean and Quint qualify explicit properties of this chain. They do not execute
+provider searches or supply a second runtime.
+
+Reflection is a review of evidence and a proposal for the next operation.
+It cannot change admitted facts, coverage, selectors, source bindings, or an
+already published generation. An accepted proposal must enter the existing
+owner's operation and admission path before it produces new facts.
+
+This review concerns the current local qualification graph. It does not claim
+published source pins, default-feature execution, remote CI or deployment.
+
+* Responsibility matrix
+
+| Layer | Owns | Consumes | Must not infer from that input |
+|-------+------+----------+-------------------------------|
+| POO Flow | Typed stage/Chain/Parallel/Merge composition and DAG compilation | Declared roles, domains and children | Retrieval truth or physical source authenticity |
+| LeanPoo C3 | Certified role linearization and source agreement | Actual retained parent graph and roots | Universal agreement with every Gerbil C4 graph |
+| LeanPoo C4 | Certified inheritance/precedence output | Explicit parent orders and root; actual roles are qualified separately | Provider execution order or undeclared retrieval edges |
+| MRR Search | Typed Scheme bridge, factor/observation identity, binding admission and bounded result projection | POO projection and source-bound observations | Completeness of a provider's whole corpus |
+| MRR Lean/Quint | Algebraic/protocol proofs, finite checks and executable witness checks | Explicit model inputs and execution evidence | Rust/Scheme source refinement from test success |
+| MRR Data | Physical owner sets, composition modes and backend dependency | Named POO factors and actual provider candidates | New topology or consumer ranking authority |
+| ASP | Acquisition, resident lifecycle, ranking, selector/query admission and next operation | Data set and MRR evidence | Absence from top-k, or fact authority from model-written prose |
+
+MRR Data owns the Turso driver dependency. ASP uses its driver facade and keeps
+its own connection/lifecycle responsibilities. Dependency inheritance does not
+transfer ownership of Runtime admission or resident-generation retirement.
+
+* Current source review and remaining gates
+
+** POO DAG correspondence
+
+The MRR Scheme projection retains the actual POO strategy and =dag-receipt=.
+It computes =factor-edges= by walking the typed composition tree through
+=mrr-search-edges=. Admission now independently reads the compiled POO plan:
+it recursively expands branch-arm and nested Flow nodes, contracts administrative
+join nodes, maps external stage names to canonical factor inputs, and compares
+both factor and edge inventories. It also requires the retained DAG receipt to
+equal the newly compiled receipt. Unknown node kinds and foreign/forward
+compiled dependencies are rejected.
+
+The contraction rule belongs to MRR's projection boundary. Branch joins carry
+the union of their arm terminal stages; they do not introduce a search factor
+or cross-arm edge. Compiled prerequisites connect to child roots, and child
+terminal stages become the arm boundary. ASP and Data keep consuming the
+admitted projection.
+
+Local embedded POO checks pass for chains, parallel/merge, and a nested
+three-arm graph with seven stages and eight exact edges. Independent Scheme
+forged-receipt and tree/Flow disagreement controls are present but their
+standalone execution remains unqualified under the five-second watchdog.
+This is an executable correspondence gate, not a machine-checked proof of the
+compiler or its contraction algorithm.
+
+** C3/C4 evidence binding
+
+The new independent Version 1 order witness retains the parent graph and
+runtime precedence list from the actual POO stage objects. Current Gerbil POO
+uses C4 for those lists. The MRR Scheme owner reads =object-supers= and
+=compute-precedence-list!=; Rust admits the graph/root/order inventories and
+retains their mapping to existing factor identities. Packet-local role aliases
+are interpreted only within the bound witness.
+
+The Lean order checker matches the entire embedded composition receipt to the
+actual execution witness, including generation, source, composition and DAG
+identities. It builds LeanPoo C3 and C4 certificates over that actual parent
+graph and requires both outputs to equal the retained runtime order. Local
+public Single, Intersect and RankJoin evidence passes; eight corrupted witnesses
+are rejected. =PlanOrders.lean= retains dependent certificates with these
+identities and proves stale-generation and foreign-DAG rejection.
+
+This establishes scoped executable correspondence for the emitted role graph.
+It does not prove that all Gerbil C4 graphs admit C3, authenticate a substituted
+producer, or establish a compiler source-refinement theorem. A C3/C4 disagreement
+fails mathematical qualification without replacing POO's runtime algorithm.
+
+Role inheritance, a separately declared search precedence policy, causal DAG
+edges, and physical scheduling remain distinct. The new certificates concern
+actual role inheritance. No scheduling order is inferred from them; any future
+search precedence policy needs its own explicit inputs and admission.
+
+** Candidate identity and source authority
+
+Data now exposes its existing Version 1 candidate derivation and retains the
+exact owner-to-candidate union of all admitted branches. The receiver checks its
+current binding before admitting a pair and rejects unknown owners, wrong IDs
+and stale bindings. Canonical lengths count UTF-8 bytes; Data does not normalize
+provider-owned paths. A candidate identity collision fails admission explicitly.
+
+ASP calls this Data gate before MRR inference and emits a separate Version 1
+candidate witness. Lean matches the entire composition receipt to the actual
+execution witness and checks exact owner-union, unique IDs and branch/merged
+observation correspondence. Three public modes and seven corrupted controls
+pass locally. Data Rust independently checks canonical bytes, all five binding
+components, forged IDs, unobserved owners and revocation.
+
+This closes the local owner/candidate mapping admission gap. Rust remains the
+canonical identity authority. Lean's structural correspondence check does not
+hash bytes or prove collision resistance, and a coherent substitution of both
+log packets is outside its authenticity boundary. ASP still owns physical
+source and resident admission; no file-content authentication or authenticated
+durable replay claim follows from this diagnostic.
+
+** Reflection evidence retention
+
+The new execution witness is an internal diagnostic on the server log. It is
+bounded, and an omitted witness is explicitly incomplete. The emitted JSON is
+useful for local differential checking but is not automatically an admitted,
+durable Agent-facing reflection packet. Existing ASP reflection and GQL/Query
+contracts retain ownership of those packets and selectors.
+
+Required gate: link admitted evidence by composition/query/source identity at
+the existing ASP projection boundary, with replay and stale-binding controls.
+Do not expose internal Ascent firing traces as a new public reasoning language.
+
+** Release source convergence
+
+The qualification uses local MRR/Data source bindings. ASP also retains a
+published MRR/GQL revision, so its Cargo graph contains separate source
+identities for the old consumer and new Search path. This is an explicit local
+qualification arrangement, not a finalized distribution contract.
+
+Required gate: publish owner-scoped changes, select matching immutable revisions,
+update all manifests/locks together, and qualify the exact consumer head. Do not
+remove unrelated published consumers merely to make the local graph look uniform.
+
+* Reflection semantics and evidence limits
+
+The existing ASP RFC 10.06.14 owns the adversarial reflection catalogue;
+RFCs 10.06.15--17 own operations, topology and settled output. In particular,
+R13/R22 reject absence from partial coverage, R14 preserves support under
+rendering, R15 requires bounded progress, and R26 keeps summaries proposed until
+admission. MRR does not duplicate those contracts.
+
+The small =Reflection.lean= boundary model links reflection to MRR's published
+protocol state. It proves stale-binding rejection, partial-coverage and
+foreign-query rejection, and absence consistency with the admitted abstract
+Search truth. Its proposal type retains the premise binding/query and a
+strictly decreasing budget. These are proposal constraints, not authorization
+or implementation of an automatic feedback loop.
+
+=completeCoverage= remains a consumer-owned premise. This model does not prove
+that a provider scanned its whole corpus. Search set completeness, full-query
+coverage, witness retention and presentation truncation remain distinct.
+
+The original Quint model and its 45-state Lean replay gate retain their original
+publication scope. The new reflection model is Lean-only; it does not widen
+those exhaustive conclusions to feedback loops.
+
+* Delivery order
+
+1. Close standalone negative qualification for the new POO DAG-to-projection admission gate.
+2. Retain actual-role order qualification when source pins converge; separately declare any search precedence policy.
+3. Bind candidate identities to admitted physical owner/source evidence.
+4. Qualify ASP reflection retention and next-operation decisions against its
+   existing contracts; separately measure whether refinement improves search.
+5. Converge published dependency pins and run exact-head consumer qualification.
+
+Existing passing public Single/Intersect/RankJoin runs remain local execution
+evidence. This review leaves their Version 1 contracts intact and makes the
+additional gates explicit instead of promoting those runs into broader claims.
+
+* Sources and reproducible checks
+
+- MRR owner =scheme/search/projection.ss=: tree projection and retained DAG receipt.
+- MRR owner =crates/mrr-search/src/poo.rs=: immutable Rust projection admission.
+- Data owner =crates/mrr-data-core/src/search_candidates.rs=: projected fan-in agreement.
+- ASP =crates/agent-semantic-mrr/src/data_search_composition.rs=: existing public-route bridge and diagnostic.
+- ASP =docs/10-19-rfcs/10.06-agent-search-projection/10.06.14-search-evidence-output-reflection.org=: reflection authority.
+- [[file:../../proofs/MRRProof/SearchComposition/README.org][MRR mathematical gates and evidence scope]].
+
+Run =./.devenv/devenv-profile-exec just search-composition-proof= for Lean
+models, executable rejection checks and the axiom audit. Run
+=just search-execution WITNESSES SCHEMA= for the independent Version 1 witness
+schema and actual execution controls. Each receipt retains its own claim scope.
+
+
+* Configurable Search and verification ownership
+
+The governing execution decision is
+[[file:0037-configurable-search-execution.org][Scheme semantics and Rust execution bridge]]. POO Flow owns producer composition
+qualification with LeanPoo and Quint; MRR owns FFI/consumer admission checks.
+Data supplies reusable physical capabilities, while ASP selects scenario
+profiles and owns its source/resident and projection boundaries. Code paths and
+modalities must not become assumptions of MRR identity or logical composition.
+Rust dispatch and multimodal candidate-space contracts are planned, not already
+qualified by the existing execution witness suite.
+
+
+* Implemented proof ownership split
+
+POO Flow =proofs/Composition= now owns reusable certificate and typed-composition
+mathematics, actual algorithm controls and their axiom audit. MRR imports that
+package and executes its producer gate before the retained consumer models.
+The existing Quint publication model stays in MRR because its binding, revision,
+inference and publication states constrain this consumer. Actual Scheme producer
+Quint qualification and immutable producer publication remain separate gates.

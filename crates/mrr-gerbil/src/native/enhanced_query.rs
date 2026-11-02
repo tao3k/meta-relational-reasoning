@@ -98,6 +98,7 @@ pub fn load_enhanced_tree_sitter_query_operator_table()
             NativeRuntimeError::Unavailable => {
                 EnhancedQueryOperatorTableLoadError::RuntimeLockPoisoned
             }
+            #[cfg(feature = "embedded-runtime")]
             NativeRuntimeError::Status(status) => {
                 EnhancedQueryOperatorTableLoadError::NativeGrammar(format!(
                     "native Gerbil runtime initialization failed with {status}"

@@ -1,5 +1,3 @@
-use std::path::PathBuf;
-
 use mrr_asp_rust_build_support::MrrAspRustEvidenceGraphInput;
 use mrr_asp_rust_build_support::workspace_evidence_graph::{
     MrrAspRustWorkspaceEvidenceGraphEdgeKind, MrrAspRustWorkspaceEvidenceGraphNodeKind,
@@ -9,16 +7,17 @@ use mrr_asp_rust_build_support::workspace_evidence_graph::{
 
 #[test]
 fn workspace_receipt_projects_member_crates_and_client_db_graph() {
+    let root = std::env::temp_dir().join("mrr");
     let graph = MrrAspRustEvidenceGraphInput {
         generation_id: "gen-workspace".to_string(),
-        project_root: PathBuf::from("/tmp/mrr"),
+        project_root: root.clone(),
         node_count: 0,
         edge_count: 0,
     };
 
     let receipt = build_workspace_evidence_graph_receipt(MrrAspRustWorkspaceEvidenceGraphRequest {
         workspace_label: "meta-relational-reasoning".to_string(),
-        workspace_root: PathBuf::from("/tmp/mrr"),
+        workspace_root: root,
         member_crate_names: vec!["mrr-query".to_string()],
         client_db_evidence_graph: &graph,
     });
@@ -42,14 +41,15 @@ fn workspace_receipt_projects_member_crates_and_client_db_graph() {
 
 #[test]
 fn default_workspace_receipt_uses_central_member_policy_registry() {
+    let root = std::env::temp_dir().join("mrr");
     let graph = MrrAspRustEvidenceGraphInput {
         generation_id: "gen-default-workspace".to_string(),
-        project_root: PathBuf::from("/tmp/mrr"),
+        project_root: root.clone(),
         node_count: 0,
         edge_count: 0,
     };
 
-    let receipt = build_mrr_workspace_evidence_graph_receipt(PathBuf::from("/tmp/mrr"), &graph);
+    let receipt = build_mrr_workspace_evidence_graph_receipt(root, &graph);
 
     assert_eq!(
         receipt.summary.member_crate_count,

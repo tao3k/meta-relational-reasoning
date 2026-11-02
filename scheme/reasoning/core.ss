@@ -1,7 +1,7 @@
 ;;; Gerbil POO authority for ReasoningBundle declarations.
 
 (import :clan/poo/object
-        :poo-flow/src/core/object-syntax)
+        :yuanxu/object-family/role-syntax)
 (export defmrr-reasoning-module
         mrr-reasoning-module-prototype
         mrr-driver-start
@@ -87,7 +87,7 @@
 
 ;;; The outer loop is deliberately small and deterministic.  It chooses which
 ;;; resource runs next, but it never interprets facts, runs rules, assigns
-;;; identities, or admits a closure.  Those decisions remain Rust/Ascent-owned.
+;;; identities, or admits a closure.  Native Scheme owns inference; typed MRR contracts own identity and admission.
 
 (def (mrr-driver-object object-kind fields)
   (poo-core-role-object

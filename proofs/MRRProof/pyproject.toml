@@ -12,6 +12,9 @@ mrr-lean-validate = "mrr_proof_validation.cli:main"
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[project.optional-dependencies]
+execution = ["jsonschema>=4.26,<5"]
+
 [dependency-groups]
 dev = ["pytest>=8.4,<9"]
 

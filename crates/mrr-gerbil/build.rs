@@ -1,4 +1,7 @@
 fn main() {
+    if std::env::var_os("CARGO_FEATURE_EMBEDDED_RUNTIME").is_none() {
+        return;
+    }
     for path in [
         "../../gerbil.pkg",
         "../../scheme/grammar/gql-declaration.ss",
@@ -10,5 +13,5 @@ fn main() {
     ] {
         println!("cargo:rerun-if-changed={path}");
     }
-    mrr_gerbil_native_build::build_native_archive(std::path::Path::new(env!("CARGO_MANIFEST_DIR")));
+    mrr_gerbil_build::build_program_archive(std::path::Path::new(env!("CARGO_MANIFEST_DIR")));
 }

@@ -9,7 +9,11 @@ pub use mrr_identity::{
 };
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
+#[expect(
+    clippy::derived_hash_with_manual_eq,
+    reason = "Direct recursion preserves the derived variant and ordered-field equality"
+)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, Serialize)]
 pub enum Value {
     Entity(EntityId),
     Null,
@@ -25,6 +29,104 @@ pub enum Value {
     Duration(String),
     List(Vec<Value>),
     Record(Vec<(String, Value)>),
+}
+
+// Direct recursion avoids a recursive generic Vec/trait-instance cycle in the
+// source extractor. Equality remains variant-sensitive and order-sensitive,
+// including duplicate record keys and exact decimal/float text.
+impl PartialEq for Value {
+    fn eq(&self, other: &Self) -> bool {
+        match self {
+            Self::Null => matches!(other, Self::Null),
+            Self::Entity(left) => match other {
+                Self::Entity(right) => left == right,
+                _ => false,
+            },
+            Self::Boolean(left) => match other {
+                Self::Boolean(right) => left == right,
+                _ => false,
+            },
+            Self::Integer(left) => match other {
+                Self::Integer(right) => left == right,
+                _ => false,
+            },
+            Self::Decimal(left) => match other {
+                Self::Decimal(right) => left == right,
+                _ => false,
+            },
+            Self::Float(left) => match other {
+                Self::Float(right) => left == right,
+                _ => false,
+            },
+            Self::String(left) => match other {
+                Self::String(right) => left == right,
+                _ => false,
+            },
+            Self::ByteString(left) => match other {
+                Self::ByteString(right) => left == right,
+                _ => false,
+            },
+            Self::Date(left) => match other {
+                Self::Date(right) => left == right,
+                _ => false,
+            },
+            Self::Time(left) => match other {
+                Self::Time(right) => left == right,
+                _ => false,
+            },
+            Self::Timestamp(left) => match other {
+                Self::Timestamp(right) => left == right,
+                _ => false,
+            },
+            Self::Duration(left) => match other {
+                Self::Duration(right) => left == right,
+                _ => false,
+            },
+            Self::List(left) => match other {
+                Self::List(right) => equal_value_lists(left, right),
+                _ => false,
+            },
+            Self::Record(left) => match other {
+                Self::Record(right) => equal_value_records(left, right),
+                _ => false,
+            },
+        }
+    }
+}
+
+fn equal_value_lists(left: &[Value], right: &[Value]) -> bool {
+    if left.len() != right.len() {
+        return false;
+    }
+    let mut index = 0;
+    let mut equal = true;
+    while index < left.len() && equal {
+        equal = left[index].eq(&right[index]);
+        index += 1;
+    }
+    equal
+}
+
+fn equal_value_records(left: &[(String, Value)], right: &[(String, Value)]) -> bool {
+    if left.len() != right.len() {
+        return false;
+    }
+    let mut index = 0;
+    let mut equal = true;
+    while index < left.len() && equal {
+        equal = equal_record_fields(
+            &left[index].0,
+            &right[index].0,
+            &left[index].1,
+            &right[index].1,
+        );
+        index += 1;
+    }
+    equal
+}
+
+fn equal_record_fields(left_key: &String, right_key: &String, left: &Value, right: &Value) -> bool {
+    left_key == right_key && left.eq(right)
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]

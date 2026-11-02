@@ -29,3 +29,9 @@ $ "direct"(f) = D_1 quad "transitive"(f) = union_(n >= 2) D_n $
 
 IMPACT never mutates or invalidates live facts.  It produces an immutable
 classification for an upstream generation/transition owner to act upon.
+The historical =directly_invalidated= and =transitively_invalidated= field names
+classify *reachability in this graph*, not the current truth of every reached
+proposition.  A conclusion may survive through another complete derivation;
+an added fact may affect a certified absence condition without an old positive
+path.  [[file:0037-meta-relational-impact.org][RFC 0037]] proposes typed, two-generation
+reevaluation and a direct replacement of this projection when implemented.

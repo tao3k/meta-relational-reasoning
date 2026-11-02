@@ -1,0 +1,38 @@
+name = "MRRSearchCompositionProofs"
+version = "0.1.0"
+defaultTargets = ["SearchComposition", "Protocol", "Graph", "Replay", "ExecutionModel", "Reflection", "PlanOrders", "Dispatch"]
+moreLeanArgs = ["-DautoImplicit=false", "-DwarningAsError=true"]
+
+[[require]]
+name = "AgenticAILabCompositionProofs"
+git = "https://github.com/tao3k/agentic-ai-lab.git"
+rev = "921e75f830a60c2ec42c384139846b05ba5d3317"
+subDir = "proofs/Composition"
+
+[[lean_lib]]
+name = "SearchComposition"
+
+[[lean_exe]]
+name = "search-composition-check"
+root = "Checks"
+
+[[lean_lib]]
+name = "Protocol"
+
+[[lean_lib]]
+name = "Graph"
+
+[[lean_lib]]
+name = "Replay"
+
+[[lean_lib]]
+name = "ExecutionModel"
+
+[[lean_lib]]
+name = "Reflection"
+
+[[lean_lib]]
+name = "PlanOrders"
+
+[[lean_lib]]
+name = "Dispatch"

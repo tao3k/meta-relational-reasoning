@@ -1,7 +1,7 @@
 ;;; MRR projection over parser-owned GQL-family language grammars.
 
 (import :clan/poo/object
-        :poo-flow/src/core/object-syntax
+        :yuanxu/object-family/role-syntax
         ./parser-authority)
 (export defmrr-grammar
         mrr-grammar-prototype)

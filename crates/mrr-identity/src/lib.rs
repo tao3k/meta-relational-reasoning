@@ -4,7 +4,7 @@ mod api;
 pub use api::{
     ActionId, DerivationId, EntityId, FactId, GenerationId, IDENTITY_SCHEMA, IdentityDomain,
     IdentityError, LineageEdgeId, LineageNodeId, QueryId, QueryOperatorId, ReasoningBundleId,
-    RelationId, RevisionId, RuleId, RulePackId, StateId, TransitionId,
+    RelationId, RevisionId, RuleId, RulePackId, StateId, TransformationId, TransitionId,
 };
 #[cfg(test)]
 #[path = "../tests/unit/mod.rs"]

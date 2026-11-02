@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import shutil
 import subprocess
 import tempfile
@@ -28,7 +29,7 @@ CORE_CRATES = (
     "mrr-search",
     "mrr-transition",
     "mrr-bundle",
-    "mrr-ascent",
+    "mrr-deduction",
     "meta-relational-reasoning",
 )
 PROOF_OBLIGATIONS = {
@@ -50,7 +51,7 @@ PROOF_OBLIGATIONS = {
     "mrr-identity": {"identity_domain_separation"},
     "mrr-intent": {"identity_domain_separation"},
     "mrr-revision": {"identity_domain_separation"},
-    "mrr-ascent": {
+    "mrr-deduction": {
         "admitted_fact_ids_are_unique",
         "inserted_fact_has_admitted_schema",
         "admitted_rule_uses_only_admitted_relations",
@@ -86,6 +87,26 @@ PROOF_OBLIGATIONS = {
         "static_query_typing_rejection_emits_no_receipt",
         "query_result_candidate_admission_is_exact",
         "query_result_candidate_rejection_emits_no_receipt",
+        "compose_sound",
+        "compose_forward_assoc",
+        "compose_extract_assoc",
+        "identity_extract",
+        "identity_left",
+        "identity_right",
+        "compose_assoc",
+        "finiteCheck_sound",
+        "decision_compose_equivalent",
+        "partial_compose_some",
+        "partial_compose_none",
+        "partial_transport_sound",
+        "optimization_compose_optimal",
+        "affine_compose_apply",
+        "affine_monotone",
+        "resource_compose_cost",
+        "resource_compose_assoc",
+        "authorized_trace_append",
+        "measured_composition_bound",
+        "effectful_composition_sound",
     },
 }
 COUNTEREXAMPLE_FIXTURE = (
@@ -222,6 +243,64 @@ theorem replay_counterexample_fixture_valid :
     )
 
 
+def proof_source() -> str:
+    return "\n".join(
+        (ROOT / "proofs/MRRProof" / name).read_text()
+        for name in ("BundleAdmission.lean", "Transformation.lean", "FiniteTransformation.lean", "TransformationProfiles.lean", "TransformationResources.lean")
+    )
+
+
+def transformation_axiom_report(output: str, finite: bool = False, profiles: bool = False) -> dict[str, list[str]]:
+    permitted = {
+        "compose_sound": set(),
+        "compose_forward_assoc": set(),
+        "compose_extract_assoc": set(),
+        "identity_extract": set(),
+        "identity_left": set(),
+        "identity_right": set(),
+        "compose_assoc": set(),
+        "two_shift_source_answer": {"propext"},
+        "incorrect_extractor_rejected": set(),
+    }
+    if finite:
+        permitted["finiteCheck_sound"] = {"propext", "Quot.sound"}
+    if profiles:
+        permitted.update({
+            "decision_compose_equivalent": set(),
+            "partial_compose_some": {"propext"},
+            "partial_compose_none": {"propext"},
+            "partial_transport_sound": set(),
+            "optimization_compose_optimal": set(),
+            "affine_compose_apply": {"propext"},
+            "affine_monotone": set(),
+            "resource_compose_cost": {"propext"},
+            "resource_compose_assoc": {"propext"},
+            "authorized_trace_append": set(),
+            "measured_composition_bound": {"propext"},
+            "effectful_composition_sound": set(),
+        })
+    report = {}
+    for name, allowed in permitted.items():
+        declaration = "MRRTransformation." + name
+        pattern = (
+            rf"'{re.escape(declaration)}' "
+            r"(?:does not depend on any axioms|depends on axioms: \[(.*?)\])"
+        )
+        match = re.search(pattern, output)
+        if match is None:
+            raise AssertionError(f"missing transformation axiom report: {declaration}")
+        axioms = (
+            [] if match.group(1) is None
+            else [item.strip() for item in match.group(1).split(",") if item.strip()]
+        )
+        if not set(axioms) <= allowed:
+            raise AssertionError(
+                f"unapproved transformation axioms: {declaration}: {axioms}"
+            )
+        report[declaration] = axioms
+    return report
+
+
 def local_lean_check(
     lean_source: str, toolchain: str = LOCAL_LEAN_TOOLCHAIN
 ) -> dict[str, object]:
@@ -260,7 +339,15 @@ def local_lean_check(
         raise AssertionError(
             f"local Lean kernel rejected generated source: {detail[-2_000:]}"
         )
+    diagnostics = result.stdout + result.stderr
+    if "sorryAx" in diagnostics or "declaration uses 'sorry'" in diagnostics:
+        raise AssertionError("local Lean kernel receipt contains an incomplete proof")
+    axioms = (
+        transformation_axiom_report(diagnostics, "def finiteCheck" in lean_source, "structure DecisionProblem" in lean_source)
+        if "namespace MRRTransformation" in lean_source else {}
+    )
     return {
+        "transformationAxioms": axioms,
         "schema": "mrr.local-lean-kernel-receipt.v1",
         "toolchain": toolchain,
         "leanVersion": version_text,
@@ -276,7 +363,7 @@ def local_validation(paths: list[str]) -> tuple[dict, str]:
     paths = changed_files(paths)
     seeds = changed_crates(paths)
     impacted = downstream_closure(graph, seeds)
-    lean_source = (ROOT / "proofs/MRRProof/BundleAdmission.lean").read_text()
+    lean_source = proof_source()
     lean_source = lean_source.replace(
         "end MRRProof", counterexample_replay_source() + "\nend MRRProof"
     )

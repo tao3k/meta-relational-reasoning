@@ -1,0 +1,24 @@
+{
+  "schema": "mrr.agentic-ai-context.selection-fixture.v1",
+  "facts": [[1,7],[2,7],[3,7]],
+  "current_binding": [1,1,1,1],
+  "cases": [
+    {"name":"duplicate-roots","binding":[1,1,1,1],"rows":[[2,7],[2,7]],"max_rows":8,"max_facts":8,"accepted":true,"roots":[2]},
+    {"name":"empty","binding":[1,1,1,1],"rows":[],"max_rows":8,"max_facts":8,"accepted":true,"roots":[]},
+    {"name":"unknown-fact","binding":[1,1,1,1],"rows":[[99,7]],"max_rows":8,"max_facts":8,"accepted":false,"roots":[]},
+    {"name":"wrong-relation","binding":[1,1,1,1],"rows":[[2,8]],"max_rows":8,"max_facts":8,"accepted":false,"roots":[]},
+    {"name":"query-drift","binding":[2,1,1,1],"rows":[[2,7]],"max_rows":8,"max_facts":8,"accepted":false,"roots":[]},
+    {"name":"generation-drift","binding":[1,2,1,1],"rows":[[2,7]],"max_rows":8,"max_facts":8,"accepted":false,"roots":[]},
+    {"name":"catalog-drift","binding":[1,1,2,1],"rows":[[2,7]],"max_rows":8,"max_facts":8,"accepted":false,"roots":[]},
+    {"name":"snapshot-drift","binding":[1,1,1,2],"rows":[[2,7]],"max_rows":8,"max_facts":8,"accepted":false,"roots":[]},
+    {"name":"row-budget","binding":[1,1,1,1],"rows":[[2,7],[2,7]],"max_rows":1,"max_facts":8,"accepted":false,"roots":[]},
+    {"name":"source-budget","binding":[1,1,1,1],"rows":[[2,7]],"max_rows":8,"max_facts":2,"accepted":false,"roots":[]}
+  ],
+  "workflow": {
+    "old_rows":[[2,7]],"new_rows":[[3,7]],
+    "dependencies":[[2,[1]],[3,[2]]],
+    "old_precedence":[2,1],"new_precedence":[3,2,1],
+    "old_bytes":[65,66],"new_bytes":[65,66,67],
+    "stable_prefix":2,"block_tokens":2,"eligible_tokens":2
+  }
+}

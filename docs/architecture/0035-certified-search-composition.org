@@ -1,0 +1,130 @@
+#+title: C3/C4 Search Composition through Data and ASP
+#+startup: overview
+
+* Ownership and executable route
+
+POO Flow owns typed stage roles, sequential and parallel declarations, explicit
+merge stages, and compilation to a DAG. LeanPoo supplies actual C3 role
+linearization and checked C4 precedence. These algorithms have separate inputs
+and outputs: C3 role order is not a search execution order, and C4 precedence
+does not invent causal or retrieval edges.
+
+MRR owns stable factor identities, generation admission, the typed Rust bridge
+to Scheme factor inference, bounded result admission, and lineage. Data owns the explicit consumer aggregation of
+actual retrieved candidates and its physical source binding. ASP owns provider
+leaf execution over immutable resident bytes, ranking, the public search
+Playbook, and result projection. The dependency direction remains
+=POO Flow -> MRR -> mrr-data -> ASP=.
+
+The ASP Runtime retrieval route submits real leaf candidate owner sets to
+=mrr-data-core= with one scope/source/resident-view/composition-ABI/generation
+binding. Data returns the actual composed set and a canonical composition
+identity, including mode, ordered factors, candidate sets, and completeness
+flags. The optional native-search gate invokes MRR's actual Search evaluator
+over exactly these factors and observations. ASP consumes the Data set and
+retains the Data identity and native inference digest as an internal receipt.
+
+* Aggregation semantics
+
+=Single= preserves the leaf set and its completeness/truncation status.
+=RankJoin= preserves the primary complete truth set; an auxiliary ranking
+branch can be partial and only affects consumer-owned ranking. =Intersect=
+requires every branch to be complete and untruncated before admitting exact
+intersection. An empty top-k branch is never an absence certificate.
+
+Source identity, resident view, workspace scope, composition ABI, and generation
+must agree before set composition or inference. These equalities do not
+authenticate a provider: source admission remains with its owner. Generation
+change retires old observations and requires a fresh read before publication.
+
+* Lean and Quint gates
+
+=proofs/MRRProof/SearchComposition= pins LeanPoo =0a111f6c=, consumes actual
+C3 =GraphCertificate= and C4 =VerifiedOrder=, proves cached/source C3 agreement,
+duplicate-free C4 output and mapped precedence, typed sequential associativity,
+intersection truth, rank preservation, and stale/incomplete/truncated rejection.
+The executable checks invoke both actual algorithms and contradictory-order
+controls. The axiom audit includes both upstream namespaces and admits only
+the standard Lean axioms.
+
+=proofs/quint/SearchComposition.qnt= separately exhausts finite publication
+interleavings for all three modes, partial Single and genuine empty intersection.
+Ten named mutations must produce actual TLC invariant counterexamples: stale
+generation reuse, source/scope/resident/ABI substitution, incomplete primary or
+secondary truth, skipped inference, false empty intersection and RankJoin filtering.
+The receipt binds model, instances, checker logs, state counts, and exits.
+
+=Replay.lean= independently enumerates each positive finite state closure and
+checks the original Lean protocol invariant through an executable acceptance
+function with a soundness theorem. A second exhaustive TLC check requires every
+reachable Quint state to belong to this replay set, with matching cardinality
+and an exhausted queue. Removing a published state must yield an actual
+counterexample. Five fixtures currently replay 45 states in total; this is
+finite state coverage, not a Rust/Scheme source refinement theorem.
+
+The formal entry point is [[file:../../proofs/MRRProof/SearchComposition/README.org][MRR Search mathematics]].
+=Protocol.lean= proves legal-step preservation and safety of arbitrary reachable
+states, including exact publication and complete-intersection absence evidence.
+=Graph.lean= specifies bounded influence along actual POO causal paths and proves
+that disconnected parallel components cannot influence one another. These are
+mathematical specifications; the Rust/Scheme source simulation remains unproved.
+
+#+begin_src sh
+./.devenv/devenv-profile-exec just search-composition-proof
+./.devenv/devenv-profile-exec just search-composition-quint .ci/search-quint/receipt.json
+#+end_src
+
+These gates establish algorithm certificate composition and bounded protocol
+safety. They do not establish Rust source refinement, live provider coverage,
+digest collision resistance, universal liveness, or deployed behavior. Native
+Data and ASP tests and an actual public binary query are independent gates.
+Unpublished Data source overrides are explicit local qualification inputs;
+they must not be represented as an immutable published dependency revision.
+
+
+* Actual execution qualification
+
+The public ASP Single, Intersect and RankJoin commands emit a separate Version 1
+execution witness alongside the unchanged composition receipt. MRR's
+=ExecutionChecks.lean= independently reconstructs owner aggregation and graph
+reachability, checks causal observation bindings, and requires every expected
+influence. =ExecutionModel.composed_membership= relates owner aggregation to
+=Search.truth=. The executable gate rejects six evidence mutations and records
+source hashes. This currently qualifies one- and two-leaf fan-in graphs; it
+checks sets and emitted paths, not ranking or provider byte authenticity.
+
+The reproducible entry is =just search-execution WITNESSES SCHEMA=, with witnesses
+from the actual ASP checkout. Its local receipt is separate from the exhaustive
+Quint/Lean replay receipt. Published dependency pins, downstream CI and deployed
+behavior require their own consumer qualification.
+
+
+* Architecture review
+
+[[file:0036-search-reflection-boundaries.org][Search reflection and responsibility review]] records the current source boundaries,
+remaining correspondence gates and consumer-owned reflection contracts.
+The MRR projection now independently expands and contracts the compiled POO
+plan and checks exact stage/edge correspondence before admission. Its standalone
+Scheme corruption controls remain unqualified; this is not a compiler proof. LeanPoo C3/C4 algebraic certificates
+are distinct from certificates bound to the actual executed plan.
+
+
+* Bound actual role orders
+
+The actual POO objects use Gerbil C4 for inheritance. The independent Version 1
+order witness now retains their parent graph and runtime lists with the same
+composition receipt as the executed search. Lean certifies that actual graph
+with C3 and C4 and compares both results with the runtime lists. The three
+public modes pass and eight order/binding mutations are rejected. These are
+role-order certificates; they do not schedule retrieval or replace causal edges.
+
+
+* Configurable execution and proof ownership
+
+[[file:0037-configurable-search-execution.org][Configurable Search execution decision]] makes Scheme/POO Flow the semantic
+owner and Rust MRR the admitted execution bridge to Data. ASP supplies scenario
+profiles. Generic POO producer Lean/Quint qualification belongs upstream; these
+MRR checks qualify consumer projections and result admission. Generic certificate/typed-composition mathematics now live in POO Flow; MRR
+imports that library and retains its consumer models. The current Search path calls Scheme
+inference, not a Rust Ascent implementation. Physical dispatch, candidate-space
+admission and actual multimodal adapters remain implementation gates.

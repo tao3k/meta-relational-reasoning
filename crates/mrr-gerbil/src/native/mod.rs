@@ -1,16 +1,22 @@
 //! Native AOT grammar binding interface.
+pub(crate) mod datum;
 
 mod driver;
 mod enhanced_query;
 #[allow(unsafe_code)]
 mod ffi;
+pub(crate) mod finite;
 mod model;
 pub(crate) mod parse_artifact;
 mod parser_cst;
 mod reasoning;
 mod runtime;
+pub(crate) use runtime::claim_worker_host;
+mod temporal;
+pub use temporal::{TemporalHost, TemporalRuntimeError};
 
-pub use runtime::NativeRuntimeStatus;
+pub use finite::{FiniteInferenceCandidate, FiniteInferenceError, evaluate_finite_relations};
+pub use runtime::{NativeRuntimeStatus, reserve_native_worker_host};
 
 pub use driver::{
     DriverError, DriverPhase, DriverResource, DriverStatus, DriverTransition, driver_request,

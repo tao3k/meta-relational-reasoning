@@ -10,8 +10,7 @@ the declarative =ascent!= macro plus =Dual<usize>=.  It deliberately does not
 use parallel evaluation, =ascent_run!=, BYODS, or deletion maintenance in this
 milestone.
 
-- [[file:/Users/guangtao/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ascent-0.8.0/README.MD::65][lattice fixed-point semantics]]
-- [[file:/Users/guangtao/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ascent-0.8.0/README.MD::91][BYODS boundary]]
+- =ascent 0.8.0= upstream README: lattice fixed-point semantics and BYODS boundary.
 - [[file:../crates/mrr-ascent/src/api.rs][workspace execution owner]]
 
 * Bounded semantic slice

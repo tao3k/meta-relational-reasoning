@@ -12,10 +12,15 @@ flowchart LR
     artifact --> frontend[mrr-frontends semantic lowering]
     frontend --> query[mrr-query MetaQueryIr]
     query --> facade[meta-relational-reasoning]
-    query --> ascent[mrr-ascent bounded evaluator]
-    scheme[Gerbil reasoning declarations] --> native[mrr-gerbil native ABI]
+    query --> deduction[mrr-deduction candidate admission]
+    scheme[Compiled Scheme ASCENT] --> native[mrr-gerbil native ABI]
+    native --> deduction
+    deduction --> facade
+    declarations[Gerbil reasoning declarations] --> native
     native --> facade
     contracts[mrr identity relation logic lineage transition] --> facade
+    context[mrr-agentic-ai-context] --> facade
+    contracts --> context
 #+end_src
 
 * Ownership boundary
@@ -33,15 +38,49 @@ accepted CST must reproduce the complete source before semantic lowering.
 * Reasoning boundary
 
 The =mrr-*= crates own language-neutral identity, relation, query, logic,
-bundle, lineage, revision, transition, and conformance contracts. Ascent may
-propose bounded fixed-point candidates, but only the public
+bundle, lineage, revision, transition, and conformance contracts. Scheme ASCENT
+may propose bounded fixed-point candidates, but only the public
 =meta-relational-reasoning= facade can admit and materialize a complete result.
-Gerbil and POO own declarative reasoning programs and outer orchestration; they
-do not run inside the Rust query hot path.
+Compiled Scheme inference is invoked through the native boundary.  Caller- or
+model-supplied Scheme source is not evaluated on the Rust query path; POO Flow
+retains its declarative and Temporal semantic ownership.
 
 The complete ownership decision is recorded in
 =docs/architecture/0001-mrr-workspace-ownership.org=. Parser authority and ISO
 profile evidence are recorded in RFC 0002 and RFC 0024.
+
+* Agentic AI Context System
+
+MRR owns the Context domain and source admission. =mrr-agentic-ai-context=
+selects explicit facts and their declared dependency closure, tracks revision
+impact, materializes ordered segments, and checks token-prefix reuse eligibility.
+The facade binds this view to an existing admitted bundle and catalog query.
+The [[file:docs/architecture/agentic-ai-context.org][Context authority]] records premises,
+the independent =MRR.AgenticAIContext= proof project, and runtime boundaries.
+=lean-poo= remains pure composition mathematics; =mrr-data= owns generic
+persistence through downstream adapters.
+
+RFC 0035 and RFC 0036 propose the next boundary: typed Content authority,
+obligations and compliance receipts, followed by authority-aware Context
+projection and invalidation.  The present Context implementation does not yet
+admit those contract or evidence classes, and its token-prefix eligibility is
+not an observed serving-cache hit.  POO Flow remains the policy and Temporal
+semantic owner; the MRR production runtime must enforce a checked decision at
+an effect boundary.  =mrr-data= remains a physical downstream adapter.
+[[file:docs/architecture/0037-meta-relational-impact.org][RFC 0037]] proposes a
+typed meta-relational Impact step between reverse reachability and the
+semantic/action verdict.  It preserves POO Flow's separate structural,
+Temporal, trajectory, and causal claim levels.
+[[file:docs/architecture/0038-context-session-lifecycle.org][RFC 0038]]
+proposes a Context Session semantic head for one shared POO Flow Session ID.
+It binds turns and existing Query/Context receipts while POO Flow and the
+runtime retain policy, scheduling, persistence and effects.  No Session-head
+API is implemented in this checkout.
+
+The facade feature =agentic-ai-context= enables the Context domain;
+=agentic-ai-context-tokens= additionally enables external-tokenizer and reuse
+contracts. Both are off by default. Storage and model implementations remain
+downstream adapters, and no Context feature introduces a dependency on MRR Data.
 
 * Mathematical publication view
 

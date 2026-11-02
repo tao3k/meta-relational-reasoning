@@ -7,10 +7,19 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 
+[features]
+default = ["native-inference"]
+native-inference = ["mrr-deduction/native-inference", "mrr-search/native-inference"]
+worker-inference = ["mrr-deduction/worker-inference", "mrr-search/worker-inference"]
+agentic-ai-context = ["dep:mrr-agentic-ai-context"]
+agentic-ai-context-tokens = ["agentic-ai-context", "mrr-agentic-ai-context/token-layout"]
+
 [dependencies]
+mrr-agentic-ai-context = { workspace = true, optional = true, default-features = false }
 ciborium.workspace = true
+ed25519-dalek = "=2.2.0"
 mrr-bundle.workspace = true
-mrr-ascent.workspace = true
+mrr-deduction.workspace = true
 mrr-identity.workspace = true
 mrr-intent.workspace = true
 mrr-lineage.workspace = true
@@ -24,6 +33,7 @@ sha2.workspace = true
 serde.workspace = true
 
 [dev-dependencies]
+serde_json.workspace = true
 criterion.workspace = true
 mrr-asp-rust-build-support.workspace = true
 [[bench]]
@@ -32,3 +42,29 @@ harness = false
 
 [lints]
 workspace = true
+
+[[example]]
+name = "context_workflow"
+required-features = ["agentic-ai-context-tokens"]
+
+[[example]]
+name = "context_scale"
+required-features = ["agentic-ai-context-tokens"]
+
+[[test]]
+name = "context_workflow"
+path = "tests/integration_test.rs"
+required-features = ["agentic-ai-context-tokens"]
+
+[[example]]
+name = "context_refinement"
+required-features = ["agentic-ai-context-tokens"]
+
+[[test]]
+name = "finite-transformations"
+path = "tests/integration/finite_transformations.rs"
+
+[[test]]
+name = "native-transformations"
+path = "tests/integration/native_transformations.rs"
+required-features = ["native-inference"]

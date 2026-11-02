@@ -24,6 +24,7 @@ fn facade_exposes_one_composable_contract_graph() {
     .expect("bundle admission");
     assert_eq!(bundle.validate(), Ok(()));
 }
+#[cfg(feature = "native-inference")]
 #[path = "closure_admission.rs"]
 mod closure_admission;
 #[path = "counterexample_lineage.rs"]

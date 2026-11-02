@@ -38,3 +38,127 @@ $ "known"(c) = "false" => "preserve"(c) and "fail-closed" $
 Unit tests cover a recognized upstream code and an unknown code.  Native AOT
 tests exercise propagation through the existing fixed-width ABI after a fresh
 =mrr-gerbil build=.
+
+* Build observations and source-handoff ownership
+
+** Executing-host compiler capacity
+
+The upstream AOT owner resolves the executing host's available parallelism
+and injects =GERBIL_BUILD_CORES= into Gerbil build children. The object-worker
+pool and shared Tokio coordinator use that same capacity. A stale inherited
+value cannot replace it; no CPU count is embedded from the machine that built
+the driver. The upstream package declaration also removes its fixed one-worker
+setting. MRR consumes this behavior through its existing build adapter, rather
+than adding another environment wrapper or compiler policy.
+
+The build dependency and corresponding setup action advance together to
+=1b22d37b71cffe278d40d94abd9c9560636ff0e5=. Runtime, Agentic AI Lab and other
+independent pins remain unchanged. Upstream unit tests passed 28 cases and
+strict Clippy passed; the MRR build adapter passed eight standard unit cases.
+Existing resource-control tests retain their explicit admission prerequisites.
+These receipts do not establish full native entry completion or remote CI
+success. The prior Darwin compiler completed its object batch with three
+workers before the final Rust linker failed; that failure is not evidence of
+a missing compiler-core variable. Preserve its separate diagnosis and the
+original wall/idle limits.
+
+** Existing source-handoff contract
+
+The module closure belongs to root =build.ss= and its existing PackageSpec.
+=crates/mrr-gerbil/build.rs= delegates to =mrr-gerbil-build=; the latter uses
+the pinned gerbil-scheme-rust integration project. It is not an MRR Data SDK.
+Compiler selection, optimization, ABI and subprocess diagnostic framing belong
+to gerbil-scheme-rust. Consumer Python must not construct compiler commands.
+
+The PackageSpec emits actual entry and return observations regardless of detailed
+verbosity. Return is not interpreter quiescence; successful child termination
+and complete archive identity are still necessary. Cargo phase summaries remain
+visible at verbosity zero, while per-module diagnostics retain their existing
+verbosity filter. Failed observations always use the error observation channel.
+There is no timer heartbeat or timeout extension.
+
+MRR's workspace explicitly selects =mrr-frontends/embedded-runtime= rather than
+inheriting it from frontend defaults. This preserves the original source parsing
+semantics: =mrr-property-source= depends on those frontends even without its
+optional =native-inference= feature. Thus MRR Data =source-handoff= can require
+the embedded Scheme grammar, while its base storage layer does not. Turning
+that feature off merely to make CI green would change the application contract.
+
+The current dependency pin still names an earlier upstream build package.
+Renaming the MRR-owned adapter does not rename or replace that pinned dependency.
+A separately verified upstream framing fix is not automatically present in this
+pinned consumer; adoption requires a later explicitly authorized dependency change.
+
+* Complete CI failure attribution
+
+The reviewed Linux run completed the Scheme package, the full Rust workspace
+compile/test and source-bound property checks. Its later physical-roundtrip
+metadata failed because the local build-adapter rename had incorrectly rewritten
+a frozen upstream package name. The lock entry now again names the package
+actually provided by that upstream revision. Every version, source and checksum
+line is unchanged; locked offline metadata and the existing dependency-graph
+checker pass. An external package name is provenance, not a local namespace.
+
+Darwin completed the Scheme archive but could not link =ssl= and =crypto=.
+The CI path injection was withdrawn. The canonical Scheme PackageSpec now
+declares pkg-config-libs and resolves through its existing host profile; the Rust
+package adapter receives standard Cargo linkage from that declaration. No compiler
+optimization, ABI or timeout changes. Complete CI acceptance remains distinct from correcting
+these two reproduced input/link-discovery failures.
+
+The actual root =build.ss spec= and =build.ss link-inputs= entries naturally exit
+successfully with the declared package dependencies. The latter atomically
+publishes its complete build artifact, then the existing CargoDirective type
+validates the bounded inputs. Eight default unit tests, one explicit test reading
+the actual Scheme artifact, and strict all-target Clippy pass locally. Cargo
+watches standard pkg-config environment selectors for cache invalidation; CI
+does not supply library search flags. These checks establish producer/consumer
+agreement, not a completed remote workspace-link or runtime acceptance result.
+
+The preceding CI run at =e3a0b69= has two additional, distinct failures. Darwin
+prints all module results, =HARNESS-OK= and =OK=, then remains running beyond the
+unchanged five-second no-output gate; process-group cleanup reports a permission
+error. Ubuntu reaches the Library/Data preparation stage, where the independently
+pinned MRR =68ffa47d= build rejects an unbound
+=cypher-opencypher-language-grammar= reference in its Parser authority source.
+The current package's link projection cannot repair that frozen source graph.
+Neither marker completion nor local linkage tests close these failures; no cache
+source edits, compatibility shim or dependency-pin change is used to hide them.
+
+* Embedded tooling ownership and inherited Cargo output
+
+The required public build/test API belongs in gerbil-scheme-rust and invokes
+the actual Gerbil Scheme procedures through C ABI. The existing minimal runtime
+image does not provide the complete compiler/gxtest closure. Tokio process I/O
+is bootstrap hardening, not an embedded tooling implementation. MRR's build.ss
+remains unchanged; no Cargo loop, eval endpoint or second build DSL is added.
+The upstream embedded-tooling contract records admission, affine VM ownership,
+root lifetime, cancellation observation and complete build/test evidence.
+
+Cargo must run as the native root. In the audited standard gxpkg implementation,
+=env= starts native children with inherited descriptors. Actual Darwin probes
+show nonblocking stdout/stderr after that entry. A slow native-reader fixture
+reproduces truncated Cargo metadata despite zero exit status, and a nonzero
+verbose-build refusal. Native Cargo preserves all 1,508,947 metadata bytes across
+12 host workers and leaves no owned process groups. The complete paired check
+including verbose refusal/recovery passes within the unchanged 45-second bound.
+
+CI therefore invokes Cargo/Python and existing legacy qualification scripts
+without an outer Gerbil interpreter. The job declares its standard local
+=GERBIL_PATH= explicitly; this is package location, not compiler/linker policy.
+Existing bootstrap package
+actions remain standard Gerbil commands pending the admitted C ABI capability.
+Isolated Rust probes exercise dependency installation and safe package recovery
+through the existing pinned API; these probes remain temporary evidence rather
+than a new MRR driver. Rust build.rs already delegates artifact construction to
+the pinned upstream builder. This does not claim that dependency has the new C ABI
+tooling API. The optional backpressure test retains a native negative control;
+neither successful status nor short output is accepted as complete evidence.
+
+Local full-entry failures remain separate: missing Parser output, incomplete
+dependency products after a mixed compiler environment, unsafe all-package clean
+ordering and a 900-second wall refusal incorrectly labeled as five-second
+backpressure. The supervisor's reporting correction preserves every deadline
+and only distinguishes an expired total budget from a live forwarding refusal.
+Only standard package clean/build
+actions recover generated products; no uninstall or source-pin edit is used.

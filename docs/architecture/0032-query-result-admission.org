@@ -129,3 +129,13 @@ recorded arm64 runner the quick-mode medians are =299.99us=, =1.7543ms=, and
 =18.250ms= respectively, with approximately 5.48 million cells per second at
 100K.  Admission borrows the candidate and retains only the compact binding,
 row count, and digest in its receipt; it does not deep-copy the row batch.
+
+
+* Fixed Scheme transport version 1
+
+[[file:0033-poo-query-provider.org][The native handoff contract]] defines the bounded Scheme datum result
+transport, independent of the v1 semantic admission digest. It replaces the
+previous JSON transport without a fallback reader, preserves original typed
+rows, and requires receiver-owned query re-admission. Context selection records
+remain v1. Native Scheme decoding rejects obsolete JSON embedded transport;
+a format migration does not authorize a protocol version bump.

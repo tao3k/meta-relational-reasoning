@@ -1,5 +1,3 @@
-use std::path::PathBuf;
-
 use mrr_asp_rust_build_support::{
     MrrAspRustEvidenceGraphInput, MrrAspRustPackageEvidenceGraphRequest,
     build_package_evidence_graph_receipt,
@@ -9,7 +7,7 @@ use mrr_asp_rust_build_support::{
 fn package_receipt_summarizes_mrr_query_evidence_graph() {
     let graph = MrrAspRustEvidenceGraphInput {
         generation_id: "gen-test".to_string(),
-        project_root: PathBuf::from("/tmp/mrr-query"),
+        project_root: std::env::temp_dir().join("mrr-query"),
         node_count: 0,
         edge_count: 0,
     };

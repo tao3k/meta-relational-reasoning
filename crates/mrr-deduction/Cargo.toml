@@ -1,0 +1,30 @@
+[package]
+name = "mrr-deduction"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "MRR closure admission over the native Scheme finite solver"
+
+[features]
+default = ["native-inference"]
+native-inference = ["dep:mrr-gerbil", "mrr-gerbil/embedded-runtime"]
+worker-inference = ["dep:mrr-gerbil"]
+
+[dependencies]
+mrr-gerbil = { workspace = true, optional = true }
+mrr-bundle.workspace = true
+mrr-identity.workspace = true
+mrr-logic.workspace = true
+mrr-query.workspace = true
+mrr-relation.workspace = true
+sha2.workspace = true
+
+[dev-dependencies]
+mrr-asp-rust-build-support.workspace = true
+
+[[test]]
+name = "unit_test"
+path = "tests/unit_test.rs"
+required-features = ["native-inference"]
+
