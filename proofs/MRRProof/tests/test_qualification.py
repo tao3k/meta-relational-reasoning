@@ -6,9 +6,40 @@ import sys
 import tempfile
 import time
 import unittest
+from pathlib import Path
 from unittest.mock import Mock, patch
 
-from mrr_proof_validation import qualification
+from mrr_proof_validation import prepare_gerbil_dependencies, qualification
+
+
+class DependencyEnvironmentRegression(unittest.TestCase):
+    def test_acquisition_and_official_recipes_share_one_package_home(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            revision = "1" * 40
+            package = "github.com/tao3k/agentic-ai-lab"
+            (root / "gerbil.pkg").write_text(f'("{package}@{revision}")')
+            module = root / "proofs/MRRProof/src/mrr_proof_validation/prepare.py"
+            for override in [None, root / "custom-home"]:
+                with self.subTest(override=override):
+                    home = override or root / ".gerbil"
+                    (home / "pkg" / package).mkdir(parents=True)
+                    environment = {} if override is None else {"GERBIL_PATH": str(home)}
+                    with (
+                        patch.dict(os.environ, environment, clear=True),
+                        patch.object(prepare_gerbil_dependencies, "__file__", str(module)),
+                        patch.object(
+                            prepare_gerbil_dependencies.subprocess,
+                            "run",
+                            return_value=subprocess.CompletedProcess([], 0, revision + "\n", ""),
+                        ) as invoked,
+                    ):
+                        prepare_gerbil_dependencies.main()
+                    recipes = invoked.call_args
+                    self.assertEqual(recipes.args[0][0], "just")
+                    self.assertEqual(recipes.kwargs["env"]["GERBIL_PATH"], str(home))
+                    self.assertEqual(recipes.kwargs["env"]["GERBIL_LOADPATH"], str(home / "lib"))
+                    self.assertNotIn("GERBIL_BUILD_CORES", recipes.kwargs["env"])
 
 
 class OutputRegression(unittest.TestCase):

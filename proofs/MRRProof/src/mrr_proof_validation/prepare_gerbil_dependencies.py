@@ -18,6 +18,12 @@ def main() -> None:
         raise ValueError("expected one immutable Agentic AI Lab dependency")
     repository, revision = pins[0]
     package_root = Path(os.environ.get("GERBIL_PATH", root / ".gerbil")) / "pkg"
+    environment = os.environ.copy()
+    # Acquisition and the producer's official recipes must share the same
+    # Gerbil package home. Otherwise Core bootstraps into ~/.gerbil while deps
+    # resolves another home and recompiles the same declared prerequisites.
+    environment["GERBIL_PATH"] = str(package_root.parent.resolve())
+    environment.setdefault("GERBIL_LOADPATH", str(package_root.parent.resolve() / "lib"))
     target = package_root / repository
     if not target.exists():
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -75,6 +81,7 @@ def main() -> None:
     subprocess.run(
         ["just", "--justfile", str(target / "justfile"), "bootstrap-native-poo", "deps"],
         check=True,
+        env=environment,
     )
 
 
